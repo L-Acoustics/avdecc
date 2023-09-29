@@ -232,7 +232,7 @@ struct PtpPortNodeStaticModel
 	PtpPortType portType{ PtpPortType::P2PLinkLayer };
 	PtpPortFlags flags{};
 	AvbInterfaceIndex avbInterfaceIndex{ AvbInterfaceIndex(0u) };
-	std::uint64_t profileIdentifier{ 0u };
+	networkInterface::MacAddress profileIdentifier{ 0u };
 };
 
 struct ConfigurationNodeStaticModel

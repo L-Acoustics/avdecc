@@ -306,6 +306,51 @@ TEST(ControlledEntity, VisitorValidation)
 			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::ClockDomain, parent->descriptorType);
 			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::ClockSource, node.descriptorType);
 		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::TimingNode const& node) noexcept override
+		{
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::Configuration, parent->descriptorType);
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::Timing, node.descriptorType);
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::PtpInstanceNode const& node) noexcept override
+		{
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::Configuration, parent->descriptorType);
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::PtpInstance, node.descriptorType);
+		}
+		// Virtual parenting to show PtpInstanceNode which have the specified TimingNode as parent
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::TimingNode const* const parent, la::avdecc::controller::model::PtpInstanceNode const& node) noexcept override
+		{
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::Configuration, grandParent->descriptorType);
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::Timing, parent->descriptorType);
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::PtpInstance, node.descriptorType);
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+		{
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::Configuration, grandParent->descriptorType);
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::PtpInstance, parent->descriptorType);
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::Control, node.descriptorType);
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::PtpPortNode const& node) noexcept override
+		{
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::Configuration, grandParent->descriptorType);
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::PtpInstance, parent->descriptorType);
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::PtpPort, node.descriptorType);
+		}
+		// Virtual parenting to show ControlNode which have the specified TimingNode as grandParent and PtpInstanceNode as parent
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::TimingNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+		{
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::Configuration, grandGrandParent->descriptorType);
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::Timing, grandParent->descriptorType);
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::PtpInstance, parent->descriptorType);
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::Control, node.descriptorType);
+		}
+		// Virtual parenting to show PtpPortNode which have the specified TimingNode as grandParent and PtpInstanceNode as parent
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::TimingNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::PtpPortNode const& node) noexcept override
+		{
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::Configuration, grandGrandParent->descriptorType);
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::Timing, grandParent->descriptorType);
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::PtpInstance, parent->descriptorType);
+			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::PtpPort, node.descriptorType);
+		}
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamInputNode const& /*node*/) noexcept override {}
 		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamOutputNode const& /*node*/) noexcept override {}

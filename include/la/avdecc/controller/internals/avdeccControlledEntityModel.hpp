@@ -459,6 +459,55 @@ struct ClockDomainNode : public EntityModelNode
 	}
 };
 
+struct TimingNode : public EntityModelNode
+{
+	// AEM Static info
+	entity::model::TimingNodeStaticModel staticModel{};
+
+	// AEM Dynamic info
+	entity::model::TimingNodeDynamicModel dynamicModel{};
+
+	// Constructor
+	explicit TimingNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ entity::model::DescriptorType::Timing, descriptorIndex }
+	{
+	}
+};
+
+struct PtpPortNode : public EntityModelNode
+{
+	// AEM Static info
+	entity::model::PtpPortNodeStaticModel staticModel{};
+
+	// AEM Dynamic info
+	entity::model::PtpPortNodeDynamicModel dynamicModel{};
+
+	// Constructor
+	explicit PtpPortNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ entity::model::DescriptorType::PtpPort, descriptorIndex }
+	{
+	}
+};
+
+struct PtpInstanceNode : public EntityModelNode
+{
+	// Children
+	std::map<entity::model::ControlIndex, ControlNode> controls{};
+	std::map<entity::model::PtpPortIndex, PtpPortNode> ptpPorts{};
+
+	// AEM Static info
+	entity::model::PtpInstanceNodeStaticModel staticModel{};
+
+	// AEM Dynamic info
+	entity::model::PtpInstanceNodeDynamicModel dynamicModel{};
+
+	// Constructor
+	explicit PtpInstanceNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ entity::model::DescriptorType::PtpInstance, descriptorIndex }
+	{
+	}
+};
+
 struct ConfigurationNode : public EntityModelNode
 {
 	// Children (only set if this is the active configuration)
@@ -473,6 +522,8 @@ struct ConfigurationNode : public EntityModelNode
 	std::map<entity::model::LocaleIndex, LocaleNode> locales{};
 	std::map<entity::model::ControlIndex, ControlNode> controls{};
 	std::map<entity::model::ClockDomainIndex, ClockDomainNode> clockDomains{};
+	std::map<entity::model::TimingIndex, TimingNode> timings{};
+	std::map<entity::model::PtpInstanceIndex, PtpInstanceNode> ptpInstances{};
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	std::map<VirtualIndex, RedundantStreamInputNode> redundantStreamInputs{};
@@ -537,6 +588,16 @@ public:
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ClockDomainNode const& /*node*/) noexcept = 0;
 	// Virtual parenting to show ClockSourceNode which have the specified ClockDomainNode as parent
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::TimingNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& /*node*/) noexcept = 0;
+	// Virtual parenting to show PtpInstanceNode which have the specified TimingNode as parent
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::TimingNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& /*node*/) noexcept = 0;
+	// Virtual parenting to show ControlNode which have the specified TimingNode as grandParent and PtpInstanceNode as parent
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept = 0;
+	// Virtual parenting to show PtpPortNode which have the specified TimingNode as grandParent and PtpInstanceNode as parent
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& /*node*/) noexcept = 0;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamInputNode const& /*node*/) noexcept = 0;
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamOutputNode const& /*node*/) noexcept = 0;
@@ -582,6 +643,16 @@ public:
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ClockDomainNode const& /*node*/) noexcept override {}
 	// Virtual parenting to show ClockSourceNode which have the specified ClockDomainNode as parent
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::TimingNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& /*node*/) noexcept override {}
+	// Virtual parenting to show PtpInstanceNode which have the specified TimingNode as parent
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::TimingNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& /*node*/) noexcept override {}
+	// Virtual parenting to show ControlNode which have the specified TimingNode as grandParent and PtpInstanceNode as parent
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override {}
+	// Virtual parenting to show PtpPortNode which have the specified TimingNode as grandParent and PtpInstanceNode as parent
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& /*node*/) noexcept override {}
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamInputNode const& /*node*/) noexcept override {}
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamOutputNode const& /*node*/) noexcept override {}

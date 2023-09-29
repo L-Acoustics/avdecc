@@ -839,6 +839,45 @@ void ControllerImpl::updateClockDomainName(ControlledEntityImpl& controlledEntit
 	}
 }
 
+void ControllerImpl::updateTimingName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex, entity::model::AvdeccFixedString const& timingName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	controlledEntity.setObjectName(configurationIndex, timingIndex, &TreeModelAccessStrategy::getTimingNodeDynamicModel, timingName, notFoundBehavior);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onTimingNameChanged, this, &controlledEntity, configurationIndex, timingIndex, timingName);
+	}
+}
+
+void ControllerImpl::updatePtpInstanceName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex, entity::model::AvdeccFixedString const& ptpInstanceName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	controlledEntity.setObjectName(configurationIndex, ptpInstanceIndex, &TreeModelAccessStrategy::getPtpInstanceNodeDynamicModel, ptpInstanceName, notFoundBehavior);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onPtpInstanceNameChanged, this, &controlledEntity, configurationIndex, ptpInstanceIndex, ptpInstanceName);
+	}
+}
+
+void ControllerImpl::updatePtpPortName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex, entity::model::AvdeccFixedString const& ptpPortName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	controlledEntity.setObjectName(configurationIndex, ptpPortIndex, &TreeModelAccessStrategy::getPtpPortNodeDynamicModel, ptpPortName, notFoundBehavior);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onPtpPortNameChanged, this, &controlledEntity, configurationIndex, ptpPortIndex, ptpPortName);
+	}
+}
+
 void ControllerImpl::updateAssociationID(ControlledEntityImpl& controlledEntity, std::optional<UniqueIdentifier> const associationID, TreeModelAccessStrategy::NotFoundBehavior const /*notFoundBehavior*/) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
@@ -2047,6 +2086,27 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 				controller->readClockDomainDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onClockDomainDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
+		case entity::model::DescriptorType::Timing:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readTimingDescriptor (ConfigurationIndex={}, TimingIndex={})", configurationIndex, descriptorIndex);
+				controller->readTimingDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onTimingDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::PtpInstance:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readPtpInstanceDescriptor (ConfigurationIndex={}, PtpInstanceIndex={})", configurationIndex, descriptorIndex);
+				controller->readPtpInstanceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onPtpInstanceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::PtpPort:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readPtpPortDescriptor (ConfigurationIndex={}, PtpPortIndex={})", configurationIndex, descriptorIndex);
+				controller->readPtpPortDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onPtpPortDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
 		default:
 			AVDECC_ASSERT(false, "Unhandled DescriptorType");
 			break;
@@ -2376,6 +2436,27 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 				controller->getClockSource(entityID, descriptorIndex, std::bind(&ControllerImpl::onClockDomainSourceIndexResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 			};
 			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::TimingName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getTimingName (ConfigurationIndex={} TimingIndex={})", configurationIndex, descriptorIndex);
+				controller->getTimingName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onTimingNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::PtpInstanceName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getPtpInstanceName (ConfigurationIndex={} PtpInstanceIndex={})", configurationIndex, descriptorIndex);
+				controller->getPtpInstanceName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onPtpInstanceNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::PtpPortName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getPtpPortName (ConfigurationIndex={} PtpPortIndex={})", configurationIndex, descriptorIndex);
+				controller->getPtpPortName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onPtpPortNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
 		default:
 			AVDECC_ASSERT(false, "Unhandled DescriptorDynamicInfoType");
 			break;
@@ -2552,6 +2633,13 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, node.descriptorIndex);
 		}
 		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::ClockDomainNode const* const /*parent*/, model::ClockSourceNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::TimingNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::TimingNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& /*node*/) noexcept override {}
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::RedundantStreamInputNode const& /*node*/) noexcept override {}
 		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::RedundantStreamOutputNode const& /*node*/) noexcept override {}
@@ -2839,6 +2927,66 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 			{
 				// Runtime built node (virtual node)
 			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::TimingNode const& node) noexcept override
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const timingIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get TimingName
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::TimingName, timingIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::PtpInstanceNode const& node) noexcept override
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const ptpInstanceIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get PtpInstanceName
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpInstanceName, ptpInstanceIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::TimingNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept override
+			{
+				auto const configurationIndex = grandParent->descriptorIndex;
+				auto const controlIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get ControlName
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlName, controlIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& node) noexcept override
+			{
+				auto const configurationIndex = grandParent->descriptorIndex;
+				auto const ptpPortIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get PtpPortName
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpPortName, ptpPortIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::RedundantStreamInputNode const& /*node*/) noexcept override
 			{
@@ -3080,6 +3228,54 @@ private:
 	{
 		// Runtime built node (virtual node)
 	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::TimingNode const& node) noexcept override
+	{
+		// Create a new TimingNode
+		auto timingNode = model::TimingNode{ node.descriptorIndex };
+		// Copy all static information
+		timingNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->timings.emplace(node.descriptorIndex, std::move(timingNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& node) noexcept override
+	{
+		// Create a new PtpInstanceNode
+		auto ptpInstanceNode = model::PtpInstanceNode{ node.descriptorIndex };
+		// Copy all static information
+		ptpInstanceNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentPtpInstance = &(_currentConfiguration->ptpInstances.emplace(node.descriptorIndex, std::move(ptpInstanceNode)).first->second);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::TimingNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		// Create a new ControlNode
+		auto controlNode = model::ControlNode{ node.descriptorIndex };
+		// Copy all static information
+		controlNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentPtpInstance->controls.emplace(node.descriptorIndex, std::move(controlNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& node) noexcept override
+	{
+		// Create a new PtpPortNode
+		auto ptpPortNode = model::PtpPortNode{ node.descriptorIndex };
+		// Copy all static information
+		ptpPortNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentPtpInstance->ptpPorts.emplace(node.descriptorIndex, std::move(ptpPortNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::RedundantStreamInputNode const& /*node*/) noexcept override
 	{
@@ -3106,6 +3302,7 @@ private:
 	model::LocaleNode* _currentLocale{ nullptr };
 	model::AudioUnitNode* _currentAudioUnit{ nullptr };
 	model::StreamPortNode* _currentStreamPort{ nullptr };
+	model::PtpInstanceNode* _currentPtpInstance{ nullptr };
 };
 
 
@@ -5246,6 +5443,15 @@ bool ControllerImpl::fetchCorrespondingDescriptor(ControlledEntityImpl* const en
 			descriptorType = entity::model::DescriptorType::ClockDomain;
 			// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
 			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, descriptorIndex);
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::TimingName:
+			descriptorType = entity::model::DescriptorType::Timing;
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::PtpInstanceName:
+			descriptorType = entity::model::DescriptorType::PtpInstance;
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::PtpPortName:
+			descriptorType = entity::model::DescriptorType::PtpPort;
 			break;
 		default:
 			AVDECC_ASSERT(false, "Unhandled DescriptorDynamicInfoType");

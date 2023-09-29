@@ -78,7 +78,7 @@ struct ConfigurationDescriptor
 {
 	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{};
-	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash> descriptorCounts{};
+	std::unordered_map<DescriptorType, std::uint16_t, utils::EnumClassHash> descriptorCounts{};
 };
 
 /** AUDIO_UNIT Descriptor - IEEE1722.1-2013 Clause 7.2.3 */
@@ -369,7 +369,7 @@ struct PtpPortDescriptor
 	PtpPortType portType{ PtpPortType::P2PLinkLayer };
 	PtpPortFlags flags{};
 	AvbInterfaceIndex avbInterfaceIndex{ AvbInterfaceIndex(0u) };
-	la::networkInterface::MacAddress profileIdentifier{};
+	networkInterface::MacAddress profileIdentifier{};
 };
 
 /** GET_STREAM_INFO and SET_STREAM_INFO Dynamic Information - IEEE1722.1-2013 Clause 7.4.16.2 */
@@ -379,7 +379,7 @@ struct StreamInfo
 	StreamFormat streamFormat{};
 	UniqueIdentifier streamID{ 0u };
 	std::uint32_t msrpAccumulatedLatency{ 0u };
-	la::networkInterface::MacAddress streamDestMac{};
+	networkInterface::MacAddress streamDestMac{};
 	MsrpFailureCode msrpFailureCode{ MsrpFailureCode::NoFailure };
 	BridgeIdentifier msrpFailureBridgeID{ 0u };
 	std::uint16_t streamVlanID{ 0u };

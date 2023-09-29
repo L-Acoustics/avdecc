@@ -741,7 +741,8 @@ void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/,
 
 void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::ClockDomainNode const* const parent, model::ClockSourceNode const& node) noexcept
 {
-	if (_checksumVersion >= 1)
+	// We should not have serialized virtual parenting, so remove it from the checksum for new checksum versions
+	if (_checksumVersion == 1)
 	{
 		serializeNode(grandParent);
 		serializeNode(parent);
@@ -752,6 +753,82 @@ void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/,
 		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockSourceLocationType;
 		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockSourceLocationIndex;
 	}
+}
+
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::TimingNode const& node) noexcept
+{
+	if (_checksumVersion >= 2)
+	{
+		serializeNode(parent);
+		serializeNode(node);
+		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.algorithm;
+		for (auto const& pii : node.staticModel.ptpInstances)
+		{
+			static_cast<Sha256Serializer&>(*_serializer) << pii;
+		}
+	}
+}
+
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::PtpInstanceNode const& node) noexcept
+{
+	if (_checksumVersion >= 2)
+	{
+		serializeNode(parent);
+		serializeNode(node);
+		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockIdentity;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.flags;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfControls;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseControl;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfPtpPorts;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.basePtpPort;
+	}
+}
+
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::TimingNode const* const /*parent*/, model::PtpInstanceNode const& /*node*/) noexcept
+{
+	// Do not serialize virtual parenting
+}
+
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::PtpInstanceNode const* const parent, model::ControlNode const& node) noexcept
+{
+	if (_checksumVersion >= 2)
+	{
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+		serializeModel(node);
+	}
+}
+
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::PtpInstanceNode const* const parent, model::PtpPortNode const& node) noexcept
+{
+	if (_checksumVersion >= 2)
+	{
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.portNumber;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.portType;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.flags;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.avbInterfaceIndex;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.profileIdentifier;
+	}
+}
+
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandGrandParent*/, model::TimingNode const* const /*grandParent*/, model::PtpInstanceNode const* const /*parent*/, model::ControlNode const& /*node*/) noexcept
+{
+	// Do not serialize virtual parenting
+}
+
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandGrandParent*/, model::TimingNode const* const /*grandParent*/, model::PtpInstanceNode const* const /*parent*/, model::PtpPortNode const& /*node*/) noexcept
+{
+	// Do not serialize virtual parenting
 }
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY

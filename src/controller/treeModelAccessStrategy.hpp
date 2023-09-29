@@ -395,6 +395,36 @@ public:
 	//virtual entity::model::ControlBlockNodeStaticModel* getControlBlockNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlBlockIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) = 0;
 	//virtual entity::model::ControlBlockNodeDynamicModel* getControlBlockNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlBlockIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) = 0;
 
+	virtual model::TimingNode* getTimingNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) = 0;
+	virtual entity::model::TimingNodeStaticModel* getTimingNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior)
+	{
+		return getNodeStaticModel(configurationIndex, descriptorIndex, &TreeModelAccessStrategy::getTimingNode, notFoundBehavior);
+	}
+	virtual entity::model::TimingNodeDynamicModel* getTimingNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior)
+	{
+		return getNodeDynamicModel(configurationIndex, descriptorIndex, &TreeModelAccessStrategy::getTimingNode, notFoundBehavior);
+	}
+
+	virtual model::PtpInstanceNode* getPtpInstanceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) = 0;
+	virtual entity::model::PtpInstanceNodeStaticModel* getPtpInstanceNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior)
+	{
+		return getNodeStaticModel(configurationIndex, descriptorIndex, &TreeModelAccessStrategy::getPtpInstanceNode, notFoundBehavior);
+	}
+	virtual entity::model::PtpInstanceNodeDynamicModel* getPtpInstanceNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior)
+	{
+		return getNodeDynamicModel(configurationIndex, descriptorIndex, &TreeModelAccessStrategy::getPtpInstanceNode, notFoundBehavior);
+	}
+
+	virtual model::PtpPortNode* getPtpPortNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) = 0;
+	virtual entity::model::PtpPortNodeStaticModel* getPtpPortNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior)
+	{
+		return getNodeStaticModel(configurationIndex, descriptorIndex, &TreeModelAccessStrategy::getPtpPortNode, notFoundBehavior);
+	}
+	virtual entity::model::PtpPortNodeDynamicModel* getPtpPortNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior)
+	{
+		return getNodeDynamicModel(configurationIndex, descriptorIndex, &TreeModelAccessStrategy::getPtpPortNode, notFoundBehavior);
+	}
+
 	virtual ~TreeModelAccessStrategy() noexcept = default;
 
 	// Deleted compiler auto-generated methods

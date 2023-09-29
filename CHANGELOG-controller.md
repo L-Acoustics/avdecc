@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for UTF8 file paths
 - New type of diagnostics: *controlCurrentValueOutOfBounds*
 - Detection of invalid *descriptor_counts* field in CONFIGURATION descriptor
+- [Support for TIMING descriptors](https://github.com/L-Acoustics/avdecc/issues/116)
+- [Support for PTP_INSTANCE/PTP_PORT descriptors](https://github.com/L-Acoustics/avdecc/issues/117)
 
 ### Changed
 - Complete controller entity model refactoring to support descriptors at non-configuration level

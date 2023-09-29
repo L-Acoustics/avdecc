@@ -1632,7 +1632,6 @@ void ControllerVirtualProxy::getTimingName(UniqueIdentifier const targetEntityID
 	auto const isVirtual = isVirtualEntity(targetEntityID);
 	if (isVirtual && _virtualInterface)
 	{
-
 		// Forward call to the virtual interface
 		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
 			[this, targetEntityID, configurationIndex, timingIndex, handler]()
@@ -1653,7 +1652,6 @@ void ControllerVirtualProxy::setPtpInstanceName(UniqueIdentifier const targetEnt
 	auto const isVirtual = isVirtualEntity(targetEntityID);
 	if (isVirtual && _virtualInterface)
 	{
-
 		// Forward call to the virtual interface
 		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
 			[this, targetEntityID, configurationIndex, ptpInstanceIndex, ptpInstanceName, handler]()
@@ -1674,7 +1672,6 @@ void ControllerVirtualProxy::getPtpInstanceName(UniqueIdentifier const targetEnt
 	auto const isVirtual = isVirtualEntity(targetEntityID);
 	if (isVirtual && _virtualInterface)
 	{
-
 		// Forward call to the virtual interface
 		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
 			[this, targetEntityID, configurationIndex, ptpInstanceIndex, handler]()
@@ -1695,7 +1692,6 @@ void ControllerVirtualProxy::setPtpPortName(UniqueIdentifier const targetEntityI
 	auto const isVirtual = isVirtualEntity(targetEntityID);
 	if (isVirtual && _virtualInterface)
 	{
-
 		// Forward call to the virtual interface
 		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
 			[this, targetEntityID, configurationIndex, ptpPortIndex, ptpPortName, handler]()
@@ -1716,7 +1712,6 @@ void ControllerVirtualProxy::getPtpPortName(UniqueIdentifier const targetEntityI
 	auto const isVirtual = isVirtualEntity(targetEntityID);
 	if (isVirtual && _virtualInterface)
 	{
-
 		// Forward call to the virtual interface
 		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
 			[this, targetEntityID, configurationIndex, ptpPortIndex, handler]()

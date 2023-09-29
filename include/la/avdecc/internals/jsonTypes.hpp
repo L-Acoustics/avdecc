@@ -2632,7 +2632,7 @@ inline void to_json(json& j, PtpPortNodeStaticModel const& s)
 	j[keyName::PtpPortNode_Static_PortType] = s.portType;
 	j[keyName::PtpPortNode_Static_Flags] = s.flags;
 	j[keyName::PtpPortNode_Static_AvbInterfaceIndex] = s.avbInterfaceIndex;
-	j[keyName::PtpPortNode_Static_ProfileIdentifier] = s.profileIdentifier;
+	j[keyName::PtpPortNode_Static_ProfileIdentifier] = networkInterface::NetworkInterfaceHelper::macAddressToString(s.profileIdentifier, true);
 }
 inline void from_json(json const& j, PtpPortNodeStaticModel& s)
 {
@@ -2641,7 +2641,7 @@ inline void from_json(json const& j, PtpPortNodeStaticModel& s)
 	j.at(keyName::PtpPortNode_Static_PortType).get_to(s.portType);
 	j.at(keyName::PtpPortNode_Static_Flags).get_to(s.flags);
 	j.at(keyName::PtpPortNode_Static_AvbInterfaceIndex).get_to(s.avbInterfaceIndex);
-	j.at(keyName::PtpPortNode_Static_ProfileIdentifier).get_to(s.profileIdentifier);
+	s.profileIdentifier = networkInterface::NetworkInterfaceHelper::stringToMacAddress(j.at(keyName::PtpPortNode_Static_ProfileIdentifier).get<std::string>());
 }
 
 /* PtpPortNodeDynamicModel conversion */

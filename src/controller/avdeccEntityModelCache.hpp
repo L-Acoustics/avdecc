@@ -153,11 +153,14 @@ public:
 		{
 			return false;
 		}
-
-#if 0 // IEEE 1722.1-2021
-		// Check TIMING descriptors
-		// Check PTP_INSTANCE descriptors
-#endif
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::Timing, configNode.timings))
+		{
+			return false;
+		}
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::PtpInstance, configNode.ptpInstances))
+		{
+			return false;
+		}
 
 		// Seems valid
 		return true;
