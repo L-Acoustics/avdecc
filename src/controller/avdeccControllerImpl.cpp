@@ -3604,7 +3604,7 @@ void ControllerImpl::validateControlDescriptors(ControlledEntityImpl& controlled
 
 		void validate() const noexcept
 		{
-			// Check we found a valide Identify Control at either Configuration or Jack level, if ADP contains a valid Identify Control Index
+			// Check we found a valid Identify Control at either Configuration or Jack level, if ADP contains a valid Identify Control Index
 			if (_adpIdentifyControlIndex && !_foundADPIdentifyControlIndex)
 			{
 				LOG_CONTROLLER_WARN(_entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: No valid CONTROL at index {}", *_adpIdentifyControlIndex);
