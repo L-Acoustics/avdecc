@@ -223,6 +223,7 @@ DEFINE_ENUM_CLASS(la::avdecc::entity, AvbInterfaceCounterValidFlag, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity, ClockDomainCounterValidFlag, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity, StreamInputCounterValidFlag, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity, StreamOutputCounterValidFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity, StreamOutputCounterValidFlag17221, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity, MilanInfoFeaturesFlag, "uint")
 
 // Bind structs and classes
@@ -253,6 +254,7 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, AvbInterfaceCounterValidFlags, Av
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ClockDomainCounterValidFlags, ClockDomainCounterValidFlag, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamInputCounterValidFlags, StreamInputCounterValidFlag, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlags, StreamOutputCounterValidFlag, std::uint32_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlags17221, StreamOutputCounterValidFlag17221, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MilanInfoFeaturesFlags, MilanInfoFeaturesFlag, std::uint32_t)
 
 
