@@ -45,12 +45,6 @@
 
 
 ////////////////////////////////////////
-// MemoryBuffer class
-////////////////////////////////////////
-%include "la/avdecc/memoryBuffer.i"
-
-
-////////////////////////////////////////
 // UniqueIdentifier
 ////////////////////////////////////////
 %nspace la::avdecc::UniqueIdentifier;
@@ -316,6 +310,9 @@ DEFINE_TYPED_PROTOCOL_CLASS(AcmpStatus, AcmpStatusTypedDefine, std::uint8_t)
 // Include c++ declaration file
 %include "la/avdecc/internals/protocolDefines.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
+
+// Define templates
+%template(DescriptorCountMap) std::unordered_map<la::avdecc::entity::model::DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash>;
 
 
 ////////////////////////////////////////
