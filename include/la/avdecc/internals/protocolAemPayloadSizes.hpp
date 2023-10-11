@@ -254,6 +254,12 @@ constexpr size_t AecpAemGetMemoryObjectLengthCommandPayloadSize = 4u;
 /** GET_MEMORY_OBJECT_LENGTH Response - IEEE1722.1-2013 Clause 7.4.73.2 */
 constexpr size_t AecpAemGetMemoryObjectLengthResponsePayloadSize = 12u;
 
+/** GET_DYNAMIC_INFO Command - IEEE1722.1-2021 Clause 7.4.76.1 */
+constexpr size_t AecpAemGetDynamicInfoCommandPayloadMinSize = 0u;
+
+/** GET_DYNAMIC_INFO Command Response - IEEE1722.1-2021 Clause 7.4.76.1 */
+constexpr size_t AecpAemGetDynamicInfoResponsePayloadMinSize = 0u;
+
 static_assert(AecpAemAddAudioMappingsCommandPayloadMinSize == AecpAemRemoveAudioMappingsCommandPayloadMinSize, "Add and Remove no longer the same size, we should split AecpAemMaxAddRemoveAudioMappings in 2");
 constexpr size_t AecpAemMaxAddRemoveAudioMappings = (AemAecpdu::MaximumSendPayloadBufferLength - AecpAemRemoveAudioMappingsCommandPayloadMinSize) / 8;
 

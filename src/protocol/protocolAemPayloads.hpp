@@ -32,6 +32,9 @@
 
 #include <cstdint>
 #include <tuple>
+#include <vector>
+#include <type_traits>
+#include <utility>
 
 namespace la
 {
@@ -60,6 +63,77 @@ public:
 	{
 	}
 };
+
+/** DynamicInfo - IEEE1722.1-2021 Clause 7.4.76.1 */
+class DynamicInfo final
+{
+public:
+	// Constructors
+	DynamicInfo() noexcept = default;
+	DynamicInfo(AecpStatus const status, AemCommandType const type, MemoryBuffer&& buffer) noexcept
+		: _status{ status }
+		, _type{ type }
+		, _buffer{ std::move(buffer) }
+	{
+	}
+	DynamicInfo(AecpStatus const status, AemCommandType const type, MemoryBuffer const& buffer) noexcept
+		: _status{ status }
+		, _type{ type }
+		, _buffer{ buffer }
+	{
+	}
+
+	// Getters
+	AemAecpStatus status() const noexcept
+	{
+		return _status;
+	}
+	AemCommandType type() const noexcept
+	{
+		return _type;
+	}
+	MemoryBuffer const& buffer() const noexcept
+	{
+		return _buffer;
+	}
+
+	// Tuple interface
+	template<std::size_t Index>
+	std::tuple_element_t<Index, DynamicInfo>& get() const& noexcept
+	{
+		if constexpr (Index == 0)
+		{
+			return std::cref(_status);
+		}
+		if constexpr (Index == 1)
+		{
+			return std::cref(_type);
+		}
+		else if constexpr (Index == 2)
+		{
+			return std::cref(_buffer);
+		}
+		else
+		{
+			static_assert(Index < 3, "Index out of bounds for DynamicInfo");
+		}
+	}
+
+	// Defaulted compiler auto-generated methods
+	DynamicInfo(DynamicInfo const&) = default;
+	DynamicInfo(DynamicInfo&&) = default;
+	DynamicInfo& operator=(DynamicInfo const&) = default;
+	DynamicInfo& operator=(DynamicInfo&&) = default;
+
+private:
+	AemAecpStatus _status{ AemAecpStatus::NotSupported };
+	AemCommandType _type{ AemCommandType::InvalidCommandType };
+	MemoryBuffer _buffer{};
+};
+
+using DynamicInfos = std::vector<DynamicInfo>;
+
+
 // All serialization methods might throw a std::invalid_argument if serialization goes wrong
 // All deserialization methods might throw a la::avdecc:Exception if deserialization goes wrong
 
@@ -371,7 +445,30 @@ std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex> 
 Serializer<AecpAemGetMemoryObjectLengthResponsePayloadSize> serializeGetMemoryObjectLengthResponse(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length);
 std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex, std::uint64_t> deserializeGetMemoryObjectLengthResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload);
 
+/** GET_DYNAMIC_INFO Command - IEEE1722.1-2021 Clause 7.4.76.1 */
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetDynamicInfoCommand(DynamicInfos const& commands);
+DynamicInfos deserializeGetDynamicInfoCommand(AemAecpdu::Payload const& payload);
+
+/** GET_DYNAMIC_INFO Response - IEEE1722.1-2021 Clause 7.4.76.1 */
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetDynamicInfoResponse(DynamicInfos const& commands);
+DynamicInfos deserializeGetDynamicInfoResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload);
+
 } // namespace aemPayload
 } // namespace protocol
 } // namespace avdecc
 } // namespace la
+
+
+// Convenience tuple_size and tuple_element specializations
+namespace std
+{
+template<>
+struct tuple_size<::la::avdecc::protocol::aemPayload::DynamicInfo>
+{
+	static constexpr size_t value = 3;
+};
+template<size_t Index>
+struct tuple_element<Index, ::la::avdecc::protocol::aemPayload::DynamicInfo> : tuple_element<Index, tuple<::la::avdecc::protocol::AemAecpStatus const&, ::la::avdecc::protocol::AemCommandType const&, ::la::avdecc::MemoryBuffer const&>>
+{
+};
+} // namespace std

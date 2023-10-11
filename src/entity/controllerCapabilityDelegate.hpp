@@ -166,6 +166,7 @@ public:
 	void abortOperation(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, model::OperationID const operationID, Interface::AbortOperationHandler const& handler) const noexcept;
 	void setMemoryObjectLength(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, Interface::SetMemoryObjectLengthHandler const& handler) const noexcept;
 	void getMemoryObjectLength(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, Interface::GetMemoryObjectLengthHandler const& handler) const noexcept;
+	void getDynamicInfo(UniqueIdentifier const targetEntityID, DynamicInfoParameters const& parameters, Interface::GetDynamicInfoHandler const& handler) const noexcept;
 	/* Enumeration and Control Protocol (AECP) AA */
 	void addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, Interface::AddressAccessHandler const& handler) const noexcept;
 	/* Enumeration and Control Protocol (AECP) MVU (Milan Vendor Unique) */

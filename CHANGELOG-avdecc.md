@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for UTF8 file paths
 - [Support for TIMING descriptors](https://github.com/L-Acoustics/avdecc/issues/116)
 - [Support for PTP_INSTANCE/PTP_PORT descriptors](https://github.com/L-Acoustics/avdecc/issues/117)
+- Support for GET_DYNAMIC_INFO command
 
 ### Changed
 - la::avdecc::entity::controller::Delegate is now virtual pure, but a new derivated visitor (with all default implementation) has been added: la::avdecc::entity::controller::DefaultedDelegate

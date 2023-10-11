@@ -233,7 +233,8 @@ AemCommandType const AemCommandType::SetMemoryObjectLength{ 0x0047 };
 AemCommandType const AemCommandType::GetMemoryObjectLength{ 0x0048 };
 AemCommandType const AemCommandType::SetStreamBackup{ 0x0049 };
 AemCommandType const AemCommandType::GetStreamBackup{ 0x004a };
-/* 0x004b-0x7ffe reserved for future use */
+AemCommandType const AemCommandType::GetDynamicInfo{ 0x004b };
+/* 0x004c-0x7ffe reserved for future use */
 AemCommandType const AemCommandType::Expansion{ 0x7fff };
 
 AemCommandType const AemCommandType::InvalidCommandType{ 0xffff };
@@ -316,6 +317,7 @@ AemCommandType::operator std::string() const noexcept
 		{ AemCommandType::GetMemoryObjectLength.getValue(), "GET_MEMORY_OBJECT_LENGTH" },
 		{ AemCommandType::SetStreamBackup.getValue(), "SET_STREAM_BACKUP" },
 		{ AemCommandType::GetStreamBackup.getValue(), "GET_STREAM_BACKUP" },
+		{ AemCommandType::GetDynamicInfo.getValue(), "GET_DYNAMIC_INFO" },
 		{ AemCommandType::Expansion.getValue(), "EXPANSION" },
 		{ AemCommandType::InvalidCommandType.getValue(), "INVALID_COMMAND_TYPE" },
 	};

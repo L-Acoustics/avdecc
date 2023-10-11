@@ -3020,6 +3020,88 @@ std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex, 
 	return deserializeSetMemoryObjectLengthCommand(payload);
 }
 
+/** GET_DYNAMIC_INFO Command - IEEE1722.1-2021 Clause 7.4.76.1 */
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetDynamicInfoCommand(DynamicInfos const& commands)
+{
+	Serializer<AemAecpdu::MaximumSendPayloadBufferLength> ser;
+
+	AVDECC_ASSERT(ser.usedBytes() == AecpAemGetDynamicInfoCommandPayloadMinSize, "Used bytes do not match the protocol constant");
+
+	// Serialize commands
+	for (auto const& [status, commandType, memoryBufferView] : commands)
+	{
+		auto const reserved1 = std::uint16_t{ 0u };
+		auto const reserved2 = std::uint8_t{ 0u };
+
+		ser << static_cast<std::uint16_t>(memoryBufferView.size()) << reserved1;
+		ser << status << reserved2 << commandType;
+		ser << memoryBufferView;
+	}
+
+	return ser;
+}
+
+DynamicInfos deserializeGetDynamicInfoCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+	auto commands = DynamicInfos{};
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetDynamicInfoCommandPayloadMinSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+
+	// Unpack commands
+	while (des.remaining() != 0)
+	{
+		auto specificCommandLength = std::uint16_t{ 0u };
+		auto status = protocol::AemAecpStatus::Success;
+		auto commandType = protocol::AemCommandType::InvalidCommandType;
+		auto reserved1 = std::uint16_t{ 0u };
+		auto reserved2 = std::uint8_t{ 0u };
+
+		des >> specificCommandLength >> reserved1;
+		des >> status >> reserved2 >> commandType;
+
+		// Check specific command length value makes sense
+		if (specificCommandLength > des.remaining())
+		{
+			throw IncorrectPayloadSizeException();
+		}
+		auto buffer = MemoryBuffer{};
+		buffer.set_size(specificCommandLength);
+		des >> buffer;
+
+		commands.emplace_back(status, commandType, std::move(buffer));
+	}
+
+	// This is currently impossible to trigger due to the while loop above
+	if (des.remaining() != 0)
+	{
+		LOG_AEM_PAYLOAD_TRACE("GetDynamicInfo Response deserialize warning: Remaining bytes in buffer");
+	}
+
+	return commands;
+}
+
+/** GET_DYNAMIC_INFO Response - IEEE1722.1-2021 Clause 7.4.76.1 */
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetDynamicInfoResponse(DynamicInfos const& commands)
+{
+	// Same as GET_DYNAMIC_INFO Command
+	static_assert(AecpAemGetDynamicInfoResponsePayloadMinSize == AecpAemGetDynamicInfoCommandPayloadMinSize, "GET_DYNAMIC_INFO Response no longer the same as GET_DYNAMIC_INFO Command");
+	return serializeGetDynamicInfoCommand(commands);
+}
+
+DynamicInfos deserializeGetDynamicInfoResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
+{
+	// Same as GET_DYNAMIC_INFO Command
+	static_assert(AecpAemGetDynamicInfoResponsePayloadMinSize == AecpAemGetDynamicInfoCommandPayloadMinSize, "GET_DYNAMIC_INFO Response no longer the same as GET_DYNAMIC_INFO Command");
+	checkResponsePayload(payload, status, AecpAemGetDynamicInfoCommandPayloadMinSize, AecpAemGetDynamicInfoResponsePayloadMinSize);
+	return deserializeGetDynamicInfoCommand(payload);
+}
+
 } // namespace aemPayload
 } // namespace protocol
 } // namespace avdecc
