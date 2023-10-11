@@ -46,7 +46,7 @@ namespace avdecc
 *          @ref set_size "set_size" method to change the "used bytes" size
 *          of the array without default initializing it.
 */
-class MemoryBuffer
+class MemoryBuffer final
 {
 public:
 	using value_type = std::uint8_t;
@@ -368,6 +368,88 @@ private:
 
 	value_type* _data{ nullptr };
 	size_t _capacity{ 0u };
+	size_t _size{ 0u };
+};
+
+/** A read-only 'view' of a MemoryBuffer */
+class MemoryBufferView final
+{
+public:
+	/* ************************************************************************** */
+	/* Life cycle                                                                 */
+
+	/** Default constructor */
+	constexpr MemoryBufferView() noexcept {}
+
+	/** Constructor from a MemoryBuffer */
+	MemoryBufferView(MemoryBuffer const& buffer) noexcept
+		: _data(buffer.data())
+		, _size(buffer.size())
+	{
+	}
+
+	/* ************************************************************************** */
+	/* Comparison operators                                                       */
+	bool operator==(MemoryBufferView const& other) const noexcept
+	{
+		// First check for size, so we don't have to process the whole data
+		if (_size != other._size)
+		{
+			return false;
+		}
+
+		// Compare pointers first
+		if (_data == other._data)
+		{
+			return true;
+		}
+
+		// Now we can compare the data
+		return std::memcmp(_data, other._data, _size) == 0;
+	}
+
+	bool operator!=(MemoryBufferView const& other) const noexcept
+	{
+		return !operator==(other);
+	}
+
+	/* ************************************************************************** */
+	/* Data access                                                                */
+
+	/** Returns the raw const data */
+	MemoryBuffer::value_type const* data() const noexcept
+	{
+		return _data;
+	}
+
+	/* ************************************************************************** */
+	/* Capacity getters                                                           */
+
+	/** Gets the current count of valid elements in the buffer */
+	constexpr size_t size() const noexcept
+	{
+		return _size;
+	}
+
+	/** True if the buffer contains no element */
+	constexpr bool empty() const noexcept
+	{
+		return _size == 0;
+	}
+
+	/** True if the buffer has been allocated */
+	constexpr bool isValid() const noexcept
+	{
+		return _data != nullptr;
+	}
+
+	explicit constexpr operator bool() const noexcept
+	{
+		return isValid();
+	}
+
+private:
+	MemoryBuffer::value_type const* _data{ nullptr };
 	size_t _size{ 0u };
 };
 
