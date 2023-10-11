@@ -108,7 +108,9 @@ AecpStatus::operator std::string() const noexcept
 
 	auto const& it = s_AecpStatusMapping.find(getValue());
 	if (it == s_AecpStatusMapping.end())
+	{
 		return "INVALID_STATUS";
+	}
 	return it->second;
 }
 
@@ -149,7 +151,9 @@ AemAecpStatus::operator std::string() const noexcept
 
 	auto const& it = s_AemAecpStatusMapping.find(getValue());
 	if (it == s_AemAecpStatusMapping.end())
-		return "INVALID_STATUS";
+	{
+		return AecpStatus::operator std::string();
+	}
 	return it->second;
 }
 
@@ -400,7 +404,9 @@ AaAecpStatus::operator std::string() const noexcept
 
 	auto const& it = s_AaAecpStatusMapping.find(getValue());
 	if (it == s_AaAecpStatusMapping.end())
-		return "INVALID_STATUS";
+	{
+		return AecpStatus::operator std::string();
+	}
 	return it->second;
 }
 
@@ -414,7 +420,9 @@ MvuAecpStatus::operator std::string() const noexcept
 
 	auto const& it = s_MvuAecpStatusMapping.find(getValue());
 	if (it == s_MvuAecpStatusMapping.end())
-		return "INVALID_STATUS";
+	{
+		return AecpStatus::operator std::string();
+	}
 	return it->second;
 }
 
