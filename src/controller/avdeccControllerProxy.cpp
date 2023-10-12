@@ -2307,6 +2307,26 @@ void ControllerVirtualProxy::getMemoryObjectLength(UniqueIdentifier const target
 	}
 }
 
+void ControllerVirtualProxy::getDynamicInfo(UniqueIdentifier const targetEntityID, entity::controller::DynamicInfoParameters const& parameters, GetDynamicInfoHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, parameters, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->getDynamicInfo(targetEntityID, parameters, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->getDynamicInfo(targetEntityID, parameters, handler);
+	}
+}
+
 void ControllerVirtualProxy::addressAccess(UniqueIdentifier const targetEntityID, entity::addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept
 {
 	auto const isVirtual = isVirtualEntity(targetEntityID);

@@ -259,6 +259,7 @@ constexpr size_t AecpAemGetDynamicInfoCommandPayloadMinSize = 0u;
 
 /** GET_DYNAMIC_INFO Command Response - IEEE1722.1-2021 Clause 7.4.76.1 */
 constexpr size_t AecpAemGetDynamicInfoResponsePayloadMinSize = 0u;
+constexpr size_t AecpAemGetDynamicInfoStructureHeaderSize = 8u; // Header size of each structure in the response
 
 static_assert(AecpAemAddAudioMappingsCommandPayloadMinSize == AecpAemRemoveAudioMappingsCommandPayloadMinSize, "Add and Remove no longer the same size, we should split AecpAemMaxAddRemoveAudioMappings in 2");
 constexpr size_t AecpAemMaxAddRemoveAudioMappings = (AemAecpdu::MaximumSendPayloadBufferLength - AecpAemRemoveAudioMappingsCommandPayloadMinSize) / 8;
