@@ -3199,8 +3199,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				// Only for active configuration
 				if (configurationIndex == _currentConfigurationIndex)
 				{
-					// Get ControlName
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlName, controlIndex);
+					getControlNodeDynamicInformation(configurationIndex, controlIndex);
 				}
 			}
 			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& node) noexcept override
