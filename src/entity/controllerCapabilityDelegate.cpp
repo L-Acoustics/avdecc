@@ -1746,7 +1746,7 @@ void CapabilityDelegate::getDynamicInfo(UniqueIdentifier const targetEntityID, D
 	static auto s_DynamicInfoDispatch = std::unordered_map<protocol::AemCommandType::value_type, std::function<void(UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)>>{
 		// Get Configuration
 		{ protocol::AemCommandType::GetConfiguration.getValue(),
-			[](UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
 			{
 				// Validate parameters
 				auto const& args = parameters.arguments;
@@ -1761,7 +1761,7 @@ void CapabilityDelegate::getDynamicInfo(UniqueIdentifier const targetEntityID, D
 			} },
 		// Get Stream Format
 		{ protocol::AemCommandType::GetStreamFormat.getValue(),
-			[](UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
 			{
 				// Validate parameters
 				auto const& args = parameters.arguments;
@@ -1788,7 +1788,7 @@ void CapabilityDelegate::getDynamicInfo(UniqueIdentifier const targetEntityID, D
 		// Get Sensor Format
 		// Get Stream Info
 		{ protocol::AemCommandType::GetStreamInfo.getValue(),
-			[](UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
 			{
 				// Validate parameters
 				auto const& args = parameters.arguments;
@@ -1813,7 +1813,7 @@ void CapabilityDelegate::getDynamicInfo(UniqueIdentifier const targetEntityID, D
 			} },
 		// Get Name
 		{ protocol::AemCommandType::GetName.getValue(),
-			[](UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
 			{
 				// Validate parameters
 				auto const& args = parameters.arguments;
@@ -1840,7 +1840,7 @@ void CapabilityDelegate::getDynamicInfo(UniqueIdentifier const targetEntityID, D
 			} },
 		// Get Association ID
 		{ protocol::AemCommandType::GetAssociationID.getValue(),
-			[](UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
 			{
 				// Validate parameters
 				auto const& args = parameters.arguments;
@@ -1855,7 +1855,7 @@ void CapabilityDelegate::getDynamicInfo(UniqueIdentifier const targetEntityID, D
 			} },
 		// Get Sampling Rate
 		{ protocol::AemCommandType::GetSamplingRate.getValue(),
-			[](UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
 			{
 				// Validate parameters
 				auto const& args = parameters.arguments;
@@ -1880,7 +1880,7 @@ void CapabilityDelegate::getDynamicInfo(UniqueIdentifier const targetEntityID, D
 			} },
 		// Get Clock Source
 		{ protocol::AemCommandType::GetClockSource.getValue(),
-			[](UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
 			{
 				// Validate parameters
 				auto const& args = parameters.arguments;
@@ -1905,7 +1905,7 @@ void CapabilityDelegate::getDynamicInfo(UniqueIdentifier const targetEntityID, D
 		// Get Signal Selector
 		// Get Counters
 		{ protocol::AemCommandType::GetCounters.getValue(),
-			[](UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
 			{
 				// Validate parameters
 				auto const& args = parameters.arguments;
@@ -1930,7 +1930,7 @@ void CapabilityDelegate::getDynamicInfo(UniqueIdentifier const targetEntityID, D
 			} },
 		// Get Memory Object Length
 		{ protocol::AemCommandType::GetMemoryObjectLength.getValue(),
-			[](UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
 			{
 				// Validate parameters
 				auto const& args = parameters.arguments;

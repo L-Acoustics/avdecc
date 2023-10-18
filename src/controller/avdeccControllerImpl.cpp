@@ -38,6 +38,7 @@
 #endif // ENABLE_AVDECC_FEATURE_JSON
 #include <la/avdecc/internals/streamFormatInfo.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
+#include <la/avdecc/internals/protocolAemPayloadSizes.hpp>
 #include <la/avdecc/internals/protocolInterface.hpp>
 #include <la/avdecc/executor.hpp>
 
@@ -2476,6 +2477,34 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	}
 }
 
+void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity::controller::DynamicInfoParameters const& dynamicInfoParameters, std::uint16_t const packetID, ControlledEntityImpl::EnumerationStep const step, std::chrono::milliseconds const delayQuery) noexcept
+{
+	// Immediately set as expected
+	entity->setGetDynamicInfoExpected(packetID);
+
+	auto const entityID = entity->getEntity().getEntityID();
+	std::function<void(entity::ControllerEntity*)> queryFunc{};
+
+	queryFunc = [this, entityID, dynamicInfoParameters, packetID, step](entity::ControllerEntity* const controller) noexcept
+	{
+		LOG_CONTROLLER_TRACE(entityID, "getDynamicInfo (PacketID={} Step={})", packetID, avdecc::utils::to_integral(step));
+		controller->getDynamicInfo(entityID, dynamicInfoParameters, std::bind(&ControllerImpl::onGetDynamicInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, dynamicInfoParameters, packetID, step));
+	};
+
+	// Not delayed, call now
+	if (delayQuery == std::chrono::milliseconds{ 0 })
+	{
+		if (queryFunc)
+		{
+			queryFunc(_controller);
+		}
+	}
+	else
+	{
+		addDelayedQuery(delayQuery, entityID, std::move(queryFunc));
+	}
+}
+
 void ControllerImpl::getMilanInfo(ControlledEntityImpl* const entity) noexcept
 {
 	auto const caps = entity->getEntity().getEntityCapabilities();
@@ -2494,6 +2523,30 @@ void ControllerImpl::getMilanInfo(ControlledEntityImpl* const entity) noexcept
 		entity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetMilanInfo);
 		checkEnumerationSteps(entity);
 	}
+}
+
+void ControllerImpl::checkDynamicInfoSupported(ControlledEntityImpl* const entity) noexcept
+{
+	auto const caps = entity->getEntity().getEntityCapabilities();
+	auto const entityID = entity->getEntity().getEntityID();
+
+#if 0
+	// TODO: No need to check if Milan version is X.Y.Z, it must be supported
+	if (...)
+	{
+		// Clear this enumeration step and check for next one
+		entity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::CheckDynamicInfoSupported);
+		checkEnumerationSteps(entity);
+		return;
+	}
+#endif
+
+	// Immediately set as expected
+	entity->setCheckDynamicInfoSupportedExpected();
+
+	// Query an empty getDynamicInfo to check if it is supported
+	LOG_CONTROLLER_TRACE(entityID, "empty getDynamicInfo ()");
+	_controller->getDynamicInfo(entityID, {}, std::bind(&ControllerImpl::onEmptyGetDynamicInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
 void ControllerImpl::registerUnsol(ControlledEntityImpl* const entity) noexcept
@@ -2531,7 +2584,13 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 		explicit DynamicInfoVisitor(ControllerImpl* const controller, ControlledEntityImpl* const entity) noexcept
 			: _controller{ controller }
 			, _entity{ entity }
+			, _usePackedDynamicInfo{ _entity->isGetDynamicInfoSupported() }
 		{
+		}
+
+		entity::controller::DynamicInfoParameters const& getDynamicInfoParameters() const noexcept
+		{
+			return _dynamicInfoParameters;
 		}
 
 		// Deleted compiler auto-generated methods
@@ -2559,7 +2618,14 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			}
 
 			// Entity Counters
-			_controller->queryInformation(_entity, 0u, ControlledEntityImpl::DynamicInfoType::GetEntityCounters, 0u);
+			if (_usePackedDynamicInfo)
+			{
+				_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetCounters, { entity::model::DescriptorType::Entity, entity::model::DescriptorIndex{ 0u } } });
+			}
+			else
+			{
+				_controller->queryInformation(_entity, 0u, ControlledEntityImpl::DynamicInfoType::GetEntityCounters, 0u);
+			}
 		}
 		virtual void visit(ControlledEntity const* const /*entity*/, model::EntityNode const* const /*parent*/, model::ConfigurationNode const& node) noexcept override
 		{
@@ -2572,7 +2638,14 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, node.descriptorIndex);
 
 			// Counters
-			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters, node.descriptorIndex);
+			if (_usePackedDynamicInfo)
+			{
+				_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetCounters, { entity::model::DescriptorType::StreamInput, node.descriptorIndex } });
+			}
+			else
+			{
+				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters, node.descriptorIndex);
+			}
 
 			// RX_STATE
 			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, node.descriptorIndex);
@@ -2583,7 +2656,14 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, node.descriptorIndex);
 
 			// Counters
-			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters, node.descriptorIndex);
+			if (_usePackedDynamicInfo)
+			{
+				_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetCounters, { entity::model::DescriptorType::StreamOutput, node.descriptorIndex } });
+			}
+			else
+			{
+				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters, node.descriptorIndex);
+			}
 
 			// TX_STATE
 			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, node.descriptorIndex);
@@ -2598,7 +2678,14 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			// AsPath
 			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetAsPath, node.descriptorIndex);
 			// Counters
-			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, node.descriptorIndex);
+			if (_usePackedDynamicInfo)
+			{
+				_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetCounters, { entity::model::DescriptorType::AvbInterface, node.descriptorIndex } });
+			}
+			else
+			{
+				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, node.descriptorIndex);
+			}
 		}
 		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::ClockSourceNode const& /*node*/) noexcept override {}
 		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::MemoryObjectNode const& /*node*/) noexcept override {}
@@ -2630,7 +2717,14 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::ClockDomainNode const& node) noexcept override
 		{
 			// Counters
-			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, node.descriptorIndex);
+			if (_usePackedDynamicInfo)
+			{
+				_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetCounters, { entity::model::DescriptorType::ClockDomain, node.descriptorIndex } });
+			}
+			else
+			{
+				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, node.descriptorIndex);
+			}
 		}
 		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::ClockDomainNode const* const /*parent*/, model::ClockSourceNode const& /*node*/) noexcept override {}
 		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::TimingNode const& /*node*/) noexcept override {}
@@ -2651,11 +2745,15 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 		ControllerImpl* _controller{ nullptr };
 		ControlledEntityImpl* _entity{ nullptr };
 		entity::model::ConfigurationIndex _currentConfigurationIndex{ entity::model::getInvalidDescriptorIndex() };
+		bool _usePackedDynamicInfo{ false };
+		entity::controller::DynamicInfoParameters _dynamicInfoParameters{};
 	};
 
 	// Visit all known descriptor and get associated dynamic information
 	auto visitor = DynamicInfoVisitor{ this, entity };
 	entity->accept(&visitor, false);
+	// Flush all packed dynamic info queries
+	flushPackedDynamicInfoQueries(entity, visitor.getDynamicInfoParameters(), ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 
 	// Got all expected dynamic information
 	if (entity->gotAllExpectedDynamicInfo())
@@ -2678,7 +2776,13 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 			DynamicInfoModelVisitor(ControllerImpl* const controller, ControlledEntityImpl* const entity) noexcept
 				: _controller{ controller }
 				, _entity{ entity }
+				, _usePackedDynamicInfo{ _entity->isGetDynamicInfoSupported() }
 			{
+			}
+
+			entity::controller::DynamicInfoParameters const& getDynamicInfoParameters() const noexcept
+			{
+				return _dynamicInfoParameters;
 			}
 
 			// Deleted compiler auto-generated methods
@@ -2692,7 +2796,14 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 			void getControlNodeDynamicInformation(la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ControlIndex const controlIndex) noexcept
 			{
 				// Get ControlName
-				_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlName, controlIndex);
+				if (_usePackedDynamicInfo)
+				{
+					_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::Control, controlIndex, std::uint16_t{ 0u } } });
+				}
+				else
+				{
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlName, controlIndex);
+				}
 				// Get ControlValues
 				_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlValues, controlIndex);
 			}
@@ -2714,8 +2825,14 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					configDynamicModel->isActiveConfiguration = configurationIndex == _currentConfigurationIndex;
 
 					// Get ConfigurationName
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName, 0u);
-
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { entity::model::DescriptorIndex{ 0u }, entity::model::DescriptorType::Configuration, configurationIndex, std::uint16_t{ 0u } } }); // CAUTION: configurationIndex should be set to 0 for CONFIGURATION_DESCRIPTOR, the index for the requested configuration name is actually passed as the descriptorIndex field
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName, 0u);
+					}
 
 					if (configDynamicModel->isActiveConfiguration)
 					{
@@ -2738,9 +2855,23 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				if (configurationIndex == _currentConfigurationIndex)
 				{
 					// Get AudioUnitName
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, audioUnitIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::AudioUnit, audioUnitIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, audioUnitIndex);
+					}
 					// Get AudioUnitSamplingRate
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, audioUnitIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetSamplingRate, { entity::model::DescriptorType::AudioUnit, audioUnitIndex } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, audioUnitIndex);
+					}
 				}
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::StreamInputNode const& node) noexcept override
@@ -2752,9 +2883,23 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				if (configurationIndex == _currentConfigurationIndex)
 				{
 					// Get InputStreamName
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, streamIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::StreamInput, streamIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, streamIndex);
+					}
 					// Get InputStreamFormat
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, streamIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetStreamFormat, { entity::model::DescriptorType::StreamInput, streamIndex } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, streamIndex);
+					}
 				}
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::StreamOutputNode const& node) noexcept override
@@ -2766,9 +2911,23 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				if (configurationIndex == _currentConfigurationIndex)
 				{
 					// Get OutputStreamName
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, streamIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::StreamOutput, streamIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, streamIndex);
+					}
 					// Get OutputStreamFormat
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, streamIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetStreamFormat, { entity::model::DescriptorType::StreamOutput, streamIndex } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, streamIndex);
+					}
 				}
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::JackInputNode const& node) noexcept override
@@ -2780,7 +2939,14 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				if (configurationIndex == _currentConfigurationIndex)
 				{
 					// Get InputJackName
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName, jackIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::JackInput, jackIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName, jackIndex);
+					}
 				}
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::JackOutputNode const& node) noexcept override
@@ -2792,7 +2958,14 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				if (configurationIndex == _currentConfigurationIndex)
 				{
 					// Get OutputJackName
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName, jackIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::JackOutput, jackIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName, jackIndex);
+					}
 				}
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::JackNode const* const /*parent*/, model::ControlNode const& node) noexcept override
@@ -2815,7 +2988,14 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				if (configurationIndex == _currentConfigurationIndex)
 				{
 					// Get AvbInterfaceName
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, avbInterfaceIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::AvbInterface, avbInterfaceIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, avbInterfaceIndex);
+					}
 				}
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::ClockSourceNode const& node) noexcept override
@@ -2827,7 +3007,14 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				if (configurationIndex == _currentConfigurationIndex)
 				{
 					// Get ClockSourceName
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, clockSourceIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::ClockSource, clockSourceIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, clockSourceIndex);
+					}
 				}
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::MemoryObjectNode const& node) noexcept override
@@ -2839,9 +3026,23 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				if (configurationIndex == _currentConfigurationIndex)
 				{
 					// Get MemoryObjectName
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, memoryObjectIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::MemoryObject, memoryObjectIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, memoryObjectIndex);
+					}
 					// Get MemoryObjectLength
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, memoryObjectIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetMemoryObjectLength, { configurationIndex, memoryObjectIndex } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, memoryObjectIndex);
+					}
 				}
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::LocaleNode const& /*node*/) noexcept override
@@ -2869,7 +3070,14 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				if (configurationIndex == _currentConfigurationIndex)
 				{
 					// Get AudioClusterName
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, clusterIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::AudioCluster, clusterIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, clusterIndex);
+					}
 				}
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandGrandParent*/, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const /*parent*/, model::AudioMapNode const& /*node*/) noexcept override
@@ -2918,9 +3126,23 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				if (configurationIndex == _currentConfigurationIndex)
 				{
 					// Get ClockDomainName
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, clockDomainIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::ClockDomain, clockDomainIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, clockDomainIndex);
+					}
 					// Get ClockDomainSourceIndex
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, clockDomainIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetClockSource, { clockDomainIndex } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, clockDomainIndex);
+					}
 				}
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::ClockDomainNode const* const /*parent*/, model::ClockSourceNode const& /*node*/) noexcept override
@@ -2936,7 +3158,14 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				if (configurationIndex == _currentConfigurationIndex)
 				{
 					// Get TimingName
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::TimingName, timingIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::Timing, timingIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::TimingName, timingIndex);
+					}
 				}
 			}
 			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::PtpInstanceNode const& node) noexcept override
@@ -2948,7 +3177,14 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				if (configurationIndex == _currentConfigurationIndex)
 				{
 					// Get PtpInstanceName
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpInstanceName, ptpInstanceIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::PtpInstance, ptpInstanceIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpInstanceName, ptpInstanceIndex);
+					}
 				}
 			}
 			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::TimingNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& /*node*/) noexcept override
@@ -2976,7 +3212,14 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				if (configurationIndex == _currentConfigurationIndex)
 				{
 					// Get PtpPortName
-					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpPortName, ptpPortIndex);
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::PtpPort, ptpPortIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpPortName, ptpPortIndex);
+					}
 				}
 			}
 			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override
@@ -3009,11 +3252,15 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 			ControllerImpl* _controller{ nullptr };
 			ControlledEntityImpl* _entity{ nullptr };
 			entity::model::ConfigurationIndex _currentConfigurationIndex{ entity::model::getInvalidDescriptorIndex() };
+			bool _usePackedDynamicInfo{ false };
+			entity::controller::DynamicInfoParameters _dynamicInfoParameters{};
 		};
 
 		// Visit the model, and retrieve dynamic info
 		auto visitor = DynamicInfoModelVisitor{ this, entity };
 		entity->accept(&visitor, true);
+		// Flush all packed dynamic info queries
+		flushPackedDynamicInfoQueries(entity, visitor.getDynamicInfoParameters(), ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 	}
 
 	// Get all expected descriptor dynamic information
@@ -3022,6 +3269,85 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 		// Clear this enumeration step and check for next one
 		entity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 		checkEnumerationSteps(entity);
+	}
+}
+
+void ControllerImpl::flushPackedDynamicInfoQueries(ControlledEntityImpl* const entity, entity::controller::DynamicInfoParameters const& dynamicInfoParameters, ControlledEntityImpl::EnumerationStep const step) noexcept
+{
+	if (dynamicInfoParameters.empty())
+	{
+		return;
+	}
+
+	auto const sendQuery = [this, entity, step](auto const& params, auto const& packetID)
+	{
+		// Send the query
+		queryInformation(entity, params, packetID, step);
+	};
+	static auto s_ResponseSizes = std::unordered_map<protocol::AemCommandType, size_t, protocol::AemCommandType::Hash>{
+		{ protocol::AemCommandType::GetConfiguration, protocol::aemPayload::AecpAemGetConfigurationResponsePayloadSize }, // GetConfiguration
+		{ protocol::AemCommandType::GetStreamFormat, protocol::aemPayload::AecpAemGetStreamFormatResponsePayloadSize }, // GetStreamFormat
+		// GetVideoFormat
+		// GetSensorFormat
+		// { protocol::AemCommandType::GetStreamInfo, protocol::aemPayload::AecpAemGetStreamInfoResponsePayloadSize }, // GetStreamInfo // DO NOT USE, too many different payload sizes (1722.1-2013, 1722.1-2021, Milan-2019)
+		{ protocol::AemCommandType::GetName, protocol::aemPayload::AecpAemGetNameResponsePayloadSize }, // GetName
+		{ protocol::AemCommandType::GetAssociationID, protocol::aemPayload::AecpAemGetAssociationIDResponsePayloadSize }, // GetAssociationID
+		{ protocol::AemCommandType::GetSamplingRate, protocol::aemPayload::AecpAemGetSamplingRateResponsePayloadSize }, // GetSamplingRate
+		{ protocol::AemCommandType::GetClockSource, protocol::aemPayload::AecpAemGetClockSourceResponsePayloadSize }, // GetClockSource
+		// GetSignalSelector
+		{ protocol::AemCommandType::GetCounters, protocol::aemPayload::AecpAemGetCountersResponsePayloadSize }, // GetCounters
+		{ protocol::AemCommandType::GetMemoryObjectLength, protocol::aemPayload::AecpAemGetMemoryObjectLengthResponsePayloadSize }, // GetMemoryObjectLength
+		// GetStreamBackup
+	};
+
+	auto packetID = std::uint16_t{ 0u };
+	auto currentPos = 0u;
+	auto const paramsCount = dynamicInfoParameters.size();
+
+#pragma message("TODO: Optimize this code by trying to pack as much as possible in a single query (searching for another smaller command if one doesn't fit)")
+	// Build DynamicInfoParameters structs (packing as much as possible), until we sent all the queries
+	auto params = decltype(dynamicInfoParameters){};
+	auto currentSize = size_t{ 0u };
+	while (currentPos < paramsCount)
+	{
+		auto const& param = dynamicInfoParameters.at(currentPos);
+
+		// Get response size for the command
+		if (auto const& it = s_ResponseSizes.find(param.commandType); it != s_ResponseSizes.end())
+		{
+			auto const responseSize = static_cast<size_t>(it->second + protocol::aemPayload::AecpAemGetDynamicInfoStructureHeaderSize);
+			// Check if we can add this command to the current query (not exceeding the maximum payload size)
+			if ((currentSize + responseSize) <= protocol::AemAecpdu::MaximumPayloadLength_17221)
+			{
+				// Add this command to the current query
+				params.emplace_back(param);
+				currentSize += responseSize;
+			}
+			else
+			{
+				// Send the current query
+				sendQuery(params, packetID);
+
+				// Start a new query
+				params.clear();
+				params.emplace_back(param);
+				currentSize = responseSize;
+				++packetID;
+			}
+		}
+		else
+		{
+			AVDECC_ASSERT(false, "Unhandled AemCommandType");
+		}
+
+		// Next
+		++currentPos;
+	}
+
+	// Send the last query
+	if (!params.empty())
+	{
+		sendQuery(params, packetID);
 	}
 }
 
@@ -3315,6 +3641,12 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const controlle
 	if (steps.test(ControlledEntityImpl::EnumerationStep::GetMilanInfo))
 	{
 		getMilanInfo(controlledEntity);
+		return;
+	}
+	// Then check if dynamic information is supported
+	if (steps.test(ControlledEntityImpl::EnumerationStep::CheckDynamicInfoSupported))
+	{
+		checkDynamicInfoSupported(controlledEntity);
 		return;
 	}
 	// Then register to unsolicited notifications
@@ -4767,6 +5099,144 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForControlStatus(e
 			return FailureAction::ErrorFatal;
 		}
 	}
+}
+
+/* This method handles non-success AemCommandStatus returned while trying to check if GET_DYNAMIC_INFO command is supported */
+bool ControllerImpl::processEmptyGetDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity) noexcept
+{
+	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
+
+	auto const entityID = entity->getEntity().getEntityID();
+	auto const action = getFailureActionForAemCommandStatus(status);
+	switch (action)
+	{
+		case FailureAction::MisbehaveContinue:
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			return true;
+		case FailureAction::BadArguments:
+			[[fallthrough]];
+		case FailureAction::ErrorContinue:
+			return true;
+		case FailureAction::NotAuthenticated:
+			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
+			return true;
+		case FailureAction::WarningContinue:
+			return true;
+		case FailureAction::NotSupported:
+			return true;
+		case FailureAction::TimedOut:
+			[[fallthrough]];
+		case FailureAction::Busy:
+		{
+			auto const [shouldRetry, retryTimer] = entity->getCheckDynamicInfoSupportedRetryTimer();
+			if (shouldRetry)
+			{
+				checkDynamicInfoSupported(entity);
+			}
+			else
+			{
+				// Too many retries, result depends on FailureAction and AemCommandStatus
+				if (action == FailureAction::TimedOut)
+				{
+					// Don't care, we won't use that command
+				}
+				else if (action == FailureAction::Busy)
+				{
+					switch (status)
+					{
+						case entity::ControllerEntity::AemCommandStatus::LockedByOther: // Should not happen for a read operation but some devices are bugged
+							[[fallthrough]];
+						case entity::ControllerEntity::AemCommandStatus::AcquiredByOther: // Should not happen for a read operation but some devices are bugged
+						{
+							LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for AEM command: GET_DYNAMIC_INFO ({})", entity::LocalEntity::statusToString(status));
+							// Flag the entity as "Not fully IEEE1722.1 compliant"
+							removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+							break;
+						}
+						default:
+							break;
+					}
+				}
+			}
+			return true;
+		}
+		case FailureAction::ErrorFatal:
+			return false;
+		default:
+			return false;
+	}
+}
+
+/* This method handles non-success AemCommandStatus returned while using GET_DYNAMIC_INFO commands */
+bool ControllerImpl::processGetDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::controller::DynamicInfoParameters const& dynamicInfoParameters, std::uint16_t const packetID, ControlledEntityImpl::EnumerationStep const step) noexcept
+{
+	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
+
+	auto const entityID = entity->getEntity().getEntityID();
+	auto const action = getFailureActionForAemCommandStatus(status);
+	auto checkScheduleRetry = false;
+	auto fallbackStaticModelEnumeration = false;
+
+	switch (action)
+	{
+		case FailureAction::MisbehaveContinue:
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			fallbackStaticModelEnumeration = true;
+			break;
+		case FailureAction::BadArguments:
+			fallbackStaticModelEnumeration = true;
+			break;
+		case FailureAction::ErrorContinue:
+			fallbackStaticModelEnumeration = true;
+			break;
+		case FailureAction::NotAuthenticated:
+			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
+			return true;
+		case FailureAction::WarningContinue:
+			return true;
+		case FailureAction::NotSupported:
+			fallbackStaticModelEnumeration = true;
+			break;
+		case FailureAction::TimedOut:
+			checkScheduleRetry = true;
+			fallbackStaticModelEnumeration = true;
+			break;
+		case FailureAction::Busy:
+			checkScheduleRetry = true;
+			fallbackStaticModelEnumeration = true;
+			break;
+		case FailureAction::ErrorFatal:
+			return false;
+		default:
+			return false;
+	}
+
+	if (checkScheduleRetry)
+	{
+		auto const [shouldRetry, retryTimer] = entity->getGetDynamicInfoRetryTimer();
+		if (shouldRetry)
+		{
+			queryInformation(entity, dynamicInfoParameters, packetID, step, retryTimer);
+			return true;
+		}
+	}
+
+	if (fallbackStaticModelEnumeration)
+	{
+		// Fallback to full DescriptorDynamicInfo enumeration
+		// We also need to reset currently inflight DescriptorDynamicInfo queries since the condition to run checkEnumerationSteps requires both GetDynamicInfo and DescriptorDynamicInfo to be cleared
+		// (we don't care about getting early DescriptorDynamicInfo answers in this case, it will still be processed and the newly created one will just be unexpected with no consequence)
+		entity->setGetDynamicInfoSupported(false);
+		entity->clearAllExpectedDescriptorDynamicInfo();
+		entity->clearAllExpectedGetDynamicInfo();
+		entity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+		LOG_CONTROLLER_ERROR(entityID, "Failed to use cached EntityModel (too many DescriptorDynamic query retries), falling back to full StaticModel enumeration");
+		return true;
+	}
+
+	return false;
 }
 
 /* This method handles non-success AemCommandStatus returned while trying to RegisterUnsolicitedNotifications */
