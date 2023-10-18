@@ -4076,7 +4076,11 @@ entity::model::EntityTree const& ControlledEntityImpl::getEntityModelTree() cons
 
 void ControlledEntityImpl::switchToCachedTreeModelAccessStrategy() noexcept
 {
-	_treeModelAccess = std::make_unique<TreeModelAccessCacheStrategy>(this);
+	if (!_hasSwitchedToCachedTreeModelAccessStrategy)
+	{
+		_treeModelAccess = std::make_unique<TreeModelAccessCacheStrategy>(this);
+		_hasSwitchedToCachedTreeModelAccessStrategy = true;
+	}
 }
 
 bool ControlledEntityImpl::isEntityModelComplete(model::EntityNode const& entityNode, std::uint16_t const configurationsCount) const noexcept
