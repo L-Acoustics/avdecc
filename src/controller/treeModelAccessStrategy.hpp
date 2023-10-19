@@ -79,6 +79,7 @@ protected:
 	{
 	}
 
+	/** Helper function to handle Descriptor not found (ie. not in the tree because it's not yet discovered). Returns true if it should be default initialized (if it is correctly placed in the hierarchy). */
 	bool handleDescriptorNotFound(NotFoundBehavior const notFoundBehavior, ControlledEntity::Exception::Type const exceptionType, std::string const& message)
 	{
 		switch (notFoundBehavior)

@@ -1822,6 +1822,8 @@ void ControlledEntityImpl::setJackInputDescriptor(entity::model::JackDescriptor 
 		m.localizedDescription = descriptor.localizedDescription;
 		m.jackFlags = descriptor.jackFlags;
 		m.jackType = descriptor.jackType;
+		m.numberOfControls = descriptor.numberOfControls;
+		m.baseControl = descriptor.baseControl;
 	}
 
 	// Copy dynamic model
@@ -1844,6 +1846,8 @@ void ControlledEntityImpl::setJackOutputDescriptor(entity::model::JackDescriptor
 		m.localizedDescription = descriptor.localizedDescription;
 		m.jackFlags = descriptor.jackFlags;
 		m.jackType = descriptor.jackType;
+		m.numberOfControls = descriptor.numberOfControls;
+		m.baseControl = descriptor.baseControl;
 	}
 
 	// Copy dynamic model

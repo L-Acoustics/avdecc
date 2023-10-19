@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - DynamicMappings were not being retrieved from the entities
 - [Not flagging some devices as non-1722.1 compatible due to a control value out of bounds](https://github.com/L-Acoustics/avdecc/issues/134)
 - [Detecting Identify Controls at JACK level](https://github.com/L-Acoustics/avdecc/issues/135)
+- [CONTROL descriptors not properly enumerated at JACK level](https://github.com/L-Acoustics/avdecc/issues/139)
 
 ## [3.4.1] - 2023-01-11
 ### Fixed

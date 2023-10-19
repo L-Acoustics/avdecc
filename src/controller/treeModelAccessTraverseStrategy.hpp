@@ -334,7 +334,7 @@ private:
 					return &(it->second);
 				}
 			}
-			// Not found
+			// Not found in the hierarchy, don't even default initialize it
 			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getStringsNode: Invalid strings index");
 			return nullptr;
 		}
@@ -371,7 +371,7 @@ private:
 
 			// Search a matching StreamPortIndex in all SensorUnits
 
-			// Not found
+			// Not found in the hierarchy, don't even default initialize it
 			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getStreamPortInputNode: Invalid streamPortInput index");
 			return nullptr;
 		}
@@ -407,7 +407,7 @@ private:
 
 			// Search a matching StreamPortIndex in all SensorUnits
 
-			// Not found
+			// Not found in the hierarchy, don't even default initialize it
 			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getStreamPortOutputNode: Invalid streamPortOutput index");
 			return nullptr;
 		}
@@ -471,7 +471,7 @@ private:
 
 			// Search a matching ClusterIndex in all SensorUnits/StreamPorts
 
-			// Not found
+			// Not found in the hierarchy, don't even default initialize it
 			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getAudioClusterNode: Invalid cluster index");
 			return nullptr;
 		}
@@ -535,7 +535,7 @@ private:
 
 			// Search a matching MapIndex in all SensorUnits/StreamPorts
 
-			// Not found
+			// Not found in the hierarchy, don't even default initialize it
 			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getAudioMapNode: Invalid map index");
 			return nullptr;
 		}
@@ -735,7 +735,7 @@ private:
 				}
 			}
 
-			// Not found
+			// Not found in the hierarchy, don't even default initialize it
 			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getControlNode: Invalid control index");
 			return nullptr;
 		}
@@ -828,7 +828,7 @@ private:
 				}
 			}
 
-			// Not found
+			// Not found in the hierarchy, don't even default initialize it
 			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getPtpPortNode: Invalid ptp port index");
 			return nullptr;
 		}
