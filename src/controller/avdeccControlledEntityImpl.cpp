@@ -388,7 +388,7 @@ model::AudioMapNode const& ControlledEntityImpl::getAudioMapNode(entity::model::
 
 model::ControlNode const& ControlledEntityImpl::getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) const
 {
-	return *_treeModelAccess->getControlNode(configurationIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw, TreeModelAccessStrategy::DefaultConstructLevelHint::None);
+	return *_treeModelAccess->getControlNode(configurationIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
 }
 
 model::ClockDomainNode const& ControlledEntityImpl::getClockDomainNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const
@@ -2086,7 +2086,7 @@ void ControlledEntityImpl::setAudioMapDescriptor(entity::model::AudioMapDescript
 void ControlledEntityImpl::setControlDescriptor(entity::model::ControlDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) noexcept
 {
 	// Get or create a new ControlNode for this entity
-	auto* const node = _treeModelAccess->getControlNode(configurationIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::None);
+	auto* const node = _treeModelAccess->getControlNode(configurationIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 	AVDECC_ASSERT(!!node, "Should not be null, should be default constructed");
 
 	// Copy static model
@@ -2980,11 +2980,11 @@ void processStreamPortNodes(ControlledEntityImpl* const entity, entity::model::C
 			auto* controlNode = static_cast<model::ControlNode*>(nullptr);
 			if constexpr (std::is_same_v<NodeType, model::StreamPortInputNode>)
 			{
-				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::StreamPortInput);
+				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 			}
 			else if constexpr (std::is_same_v<NodeType, model::StreamPortOutputNode>)
 			{
-				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::StreamPortOutput);
+				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 			}
 			controlNode->staticModel = controlTree.staticModel;
 			controlNode->dynamicModel = controlTree.dynamicModel;
@@ -3034,11 +3034,11 @@ void processJackNodes(ControlledEntityImpl* const entity, entity::model::Configu
 			auto* controlNode = static_cast<model::ControlNode*>(nullptr);
 			if constexpr (std::is_same_v<NodeType, model::JackInputNode>)
 			{
-				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::JackInput);
+				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 			}
 			else if constexpr (std::is_same_v<NodeType, model::JackOutputNode>)
 			{
-				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::JackOutput);
+				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 			}
 			controlNode->staticModel = controlTree.staticModel;
 			controlNode->dynamicModel = controlTree.dynamicModel;
@@ -3123,7 +3123,7 @@ void ControlledEntityImpl::buildEntityModelGraph(entity::model::EntityTree const
 				// Build controls (ControlNode)
 				for (auto& [controlIndex, controlModel] : configTree.controlModels)
 				{
-					auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::Configuration);
+					auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 					controlNode->staticModel = controlModel.staticModel;
 					controlNode->dynamicModel = controlModel.dynamicModel;
 				}
@@ -3159,7 +3159,7 @@ void ControlledEntityImpl::buildEntityModelGraph(entity::model::EntityTree const
 						// Build controls (ControlNode)
 						for (auto const& [controlIndex, controlTree] : audioUnitTree.controlModels)
 						{
-							auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::AudioUnit);
+							auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 							controlNode->staticModel = controlTree.staticModel;
 							controlNode->dynamicModel = controlTree.dynamicModel;
 						}
@@ -3201,7 +3201,7 @@ void ControlledEntityImpl::buildEntityModelGraph(entity::model::EntityTree const
 					// Build controls (ControlNode)
 					for (auto const& [controlIndex, controlTree] : ptpInstanceTree.controlModels)
 					{
-						auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::PtpInstance);
+						auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 						controlNode->staticModel = controlTree.staticModel;
 						controlNode->dynamicModel = controlTree.dynamicModel;
 					}

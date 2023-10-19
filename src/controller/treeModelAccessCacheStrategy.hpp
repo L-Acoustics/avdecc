@@ -550,7 +550,7 @@ private:
 		return nullptr;
 	}
 
-	virtual model::ControlNode* getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior, DefaultConstructLevelHint const levelHint) override
+	virtual model::ControlNode* getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) override
 	{
 		auto* const configurationNode = getConfigurationNode(configurationIndex, notFoundBehavior);
 		if (configurationNode)
@@ -558,7 +558,7 @@ private:
 			// Search Top Level
 			try
 			{
-				if (levelHint == DefaultConstructLevelHint::Configuration || isDescriptorIndexInRange(descriptorIndex, entity::model::ControlIndex{ 0u }, configurationNode->staticModel.descriptorCounts.at(entity::model::DescriptorType::Control)))
+				if (isDescriptorIndexInRange(descriptorIndex, entity::model::ControlIndex{ 0u }, configurationNode->staticModel.descriptorCounts.at(entity::model::DescriptorType::Control)))
 				{
 					auto it = configurationNode->controls.find(descriptorIndex);
 					if (it == configurationNode->controls.end())
@@ -584,7 +584,7 @@ private:
 				auto& unitNode = unitNodeKV.second;
 
 				// Search AudioUnit
-				if (levelHint == DefaultConstructLevelHint::AudioUnit || isDescriptorIndexInRange(descriptorIndex, unitNode.staticModel.baseControl, unitNode.staticModel.numberOfControls))
+				if (isDescriptorIndexInRange(descriptorIndex, unitNode.staticModel.baseControl, unitNode.staticModel.numberOfControls))
 				{
 					auto it = unitNode.controls.find(descriptorIndex);
 					if (it == unitNode.controls.end())
@@ -604,7 +604,7 @@ private:
 				{
 					auto& streamPortNode = streamPortNodeKV.second;
 
-					if (levelHint == DefaultConstructLevelHint::StreamPortInput || isDescriptorIndexInRange(descriptorIndex, streamPortNode.staticModel.baseControl, streamPortNode.staticModel.numberOfControls))
+					if (isDescriptorIndexInRange(descriptorIndex, streamPortNode.staticModel.baseControl, streamPortNode.staticModel.numberOfControls))
 					{
 						auto it = streamPortNode.controls.find(descriptorIndex);
 						if (it == streamPortNode.controls.end())
@@ -625,7 +625,7 @@ private:
 				{
 					auto& streamPortNode = streamPortNodeKV.second;
 
-					if (levelHint == DefaultConstructLevelHint::StreamPortOutput || isDescriptorIndexInRange(descriptorIndex, streamPortNode.staticModel.baseControl, streamPortNode.staticModel.numberOfControls))
+					if (isDescriptorIndexInRange(descriptorIndex, streamPortNode.staticModel.baseControl, streamPortNode.staticModel.numberOfControls))
 					{
 						auto it = streamPortNode.controls.find(descriptorIndex);
 						if (it == streamPortNode.controls.end())
@@ -659,7 +659,7 @@ private:
 			{
 				auto& jackNode = jackNodeKV.second;
 
-				if (levelHint == DefaultConstructLevelHint::JackInput || isDescriptorIndexInRange(descriptorIndex, jackNode.staticModel.baseControl, jackNode.staticModel.numberOfControls))
+				if (isDescriptorIndexInRange(descriptorIndex, jackNode.staticModel.baseControl, jackNode.staticModel.numberOfControls))
 				{
 					auto it = jackNode.controls.find(descriptorIndex);
 					if (it == jackNode.controls.end())
@@ -680,7 +680,7 @@ private:
 			{
 				auto& jackNode = jackNodeKV.second;
 
-				if (levelHint == DefaultConstructLevelHint::JackOutput || isDescriptorIndexInRange(descriptorIndex, jackNode.staticModel.baseControl, jackNode.staticModel.numberOfControls))
+				if (isDescriptorIndexInRange(descriptorIndex, jackNode.staticModel.baseControl, jackNode.staticModel.numberOfControls))
 				{
 					auto it = jackNode.controls.find(descriptorIndex);
 					if (it == jackNode.controls.end())
@@ -703,7 +703,7 @@ private:
 			{
 				auto& avbInterfaceNode = avbInterfaceNodeKV.second;
 
-				if (levelHint == DefaultConstructLevelHint::AvbInterface || isDescriptorIndexInRange(descriptorIndex, avbInterfaceNode.staticModel.baseControl, avbInterfaceNode.staticModel.numberOfControls))
+				if (isDescriptorIndexInRange(descriptorIndex, avbInterfaceNode.staticModel.baseControl, avbInterfaceNode.staticModel.numberOfControls))
 				{
 					auto it = avbInterfaceNode.controls.find(descriptorIndex);
 					if (it == avbInterfaceNode.controls.end())
@@ -727,7 +727,7 @@ private:
 			{
 				auto& ptpInstanceNode = ptpInstanceNodeKV.second;
 
-				if (levelHint == DefaultConstructLevelHint::PtpInstance || isDescriptorIndexInRange(descriptorIndex, ptpInstanceNode.staticModel.baseControl, ptpInstanceNode.staticModel.numberOfControls))
+				if (isDescriptorIndexInRange(descriptorIndex, ptpInstanceNode.staticModel.baseControl, ptpInstanceNode.staticModel.numberOfControls))
 				{
 					auto it = ptpInstanceNode.controls.find(descriptorIndex);
 					if (it == ptpInstanceNode.controls.end())

@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [Not flagging some devices as non-1722.1 compatible due to a control value out of bounds](https://github.com/L-Acoustics/avdecc/issues/134)
 - [Detecting Identify Controls at JACK level](https://github.com/L-Acoustics/avdecc/issues/135)
 - [CONTROL descriptors not properly enumerated at JACK level](https://github.com/L-Acoustics/avdecc/issues/139)
+- [CONTROL descriptors not properly attached to the parent descriptor when loaded from file](https://github.com/L-Acoustics/avdecc/issues/140)
 
 ## [3.4.1] - 2023-01-11
 ### Fixed
