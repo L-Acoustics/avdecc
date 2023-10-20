@@ -713,15 +713,13 @@ void readStreamPortModels(json const& object, Flags const flags, std::string con
 	for (auto const& j : *obj)
 	{
 		auto modelTree = typename ModelTrees::mapped_type{};
+		auto const baseCluster = c.nextExpectedAudioClusterIndex;
+		auto const baseMap = c.nextExpectedAudioMapIndex;
+		auto const baseControl = c.nextExpectedControlIndex;
 
 		// Read Static model
 		if (flags.test(Flag::ProcessStaticModel))
 		{
-			// Get base descriptor indexes
-			modelTree.staticModel.baseCluster = c.nextExpectedAudioClusterIndex;
-			modelTree.staticModel.baseMap = c.nextExpectedAudioMapIndex;
-			modelTree.staticModel.baseControl = c.nextExpectedControlIndex;
-
 			if constexpr (isStaticModelOptional)
 			{
 				get_optional_value(object, keyName::Node_StaticInformation, modelTree.staticModel);
@@ -760,9 +758,25 @@ void readStreamPortModels(json const& object, Flags const flags, std::string con
 		if (flags.test(Flag::ProcessStaticModel))
 		{
 			// Get number of descriptors that were read
-			modelTree.staticModel.numberOfClusters = c.nextExpectedAudioClusterIndex - modelTree.staticModel.baseCluster;
-			modelTree.staticModel.numberOfMaps = c.nextExpectedAudioMapIndex - modelTree.staticModel.baseMap;
-			modelTree.staticModel.numberOfControls = c.nextExpectedControlIndex - modelTree.staticModel.baseControl;
+			auto const numberOfClusters = static_cast<decltype(baseCluster)>(c.nextExpectedAudioClusterIndex - baseCluster);
+			auto const numberOfMaps = static_cast<decltype(baseMap)>(c.nextExpectedAudioMapIndex - baseMap);
+			auto const numberOfControls = static_cast<decltype(baseControl)>(c.nextExpectedControlIndex - baseControl);
+			// Only update fields if at least one descriptor was read
+			if (numberOfClusters > 0)
+			{
+				modelTree.staticModel.baseCluster = baseCluster;
+				modelTree.staticModel.numberOfClusters = numberOfClusters;
+			}
+			if (numberOfMaps > 0)
+			{
+				modelTree.staticModel.baseMap = baseMap;
+				modelTree.staticModel.numberOfMaps = numberOfMaps;
+			}
+			if (numberOfControls > 0)
+			{
+				modelTree.staticModel.baseControl = baseControl;
+				modelTree.staticModel.numberOfControls = numberOfControls;
+			}
 			modelTree.staticModel.hasDynamicAudioMap = modelTree.staticModel.numberOfMaps == 0;
 		}
 
@@ -775,15 +789,13 @@ void readAudioUnitModels(json const& object, Flags const flags, Context& c, Conf
 	for (auto const& j : object)
 	{
 		auto audioUnitTree = AudioUnitTree{};
+		auto const baseStreamInputPort = c.nextExpectedStreamPortInputIndex;
+		auto const baseStreamOutputPort = c.nextExpectedStreamPortOutputIndex;
+		auto const baseControl = c.nextExpectedControlIndex;
 
 		// Read Static model
 		if (flags.test(Flag::ProcessStaticModel))
 		{
-			// Get base descriptor indexes
-			audioUnitTree.staticModel.baseStreamInputPort = c.nextExpectedStreamPortInputIndex;
-			audioUnitTree.staticModel.baseStreamOutputPort = c.nextExpectedStreamPortOutputIndex;
-			audioUnitTree.staticModel.baseControl = c.nextExpectedControlIndex;
-
 			j.at(keyName::Node_StaticInformation).get_to(audioUnitTree.staticModel);
 		}
 
@@ -811,9 +823,25 @@ void readAudioUnitModels(json const& object, Flags const flags, Context& c, Conf
 		if (flags.test(Flag::ProcessStaticModel))
 		{
 			// Get number of descriptors that were read
-			audioUnitTree.staticModel.numberOfStreamInputPorts = c.nextExpectedStreamPortInputIndex - audioUnitTree.staticModel.baseStreamInputPort;
-			audioUnitTree.staticModel.numberOfStreamOutputPorts = c.nextExpectedStreamPortOutputIndex - audioUnitTree.staticModel.baseStreamOutputPort;
-			audioUnitTree.staticModel.numberOfControls = c.nextExpectedControlIndex - audioUnitTree.staticModel.baseControl;
+			auto const numberOfStreamInputPorts = static_cast<decltype(baseStreamInputPort)>(c.nextExpectedStreamPortInputIndex - baseStreamInputPort);
+			auto const numberOfStreamOutputPorts = static_cast<decltype(baseStreamOutputPort)>(c.nextExpectedStreamPortOutputIndex - baseStreamOutputPort);
+			auto const numberOfControls = static_cast<decltype(baseControl)>(c.nextExpectedControlIndex - baseControl);
+			// Only update fields if at least one descriptor was read
+			if (numberOfStreamInputPorts > 0)
+			{
+				audioUnitTree.staticModel.baseStreamInputPort = baseStreamInputPort;
+				audioUnitTree.staticModel.numberOfStreamInputPorts = numberOfStreamInputPorts;
+			}
+			if (numberOfStreamOutputPorts > 0)
+			{
+				audioUnitTree.staticModel.baseStreamOutputPort = baseStreamOutputPort;
+				audioUnitTree.staticModel.numberOfStreamOutputPorts = numberOfStreamOutputPorts;
+			}
+			if (numberOfControls > 0)
+			{
+				audioUnitTree.staticModel.baseControl = baseControl;
+				audioUnitTree.staticModel.numberOfControls = numberOfControls;
+			}
 		}
 
 		config.audioUnitTrees[c.nextExpectedAudioUnitIndex++] = std::move(audioUnitTree);
@@ -843,13 +871,11 @@ void readJackModels(json const& object, Flags const flags, std::string const& ke
 	for (auto const& j : *obj)
 	{
 		auto modelTree = typename ModelTrees::mapped_type{};
+		auto const baseControl = c.nextExpectedControlIndex;
 
 		// Read Static model
 		if (flags.test(Flag::ProcessStaticModel))
 		{
-			// Get base descriptor indexes
-			modelTree.staticModel.baseControl = c.nextExpectedControlIndex;
-
 			if constexpr (isStaticModelOptional)
 			{
 				get_optional_value(object, keyName::Node_StaticInformation, modelTree.staticModel);
@@ -882,7 +908,13 @@ void readJackModels(json const& object, Flags const flags, std::string const& ke
 		if (flags.test(Flag::ProcessStaticModel))
 		{
 			// Get number of descriptors that were read
-			modelTree.staticModel.numberOfControls = c.nextExpectedControlIndex - modelTree.staticModel.baseControl;
+			auto const numberOfControls = static_cast<decltype(baseControl)>(c.nextExpectedControlIndex - baseControl);
+			// Only update fields if at least one descriptor was read
+			if (numberOfControls > 0)
+			{
+				modelTree.staticModel.baseControl = baseControl;
+				modelTree.staticModel.numberOfControls = numberOfControls;
+			}
 		}
 
 		modelTrees[currentIndex++] = std::move(modelTree);
@@ -912,13 +944,11 @@ void readPtpInstanceModels(json const& object, Flags const flags, std::string co
 	for (auto const& j : *obj)
 	{
 		auto modelTree = typename ModelTrees::mapped_type{};
+		auto const baseControl = c.nextExpectedControlIndex;
 
 		// Read Static model
 		if (flags.test(Flag::ProcessStaticModel))
 		{
-			// Get base descriptor indexes
-			modelTree.staticModel.baseControl = c.nextExpectedControlIndex;
-
 			if constexpr (isStaticModelOptional)
 			{
 				get_optional_value(object, keyName::Node_StaticInformation, modelTree.staticModel);
@@ -954,7 +984,13 @@ void readPtpInstanceModels(json const& object, Flags const flags, std::string co
 		if (flags.test(Flag::ProcessStaticModel))
 		{
 			// Get number of descriptors that were read
-			modelTree.staticModel.numberOfControls = c.nextExpectedControlIndex - modelTree.staticModel.baseControl;
+			auto const numberOfControls = static_cast<decltype(baseControl)>(c.nextExpectedControlIndex - baseControl);
+			// Only update fields if at least one descriptor was read
+			if (numberOfControls > 0)
+			{
+				modelTree.staticModel.baseControl = baseControl;
+				modelTree.staticModel.numberOfControls = numberOfControls;
+			}
 			modelTree.staticModel.numberOfPtpPorts = c.nextExpectedPtpPortIndex - modelTree.staticModel.basePtpPort;
 		}
 
