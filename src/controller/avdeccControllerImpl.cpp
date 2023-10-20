@@ -2527,7 +2527,7 @@ void ControllerImpl::getMilanInfo(ControlledEntityImpl* const entity) noexcept
 
 void ControllerImpl::checkDynamicInfoSupported(ControlledEntityImpl* const entity) noexcept
 {
-	auto const caps = entity->getEntity().getEntityCapabilities();
+	//auto const caps = entity->getEntity().getEntityCapabilities();
 	auto const entityID = entity->getEntity().getEntityID();
 
 #if 0
