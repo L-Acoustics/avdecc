@@ -637,6 +637,11 @@ void ControllerEntityImpl::getMemoryObjectLength(UniqueIdentifier const targetEn
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMemoryObjectLength(targetEntityID, configurationIndex, memoryObjectIndex, handler);
 }
 
+void ControllerEntityImpl::getDynamicInfo(UniqueIdentifier const targetEntityID, controller::DynamicInfoParameters const& parameters, GetDynamicInfoHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getDynamicInfo(targetEntityID, parameters, handler);
+}
+
 /* Enumeration and Control Protocol (AECP) AA */
 void ControllerEntityImpl::addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept
 {

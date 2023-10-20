@@ -988,6 +988,14 @@ void AggregateEntityImpl::getMemoryObjectLength(UniqueIdentifier const targetEnt
 	}
 }
 
+void AggregateEntityImpl::getDynamicInfo(UniqueIdentifier const targetEntityID, controller::DynamicInfoParameters const& parameters, GetDynamicInfoHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getDynamicInfo(targetEntityID, parameters, handler);
+	}
+}
+
 /* Enumeration and Control Protocol (AECP) AA */
 void AggregateEntityImpl::addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept
 {

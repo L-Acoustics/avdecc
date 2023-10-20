@@ -475,6 +475,33 @@ TEST(AemPayloads, OperationStatusResponse)
 	}
 }
 
+TEST(AemPayloads, GetDynamicInfo)
+{
+	try
+	{
+		auto dynamicInfos = la::avdecc::protocol::aemPayload::DynamicInfos{};
+		{
+			// Serialize a GET_NAME command
+			auto const cmdSer = la::avdecc::protocol::aemPayload::serializeGetNameCommand(la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex{ 0u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ConfigurationIndex{ 0u });
+			dynamicInfos.emplace_back(la::avdecc::protocol::AemAecpStatus::Success, la::avdecc::protocol::AemCommandType::GetName, la::avdecc::MemoryBuffer{ cmdSer.data(), cmdSer.usedBytes() });
+		}
+		auto const ser = la::avdecc::protocol::aemPayload::serializeGetDynamicInfoCommand(dynamicInfos);
+		auto const dynamicInfosRet = la::avdecc::protocol::aemPayload::deserializeGetDynamicInfoCommand({ ser.data(), ser.usedBytes() });
+		ASSERT_TRUE(!dynamicInfosRet.empty());
+		ASSERT_EQ(dynamicInfos.size(), dynamicInfosRet.size());
+
+		auto pos = 0u;
+		for (auto const& [status, cmd, buffer] : dynamicInfosRet)
+		{
+			EXPECT_EQ(dynamicInfos[pos++].buffer(), buffer);
+		}
+	}
+	catch (...)
+	{
+		EXPECT_FALSE(true) << "Should not have thrown";
+	}
+}
+
 TEST(AemPayloads, SendPayloadMaximumSize)
 {
 	la::avdecc::entity::model::AudioMappings mappings{};

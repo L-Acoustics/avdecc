@@ -162,6 +162,7 @@ if(BUILD_AVDECC_BINDINGS_CSHARP)
 	set(SWIG_INTERFACE_FILE "${CU_ROOT_DIR}/include/la/avdecc/controller/avdeccController.i")
 	set(SWIG_FILE_DEPENDENCIES
 		"${CU_ROOT_DIR}/include/la/avdecc/utils.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/memoryBuffer.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/chrono.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/csharp_optional.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/optional.i"

@@ -161,6 +161,8 @@ public:
 
 	enum class QueryCommandError
 	{
+		CheckDynamicInfoSupported,
+		GetDynamicInfo,
 		RegisterUnsol,
 		GetMilanInfo,
 		EntityDescriptor,
@@ -543,6 +545,10 @@ public:
 	virtual void enableFullStaticEntityModelEnumeration() noexcept = 0;
 	/** Disables complete EntityModel (static part) enumeration.*/
 	virtual void disableFullStaticEntityModelEnumeration() noexcept = 0;
+	/** Enables fast enumeration using packed dynamic info queries (requires enableEntityModelCache) */
+	virtual void enableFastEnumeration() noexcept = 0;
+	/** Disables fast enumeration */
+	virtual void disableFastEnumeration() noexcept = 0;
 
 	/* Enumeration and Control Protocol (AECP) AEM. WARNING: The completion handler will not be called if the controller is destroyed while the query is inflight. Otherwise it will always be called. */
 	virtual void acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept = 0;

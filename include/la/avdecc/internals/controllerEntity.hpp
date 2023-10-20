@@ -50,6 +50,59 @@ namespace entity
 {
 namespace controller
 {
+struct DynamicInfoParameter
+{
+	using Parameters = std::vector<std::any>;
+
+	LocalEntity::AemCommandStatus status{ LocalEntity::AemCommandStatus::Success };
+	protocol::AemCommandType commandType{ protocol::AemCommandType::InvalidCommandType };
+	Parameters arguments{};
+
+	/*
+		Parameters:
+		 - Get Configuration:
+		  - Command: None
+		  - Response: model::ConfigurationIndex
+		 - Get Stream Format:
+		  - Command: model::DescriptorType, model::StreamIndex
+		  - Response: model::DescriptorType, model::StreamIndex, model::StreamFormat
+		 - Get Video Format:
+		  - Command: (Not yet implemented)
+		  - Response: (Not yet implemented)
+		 - Get Sensor Format:
+		  - Command: (Not yet implemented)
+		  - Response: (Not yet implemented)
+		 - Get Stream Info:
+		  - Command: model::DescriptorType, model::StreamIndex
+		  - Response: model::DescriptorType, model::StreamIndex, model::StreamInfo
+		 - Get Name:
+		  - Command: model::ConfigurationIndex, model::DescriptorType, model::DescriptorIndex, std::uint16_t
+		  - Response: model::ConfigurationIndex, model::DescriptorType, model::DescriptorIndex, std::uint16_t, model::AvdeccFixedString
+		 - Get Association ID:
+		  - Command: None
+		  - Response: UniqueIdentifier
+		 - Get Sampling Rate:
+		  - Command: model::DescriptorType, model::DescriptorIndex
+		  - Response: model::DescriptorType, model::DescriptorIndex, model::SamplingRate
+		 - Get Clock Source:
+		  - Command: model::ClockDomainIndex
+		  - Response: model::ClockDomainIndex, model::ClockSourceIndex
+		 - Get Signal Selector:
+		  - Command: (Not yet implemented)
+		  - Response: (Not yet implemented)
+		 - Get Counters:
+		  - Command: model::DescriptorType, model::DescriptorIndex
+		  - Response: model::DescriptorType, model::DescriptorIndex, model::DescriptorCounterValidFlag, model::DescriptorCounters
+		 - Get Memory Object Length:
+		  - Command: model::ConfigurationIndex, model::MemoryObjectIndex
+		  - Response: model::ConfigurationIndex, model::MemoryObjectIndex, std::uint64_t
+		 - Get Stream Backup:
+		  - Command: (Not yet implemented)
+		  - Response: (Not yet implemented)
+	*/
+};
+using DynamicInfoParameters = std::vector<DynamicInfoParameter>;
+
 class Interface
 {
 public:
@@ -166,6 +219,7 @@ public:
 	using AbortOperationHandler = std::function<void(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID)>;
 	using SetMemoryObjectLengthHandler = std::function<void(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)>;
 	using GetMemoryObjectLengthHandler = std::function<void(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)>;
+	using GetDynamicInfoHandler = std::function<void(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::controller::DynamicInfoParameters const& parameters)>;
 	/* Enumeration and Control Protocol (AECP) AA handlers */
 	using AddressAccessHandler = std::function<void(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AaCommandStatus const status, la::avdecc::entity::addressAccess::Tlvs const& tlvs)>;
 	/* Enumeration and Control Protocol (AECP) MVU handlers (Milan Vendor Unique) */
@@ -291,6 +345,7 @@ public:
 	virtual void abortOperation(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID, AbortOperationHandler const& handler) const noexcept = 0;
 	virtual void setMemoryObjectLength(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, SetMemoryObjectLengthHandler const& handler) const noexcept = 0;
 	virtual void getMemoryObjectLength(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, GetMemoryObjectLengthHandler const& handler) const noexcept = 0;
+	virtual void getDynamicInfo(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::controller::DynamicInfoParameters const& parameters, GetDynamicInfoHandler const& handler) const noexcept = 0;
 
 	/* Enumeration and Control Protocol (AECP) AA */
 	virtual void addressAccess(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept = 0;

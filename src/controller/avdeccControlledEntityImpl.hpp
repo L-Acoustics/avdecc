@@ -117,10 +117,11 @@ public:
 	enum class EnumerationStep : std::uint16_t
 	{
 		GetMilanInfo = 1u << 0,
-		RegisterUnsol = 1u << 1,
-		GetStaticModel = 1u << 2,
-		GetDescriptorDynamicInfo = 1u << 3, /** DescriptorDynamicInfoType */
-		GetDynamicInfo = 1u << 4, /** DynamicInfoType */
+		CheckDynamicInfoSupported = 1u << 1,
+		RegisterUnsol = 1u << 2,
+		GetStaticModel = 1u << 3,
+		GetDescriptorDynamicInfo = 1u << 4, /** DescriptorDynamicInfoType */
+		GetDynamicInfo = 1u << 5, /** DynamicInfoType */
 	};
 	using EnumerationSteps = utils::EnumBitfield<EnumerationStep>;
 
@@ -194,6 +195,7 @@ public:
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept override;
 	virtual bool isMilanRedundant() const noexcept override;
 	virtual bool gotFatalEnumerationError() const noexcept override;
+	virtual bool isGetDynamicInfoSupported() const noexcept override;
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept override;
 	virtual bool areUnsolicitedNotificationsSupported() const noexcept override;
 	virtual bool isAcquired() const noexcept override;
@@ -375,6 +377,19 @@ public:
 	void setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept;
 	void setEndEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& endTime) noexcept;
 
+	// Expected CheckDynamicInfoSupported query methods
+	bool checkAndClearExpectedCheckDynamicInfoSupported() noexcept;
+	void setCheckDynamicInfoSupportedExpected() noexcept;
+	bool gotExpectedCheckDynamicInfoSupported() const noexcept;
+	std::pair<bool, std::chrono::milliseconds> getCheckDynamicInfoSupportedRetryTimer() noexcept;
+
+	// Expected GetDynamicInfo query methods
+	bool checkAndClearExpectedGetDynamicInfo(std::uint16_t const packetID) noexcept;
+	void setGetDynamicInfoExpected(std::uint16_t const packetID) noexcept;
+	void clearAllExpectedGetDynamicInfo() noexcept;
+	bool gotAllExpectedGetDynamicInfo() const noexcept;
+	std::pair<bool, std::chrono::milliseconds> getGetDynamicInfoRetryTimer() noexcept;
+
 	// Expected RegisterUnsol query methods
 	bool checkAndClearExpectedRegisterUnsol() noexcept;
 	void setRegisterUnsolExpected() noexcept;
@@ -418,6 +433,7 @@ public:
 	void setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept;
 	void setMilanRedundant(bool const isMilanRedundant) noexcept;
 	void setGetFatalEnumerationError() noexcept;
+	void setGetDynamicInfoSupported(bool const isSupported) noexcept;
 	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
 	void setUnsolicitedNotificationsSupported(bool const isSupported) noexcept;
 	bool wasAdvertised() const noexcept;
@@ -462,6 +478,8 @@ private:
 	bool const _isVirtual{ false };
 	bool _ignoreCachedEntityModel{ false };
 	std::optional<entity::model::ControlIndex> _identifyControlIndex{ std::nullopt };
+	std::uint16_t _checkDynamicInfoSupportedRetryCount{ 0u };
+	std::uint16_t _queryGetDynamicInfoRetryCount{ 0u };
 	std::uint16_t _registerUnsolRetryCount{ 0u };
 	std::uint16_t _queryMilanInfoRetryCount{ 0u };
 	std::uint16_t _queryDescriptorRetryCount{ 0u };
@@ -471,10 +489,13 @@ private:
 	CompatibilityFlags _compatibilityFlags{ CompatibilityFlag::IEEE17221 }; // Entity is IEEE1722.1 compatible by default
 	bool _isMilanRedundant{ false }; // Current configuration has at least one redundant stream
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
+	bool _isGetDynamicInfoSupported{ false }; // Is the GET_DYNAMIC_INFO command supported
 	bool _isSubscribedToUnsolicitedNotifications{ false }; // Are we subscribed to unsolicited notifications
 	bool _areUnsolicitedNotificationsSupported{ false }; // Are unsolicited notifications supported
 	bool _advertised{ false }; // Has the entity been advertised to the observers
+	bool _expectedCheckDynamicInfoSupported{ false };
 	bool _expectedRegisterUnsol{ false };
+	std::unordered_set<std::uint16_t> _expectedGetDynamicInfo{};
 	std::unordered_set<MilanInfoKey> _expectedMilanInfo{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorKey>> _expectedDescriptors{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DynamicInfoKey>> _expectedDynamicInfo{};
@@ -495,6 +516,7 @@ private:
 	// Entity Model Tree Access Strategy
 	friend class TreeModelAccessTraverseStrategy;
 	friend class TreeModelAccessCacheStrategy;
+	bool _hasSwitchedToCachedTreeModelAccessStrategy{ false };
 	TreeModelAccessStrategy::UniquePointer _treeModelAccess{ nullptr };
 	// Cached Information
 	mutable std::optional<entity::model::EntityTree> _entityTree{};

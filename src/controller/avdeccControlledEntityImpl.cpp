@@ -46,6 +46,8 @@ namespace avdecc
 {
 namespace controller
 {
+static constexpr std::uint16_t MaxCheckDynamicInfoSupportedRetryCount = 1;
+static constexpr std::uint16_t MaxQueryGetDynamicInfoRetryCount = 2;
 static constexpr std::uint16_t MaxRegisterUnsolRetryCount = 1;
 static constexpr std::uint16_t MaxQueryMilanInfoRetryCount = 2;
 static constexpr std::uint16_t MaxQueryDescriptorRetryCount = 2;
@@ -113,6 +115,11 @@ bool ControlledEntityImpl::isMilanRedundant() const noexcept
 bool ControlledEntityImpl::gotFatalEnumerationError() const noexcept
 {
 	return _gotFatalEnumerateError;
+}
+
+bool ControlledEntityImpl::isGetDynamicInfoSupported() const noexcept
+{
+	return _isGetDynamicInfoSupported;
 }
 
 bool ControlledEntityImpl::isSubscribedToUnsolicitedNotifications() const noexcept
@@ -2261,6 +2268,45 @@ void ControlledEntityImpl::setEndEnumerationTime(std::chrono::time_point<std::ch
 	_enumerationTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - _enumerationStartTime);
 }
 
+// Expected CheckDynamicInfoSupported query methods
+bool ControlledEntityImpl::checkAndClearExpectedCheckDynamicInfoSupported() noexcept
+{
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
+
+	// Ignore if we had a fatal enumeration error
+	if (_gotFatalEnumerateError)
+		return false;
+
+	auto const wasExpected = _expectedCheckDynamicInfoSupported;
+	_expectedCheckDynamicInfoSupported = false;
+
+	return wasExpected;
+}
+
+void ControlledEntityImpl::setCheckDynamicInfoSupportedExpected() noexcept
+{
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
+
+	_expectedCheckDynamicInfoSupported = true;
+}
+
+bool ControlledEntityImpl::gotExpectedCheckDynamicInfoSupported() const noexcept
+{
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
+
+	return !_expectedCheckDynamicInfoSupported;
+}
+
+std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getCheckDynamicInfoSupportedRetryTimer() noexcept
+{
+	++_checkDynamicInfoSupportedRetryCount;
+	if (_checkDynamicInfoSupportedRetryCount > MaxCheckDynamicInfoSupportedRetryCount)
+	{
+		return std::make_pair(false, std::chrono::milliseconds{ 0 });
+	}
+	return std::make_pair(true, std::chrono::milliseconds{ QueryRetryMillisecondDelay });
+}
+
 // Expected RegisterUnsol query methods
 bool ControlledEntityImpl::checkAndClearExpectedRegisterUnsol() noexcept
 {
@@ -2294,6 +2340,49 @@ std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getRegisterUnso
 {
 	++_registerUnsolRetryCount;
 	if (_registerUnsolRetryCount > MaxRegisterUnsolRetryCount)
+	{
+		return std::make_pair(false, std::chrono::milliseconds{ 0 });
+	}
+	return std::make_pair(true, std::chrono::milliseconds{ QueryRetryMillisecondDelay });
+}
+
+// Expected GetDynamicInfo query methods
+bool ControlledEntityImpl::checkAndClearExpectedGetDynamicInfo(std::uint16_t const packetID) noexcept
+{
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
+
+	// Ignore if we had a fatal enumeration error
+	if (_gotFatalEnumerateError)
+		return false;
+
+	return _expectedGetDynamicInfo.erase(packetID) == 1;
+}
+
+void ControlledEntityImpl::setGetDynamicInfoExpected(std::uint16_t const packetID) noexcept
+{
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
+
+	_expectedGetDynamicInfo.insert(packetID);
+}
+
+void ControlledEntityImpl::clearAllExpectedGetDynamicInfo() noexcept
+{
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
+
+	_expectedGetDynamicInfo.clear();
+}
+
+bool ControlledEntityImpl::gotAllExpectedGetDynamicInfo() const noexcept
+{
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
+
+	return _expectedGetDynamicInfo.empty();
+}
+
+std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getGetDynamicInfoRetryTimer() noexcept
+{
+	++_queryGetDynamicInfoRetryCount;
+	if (_queryGetDynamicInfoRetryCount >= MaxQueryGetDynamicInfoRetryCount)
 	{
 		return std::make_pair(false, std::chrono::milliseconds{ 0 });
 	}
@@ -2573,6 +2662,11 @@ void ControlledEntityImpl::setGetFatalEnumerationError() noexcept
 {
 	LOG_CONTROLLER_ERROR(_entity.getEntityID(), "Got Fatal Enumeration Error");
 	_gotFatalEnumerateError = true;
+}
+
+void ControlledEntityImpl::setGetDynamicInfoSupported(bool const isSupported) noexcept
+{
+	_isGetDynamicInfoSupported = isSupported;
 }
 
 void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept
@@ -3982,7 +4076,11 @@ entity::model::EntityTree const& ControlledEntityImpl::getEntityModelTree() cons
 
 void ControlledEntityImpl::switchToCachedTreeModelAccessStrategy() noexcept
 {
-	_treeModelAccess = std::make_unique<TreeModelAccessCacheStrategy>(this);
+	if (!_hasSwitchedToCachedTreeModelAccessStrategy)
+	{
+		_treeModelAccess = std::make_unique<TreeModelAccessCacheStrategy>(this);
+		_hasSwitchedToCachedTreeModelAccessStrategy = true;
+	}
 }
 
 bool ControlledEntityImpl::isEntityModelComplete(model::EntityNode const& entityNode, std::uint16_t const configurationsCount) const noexcept

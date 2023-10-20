@@ -68,37 +68,7 @@ enum class ThreadPriority
 ////////////////////////////////////////
 // MemoryBuffer class
 ////////////////////////////////////////
-%nspace la::avdecc::MemoryBuffer;
-%rename("isEqual") la::avdecc::MemoryBuffer::operator==;
-%rename("isDifferent") la::avdecc::MemoryBuffer::operator!=;
-%ignore la::avdecc::MemoryBuffer::operator bool; // Ignore operator bool, isValid() is already defined
-// Currently no resolution is performed in order to match function parameters. This means function parameter types must match exactly. For example, namespace qualifiers and typedefs will not work.
-%ignore la::avdecc::MemoryBuffer::operator=;
-// Ignore move constructor
-%ignore la::avdecc::MemoryBuffer::MemoryBuffer(MemoryBuffer&&);
-// Rename const data() getter
-//%rename("constData") la::avdecc::MemoryBuffer::data() const; // RIGHT NOW IGNORE IT AS WE NEED TO FIND A WAY TO MARSHALL THE RETURNED POINTER
-%ignore la::avdecc::MemoryBuffer::data(); // RIGHT NOW IGNORE IT AS WE NEED TO FIND A WAY TO MARSHALL THE RETURNED POINTER
-%ignore la::avdecc::MemoryBuffer::data() const; // RIGHT NOW IGNORE IT AS WE NEED TO FIND A WAY TO MARSHALL THE RETURNED POINTER
-// Extend the class
-%extend la::avdecc::MemoryBuffer
-{
-#if defined(SWIGCSHARP)
-	// Provide a more native Equals() method
-	bool Equals(la::avdecc::MemoryBuffer const& other) const noexcept
-	{
-		return *$self == other;
-	}
-#endif
-}
-
-#ifdef SWIGCSHARP
-// Marshalling for void pointers
-%apply unsigned char INPUT[]  { void const* const }
-#endif
-
-// Include c++ declaration file
-%include "la/avdecc/memoryBuffer.hpp"
+%include "la/avdecc/memoryBuffer.i"
 
 
 ////////////////////////////////////////
@@ -261,6 +231,13 @@ DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
+%nspace la::avdecc::entity::controller::DynamicInfoParameter;
+#if 1
+%ignore la::avdecc::entity::controller::DynamicInfoParameter; // TEMP IGNORE CLASS UNTIL WE CAN WRAP std::any
+#else
+%rename("%s") la::avdecc::entity::controller::DynamicInfoParameter; // Unignore class
+#endif
+
 %nspace la::avdecc::entity::controller::Interface;
 #if 1
 %ignore la::avdecc::entity::controller::Interface; // TEMP IGNORE CLASS UNTIL WE CAN WRAP ALL RESULT HANDLERS
@@ -342,6 +319,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Delegate)
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_DescriptorType_DescriptorIndex_OperationID_MemoryObjectOperationType_MemoryBuffer;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_DescriptorType_DescriptorIndex_OperationID;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_MemoryObjectIndex_uint64_t;
+%rename("%s") Handler_UniqueIdentifier_AemCommandStatus_DynamicInfoParameter;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_Tlvs;
 %rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_MilanInfo;
 %rename("%s") Handler_StreamIdentification_StreamIdentification_uint16_t_ConnectionFlags_ControlStatus;
@@ -412,6 +390,11 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Delegate)
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_DescriptorType_DescriptorIndex_OperationID, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_MemoryObjectIndex_uint64_t, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length);
 #if 1
+%rename("$ignore") la::avdecc::entity::controller::Interface::getDynamicInfo; // Temp ignore method
+#else
+%std_function(Handler_UniqueIdentifier_AemCommandStatus_DynamicInfoParameter, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::controller::DynamicInfoParameters const& parameters);
+#endif
+#if 1
 %rename("$ignore") la::avdecc::entity::controller::Interface::addressAccess; // Temp ignore method
 #else
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_Tlvs, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AaCommandStatus const status, la::avdecc::entity::addressAccess::Tlvs const& tlvs);
@@ -428,6 +411,14 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Delegate)
 // Include c++ declaration file
 %include "la/avdecc/internals/controllerEntity.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
+
+// Define templates
+#if 1
+// Ignore DynamicInfoParameter related templates until we can bind std::any
+#else
+%template(DynamicInfoParameters) std::vector<la::avdecc::entity::controller::DynamicInfoParameter>;
+%template(AnyVector) std::vector<std::any>;
+#endif
 
 
 ////////////////////////////////////////

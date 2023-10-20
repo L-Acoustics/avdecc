@@ -88,6 +88,8 @@ private:
 	virtual void disableEntityModelCache() noexcept override;
 	virtual void enableFullStaticEntityModelEnumeration() noexcept override;
 	virtual void disableFullStaticEntityModelEnumeration() noexcept override;
+	virtual void enableFastEnumeration() noexcept override;
+	virtual void disableFastEnumeration() noexcept override;
 
 	/* Enumeration and Control Protocol (AECP) AEM */
 	virtual void acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept override;
@@ -175,6 +177,8 @@ private:
 	/* ************************************************************ */
 	/* Enumeration and Control Protocol (AECP) handlers */
 	void onGetMilanInfoResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::MilanInfo const& info) noexcept;
+	void onEmptyGetDynamicInfoResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept;
+	void onGetDynamicInfoResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::controller::DynamicInfoParameters const& resultParameters, entity::controller::DynamicInfoParameters const& sentParameters, std::uint16_t const packetID, ControlledEntityImpl::EnumerationStep const step) noexcept;
 	void onRegisterUnsolicitedNotificationsResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept;
 	void onUnregisterUnsolicitedNotificationsResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept;
 	void onEntityDescriptorResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::EntityDescriptor const& descriptor) noexcept;
@@ -624,12 +628,15 @@ private:
 	void queryInformation(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex = std::uint16_t{ 0u }, std::chrono::milliseconds const delayQuery = std::chrono::milliseconds{ 0 }) noexcept;
 	void queryInformation(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::StreamIdentification const& talkerStream, std::uint16_t const subIndex, std::chrono::milliseconds const delayQuery = std::chrono::milliseconds{ 0 }) noexcept;
 	void queryInformation(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::chrono::milliseconds const delayQuery = std::chrono::milliseconds{ 0 }) noexcept;
+	void queryInformation(ControlledEntityImpl* const entity, entity::controller::DynamicInfoParameters const& dynamicInfoParameters, std::uint16_t const packetID, ControlledEntityImpl::EnumerationStep const step, std::chrono::milliseconds const delayQuery = std::chrono::milliseconds{ 0 }) noexcept;
 	void getMilanInfo(ControlledEntityImpl* const entity) noexcept;
+	void checkDynamicInfoSupported(ControlledEntityImpl* const entity) noexcept;
 	void registerUnsol(ControlledEntityImpl* const entity) noexcept;
 	void unregisterUnsol(ControlledEntityImpl* const entity) noexcept;
 	void getStaticModel(ControlledEntityImpl* const entity) noexcept;
 	void getDynamicInfo(ControlledEntityImpl* const entity) noexcept;
 	void getDescriptorDynamicInfo(ControlledEntityImpl* const entity) noexcept;
+	void flushPackedDynamicInfoQueries(ControlledEntityImpl* const entity, entity::controller::DynamicInfoParameters const& dynamicInfoParameters, ControlledEntityImpl::EnumerationStep const step) noexcept;
 	void checkEnumerationSteps(ControlledEntityImpl* const entity) noexcept;
 	template<entity::model::DescriptorType StreamPortType>
 	entity::model::AudioMappings validateMappings(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const noexcept
@@ -671,6 +678,8 @@ private:
 	FailureAction getFailureActionForMvuCommandStatus(entity::ControllerEntity::MvuCommandStatus const status) const noexcept;
 	FailureAction getFailureActionForAemCommandStatus(entity::ControllerEntity::AemCommandStatus const status) const noexcept;
 	FailureAction getFailureActionForControlStatus(entity::ControllerEntity::ControlStatus const status) const noexcept;
+	bool processEmptyGetDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity) noexcept;
+	bool processGetDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::controller::DynamicInfoParameters const& dynamicInfoParameters, std::uint16_t const packetID, ControlledEntityImpl::EnumerationStep const step) noexcept;
 	bool processRegisterUnsolFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity) noexcept;
 	bool processGetMilanModelFailureStatus(entity::ControllerEntity::MvuCommandStatus const status, ControlledEntityImpl* const entity, ControlledEntityImpl::MilanInfoType const milanInfoType, bool const optionalForMilan = false) noexcept;
 	bool processGetStaticModelFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
@@ -754,6 +763,7 @@ private:
 	std::unique_ptr<ControllerVirtualProxy> _controllerProxy{ nullptr };
 	std::string _preferedLocale{ "en-US" };
 	bool _fullStaticModelEnumeration{ false };
+	bool _enablePackedGetDynamicInfo{ false };
 	bool _shouldTerminate{ false };
 	DelayedQueries _delayedQueries{};
 	std::unordered_map<UniqueIdentifier, std::chrono::time_point<std::chrono::system_clock>, UniqueIdentifier::hash> _entityIdentifications{}; // Holds Entity to Controller Identification Information

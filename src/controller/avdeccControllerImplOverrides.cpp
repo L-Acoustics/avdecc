@@ -451,6 +451,16 @@ void ControllerImpl::disableFullStaticEntityModelEnumeration() noexcept
 	_fullStaticModelEnumeration = false;
 }
 
+void ControllerImpl::enableFastEnumeration() noexcept
+{
+	_enablePackedGetDynamicInfo = true;
+}
+
+void ControllerImpl::disableFastEnumeration() noexcept
+{
+	_enablePackedGetDynamicInfo = false;
+}
+
 
 /* Enumeration and Control Protocol (AECP) */
 void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept

@@ -97,6 +97,9 @@ Discovery::Discovery(la::avdecc::protocol::ProtocolInterface::Type const protoco
 	_controller->registerObserver(this);
 	// Start controller advertising
 	_controller->enableEntityAdvertising(10);
+	// Enable aem caching and fast enum
+	_controller->enableEntityModelCache();
+	_controller->enableFastEnumeration();
 	// Set default log level
 	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Trace);
 }
@@ -238,9 +241,19 @@ int doJob()
 	{
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "', discovery active:\n");
 
-		Discovery discovery(protocolInterfaceType, intfc.id, 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en");
+		// Create a discovery object
+		{
+			auto discovery = Discovery{ protocolInterfaceType, intfc.id, 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en" };
+			std::this_thread::sleep_for(std::chrono::seconds(10));
+			outputText("Destroying discovery object\n");
+		}
 
-		std::this_thread::sleep_for(std::chrono::seconds(30));
+		// Create another one
+		{
+			auto discovery = Discovery{ protocolInterfaceType, intfc.id, 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en" };
+			std::this_thread::sleep_for(std::chrono::seconds(1500));
+			outputText("Destroying discovery object\n");
+		}
 	}
 	catch (la::avdecc::controller::Controller::Exception const& e)
 	{
