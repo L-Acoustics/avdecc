@@ -57,19 +57,6 @@ public:
 		DefaultConstruct, /**< Will default construct the model and return it */
 		Throw, /**< Will throw an Exception */
 	};
-	/** Hierarchy Hint for the DefaultConstruct behavior for Descriptors that can be found at multiple levels (eg. Controls) */
-	enum class DefaultConstructLevelHint
-	{
-		None = 0,
-		Configuration,
-		AudioUnit,
-		StreamPortInput,
-		StreamPortOutput,
-		JackInput,
-		JackOutput,
-		AvbInterface,
-		PtpInstance,
-	};
 
 protected:
 	virtual UniqueIdentifier getEntityID() const noexcept = 0;
@@ -336,14 +323,14 @@ public:
 	//virtual entity::model::SensorMapNodeStaticModel* getSensorMapNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) = 0;
 	//virtual entity::model::SensorMapNodeDynamicModel* getSensorMapNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) = 0;
 
-	virtual model::ControlNode* getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior, DefaultConstructLevelHint const levelHint) = 0;
+	virtual model::ControlNode* getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) = 0;
 	virtual entity::model::ControlNodeStaticModel* getControlNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior)
 	{
-		return getNodeStaticModel(configurationIndex, descriptorIndex, &TreeModelAccessStrategy::getControlNode, notFoundBehavior, DefaultConstructLevelHint::None);
+		return getNodeStaticModel(configurationIndex, descriptorIndex, &TreeModelAccessStrategy::getControlNode, notFoundBehavior);
 	}
 	virtual entity::model::ControlNodeDynamicModel* getControlNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior)
 	{
-		return getNodeDynamicModel(configurationIndex, descriptorIndex, &TreeModelAccessStrategy::getControlNode, notFoundBehavior, DefaultConstructLevelHint::None);
+		return getNodeDynamicModel(configurationIndex, descriptorIndex, &TreeModelAccessStrategy::getControlNode, notFoundBehavior);
 	}
 
 	//virtual model::SignalSelectorNode* getSignalSelectorNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::SignalSelectorIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) = 0;

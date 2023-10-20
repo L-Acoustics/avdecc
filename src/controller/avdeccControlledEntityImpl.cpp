@@ -388,7 +388,7 @@ model::AudioMapNode const& ControlledEntityImpl::getAudioMapNode(entity::model::
 
 model::ControlNode const& ControlledEntityImpl::getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) const
 {
-	return *_treeModelAccess->getControlNode(configurationIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw, TreeModelAccessStrategy::DefaultConstructLevelHint::None);
+	return *_treeModelAccess->getControlNode(configurationIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
 }
 
 model::ClockDomainNode const& ControlledEntityImpl::getClockDomainNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const
@@ -2086,7 +2086,7 @@ void ControlledEntityImpl::setAudioMapDescriptor(entity::model::AudioMapDescript
 void ControlledEntityImpl::setControlDescriptor(entity::model::ControlDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) noexcept
 {
 	// Get or create a new ControlNode for this entity
-	auto* const node = _treeModelAccess->getControlNode(configurationIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::None);
+	auto* const node = _treeModelAccess->getControlNode(configurationIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 	AVDECC_ASSERT(!!node, "Should not be null, should be default constructed");
 
 	// Copy static model
@@ -2959,6 +2959,44 @@ void processStreamPortNodes(ControlledEntityImpl* const entity, entity::model::C
 		streamPortNode->staticModel = streamPortTree.staticModel;
 		streamPortNode->dynamicModel = streamPortTree.dynamicModel;
 
+		// Validate "base" values
+		if (streamPortNode->staticModel.numberOfControls == 0 && streamPortNode->staticModel.baseControl != 0)
+		{
+			if constexpr (std::is_same_v<NodeType, model::StreamPortInputNode>)
+			{
+				LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Invalid STREAM_PORT_INPUT descriptor (Index {}): No CONTROL descriptor defined but baseControl is not 0 ({})", streamPortIndex, streamPortNode->staticModel.baseControl);
+			}
+			else
+			{
+				LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Invalid STREAM_PORT_OUTPUT descriptor (Index {}): No CONTROL descriptor defined but baseControl is not 0 ({})", streamPortIndex, streamPortNode->staticModel.baseControl);
+			}
+			streamPortNode->staticModel.baseControl = 0;
+		}
+		if (streamPortNode->staticModel.numberOfClusters == 0 && streamPortNode->staticModel.baseCluster != 0)
+		{
+			if constexpr (std::is_same_v<NodeType, model::StreamPortInputNode>)
+			{
+				LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Invalid STREAM_PORT_INPUT descriptor (Index {}): No CLUSTER descriptor defined but baseCluster is not 0 ({})", streamPortIndex, streamPortNode->staticModel.baseCluster);
+			}
+			else
+			{
+				LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Invalid STREAM_PORT_OUTPUT descriptor (Index {}): No CLUSTER descriptor defined but baseCluster is not 0 ({})", streamPortIndex, streamPortNode->staticModel.baseCluster);
+			}
+			streamPortNode->staticModel.baseCluster = 0;
+		}
+		if (streamPortNode->staticModel.numberOfMaps == 0 && streamPortNode->staticModel.baseMap != 0)
+		{
+			if constexpr (std::is_same_v<NodeType, model::StreamPortInputNode>)
+			{
+				LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Invalid STREAM_PORT_INPUT descriptor (Index {}): No MAP descriptor defined but baseMap is not 0 ({})", streamPortIndex, streamPortNode->staticModel.baseMap);
+			}
+			else
+			{
+				LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Invalid STREAM_PORT_OUTPUT descriptor (Index {}): No MAP descriptor defined but baseMap is not 0 ({})", streamPortIndex, streamPortNode->staticModel.baseMap);
+			}
+			streamPortNode->staticModel.baseMap = 0;
+		}
+
 		// Build audio clusters (AudioClusterNode)
 		for (auto const& [clusterIndex, clusterTree] : streamPortTree.audioClusterModels)
 		{
@@ -2980,11 +3018,11 @@ void processStreamPortNodes(ControlledEntityImpl* const entity, entity::model::C
 			auto* controlNode = static_cast<model::ControlNode*>(nullptr);
 			if constexpr (std::is_same_v<NodeType, model::StreamPortInputNode>)
 			{
-				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::StreamPortInput);
+				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 			}
 			else if constexpr (std::is_same_v<NodeType, model::StreamPortOutputNode>)
 			{
-				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::StreamPortOutput);
+				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 			}
 			controlNode->staticModel = controlTree.staticModel;
 			controlNode->dynamicModel = controlTree.dynamicModel;
@@ -3028,17 +3066,31 @@ void processJackNodes(ControlledEntityImpl* const entity, entity::model::Configu
 		jackNode->staticModel = jackTree.staticModel;
 		jackNode->dynamicModel = jackTree.dynamicModel;
 
+		// Validate "base" values
+		if (jackNode->staticModel.numberOfControls == 0 && jackNode->staticModel.baseControl != 0)
+		{
+			if constexpr (std::is_same_v<NodeType, model::JackInputNode>)
+			{
+				LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Invalid JACK_INPUT descriptor (Index {}): No CONTROL descriptor defined but baseControl is not 0 ({})", jackIndex, jackNode->staticModel.baseControl);
+			}
+			else
+			{
+				LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Invalid JACK_OUTPUT descriptor (Index {}): No CONTROL descriptor defined but baseControl is not 0 ({})", jackIndex, jackNode->staticModel.baseControl);
+			}
+			jackNode->staticModel.baseControl = 0;
+		}
+
 		// Build controls (ControlNode)
 		for (auto const& [controlIndex, controlTree] : jackTree.controlModels)
 		{
 			auto* controlNode = static_cast<model::ControlNode*>(nullptr);
 			if constexpr (std::is_same_v<NodeType, model::JackInputNode>)
 			{
-				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::JackInput);
+				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 			}
 			else if constexpr (std::is_same_v<NodeType, model::JackOutputNode>)
 			{
-				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::JackOutput);
+				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 			}
 			controlNode->staticModel = controlTree.staticModel;
 			controlNode->dynamicModel = controlTree.dynamicModel;
@@ -3046,22 +3098,51 @@ void processJackNodes(ControlledEntityImpl* const entity, entity::model::Configu
 	}
 }
 
-template<typename NodeType>
-void processJackNodes(ControlledEntity const* const entity, model::EntityModelVisitor* const visitor, model::ConfigurationNode const& configuration, std::map<entity::model::JackIndex, NodeType> const& jacks)
+void validateBaseValues(UniqueIdentifier const entityID, entity::model::AudioUnitIndex const descriptorIndex, entity::model::AudioUnitNodeStaticModel& staticModel) noexcept
 {
-	for (auto const& jackKV : jacks)
+	if (staticModel.numberOfStreamInputPorts == 0 && staticModel.baseStreamInputPort != 0)
 	{
-		auto const& jack = jackKV.second;
-		// Visit JackNode (ConfigurationNode is parent)
-		visitor->visit(entity, &configuration, jack);
+		LOG_CONTROLLER_WARN(entityID, "Invalid AUDIO_UNIT descriptor (Index {}): No STREAM_PORT_INPUT descriptor defined but baseStreamInputPort is not 0 ({})", descriptorIndex, staticModel.baseStreamInputPort);
+		staticModel.baseStreamInputPort = 0;
+	}
+	if (staticModel.numberOfStreamOutputPorts == 0 && staticModel.baseStreamOutputPort != 0)
+	{
+		LOG_CONTROLLER_WARN(entityID, "Invalid AUDIO_UNIT descriptor (Index {}): No STREAM_PORT_OUTPUT descriptor defined but baseStreamOutputPort is not 0 ({})", descriptorIndex, staticModel.baseStreamOutputPort);
+		staticModel.baseStreamOutputPort = 0;
+	}
+	if (staticModel.numberOfExternalInputPorts == 0 && staticModel.baseExternalInputPort != 0)
+	{
+		LOG_CONTROLLER_WARN(entityID, "Invalid AUDIO_UNIT descriptor (Index {}): No EXTERNAL_PORT_INPUT descriptor defined but baseExternalInputPort is not 0 ({})", descriptorIndex, staticModel.baseExternalInputPort);
+		staticModel.baseExternalInputPort = 0;
+	}
+	if (staticModel.numberOfExternalOutputPorts == 0 && staticModel.baseExternalOutputPort != 0)
+	{
+		LOG_CONTROLLER_WARN(entityID, "Invalid AUDIO_UNIT descriptor (Index {}): No EXTERNAL_PORT_OUTPUT descriptor defined but baseExternalOutputPort is not 0 ({})", descriptorIndex, staticModel.baseExternalOutputPort);
+		staticModel.baseExternalOutputPort = 0;
+	}
+	if (staticModel.numberOfInternalInputPorts == 0 && staticModel.baseInternalInputPort != 0)
+	{
+		LOG_CONTROLLER_WARN(entityID, "Invalid AUDIO_UNIT descriptor (Index {}): No INTERNAL_PORT_INPUT descriptor defined but baseInternalInputPort is not 0 ({})", descriptorIndex, staticModel.baseInternalInputPort);
+		staticModel.baseInternalInputPort = 0;
+	}
+	if (staticModel.numberOfInternalOutputPorts == 0 && staticModel.baseInternalOutputPort != 0)
+	{
+		LOG_CONTROLLER_WARN(entityID, "Invalid AUDIO_UNIT descriptor (Index {}): No INTERNAL_PORT_OUTPUT descriptor defined but baseInternalOutputPort is not 0 ({})", descriptorIndex, staticModel.baseInternalOutputPort);
+		staticModel.baseInternalOutputPort = 0;
+	}
+	if (staticModel.numberOfControls == 0 && staticModel.baseControl != 0)
+	{
+		LOG_CONTROLLER_WARN(entityID, "Invalid AUDIO_UNIT descriptor (Index {}): No CONTROL descriptor defined but baseControl is not 0 ({})", descriptorIndex, staticModel.baseControl);
+		staticModel.baseControl = 0;
+	}
+}
 
-		// Loop over ControlNode
-		for (auto const& controlKV : jack.controls)
-		{
-			auto const& control = controlKV.second;
-			// Visit ControlNode (JackNode is parent)
-			visitor->visit(entity, &configuration, &jack, control);
-		}
+void validateBaseValues(UniqueIdentifier const entityID, entity::model::PtpInstanceIndex const descriptorIndex, entity::model::PtpInstanceNodeStaticModel& staticModel) noexcept
+{
+	if (staticModel.numberOfControls == 0 && staticModel.baseControl != 0)
+	{
+		LOG_CONTROLLER_WARN(entityID, "Invalid PTP_INSTANCE descriptor (Index {}): No CONTROL descriptor defined but baseControl is not 0 ({})", descriptorIndex, staticModel.baseControl);
+		staticModel.baseControl = 0;
 	}
 }
 
@@ -3123,7 +3204,7 @@ void ControlledEntityImpl::buildEntityModelGraph(entity::model::EntityTree const
 				// Build controls (ControlNode)
 				for (auto& [controlIndex, controlModel] : configTree.controlModels)
 				{
-					auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::Configuration);
+					auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 					controlNode->staticModel = controlModel.staticModel;
 					controlNode->dynamicModel = controlModel.dynamicModel;
 				}
@@ -3154,12 +3235,15 @@ void ControlledEntityImpl::buildEntityModelGraph(entity::model::EntityTree const
 					audioUnitNode->staticModel = audioUnitTree.staticModel;
 					audioUnitNode->dynamicModel = audioUnitTree.dynamicModel;
 
+					// Validate "base" values
+					buildEntityModelHelper::validateBaseValues(getEntity().getEntityID(), audioUnitIndex, audioUnitNode->staticModel);
+
 					// Build leaves first
 					{
 						// Build controls (ControlNode)
 						for (auto const& [controlIndex, controlTree] : audioUnitTree.controlModels)
 						{
-							auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::AudioUnit);
+							auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 							controlNode->staticModel = controlTree.staticModel;
 							controlNode->dynamicModel = controlTree.dynamicModel;
 						}
@@ -3198,10 +3282,13 @@ void ControlledEntityImpl::buildEntityModelGraph(entity::model::EntityTree const
 					ptpInstanceNode->staticModel = ptpInstanceTree.staticModel;
 					ptpInstanceNode->dynamicModel = ptpInstanceTree.dynamicModel;
 
+					// Validate "base" values
+					buildEntityModelHelper::validateBaseValues(getEntity().getEntityID(), ptpInstanceIndex, ptpInstanceNode->staticModel);
+
 					// Build controls (ControlNode)
 					for (auto const& [controlIndex, controlTree] : ptpInstanceTree.controlModels)
 					{
-						auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::PtpInstance);
+						auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 						controlNode->staticModel = controlTree.staticModel;
 						controlNode->dynamicModel = controlTree.dynamicModel;
 					}
