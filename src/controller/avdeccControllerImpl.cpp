@@ -5498,7 +5498,7 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 			return true;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 mandatory dynamic info ({}): {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
+			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 dynamic info ({}): {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
 			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			return true;
 		case FailureAction::NotAuthenticated:
@@ -5761,7 +5761,7 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 			break;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 mandatory descriptor dynamic info ({}): {}", ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType), entity::LocalEntity::statusToString(status));
+			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 descriptor dynamic info ({}): {}", ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType), entity::LocalEntity::statusToString(status));
 			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			fallbackStaticModelEnumeration = true;
 			break;
