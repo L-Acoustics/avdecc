@@ -554,6 +554,10 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ConnectionFlag, {
 																							 { ConnectionFlag::SupportsEncrypted, "SUPPORTS_ENCRYPTED" },
 																							 { ConnectionFlag::EncryptedPdu, "ENCRYPTED_PDU" },
 																							 { ConnectionFlag::TalkerFailed, "TALKER_FAILED" },
+																							 { ConnectionFlag::SrpRegistrationFailed, "SRP_REGISTRATION_FAILED" },
+																							 { ConnectionFlag::ClEntriesValid, "CL_ENTRIES_VALID" },
+																							 { ConnectionFlag::NoSrp, "NO_SRP" },
+																							 { ConnectionFlag::Udp, "UDP" },
 																						 });
 
 /* StreamFlag conversion */
@@ -569,6 +573,12 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamFlag, {
 																					 { StreamFlag::SecondaryBackupValid, "SECONDARY_BACKUP_VALID" },
 																					 { StreamFlag::TertiaryBackupSupported, "TERTIARY_BACKUP_SUPPORTED" },
 																					 { StreamFlag::TertiaryBackupValid, "TERTIARY_BACKUP_VALID" },
+																					 { StreamFlag::SupportsAvtpUdpV4, "SUPPORTS_AVTP_UDP_V4" },
+																					 { StreamFlag::SupportsAvtpUdpV6, "SUPPORTS_AVTP_UDP_V6" },
+																					 { StreamFlag::NoSupportAvtpNative, "NO_SUPPORT_AVTP_NATIVE" },
+																					 { StreamFlag::TimingFieldValid, "TIMING_FIELD_VALID" },
+																					 { StreamFlag::NoMediaClock, "NO_MEDIA_CLOCK" },
+																					 { StreamFlag::SupportsNoSrp, "SUPPORTS_NO_SRP" },
 																				 });
 
 /* JackFlag conversion */
@@ -584,6 +594,10 @@ NLOHMANN_JSON_SERIALIZE_ENUM(AvbInterfaceFlag, {
 																								 { AvbInterfaceFlag::GptpGrandmasterSupported, "GPTP_GRANDMASTER_SUPPORTED" },
 																								 { AvbInterfaceFlag::GptpSupported, "GPTP_SUPPORTED" },
 																								 { AvbInterfaceFlag::SrpSupported, "SRP_SUPPORTED" },
+																								 { AvbInterfaceFlag::FqtssNotSupported, "FQTSS_NOT_SUPPORTED" },
+																								 { AvbInterfaceFlag::ScheduledTrafficSupported, "SCHEDULED_TRAFFIC_SUPPORTED" },
+																								 { AvbInterfaceFlag::CanListenToSelf, "CAN_LISTEN_TO_SELF" },
+																								 { AvbInterfaceFlag::CanListenToOtherSelf, "CAN_LISTEN_TO_OTHER_SELF" },
 																							 });
 
 /* ClockSourceFlag conversion */
@@ -647,6 +661,13 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamInfoFlag, {
 																							 { StreamInfoFlag::SupportsEncrypted, "SUPPORTS_ENCRYPTED" },
 																							 { StreamInfoFlag::EncryptedPdu, "ENCRYPTED_PDU" },
 																							 { StreamInfoFlag::TalkerFailed, "TALKER_FAILED" },
+																							 { StreamInfoFlag::NoSrp, "NO_SRP" },
+																							 { StreamInfoFlag::IpFlagsValid, "IP_FLAGS_VALID" },
+																							 { StreamInfoFlag::IpSrcPortValid, "IP_SRC_PORT_VALID" },
+																							 { StreamInfoFlag::IpDstPortValid, "IP_DST_PORT_VALID" },
+																							 { StreamInfoFlag::IpSrcAddrValid, "IP_SRC_ADDR_VALID" },
+																							 { StreamInfoFlag::IpDstAddrValid, "IP_DST_ADDR_VALID" },
+																							 { StreamInfoFlag::NotRegisteringSrp, "NOT_REGISTERING_SRP" },
 																							 { StreamInfoFlag::StreamVlanIDValid, "STREAM_VLAN_ID_VALID" },
 																							 { StreamInfoFlag::Connected, "CONNECTED" },
 																							 { StreamInfoFlag::MsrpFailureValid, "MSRP_FAILURE_VALID" },
@@ -668,6 +689,8 @@ NLOHMANN_JSON_SERIALIZE_ENUM(AvbInfoFlag, {
 																						{ AvbInfoFlag::AsCapable, "AS_CAPABLE" },
 																						{ AvbInfoFlag::GptpEnabled, "GPTP_ENABLED" },
 																						{ AvbInfoFlag::SrpEnabled, "SRP_ENABLED" },
+																						{ AvbInfoFlag::AvtpDown, "AVTP_DOWN" },
+																						{ AvbInfoFlag::AvtpDownValid, "AVTP_DOWN_VALID" },
 																					});
 
 /* EntityCounterValidFlag conversion */
