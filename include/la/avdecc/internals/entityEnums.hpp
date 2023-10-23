@@ -117,7 +117,7 @@ enum class ConnectionFlag : std::uint16_t
 	EncryptedPdu = 1u << 5, /**< Indicates that the Stream is using encrypted PDUs. */
 	TalkerFailed = 1u << 6, /**< IEEE1722.1-2013 - Indicates that the listener has registered an SRP Talker Failed attribute for the Stream. */
 	SrpRegistrationFailed = 1u << 6, /**< IEEE1722.1-2021 - Indicates that the listener has registered an SRP Talker Failed attribute for the stream or that the talker has registered an SRP Listener Asking Failed attribute for the stream (used in Get State only). */
-	ClEntriedValid = 1u << 7, /**< Indicates that the connected_listeners_entries field in the ACM-PDU is valid. */
+	ClEntriesValid = 1u << 7, /**< Indicates that the connected_listeners_entries field in the ACM-PDU is valid. */
 	NoSrp = 1u << 8, /**< Indicates that SRP is not being used for the stream. The Talker will not register a Talker Advertise nor wait for a Listener registration before streaming. */
 	Udp = 1u << 9, /**< Indicates that the stream is using UDP based transport and not Layer 2 AVTPDUs. */
 	/* Bits 0 to 5 reserved for future use */
