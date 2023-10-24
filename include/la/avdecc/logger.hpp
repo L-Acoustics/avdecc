@@ -96,7 +96,7 @@ public:
 	{
 	public:
 		virtual ~Observer() noexcept {}
-		virtual void onLogItem(la::avdecc::logger::Level const /*level*/, la::avdecc::logger::LogItem const* const /*item*/) noexcept {}
+		virtual void onLogItem(la::avdecc::logger::Level const level, la::avdecc::logger::LogItem const* const item) noexcept = 0;
 	};
 
 	static LA_AVDECC_API Logger& LA_AVDECC_CALL_CONVENTION getInstance() noexcept;
