@@ -1023,6 +1023,15 @@ void readLocaleModels(json const& object, Flags const flags, Context& c, Configu
 	}
 }
 
+template<typename ModelTrees>
+void setDescriptorCount(DescriptorCounts& counts, DescriptorType const descriptorType, ModelTrees const& modelTrees)
+{
+	if (!modelTrees.empty())
+	{
+		counts[descriptorType] = static_cast<DescriptorCounts::mapped_type>(modelTrees.size());
+	}
+}
+
 EntityTree::ConfigurationTrees readConfigurationTrees(json const& object, Flags const flags, std::optional<DescriptorIndex> const currentConfiguration)
 {
 	auto configurationTrees = EntityTree::ConfigurationTrees{};
@@ -1034,11 +1043,25 @@ EntityTree::ConfigurationTrees readConfigurationTrees(json const& object, Flags 
 		auto c = Context{};
 
 		auto config = ConfigurationTree{};
+		auto mustRebuildDescriptorCount = false;
 
 		// Read Static model
 		if (flags.test(Flag::ProcessStaticModel))
 		{
 			get_optional_value(j, keyName::Node_StaticInformation, config.staticModel);
+			// Check for old dump file
+			if (config.staticModel.descriptorCounts.empty())
+			{
+				// Make sure the static model key exists
+				if (auto const confStaticModelIt = j.find(keyName::Node_StaticInformation); confStaticModelIt != j.end())
+				{
+					// If the descriptor count is missing (ie. old dump file), we need to rebuild it
+					if (confStaticModelIt->find(keyName::ConfigurationNode_Static_DescriptorCounts) == confStaticModelIt->end())
+					{
+						mustRebuildDescriptorCount = true;
+					}
+				}
+			}
 		}
 
 		// Read Dynamic model
@@ -1104,6 +1127,25 @@ EntityTree::ConfigurationTrees readConfigurationTrees(json const& object, Flags 
 
 			// Read PtpInstances
 			readPtpInstanceModels(j, flags, keyName::NodeName_PtpInstanceDescriptors, c.nextExpectedPtpInstanceIndex, config.ptpInstanceTrees, c, ignoreDynamicModel);
+		}
+
+		// Legacy dump file support, we must build the descriptor counts
+		if (mustRebuildDescriptorCount)
+		{
+			auto& counts = config.staticModel.descriptorCounts;
+			setDescriptorCount(counts, DescriptorType::AudioUnit, config.audioUnitTrees);
+			setDescriptorCount(counts, DescriptorType::StreamInput, config.streamInputModels);
+			setDescriptorCount(counts, DescriptorType::StreamOutput, config.streamOutputModels);
+			setDescriptorCount(counts, DescriptorType::JackInput, config.jackInputTrees);
+			setDescriptorCount(counts, DescriptorType::JackOutput, config.jackOutputTrees);
+			setDescriptorCount(counts, DescriptorType::AvbInterface, config.avbInterfaceModels);
+			setDescriptorCount(counts, DescriptorType::ClockSource, config.clockSourceModels);
+			setDescriptorCount(counts, DescriptorType::Control, config.controlModels);
+			setDescriptorCount(counts, DescriptorType::Locale, config.localeTrees);
+			setDescriptorCount(counts, DescriptorType::MemoryObject, config.memoryObjectModels);
+			setDescriptorCount(counts, DescriptorType::ClockDomain, config.clockDomainModels);
+			setDescriptorCount(counts, DescriptorType::Timing, config.timingModels);
+			setDescriptorCount(counts, DescriptorType::PtpInstance, config.ptpInstanceTrees);
 		}
 
 		configurationTrees[configurationIndex++] = std::move(config);
