@@ -150,6 +150,8 @@ public:
 // Exception class
 ////////////////////////////////////////
 // Ignore Exception, will be created as native exception
+%nspace la::avdecc::BaseException;
+%rename("BaseAtdeccException") la::avdecc::Exception; // Not put in a namespace https://github.com/swig/swig/issues/2459
 
 // Throw typemap
 %typemap (throws, canthrow=1) la::avdecc::Exception %{
