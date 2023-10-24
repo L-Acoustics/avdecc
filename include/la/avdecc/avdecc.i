@@ -26,6 +26,7 @@
 // Generated wrapper file needs to include our header file (include as soon as possible using 'insert(runtime)' as target language exceptions are defined early in the generated wrapper file)
 %insert(runtime) %{
 	#include <la/avdecc/memoryBuffer.hpp>
+	#include <la/avdecc/logger.hpp>
 	#include <la/avdecc/executor.hpp>
 	#include <la/avdecc/avdecc.hpp>
 	#include <la/avdecc/internals/exception.hpp>
@@ -69,6 +70,12 @@ enum class ThreadPriority
 // MemoryBuffer class
 ////////////////////////////////////////
 %include "la/avdecc/memoryBuffer.i"
+
+
+////////////////////////////////////////
+// Logger class
+////////////////////////////////////////
+%include "la/avdecc/logger.i"
 
 
 ////////////////////////////////////////
