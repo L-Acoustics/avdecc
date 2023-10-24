@@ -48,6 +48,15 @@
 
       public static implicit operator Name##Native(Name handler) => new Name##Native(handler);
     %}
+
+    %typemap(cscode) std::function<Ret(##__VA_ARGS__)> %{
+       public static implicit operator System.Action(Name##Native instance)
+       {
+          return new System.Action(() => {
+            instance.Invoke();
+          });
+       }
+    %}
   #else
     %typemap(cstype) std::function<Ret(##__VA_ARGS__)> *, std::function<Ret(##__VA_ARGS__)> &, std::function<Ret(##__VA_ARGS__)> [], std::function<Ret(##__VA_ARGS__)> && %{System.Action<%foreach(%unpack_type, __VA_ARGS__)>%}
     %typemap(csclassmodifiers) Name %{
@@ -71,6 +80,15 @@
       }
 
       public static implicit operator Name##Native(Name handler) => new Name##Native(handler);
+    %}
+
+    %typemap(cscode) std::function<Ret(##__VA_ARGS__)> %{
+       public static implicit operator System.Action<%foreach(%unpack_type, __VA_ARGS__)>(Name##Native instance)
+       {
+          return new System.Action<%foreach(%unpack_type, __VA_ARGS__)>((%foreach(%unpack_arg, __VA_ARGS__)) => {
+            instance.Invoke(%foreach(%unpack_arg, __VA_ARGS__));
+          });
+       }
     %}
   #endif
 #else
@@ -99,6 +117,15 @@
 
       public static implicit operator Name##Native(Name handler) => new Name##Native(handler);
     %}
+
+    %typemap(cscode) std::function<Ret(##__VA_ARGS__)> %{
+       public static implicit operator System.Func<%unpack_type(0, Ret)>(Name##Native instance)
+       {
+          return new System.Func<%unpack_type(0, Ret)>(() => {
+            return instance.Invoke());
+          });
+       }
+    %}
   #else
     %typemap(cstype) std::function<Ret(##__VA_ARGS__)> *, std::function<Ret(##__VA_ARGS__)> &, std::function<Ret(##__VA_ARGS__)> [], std::function<Ret(##__VA_ARGS__)> && %{System.Func<%foreach(%unpack_type, __VA_ARGS__), %unpack_type(0, Ret)>%}
     %typemap(csclassmodifiers) Name %{
@@ -123,6 +150,15 @@
       }
 
       public static implicit operator Name##Native(Name handler) => new Name##Native(handler);
+    %}
+
+    %typemap(cscode) std::function<Ret(##__VA_ARGS__)> %{
+       public static implicit operator System.Func<%foreach(%unpack_type, __VA_ARGS__), %unpack_type(0, Ret)>(Name##Native instance)
+       {
+          return new System.Func<%foreach(%unpack_type, __VA_ARGS__), %unpack_type(0, Ret)>((%foreach(%unpack_arg, __VA_ARGS__)) => {
+            return instance.Invoke(%foreach(%unpack_arg, __VA_ARGS__));
+          });
+       }
     %}
   #endif
 #endif
