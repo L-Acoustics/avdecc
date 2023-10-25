@@ -3750,7 +3750,7 @@ entity::model::EntityTree const& ControlledEntityImpl::getEntityModelTree() cons
 		{
 			// Ignore virtual parenting
 		}
-		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
 		{
 			// Create tree
 			auto controlTree = entity::model::ControlNodeModels{};
@@ -3762,7 +3762,7 @@ entity::model::EntityTree const& ControlledEntityImpl::getEntityModelTree() cons
 			// Save
 			_entity._entityTree->configurationTrees[grandParent->descriptorIndex].ptpInstanceTrees[parent->descriptorIndex].controlModels[node.descriptorIndex] = std::move(controlTree);
 		}
-		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::PtpPortNode const& node) noexcept
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::PtpPortNode const& node) noexcept override
 		{
 			// Create tree
 			auto ptpPortTree = entity::model::PtpPortNodeModels{};
