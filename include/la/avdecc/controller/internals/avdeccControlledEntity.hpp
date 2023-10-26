@@ -289,7 +289,7 @@ public:
 	}
 
 	// Swap method
-	friend void swap(ControlledEntityGuard& lhs, ControlledEntityGuard& rhs)
+	friend void swap(ControlledEntityGuard& lhs, ControlledEntityGuard& rhs) noexcept
 	{
 		using std::swap;
 
@@ -324,12 +324,12 @@ public:
 	}
 
 	// Allow move semantics
-	ControlledEntityGuard(ControlledEntityGuard&& other)
+	ControlledEntityGuard(ControlledEntityGuard&& other) noexcept
 	{
 		swap(*this, other);
 	}
 
-	ControlledEntityGuard& operator=(ControlledEntityGuard&& other)
+	ControlledEntityGuard& operator=(ControlledEntityGuard&& other) noexcept
 	{
 		swap(*this, other);
 		return *this;
@@ -342,7 +342,7 @@ public:
 private:
 	friend class ControllerImpl;
 	// Ownership (and locked state) is transfered during construction
-	ControlledEntityGuard(SharedControlledEntity&& entity)
+	ControlledEntityGuard(SharedControlledEntity&& entity) noexcept
 		: _controlledEntity(std::move(entity))
 	{
 		registerWatchdog();
