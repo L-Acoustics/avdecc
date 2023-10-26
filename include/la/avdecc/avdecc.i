@@ -35,10 +35,10 @@
 	#include <la/avdecc/internals/endStation.hpp>
 %}
 
-// Optimize code generation be enabling RVO
+// Optimize code generation by enabling RVO
 %typemap(out, optimal="1") SWIGTYPE
 %{
-	$result = new $1_ltype((const $1_ltype &)$1);
+	$result = new $1_ltype($1);
 %}
 
 #define LA_AVDECC_API
