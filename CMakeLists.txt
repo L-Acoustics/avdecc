@@ -103,6 +103,8 @@ cu_setup_apple_minimum_versions(MACOS 10.13)
 
 # Include fmtlib
 if(ENABLE_AVDECC_USE_FMTLIB)
+	# Override fmt options
+	set(FMT_INSTALL (${INSTALL_AVDECC_LIB_SHARED_CXX} OR ${INSTALL_AVDECC_LIB_STATIC}) CACHE BOOL "Force install." FORCE)
 	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/fmtlib EXCLUDE_FROM_ALL)
 endif()
 
