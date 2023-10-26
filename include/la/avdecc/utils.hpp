@@ -1137,12 +1137,14 @@ public:
 		return _subjects.size();
 	}
 
-	// Defaulted compiler auto-generated methods
-	Observer() = default;
-	Observer(Observer&&) = default;
-	Observer(Observer const&) = default;
-	Observer& operator=(Observer const&) = default;
-	Observer& operator=(Observer&&) = default;
+	// Default constructor
+	Observer() noexcept = default;
+
+	// Deleted compiler auto-generated methods
+	Observer(Observer const&) noexcept = delete;
+	Observer(Observer&&) noexcept = delete;
+	Observer& operator=(Observer const&) noexcept = delete;
+	Observer& operator=(Observer&&) noexcept = delete;
 
 private:
 	friend class Subject<Observable, mutex_type>;
