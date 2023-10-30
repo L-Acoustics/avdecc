@@ -149,6 +149,15 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 				}
 			}
 
+			/*
+			  For the time being, we reject the whole command if there is at least one error in a sub-command.
+			  This is easier to handle, as the fallback will be to query everything again one by one without having to keep track of what was already queried.
+			  Improvement would be to handle each sub-command error individually and only retrieve the missing information.
+			  When doing this, we shall probably remove the generic handle of the error (the 'if' with the 'break' inside it) and handle errors in each commandType so we can query what we are missing.
+			  We'll probably no longer the 'gotError' variable either as we'll have some sort of 'processGetDynamicInfoFailureStatus' for each commandType to fallback if needed. Be careful with the main status code as well, as processGetDynamicInfoFailureStatus doesn't expect to be called with SUCCESS.
+			  The best solution would be to be able to dispatch to the real onXXXResult handler for each commandType.
+			  See https://github.com/L-Acoustics/avdecc/issues/141
+			*/
 			auto gotError = !updatedStatus;
 			if (!gotError)
 			{
@@ -159,6 +168,7 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 						gotError |= !st;
 						if (gotError)
 						{
+							updatedStatus = st;
 							LOG_CONTROLLER_DEBUG(entityID, "GetDynamicInfo failed for commandType={} with status={}", static_cast<std::string>(commandType), entity::ControllerEntity::statusToString(st));
 							break;
 						}
