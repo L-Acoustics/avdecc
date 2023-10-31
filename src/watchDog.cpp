@@ -22,6 +22,7 @@
 * @author Christophe Calmejane
 */
 
+#include "utils.hpp"
 #include "la/avdecc/watchDog.hpp"
 
 #include <unordered_map>
@@ -68,13 +69,11 @@ public:
 						{
 							for (auto& [name, watchInfo] : watchedMap)
 							{
-#ifdef _WIN32
 								// If debugger is present, update the last alive time and don't check the timeout
-								if (IsDebuggerPresent())
+								if (utils::isDebuggerPresent())
 								{
 									watchInfo.lastAlive = currentTime;
 								}
-#endif // _WIN32
 
 								// Check if we timed out
 								if (!watchInfo.ignore && std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - watchInfo.lastAlive).count() > watchInfo.maximumInterval.count())

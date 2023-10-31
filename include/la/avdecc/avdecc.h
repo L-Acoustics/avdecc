@@ -694,6 +694,10 @@ typedef void(LA_AVDECC_BINDINGS_C_CALL_CONVENTION* avdecc_local_entity_get_talke
 LA_AVDECC_BINDINGS_C_API avdecc_local_entity_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_LocalEntity_create(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle, avdecc_entity_cp const entity, avdecc_local_entity_controller_delegate_p const delegate, LA_AVDECC_LOCAL_ENTITY_HANDLE* const createdLocalEntityHandle);
 /** Destroys a previously created LocalEntity. */
 LA_AVDECC_BINDINGS_C_API avdecc_local_entity_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_LocalEntity_destroy(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle);
+/** Sets application data on a LocalEntity. */
+LA_AVDECC_BINDINGS_C_API avdecc_local_entity_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_LocalEntity_setApplicationData(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle, void* applicationData);
+/** Retrieves application data from a LocalEntity. */
+LA_AVDECC_BINDINGS_C_API void* LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_LocalEntity_getApplicationData(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle);
 /** Enables entity advertising with available duration included between 2-62 seconds. */
 LA_AVDECC_BINDINGS_C_API avdecc_local_entity_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_LocalEntity_enableEntityAdvertising(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle, unsigned int const availableDuration);
 /** Disables entity advertising. */
@@ -991,6 +995,10 @@ LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_types_t LA_AVDECC_BINDINGS_C_
 LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_getExecutorName(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle, avdecc_fixed_string_t const executorName);
 /** Creates a new ProtocolInterface. avdecc_protocol_interface_error_no_error is returned in case of success and createdProtocolInterfaceHandle is initialized with the newly created ProtocolInterfaceHandle. LA_AVDECC_ProtocolInterface_destroy must be called when the ProtocolInterface is no longer in use. */
 LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_create(avdecc_protocol_interface_type_t const protocolInterfaceType, avdecc_const_string_t interfaceName, avdecc_const_string_t executorName, LA_AVDECC_PROTOCOL_INTERFACE_HANDLE* const createdProtocolInterfaceHandle);
+/** Sets application data on a ProtocolInterface. */
+LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_setApplicationData(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle, void* applicationData);
+/** Retrieves application data from a ProtocolInterface. */
+LA_AVDECC_BINDINGS_C_API void* LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_getApplicationData(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle);
 /** Destroys a previously created ProtocolInterface. */
 LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_destroy(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle);
 LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_getMacAddress(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle, avdecc_mac_address_t* const address);

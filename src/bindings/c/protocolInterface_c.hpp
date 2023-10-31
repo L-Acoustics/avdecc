@@ -28,4 +28,13 @@
 #include <la/avdecc/internals/protocolInterface.hpp>
 #include "la/avdecc/avdecc.h"
 
-la::avdecc::protocol::ProtocolInterface& getProtocolInterface(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle);
+namespace la
+{
+namespace avdecc
+{
+namespace bindings
+{
+LA_AVDECC_API la::avdecc::protocol::ProtocolInterface& LA_AVDECC_CALL_CONVENTION getProtocolInterface(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle);
+} // namespace bindings
+} // namespace avdecc
+} // namespace la

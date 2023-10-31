@@ -18,24 +18,20 @@
 */
 
 /**
-* @file localEntity_c.hpp
+* @file utils.hpp
 * @author Christophe Calmejane
-* @brief Private APIs for LocalEntity C bindings.
 */
 
 #pragma once
-
-#include <la/avdecc/internals/entity.hpp>
-#include <la/avdecc/internals/aggregateEntity.hpp>
-#include "la/avdecc/avdecc.h"
 
 namespace la
 {
 namespace avdecc
 {
-namespace bindings
+namespace utils
 {
-LA_AVDECC_API la::avdecc::entity::AggregateEntity& LA_AVDECC_CALL_CONVENTION getAggregateEntity(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle);
-}
+bool isDebuggerPresent();
+
+} // namespace utils
 } // namespace avdecc
 } // namespace la

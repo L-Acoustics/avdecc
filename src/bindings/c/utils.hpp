@@ -99,6 +99,11 @@ public:
 		return _objects;
 	}
 
+	bool contains(Handle const handle) const noexcept
+	{
+		return _objects.find(handle) != _objects.end();
+	}
+
 private:
 	Objects _objects{};
 };
