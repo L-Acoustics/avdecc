@@ -22,6 +22,7 @@
 * @author Christophe Calmejane
 */
 
+#include "utils.hpp"
 #include "la/avdecc/utils.hpp"
 
 #if defined(_WIN32)
@@ -272,7 +273,7 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 					"Press 'Ignore' to try to continue normal execution\n");
 			}
 		}
-		if (la::avdecc::utils::isDebuggerPresent())
+		if (isDebuggerPresent())
 		{
 			shouldBreak = true; // Always call DebugBreak if debugger is attached
 			shouldAbort = false; // Always try to continue if debugger is attached

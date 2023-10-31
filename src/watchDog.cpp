@@ -22,6 +22,7 @@
 * @author Christophe Calmejane
 */
 
+#include "utils.hpp"
 #include "la/avdecc/watchDog.hpp"
 
 #include <unordered_map>
@@ -69,7 +70,7 @@ public:
 							for (auto& [name, watchInfo] : watchedMap)
 							{
 								// If debugger is present, update the last alive time and don't check the timeout
-								if (la::avdecc::utils::isDebuggerPresent())
+								if (utils::isDebuggerPresent())
 								{
 									watchInfo.lastAlive = currentTime;
 								}

@@ -145,6 +145,7 @@ set (HEADER_FILES_COMMON
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
 	endStationImpl.hpp
 	logHelper.hpp
+	utils.hpp
 )
 
 set (SOURCE_FILES_COMMON
