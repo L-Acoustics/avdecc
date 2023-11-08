@@ -132,6 +132,8 @@ class Subject;
 template<class Observable>
 class Observer
 {
+public:
+	virtual ~Observer() noexcept = default;
 };
 
 template<class Derived, class Mut>
