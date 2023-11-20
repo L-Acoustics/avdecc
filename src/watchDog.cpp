@@ -29,6 +29,7 @@
 #include <thread>
 #include <string>
 #include <iostream>
+#include <stdlib.h> // std::getenv
 #ifdef _WIN32
 #	include <Windows.h>
 #endif // _WIN32
@@ -80,9 +81,13 @@ public:
 								{
 									_observers.notifyObserversMethod<Observer>(&Observer::onIntervalExceeded, name, watchInfo.maximumInterval);
 
-									auto stream = std::stringstream{};
-									stream << "WatchDog event '" << name << "' exceeded the maximum allowed time (ThreadId: 0x" << std::hex << watchInfo.threadId << "). Deadlock?";
-									AVDECC_ASSERT(false, stream.str());
+									// Only print message if "AVDECC_NO_WATCHDOG_ASSERT" is not defined
+									if (std::getenv("AVDECC_NO_WATCHDOG_ASSERT") == nullptr)
+									{
+										auto stream = std::stringstream{};
+										stream << "WatchDog event '" << name << "' exceeded the maximum allowed time (ThreadId: 0x" << std::hex << watchInfo.threadId << "). Deadlock?";
+										AVDECC_ASSERT(false, stream.str());
+									}
 
 									watchInfo.ignore = true;
 								}
