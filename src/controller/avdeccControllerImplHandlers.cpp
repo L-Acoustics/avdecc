@@ -578,7 +578,7 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 				if ((step == ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo && entity.gotAllExpectedDescriptorDynamicInfo()) || (step == ControlledEntityImpl::EnumerationStep::GetDynamicInfo && entity.gotAllExpectedDynamicInfo()))
 				{
 					// Clear this enumeration step and check for next one
-					controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+					controlledEntity->clearEnumerationStep(step);
 					checkEnumerationSteps(&entity);
 				}
 			}

@@ -2827,7 +2827,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					// Get ConfigurationName
 					if (_usePackedDynamicInfo)
 					{
-						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { entity::model::DescriptorIndex{ 0u }, entity::model::DescriptorType::Configuration, configurationIndex, std::uint16_t{ 0u } } }); // CAUTION: configurationIndex should be set to 0 for CONFIGURATION_DESCRIPTOR, the index for the requested configuration name is actually passed as the descriptorIndex field
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { entity::model::ConfigurationIndex{ 0u }, entity::model::DescriptorType::Configuration, configurationIndex, std::uint16_t{ 0u } } }); // CAUTION: configurationIndex should be set to 0 for CONFIGURATION_DESCRIPTOR, the index for the requested configuration name is actually passed as the descriptorIndex field
 					}
 					else
 					{
