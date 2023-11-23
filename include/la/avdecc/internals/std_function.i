@@ -2,6 +2,7 @@
 
 %{
   #include <functional>
+  #include <memory>
 #ifndef SWIG_DIRECTORS
 #error "Directors must be enabled in your SWIG module for std_function.i to work correctly"
 #endif
@@ -20,6 +21,15 @@
 %warnfilter(844) Name::Invoke;
 %typemap(csout) Ret Name::Invoke ";"
 
+%csmethodmodifiers Name::unmanagedRelease "protected abstract";
+%warnfilter(844) Name::unmanagedRelease;
+%typemap(csout) void Name::unmanagedRelease ";"
+
+%csmethodmodifiers Name::unmanagedAlloc "protected abstract";
+%warnfilter(844) Name::unmanagedAlloc;
+%typemap(csout) void Name::unmanagedAlloc ";"
+
+
 %typemap(csin) std::function<Ret(##__VA_ARGS__)> *, std::function<Ret(##__VA_ARGS__)> &, std::function<Ret(##__VA_ARGS__)> [] "$csclassname.getCPtr(new Name.Action($csinput))"
 %typemap(csin) std::function<Ret(##__VA_ARGS__)> && "$csclassname.swigRelease(new Name.Action($csinput))"
 
@@ -27,15 +37,28 @@
   #if ((#__VA_ARGS__ == "") || (#__VA_ARGS__ == "void"))
     %typemap(cstype) std::function<Ret(##__VA_ARGS__)> *, std::function<Ret(##__VA_ARGS__)> &, std::function<Ret(##__VA_ARGS__)> [], std::function<Ret(##__VA_ARGS__)> && %{System.Action%}
     %typemap(csclassmodifiers) Name %{
+    using System.Runtime.InteropServices;
     using DelegateSignature = System.Action;
     public abstract class%}
 
 %typemap(cscode) Name %{
+  private GCHandle _handle;
+
   public class Action : Name {
     private readonly DelegateSignature _callback;
 
     public Action(DelegateSignature callback) : base() {
       _callback = callback;
+    }
+
+    protected override void unmanagedAlloc()
+    {
+      _handle = GCHandle.Alloc(this, GCHandleType.Normal);
+    }
+
+    protected override void unmanagedRelease()
+    {
+      if (_handle.IsAllocated) { _handle.Free(); }
     }
 
     public static implicit operator Action(DelegateSignature callback) => new Action(callback);
@@ -60,15 +83,28 @@
   #else
     %typemap(cstype) std::function<Ret(##__VA_ARGS__)> *, std::function<Ret(##__VA_ARGS__)> &, std::function<Ret(##__VA_ARGS__)> [], std::function<Ret(##__VA_ARGS__)> && %{System.Action<%foreach(%unpack_type, __VA_ARGS__)>%}
     %typemap(csclassmodifiers) Name %{
+    using System.Runtime.InteropServices;
     using DelegateSignature = System.Action<%foreach(%unpack_type, __VA_ARGS__)>;
     public abstract class%}
 
 %typemap(cscode) Name %{
+  private GCHandle _handle;
+
   public class Action : Name {
     private readonly DelegateSignature _callback;
 
     public Action(DelegateSignature callback) : base() {
       _callback = callback;
+    }
+
+    protected override void unmanagedAlloc()
+    {
+      _handle = GCHandle.Alloc(this, GCHandleType.Normal);
+    }
+
+    protected override void unmanagedRelease()
+    {
+      if (_handle.IsAllocated) { _handle.Free(); }
     }
 
     public static implicit operator Action(DelegateSignature callback) => new Action(callback);
@@ -95,15 +131,28 @@
   #if ((#__VA_ARGS__ == "") ||  (#__VA_ARGS__ == "void"))
     %typemap(cstype) std::function<Ret(##__VA_ARGS__)> *, std::function<Ret(##__VA_ARGS__)> &, std::function<Ret(##__VA_ARGS__)> [], std::function<Ret(##__VA_ARGS__)> && %{System.Func<%unpack_type(0, Ret)>%}
     %typemap(csclassmodifiers) Name %{
+    using System.Runtime.InteropServices;
     using DelegateSignature = System.Func<%unpack_type(0, Ret)>;
     public abstract class%}
 
 %typemap(cscode) Name %{
+  private GCHandle _handle;
+
   public class Action : Name {
     private readonly DelegateSignature _callback;
 
     public Action(DelegateSignature callback) : base() {
       _callback = callback;
+    }
+
+    protected override void unmanagedAlloc()
+    {
+      _handle = GCHandle.Alloc(this, GCHandleType.Normal);
+    }
+
+    protected override void unmanagedRelease()
+    {
+      if (_handle.IsAllocated) { _handle.Free(); }
     }
 
     public static implicit operator Action(DelegateSignature callback) => new Action(callback);
@@ -129,15 +178,28 @@
   #else
     %typemap(cstype) std::function<Ret(##__VA_ARGS__)> *, std::function<Ret(##__VA_ARGS__)> &, std::function<Ret(##__VA_ARGS__)> [], std::function<Ret(##__VA_ARGS__)> && %{System.Func<%foreach(%unpack_type, __VA_ARGS__), %unpack_type(0, Ret)>%}
     %typemap(csclassmodifiers) Name %{
+    using System.Runtime.InteropServices;
     using DelegateSignature = System.Func<%foreach(%unpack_type, __VA_ARGS__), %unpack_type(0, Ret)>;
     public abstract class%}
 
 %typemap(cscode) Name %{
+  private GCHandle _handle;
+
   public class Action : Name {
     private readonly DelegateSignature _callback;
 
     public Action(DelegateSignature callback) : base() {
       _callback = callback;
+    }
+
+    protected override void unmanagedAlloc()
+    {
+      _handle = GCHandle.Alloc(this, GCHandleType.Normal);
+    }
+
+    protected override void unmanagedRelease()
+    {
+      if (_handle.IsAllocated) { _handle.Free(); }
     }
 
     public static implicit operator Action(DelegateSignature callback) => new Action(callback);
@@ -167,7 +229,9 @@
 
 %{
   struct Name {
-    virtual ~Name() {}
+    virtual ~Name() {};
+    virtual void unmanagedAlloc() {};
+    virtual void unmanagedRelease() {};
     virtual Ret Invoke(##__VA_ARGS__) = 0;
   };
 %}
@@ -175,6 +239,8 @@
 struct Name {
   virtual ~Name();
 protected:
+  virtual void unmanagedAlloc();
+  virtual void unmanagedRelease();
   virtual Ret Invoke(##__VA_ARGS__) = 0;
 };
 
@@ -193,7 +259,8 @@ namespace std {
     // Extension for directed forward handler
     %extend {
       function<Ret(##__VA_ARGS__)>(Name *in) {
-        return new std::function<Ret(##__VA_ARGS__)>([=](auto&& ...param){
+        in->unmanagedAlloc();
+        return new std::function<Ret(##__VA_ARGS__)>([in = std::shared_ptr<Name>(in, [](Name* del){ del->unmanagedRelease(); })](auto&& ...param){
           return in->Invoke(std::forward<decltype(param)>(param)...);
         });
       }
