@@ -731,7 +731,7 @@ public:
 		public delegate void ExceptionDelegate(string message);
 		static ExceptionDelegate exceptionDelegate = new ExceptionDelegate(SetPendingException);
 
-		[global::System.Runtime.InteropServices.DllImport(DllImportPath, EntryPoint="ExceptionRegisterCallback")]
+		[global::System.Runtime.InteropServices.DllImport("$dllimport", EntryPoint="ExceptionRegisterCallback")]
 		public static extern void ExceptionRegisterCallback(ExceptionDelegate exceptionDelegate);
 
 		static void SetPendingException(string message)
@@ -752,7 +752,7 @@ public:
 		public delegate void EndStationExceptionDelegate(la.avdecc.EndStationException.Error error, string message);
 		static EndStationExceptionDelegate endStationDelegate = new EndStationExceptionDelegate(SetPendingEndStationException);
 
-		[global::System.Runtime.InteropServices.DllImport(DllImportPath, EntryPoint="EndStationExceptionRegisterCallback")]
+		[global::System.Runtime.InteropServices.DllImport("$dllimport", EntryPoint="EndStationExceptionRegisterCallback")]
 		public static extern void EndStationExceptionRegisterCallback(EndStationExceptionDelegate endStationDelegate);
 
 		static void SetPendingEndStationException(la.avdecc.EndStationException.Error error, string message)
