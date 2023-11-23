@@ -176,6 +176,22 @@ void ControllerImpl::addCompatibilityFlag(ControllerImpl const* const controller
 			{
 				newFlags.set(ControlledEntity::CompatibilityFlag::IEEE17221); // A Milan device is also an IEEE1722.1 compatible device
 				newFlags.set(flag);
+				// If device was already with IEEE warning, also add MilanWarning flag
+				if (newFlags.test(ControlledEntity::CompatibilityFlag::IEEE17221Warning))
+				{
+					newFlags.set(ControlledEntity::CompatibilityFlag::MilanWarning);
+				}
+			}
+			break;
+		case ControlledEntity::CompatibilityFlag::IEEE17221Warning:
+			if (AVDECC_ASSERT_WITH_RET(newFlags.test(ControlledEntity::CompatibilityFlag::IEEE17221), "Adding IEEE17221Warning flag for a non IEEE17221 device"))
+			{
+				newFlags.set(flag);
+				// If device was Milan compliant, also add MilanWarning flag
+				if (newFlags.test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					newFlags.set(ControlledEntity::CompatibilityFlag::MilanWarning);
+				}
 			}
 			break;
 		case ControlledEntity::CompatibilityFlag::MilanWarning:
@@ -237,6 +253,9 @@ void ControllerImpl::removeCompatibilityFlag(ControllerImpl const* const control
 				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity not fully Milan compliant");
 				newFlags.reset(flag);
 			}
+			break;
+		case ControlledEntity::CompatibilityFlag::IEEE17221Warning:
+			AVDECC_ASSERT(false, "Should not be possible to remove the IEEE17221Warning flag");
 			break;
 		case ControlledEntity::CompatibilityFlag::MilanWarning:
 			AVDECC_ASSERT(false, "Should not be possible to remove the MilanWarning flag");
@@ -4190,7 +4209,7 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 						continue;
 					}
 					LOG_CONTROLLER_WARN(entityID, "[IEEE1722.1-2021 Clause 7.2.2] The descriptor_counts field is the counts of the top level descriptors: DescriptorType {} is not a top level descriptor", entity::model::descriptorTypeToString(descriptorType));
-					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					addCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221Warning);
 					return;
 				}
 			}

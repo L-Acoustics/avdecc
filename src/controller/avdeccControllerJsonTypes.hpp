@@ -96,6 +96,8 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ControlledEntity::CompatibilityFlag, {
 																																		{ ControlledEntity::CompatibilityFlag::None, "UNKNOWN" },
 																																		{ ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE17221" },
 																																		{ ControlledEntity::CompatibilityFlag::Milan, "MILAN" },
+																																		{ ControlledEntity::CompatibilityFlag::IEEE17221Warning, "IEEE17221WARNING" },
+																																		{ ControlledEntity::CompatibilityFlag::MilanWarning, "MILANWARNING" },
 																																		{ ControlledEntity::CompatibilityFlag::Misbehaving, "MISBEHAVING" },
 																																	});
 
