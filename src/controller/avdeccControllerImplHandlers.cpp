@@ -114,7 +114,7 @@ void ControllerImpl::onEmptyGetDynamicInfoResult(entity::controller::Interface c
 				}
 			}
 
-			// Got all expected descriptors
+			// Got all expected "descriptors"check dynamic info supported"
 			if (entity.gotExpectedCheckDynamicInfoSupported())
 			{
 				// Clear this enumeration step and check for next one
@@ -572,7 +572,7 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 				}
 			}
 
-			// Got all expected descriptors
+			// Got all expected dynamic information (either descriptor dynamic information or dynamic information, because GET_DYNAMIC_INFO contains both)
 			if (entity.gotAllExpectedGetDynamicInfo())
 			{
 				if ((step == ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo && entity.gotAllExpectedDescriptorDynamicInfo()) || (step == ControlledEntityImpl::EnumerationStep::GetDynamicInfo && entity.gotAllExpectedDynamicInfo()))
@@ -614,7 +614,7 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 				}
 			}
 
-			// Got all expected descriptors
+			// Got all expected "register unsolicited notifications"
 			if (entity.gotExpectedRegisterUnsol())
 			{
 				// Clear this enumeration step and check for next one
