@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [Detecting Identify Controls at JACK level](https://github.com/L-Acoustics/avdecc/issues/135)
 - [CONTROL descriptors not properly enumerated at JACK level](https://github.com/L-Acoustics/avdecc/issues/139)
 - [CONTROL descriptors not properly attached to the parent descriptor when loaded from file](https://github.com/L-Acoustics/avdecc/issues/140)
+- [Dynamic mappings incorrect when replaced without first being removed](https://github.com/L-Acoustics/avdecc/issues/146)
 
 ## [3.4.1] - 2023-01-11
 ### Fixed
