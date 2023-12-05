@@ -438,6 +438,8 @@ public:
 	void setUnsolicitedNotificationsSupported(bool const isSupported) noexcept;
 	bool wasAdvertised() const noexcept;
 	void setAdvertised(bool const wasAdvertised) noexcept;
+	std::optional<entity::model::StreamIndex> getRedundantStreamInputIndex(entity::model::StreamIndex const streamIndex) const noexcept; // Returns the other index of a Redundant Stream Pair for a given Stream Index (std::nullopt if not part of a Redundant Stream Pair)
+	std::optional<entity::model::StreamIndex> getRedundantStreamOutputIndex(entity::model::StreamIndex const streamIndex) const noexcept; // Returns the other index of a Redundant Stream Pair for a given Stream Index (std::nullopt if not part of a Redundant Stream Pair)
 	bool isRedundantPrimaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Primary Stream (false for Secondary and non-redundant streams)
 	bool isRedundantPrimaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Primary Stream (false for Secondary and non-redundant streams)
 	bool isRedundantSecondaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
@@ -462,13 +464,16 @@ public:
 	ControlledEntityImpl& operator=(ControlledEntityImpl&&) = delete;
 
 protected:
-	using RedundantStreamCategory = std::unordered_set<entity::model::StreamIndex>;
+	using RedundantStreamCategory = std::unordered_map<entity::model::StreamIndex, entity::model::StreamIndex>;
 
 private:
 	// Private methods
 	void switchToCachedTreeModelAccessStrategy() noexcept;
 	bool isEntityModelComplete(model::EntityNode const& entityNode, std::uint16_t const configurationsCount) const noexcept;
 	void buildVirtualNodes(model::ConfigurationNode& configNode) noexcept;
+	void addOrFixStreamPortInputMapping(entity::model::AudioMappings& mappings, entity::model::AudioMapping const& mapping) const noexcept;
+	void fixStreamPortInputMappings(std::map<entity::model::StreamPortIndex, model::StreamPortInputNode>& streamPorts) noexcept;
+	void fixStreamPortMappings(model::ConfigurationNode& configNode) noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	void buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
