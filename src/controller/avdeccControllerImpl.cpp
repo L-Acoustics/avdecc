@@ -6248,8 +6248,17 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 			}
 		});
 
-	// Flush executor to be sure everything is loaded before returning
-	ExecutorManager::getInstance().flush(exName);
+	// Insert a special "marker" job in the queue (and wait for it to be executed) to be sure everything is loaded before returning
+	auto markerPromise = std::promise<void>{};
+	ExecutorManager::getInstance().pushJob(exName,
+		[&markerPromise]()
+		{
+			markerPromise.set_value();
+		});
+
+	// Wait for the marker job to be executed
+	[[maybe_unused]] auto const status = markerPromise.get_future().wait_for(std::chrono::seconds{ 30 });
+	AVDECC_ASSERT(status == std::future_status::ready, "Timeout waiting for marker job to be executed");
 
 	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Successfully registered virtual entity with ID {}", utils::toHexString(entityID, true));
 
