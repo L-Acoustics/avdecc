@@ -625,6 +625,12 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 		if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpAccLatValid))
 		{
 			dynamicInfo.msrpAccumulatedLatency = info.msrpAccumulatedLatency;
+
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onMaxTransitTimeChanged, this, &controlledEntity, streamIndex, std::chrono::nanoseconds{ info.msrpAccumulatedLatency });
+			}
 		}
 		if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamDestMacValid))
 		{
@@ -1553,6 +1559,48 @@ void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntit
 		{
 			// Invalid value
 			AVDECC_ASSERT(percentComplete > 1000, "Unknown percentComplete value");
+		}
+	}
+}
+
+void ControllerImpl::updateMaxTransitTime(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (!currentConfigurationIndexOpt)
+	{
+		return;
+	}
+
+	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+	if (streamDynamicModel)
+	{
+		// Create streamDynamicInfo if not already created
+		if (!streamDynamicModel->streamDynamicInfo.has_value())
+		{
+			streamDynamicModel->streamDynamicInfo = entity::model::StreamDynamicInfo{};
+			// Should probably not happen if the entity has been advertised
+			if (controlledEntity.wasAdvertised())
+			{
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Received SET_MAX_TRANSIT_TIME update");
+			}
+		}
+
+		// Update maxTransitTime
+		auto& streamDynamicInfo = *streamDynamicModel->streamDynamicInfo;
+		auto const msrpAccumulatedLatency = static_cast<decltype(streamDynamicInfo.msrpAccumulatedLatency)::value_type>(maxTransitTime.count());
+
+		// No value yet or changed
+		if (!streamDynamicInfo.msrpAccumulatedLatency.has_value() || *streamDynamicInfo.msrpAccumulatedLatency != msrpAccumulatedLatency)
+		{
+			streamDynamicInfo.msrpAccumulatedLatency = msrpAccumulatedLatency;
+
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onMaxTransitTimeChanged, this, &controlledEntity, streamIndex, maxTransitTime);
+			}
 		}
 	}
 }

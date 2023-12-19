@@ -2262,6 +2262,48 @@ void ControllerImpl::identifyEntity(UniqueIdentifier const targetEntityID, std::
 	}
 }
 
+void ControllerImpl::setMaxTransitTime(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, SetMaxTransitTimeHandler const& handler) const noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setMaxTransitTime (StreamIndex={} MaxTransitTime={})", streamIndex, maxTransitTime.count());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controllerProxy->setMaxTransitTime(targetEntityID, streamIndex, maxTransitTime,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setMaxTransitTime (StreamIndex={} MaxTransitTime={}): {}", streamIndex, maxTransitTime.count(), entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+
+					// Update max transit time
+					if (!!status)
+					{
+						updateMaxTransitTime(*entity, streamIndex, maxTransitTime, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
 entity::addressAccess::Tlv ControllerImpl::makeNextReadDeviceMemoryTlv(std::uint64_t const baseAddress, std::uint64_t const length, std::uint64_t const currentSize) const noexcept
 {
 	try

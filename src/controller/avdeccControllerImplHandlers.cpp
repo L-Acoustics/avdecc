@@ -549,6 +549,12 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 							auto const length = std::any_cast<std::uint64_t>(arguments.at(2));
 							updateMemoryObjectLength(*controlledEntity, configurationIndex, memoryObjectIndex, length, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 						}
+						else if (commandType == la::avdecc::protocol::AemCommandType::GetMaxTransitTime)
+						{
+							auto const streamIndex = std::any_cast<entity::model::StreamIndex>(arguments.at(0));
+							auto const maxTransitTime = std::any_cast<std::chrono::nanoseconds>(arguments.at(1));
+							updateMaxTransitTime(*controlledEntity, streamIndex, maxTransitTime, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+						}
 						else
 						{
 							LOG_CONTROLLER_DEBUG(entityID, "Unhandled commandType in GET_DYNAMIC_INFO response: CommandType={}", static_cast<std::string>(commandType));
