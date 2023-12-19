@@ -996,6 +996,22 @@ void AggregateEntityImpl::getDynamicInfo(UniqueIdentifier const targetEntityID, 
 	}
 }
 
+void AggregateEntityImpl::setMaxTransitTime(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, SetMaxTransitTimeHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setMaxTransitTime(targetEntityID, streamIndex, maxTransitTime, handler);
+	}
+}
+
+void AggregateEntityImpl::getMaxTransitTime(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetMaxTransitTimeHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMaxTransitTime(targetEntityID, streamIndex, handler);
+	}
+}
+
 /* Enumeration and Control Protocol (AECP) AA */
 void AggregateEntityImpl::addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept
 {

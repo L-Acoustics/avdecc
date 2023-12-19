@@ -234,6 +234,8 @@ AemCommandType const AemCommandType::GetMemoryObjectLength{ 0x0048 };
 AemCommandType const AemCommandType::SetStreamBackup{ 0x0049 };
 AemCommandType const AemCommandType::GetStreamBackup{ 0x004a };
 AemCommandType const AemCommandType::GetDynamicInfo{ 0x004b };
+AemCommandType const AemCommandType::SetMaxTransitTime{ 0x004c };
+AemCommandType const AemCommandType::GetMaxTransitTime{ 0x004d };
 /* 0x004c-0x7ffe reserved for future use */
 AemCommandType const AemCommandType::Expansion{ 0x7fff };
 

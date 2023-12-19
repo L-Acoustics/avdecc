@@ -642,6 +642,16 @@ void ControllerEntityImpl::getDynamicInfo(UniqueIdentifier const targetEntityID,
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getDynamicInfo(targetEntityID, parameters, handler);
 }
 
+void ControllerEntityImpl::setMaxTransitTime(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, SetMaxTransitTimeHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setMaxTransitTime(targetEntityID, streamIndex, maxTransitTime, handler);
+}
+
+void ControllerEntityImpl::getMaxTransitTime(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetMaxTransitTimeHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMaxTransitTime(targetEntityID, streamIndex, handler);
+}
+
 /* Enumeration and Control Protocol (AECP) AA */
 void ControllerEntityImpl::addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept
 {

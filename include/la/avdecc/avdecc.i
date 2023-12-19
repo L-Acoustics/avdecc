@@ -320,6 +320,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Interface)
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_DescriptorType_DescriptorIndex_OperationID;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_MemoryObjectIndex_uint64_t;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_DynamicInfoParameter;
+%rename("%s") Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_nanoseconds;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_Tlvs;
 %rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_MilanInfo;
 %rename("%s") Handler_StreamIdentification_StreamIdentification_uint16_t_ConnectionFlags_ControlStatus;
@@ -389,6 +390,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Interface)
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_DescriptorType_DescriptorIndex_OperationID_MemoryObjectOperationType_MemoryBuffer, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID, la::avdecc::entity::model::MemoryObjectOperationType const operationType, la::avdecc::MemoryBuffer const& memoryBuffer);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_DescriptorType_DescriptorIndex_OperationID, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_MemoryObjectIndex_uint64_t, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length);
+%std_function(Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_nanoseconds, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime);
 #if 0
 %rename("$ignore") la::avdecc::entity::controller::Interface::getDynamicInfo; // Temp ignore method
 %rename("$ignore") la::avdecc::entity::controller::Interface::addressAccess; // Temp ignore method

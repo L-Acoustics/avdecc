@@ -502,6 +502,26 @@ TEST(AemPayloads, GetDynamicInfo)
 	}
 }
 
+TEST(AemPayloads, SetMaxTransitTimeCommand)
+{
+	EXPECT_NO_THROW(auto const ser = la::avdecc::protocol::aemPayload::serializeSetMaxTransitTimeCommand(la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::StreamIndex(0), std::uint64_t(0)); EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemSetMaxTransitTimeCommandPayloadSize, ser.size()); la::avdecc::protocol::aemPayload::deserializeSetMaxTransitTimeCommand({ ser.data(), ser.usedBytes() });) << "Serialization/deserialization should not throw anything";
+}
+
+TEST(AemPayloads, SetMaxTransitTimeResponse)
+{
+	EXPECT_NO_THROW(auto const ser = la::avdecc::protocol::aemPayload::serializeSetMaxTransitTimeResponse(la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::StreamIndex(0), std::uint64_t(0)); EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemSetMaxTransitTimeResponsePayloadSize, ser.size()); la::avdecc::protocol::aemPayload::deserializeSetMaxTransitTimeResponse(la::avdecc::entity::LocalEntity::AemCommandStatus::Success, { ser.data(), ser.usedBytes() });) << "Serialization/deserialization should not throw anything";
+}
+
+TEST(AemPayloads, GetMaxTransitTimeCommand)
+{
+	EXPECT_NO_THROW(auto const ser = la::avdecc::protocol::aemPayload::serializeGetMaxTransitTimeCommand(la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::StreamIndex(0)); EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemGetMaxTransitTimeCommandPayloadSize, ser.size()); la::avdecc::protocol::aemPayload::deserializeGetMaxTransitTimeCommand({ ser.data(), ser.usedBytes() });) << "Serialization/deserialization should not throw anything";
+}
+
+TEST(AemPayloads, GetMaxTransitTimeResponse)
+{
+	EXPECT_NO_THROW(auto const ser = la::avdecc::protocol::aemPayload::serializeGetMaxTransitTimeResponse(la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::StreamIndex(0), std::uint64_t(0)); EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemGetMaxTransitTimeResponsePayloadSize, ser.size()); la::avdecc::protocol::aemPayload::deserializeGetMaxTransitTimeResponse(la::avdecc::entity::LocalEntity::AemCommandStatus::Success, { ser.data(), ser.usedBytes() });) << "Serialization/deserialization should not throw anything";
+}
+
 TEST(AemPayloads, SendPayloadMaximumSize)
 {
 	la::avdecc::entity::model::AudioMappings mappings{};

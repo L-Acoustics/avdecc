@@ -469,6 +469,8 @@ inline void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterf
 		return;
 	}
 
+	outputText("Sending commands to " + la::avdecc::utils::toHexString(foundEntity) + "\n");
+
 	// Send an Acquire command
 	{
 		auto commandResultPromise = std::promise<void>{};
@@ -476,6 +478,42 @@ inline void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterf
 			[&commandResultPromise](la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const /*owningEntity*/, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/)
 			{
 				outputText("Got Acquire Entity response with status: " + std::to_string(la::avdecc::utils::to_integral(status)) + "\n");
+				commandResultPromise.set_value();
+			});
+
+		// Wait for the command result
+		auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(20));
+		if (status == std::future_status::timeout)
+		{
+			outputText("AEM AECP command timed out\n");
+		}
+	}
+
+	// Get Max Transit Time
+	{
+		auto commandResultPromise = std::promise<void>{};
+		entity->getMaxTransitTime(foundEntity, la::avdecc::entity::model::StreamIndex{ 0u },
+			[&commandResultPromise](la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const /*streamIndex*/, std::chrono::nanoseconds const& maxTransitTime)
+			{
+				outputText("Got GetMaxTransitTime response with status: " + std::to_string(la::avdecc::utils::to_integral(status)) + ": " + std::to_string(maxTransitTime.count()) + "\n");
+				commandResultPromise.set_value();
+			});
+
+		// Wait for the command result
+		auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(20));
+		if (status == std::future_status::timeout)
+		{
+			outputText("AEM AECP command timed out\n");
+		}
+	}
+
+	// Set Max Transit Time
+	{
+		auto commandResultPromise = std::promise<void>{};
+		entity->setMaxTransitTime(foundEntity, la::avdecc::entity::model::StreamIndex{ 0u }, std::chrono::nanoseconds(1000000),
+			[&commandResultPromise](la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const /*streamIndex*/, std::chrono::nanoseconds const& maxTransitTime)
+			{
+				outputText("Got SetMaxTransitTime response with status: " + std::to_string(la::avdecc::utils::to_integral(status)) + ": " + std::to_string(maxTransitTime.count()) + "\n");
 				commandResultPromise.set_value();
 			});
 

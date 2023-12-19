@@ -203,6 +203,8 @@ public:
 	static LA_AVDECC_API AemCommandType const SetStreamBackup;
 	static LA_AVDECC_API AemCommandType const GetStreamBackup;
 	static LA_AVDECC_API AemCommandType const GetDynamicInfo;
+	static LA_AVDECC_API AemCommandType const SetMaxTransitTime;
+	static LA_AVDECC_API AemCommandType const GetMaxTransitTime;
 	static LA_AVDECC_API AemCommandType const Expansion;
 
 	static LA_AVDECC_API AemCommandType const InvalidCommandType;

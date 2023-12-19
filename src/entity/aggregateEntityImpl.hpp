@@ -176,6 +176,8 @@ private:
 	virtual void setMemoryObjectLength(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, SetMemoryObjectLengthHandler const& handler) const noexcept override;
 	virtual void getMemoryObjectLength(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, GetMemoryObjectLengthHandler const& handler) const noexcept override;
 	virtual void getDynamicInfo(UniqueIdentifier const targetEntityID, controller::DynamicInfoParameters const& parameters, GetDynamicInfoHandler const& handler) const noexcept override;
+	virtual void setMaxTransitTime(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, SetMaxTransitTimeHandler const& handler) const noexcept override;
+	virtual void getMaxTransitTime(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetMaxTransitTimeHandler const& handler) const noexcept override;
 	/* Enumeration and Control Protocol (AECP) AA */
 	virtual void addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept override;
 	/* Enumeration and Control Protocol (AECP) MVU (Milan Vendor Unique) */

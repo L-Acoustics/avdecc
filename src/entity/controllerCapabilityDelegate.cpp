@@ -1954,6 +1954,30 @@ void CapabilityDelegate::getDynamicInfo(UniqueIdentifier const targetEntityID, D
 				}
 			} },
 		// Get Stream Backup
+		// Get Max Transit Time
+		{ protocol::AemCommandType::GetMaxTransitTime.getValue(),
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			{
+				// Validate parameters
+				auto const& args = parameters.arguments;
+				auto constexpr ExpectedArgsCount = 1u;
+				if (args.size() != ExpectedArgsCount)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Invalid number of arguments for {} command ({} but expected {})", static_cast<std::string>(parameters.commandType), args.size(), ExpectedArgsCount);
+					throw std::invalid_argument("Invalid number of arguments for GetMaxTransitTime command");
+				}
+				try
+				{
+					auto const streamIndex = std::any_cast<model::StreamIndex>(args.at(0));
+					auto const ser = la::avdecc::protocol::aemPayload::serializeGetMaxTransitTimeCommand(model::DescriptorType::StreamOutput, streamIndex);
+					dynamicInfos.emplace_back(la::avdecc::protocol::AemAecpStatus::Success, la::avdecc::protocol::AemCommandType::GetMaxTransitTime, la::avdecc::MemoryBuffer{ ser.data(), ser.usedBytes() });
+				}
+				catch (std::bad_any_cast const&)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Incorrect argument type");
+					throw std::invalid_argument("Failed to serialize getDynamicInfo: Incorrect argument type");
+				}
+			} },
 	};
 
 	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, s_emptyDynamicInfoParameters);
@@ -1978,6 +2002,36 @@ void CapabilityDelegate::getDynamicInfo(UniqueIdentifier const targetEntityID, D
 	catch ([[maybe_unused]] std::exception const& e)
 	{
 		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::setMaxTransitTime(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, Interface::SetMaxTransitTimeHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, std::chrono::nanoseconds{ 0u });
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetMaxTransitTimeCommand(model::DescriptorType::StreamOutput, streamIndex, static_cast<std::uint64_t>(maxTransitTime.count()));
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetMaxTransitTime, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setMaxTransitTime: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::getMaxTransitTime(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, Interface::GetMaxTransitTimeHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, std::chrono::nanoseconds{ 0u });
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetMaxTransitTimeCommand(model::DescriptorType::StreamOutput, streamIndex);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetMaxTransitTime, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getMaxTransitTime: {}", e.what());
 		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
 	}
 }
@@ -4361,6 +4415,21 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 								return parameters;
 							} },
 						// Get Stream Backup
+						// Get Max Transit Time
+						{ protocol::AemCommandType::GetMaxTransitTime.getValue(),
+							[](UniqueIdentifier const /*targetID*/, entity::LocalEntity::AemCommandStatus const status, protocol::AemAecpdu::Payload const payload)
+							{
+								// Deserialize payload
+								auto const[descriptorType, streamIndex, maxTransitTime] = protocol::aemPayload::deserializeGetMaxTransitTimeResponse(status, payload);
+
+								// Append to dynamic info parameters
+								auto parameters = DynamicInfoParameter::Parameters{};
+								//parameters.emplace_back(descriptorType); // Ignored, descriptorType is not part of the response
+								parameters.emplace_back(streamIndex);
+								parameters.emplace_back(maxTransitTime);
+
+								return parameters;
+							} },
 					};
 
 					for (auto const& [dynamicInfoStatus, commandType, buffer] : dynamicInfos)
@@ -4379,6 +4448,34 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 
 				// Notify handlers
 				answerCallback.invoke<controller::Interface::GetDynamicInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, parameters);
+			}
+		},
+		// Set Max Transit Time
+		{ protocol::AemCommandType::SetMaxTransitTime.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+			{
+				// Deserialize payload
+				auto const[descriptorType, streamIndex, maxTransitTime] = protocol::aemPayload::deserializeSetMaxTransitTimeResponse(status, aem.getPayload());
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				auto const transitTime = std::chrono::nanoseconds{ maxTransitTime };
+				answerCallback.invoke<controller::Interface::SetMaxTransitTimeHandler>(protocolViolationCallback, controllerInterface, targetID, status, streamIndex, transitTime);
+				if (aem.getUnsolicited() && delegate && !!status)
+				{
+					utils::invokeProtectedMethod(&controller::Delegate::onMaxTransitTimeChanged, delegate, controllerInterface, targetID, streamIndex, transitTime);
+				}
+			}
+		},
+		// Get Max Transit Time
+		{ protocol::AemCommandType::GetMaxTransitTime.getValue(),[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+			{
+				// Deserialize payload
+				auto const[descriptorType, streamIndex, maxTransitTime] = protocol::aemPayload::deserializeGetMaxTransitTimeResponse(status, aem.getPayload());
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				auto const transitTime = std::chrono::nanoseconds{ maxTransitTime };
+				answerCallback.invoke<controller::Interface::GetMaxTransitTimeHandler>(protocolViolationCallback, controllerInterface, targetID, status, streamIndex, transitTime);
 			}
 		},
 	};

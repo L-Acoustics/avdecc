@@ -261,6 +261,18 @@ constexpr size_t AecpAemGetDynamicInfoCommandPayloadMinSize = 0u;
 constexpr size_t AecpAemGetDynamicInfoResponsePayloadMinSize = 0u;
 constexpr size_t AecpAemGetDynamicInfoStructureHeaderSize = 8u; // Header size of each structure in the response
 
+/** SET_MAX_TRANSIT_TIME Command - IEEE1722.1-2021 Clause 7.4.77.1 */
+constexpr size_t AecpAemSetMaxTransitTimeCommandPayloadSize = 12u;
+
+/** SET_MAX_TRANSIT_TIME Response - IEEE1722.1-2021 Clause 7.4.77.1 */
+constexpr size_t AecpAemSetMaxTransitTimeResponsePayloadSize = 12u;
+
+/** GET_MAX_TRANSIT_TIME Command - IEEE1722.1-2021 Clause 7.4.77.1 */
+constexpr size_t AecpAemGetMaxTransitTimeCommandPayloadSize = 4u;
+
+/** GET_MAX_TRANSIT_TIME Response - IEEE1722.1-2021 Clause 7.4.77.2 */
+constexpr size_t AecpAemGetMaxTransitTimeResponsePayloadSize = 12u;
+
 static_assert(AecpAemAddAudioMappingsCommandPayloadMinSize == AecpAemRemoveAudioMappingsCommandPayloadMinSize, "Add and Remove no longer the same size, we should split AecpAemMaxAddRemoveAudioMappings in 2");
 constexpr size_t AecpAemMaxAddRemoveAudioMappings = (AemAecpdu::MaximumSendPayloadBufferLength - AecpAemRemoveAudioMappingsCommandPayloadMinSize) / 8;
 

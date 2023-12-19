@@ -453,6 +453,22 @@ DynamicInfos deserializeGetDynamicInfoCommand(AemAecpdu::Payload const& payload)
 Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetDynamicInfoResponse(DynamicInfos const& commands);
 DynamicInfos deserializeGetDynamicInfoResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload);
 
+/** SET_MAX_TRANSIT_TIME Command - IEEE1722.1-2021 Clause 7.4.77.1 */
+Serializer<AecpAemSetMaxTransitTimeCommandPayloadSize> serializeSetMaxTransitTimeCommand(entity::model::DescriptorType const descriptorType, entity::model::StreamIndex const streamIndex, std::uint64_t const maxTransitTime);
+std::tuple<entity::model::DescriptorType, entity::model::StreamIndex, std::uint64_t> deserializeSetMaxTransitTimeCommand(AemAecpdu::Payload const& payload);
+
+/** SET_MAX_TRANSIT_TIME Response - IEEE1722.1-2021 Clause 7.4.77.1 */
+Serializer<AecpAemSetMaxTransitTimeResponsePayloadSize> serializeSetMaxTransitTimeResponse(entity::model::DescriptorType const descriptorType, entity::model::StreamIndex const streamIndex, std::uint64_t const maxTransitTime);
+std::tuple<entity::model::DescriptorType, entity::model::StreamIndex, std::uint64_t> deserializeSetMaxTransitTimeResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload);
+
+/** GET_MAX_TRANSIT_TIME Command - IEEE1722.1-2021 Clause 7.4.77.1 */
+Serializer<AecpAemGetMaxTransitTimeCommandPayloadSize> serializeGetMaxTransitTimeCommand(entity::model::DescriptorType const descriptorType, entity::model::StreamIndex const streamIndex);
+std::tuple<entity::model::DescriptorType, entity::model::StreamIndex> deserializeGetMaxTransitTimeCommand(AemAecpdu::Payload const& payload);
+
+/** GET_MAX_TRANSIT_TIME Response - IEEE1722.1-2021 Clause 7.4.77.2 */
+Serializer<AecpAemGetMaxTransitTimeResponsePayloadSize> serializeGetMaxTransitTimeResponse(entity::model::DescriptorType const descriptorType, entity::model::StreamIndex const streamIndex, std::uint64_t const maxTransitTime);
+std::tuple<entity::model::DescriptorType, entity::model::StreamIndex, std::uint64_t> deserializeGetMaxTransitTimeResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload);
+
 } // namespace aemPayload
 } // namespace protocol
 } // namespace avdecc

@@ -3102,6 +3102,106 @@ DynamicInfos deserializeGetDynamicInfoResponse(entity::LocalEntity::AemCommandSt
 	return deserializeGetDynamicInfoCommand(payload);
 }
 
+/** SET_MAX_TRANSIT_TIME Command - IEEE1722.1-2021 Clause 7.4.77.1 */
+Serializer<AecpAemSetMaxTransitTimeCommandPayloadSize> serializeSetMaxTransitTimeCommand(entity::model::DescriptorType const descriptorType, entity::model::StreamIndex const streamIndex, std::uint64_t const maxTransitTime)
+{
+	Serializer<AecpAemSetMaxTransitTimeCommandPayloadSize> ser;
+
+	ser << descriptorType << streamIndex;
+	ser << maxTransitTime;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::StreamIndex, std::uint64_t> deserializeSetMaxTransitTimeCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemSetMaxTransitTimeCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::StreamIndex streamIndex{ 0u };
+	std::uint64_t maxTransitTime{ 0u };
+
+	des >> descriptorType >> streamIndex;
+	des >> maxTransitTime;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemSetMaxTransitTimeCommandPayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, streamIndex, maxTransitTime);
+}
+
+/** SET_MAX_TRANSIT_TIME Response - IEEE1722.1-2021 Clause 7.4.77.1 */
+Serializer<AecpAemSetMaxTransitTimeResponsePayloadSize> serializeSetMaxTransitTimeResponse(entity::model::DescriptorType const descriptorType, entity::model::StreamIndex const streamIndex, std::uint64_t const maxTransitTime)
+{
+	// Same as SET_MAX_TRANSIT_TIME Command
+	static_assert(AecpAemSetMaxTransitTimeResponsePayloadSize == AecpAemSetMaxTransitTimeCommandPayloadSize, "SET_MAX_TRANSIT_TIME Response no longer the same as SET_MAX_TRANSIT_TIME Command");
+	return serializeSetMaxTransitTimeCommand(descriptorType, streamIndex, maxTransitTime);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::StreamIndex, std::uint64_t> deserializeSetMaxTransitTimeResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
+{
+	// Same as SET_MAX_TRANSIT_TIME Command
+	static_assert(AecpAemSetMaxTransitTimeResponsePayloadSize == AecpAemSetMaxTransitTimeCommandPayloadSize, "SET_MAX_TRANSIT_TIME Response no longer the same as SET_MAX_TRANSIT_TIME Command");
+	checkResponsePayload(payload, status, AecpAemSetMaxTransitTimeCommandPayloadSize, AecpAemSetMaxTransitTimeResponsePayloadSize);
+	return deserializeSetMaxTransitTimeCommand(payload);
+}
+
+/** GET_MAX_TRANSIT_TIME Command - IEEE1722.1-2021 Clause 7.4.77.1 */
+Serializer<AecpAemGetMaxTransitTimeCommandPayloadSize> serializeGetMaxTransitTimeCommand(entity::model::DescriptorType const descriptorType, entity::model::StreamIndex const streamIndex)
+{
+	Serializer<AecpAemGetClockSourceCommandPayloadSize> ser;
+
+	ser << descriptorType << streamIndex;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::StreamIndex> deserializeGetMaxTransitTimeCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetMaxTransitTimeCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::StreamIndex streamIndex{ 0u };
+
+	des >> descriptorType >> streamIndex;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetMaxTransitTimeCommandPayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, streamIndex);
+}
+
+/** GET_MAX_TRANSIT_TIME Response - IEEE1722.1-2021 Clause 7.4.77.2 */
+Serializer<AecpAemGetMaxTransitTimeResponsePayloadSize> serializeGetMaxTransitTimeResponse(entity::model::DescriptorType const descriptorType, entity::model::StreamIndex const streamIndex, std::uint64_t const maxTransitTime)
+{
+	// Same as SET_MAX_TRANSIT_TIME Command
+	static_assert(AecpAemGetMaxTransitTimeResponsePayloadSize == AecpAemSetMaxTransitTimeCommandPayloadSize, "GET_MAX_TRANSIT_TIME Response no longer the same as SET_MAX_TRANSIT_TIME Command");
+	return serializeSetMaxTransitTimeCommand(descriptorType, streamIndex, maxTransitTime);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::StreamIndex, std::uint64_t> deserializeGetMaxTransitTimeResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
+{
+	// Same as SET_MAX_TRANSIT_TIME Command
+	static_assert(AecpAemGetMaxTransitTimeResponsePayloadSize == AecpAemSetMaxTransitTimeCommandPayloadSize, "GET_MAX_TRANSIT_TIME Response no longer the same as SET_MAX_TRANSIT_TIME Command");
+	checkResponsePayload(payload, status, AecpAemSetMaxTransitTimeCommandPayloadSize, AecpAemGetMaxTransitTimeResponsePayloadSize);
+	return deserializeSetMaxTransitTimeCommand(payload);
+}
+
+
 } // namespace aemPayload
 } // namespace protocol
 } // namespace avdecc
