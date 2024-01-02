@@ -97,7 +97,7 @@ std::optional<ControlValues> LA_AVDECC_CALL_CONVENTION unpackDynamicControlValue
 		}
 		else
 		{
-			LOG_AEM_PAYLOAD_TRACE("unpackDynamicControlValues warning: Unsupported ControlValueType: {}", valueType);
+			LOG_AEM_PAYLOAD_TRACE("unpackDynamicControlValues warning: Unsupported ControlValueType: {}", controlValueTypeToString(valueType));
 			// We still want to return a ControlValues object, but it will be invalid (it's not the device's fault if the ControlValueType is not supported by the library)
 			return ControlValues{};
 		}

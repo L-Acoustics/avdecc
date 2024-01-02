@@ -1628,12 +1628,12 @@ void ControllerImpl::setAssociationID(UniqueIdentifier const targetEntityID, Uni
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User setAssociationID (AssociationID={})", associationID);
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setAssociationID (AssociationID={})", utils::toHexString(associationID));
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controllerProxy->setAssociation(targetEntityID, associationID,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const associationID)
 			{
-				LOG_CONTROLLER_TRACE(entityID, "User setAssociationID (AssociationID={}): {}", associationID, entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(entityID, "User setAssociationID (AssociationID={}): {}", utils::toHexString(associationID), entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
 				auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -1670,12 +1670,12 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={})", audioUnitIndex, samplingRate);
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={})", audioUnitIndex, samplingRate.getNominalSampleRate());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controllerProxy->setAudioUnitSamplingRate(targetEntityID, audioUnitIndex, samplingRate,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate)
 			{
-				LOG_CONTROLLER_TRACE(entityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={}): {}", audioUnitIndex, samplingRate, entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(entityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={}): {}", audioUnitIndex, samplingRate.getNominalSampleRate(), entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
 				auto controlledEntity = getControlledEntityImplGuard(entityID);

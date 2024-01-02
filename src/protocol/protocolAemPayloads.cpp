@@ -1009,12 +1009,12 @@ entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAec
 			}
 			catch ([[maybe_unused]] std::invalid_argument const& e)
 			{
-				LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Unsupported ControlValueType for READ_CONTROL_DESCRIPTOR RESPONSE: {} ({})", valueType, e.what());
+				LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Unsupported ControlValueType for READ_CONTROL_DESCRIPTOR RESPONSE: {} ({})", controlValueTypeToString(valueType), e.what());
 			}
 		}
 		else
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Unsupported ControlValueType for READ_CONTROL_DESCRIPTOR RESPONSE: {}", valueType);
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Unsupported ControlValueType for READ_CONTROL_DESCRIPTOR RESPONSE: {}", controlValueTypeToString(valueType));
 		}
 
 		if (des.remaining() != 0)
@@ -2037,7 +2037,7 @@ Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeSetControlCommand
 		}
 		else
 		{
-			LOG_AEM_PAYLOAD_TRACE("serializeSetControlCommand warning: Unsupported ControlValueType: {}", valueType);
+			LOG_AEM_PAYLOAD_TRACE("serializeSetControlCommand warning: Unsupported ControlValueType: {}", controlValueTypeToString(valueType));
 			throw UnsupportedValueException();
 		}
 	}
