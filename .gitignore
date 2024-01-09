@@ -16,3 +16,7 @@
 
 # Ignore .defaults.sh file
 /.defaults.sh
+
+# Ignore user cmake presets
+/CMakeUserPresets.json
+
