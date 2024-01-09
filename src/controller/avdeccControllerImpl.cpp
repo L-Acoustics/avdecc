@@ -406,6 +406,64 @@ void ControllerImpl::updateStreamOutputFormat(ControlledEntityImpl& controlledEn
 	}
 }
 
+static void updateStreamDynamicInfoData(entity::model::StreamNodeDynamicModel* const streamDynamicModel, entity::model::StreamInfo const& info, std::function<void(std::uint32_t const msrpAccumulatedLatency)> const& msrpAccumulatedLatencyChangedHandler, std::function<void(entity::model::StreamDynamicInfo const& streamDynamicInfo)> const& dynamicInfoUpdatedHandler) noexcept
+{
+	// Make a copy (or create if first time), we'll move it back later
+	auto dynamicInfo = streamDynamicModel->streamDynamicInfo ? *streamDynamicModel->streamDynamicInfo : decltype(streamDynamicModel->streamDynamicInfo)::value_type{};
+
+	// Update each field
+	dynamicInfo.isClassB = info.streamInfoFlags.test(entity::StreamInfoFlag::ClassB);
+	dynamicInfo.hasSavedState = info.streamInfoFlags.test(entity::StreamInfoFlag::SavedState);
+	dynamicInfo.doesSupportEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::SupportsEncrypted);
+	dynamicInfo.arePdusEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::EncryptedPdu);
+	dynamicInfo.hasTalkerFailed = info.streamInfoFlags.test(entity::StreamInfoFlag::TalkerFailed);
+	dynamicInfo._streamInfoFlags = info.streamInfoFlags;
+
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamIDValid))
+	{
+		dynamicInfo.streamID = info.streamID;
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpAccLatValid))
+	{
+		dynamicInfo.msrpAccumulatedLatency = info.msrpAccumulatedLatency;
+
+		// Call msrpAccumulatedLatencyChangedHandler handler
+		utils::invokeProtectedHandler(msrpAccumulatedLatencyChangedHandler, *dynamicInfo.msrpAccumulatedLatency);
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamDestMacValid))
+	{
+		dynamicInfo.streamDestMac = info.streamDestMac;
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpFailureValid))
+	{
+		dynamicInfo.msrpFailureCode = info.msrpFailureCode;
+		dynamicInfo.msrpFailureBridgeID = info.msrpFailureBridgeID;
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamVlanIDValid))
+	{
+		dynamicInfo.streamVlanID = info.streamVlanID;
+	}
+	// Milan additions - Only replace if we have the extended info in the payload (otherwise we'll keep the previous value)
+	if (info.streamInfoFlagsEx)
+	{
+		dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
+	}
+	if (info.probingStatus)
+	{
+		dynamicInfo.probingStatus = info.probingStatus;
+	}
+	if (info.acmpStatus)
+	{
+		dynamicInfo.acmpStatus = info.acmpStatus;
+	}
+
+	// Move the data back
+	streamDynamicModel->streamDynamicInfo = std::move(dynamicInfo);
+
+	// Call dynamicInfoUpdatedHandler handler
+	utils::invokeProtectedHandler(dynamicInfoUpdatedHandler, *streamDynamicModel->streamDynamicInfo);
+}
+
 void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const streamFormatRequired, bool const milanExtendedRequired, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
@@ -452,7 +510,7 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 	}
 	updateStreamInputRunningStatus(controlledEntity, streamIndex, !info.streamInfoFlags.test(entity::StreamInfoFlag::StreamingWait), notFoundBehavior);
 
-
+#if 0
 	// According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
 	// This means that we should always replace the previously stored StreamInfo data with the last one received
 	{
@@ -556,6 +614,79 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 			}
 		}
 	}
+#else
+	// According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
+	// This means that we should always replace the previously stored StreamInfo data with the last one received
+	// Unfortunately it proves very difficult to do so for some devices (like when receiving a SET_STREAM_INFO with only one field set, it must generate a GET_STREAM_INFO with all fields set)
+	// So we'll retrieve the current StreamDynamicInfo and update it with the new data
+
+	// Retrieve StreamDynamicInfo
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
+	{
+		auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamInputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+		if (streamDynamicModel)
+		{
+			updateStreamDynamicInfoData(streamDynamicModel, info,
+				[this, &controlledEntity, streamIndex](std::uint32_t const msrpAccumulatedLatency)
+				{
+					// Check for Diagnostics - Latency Error
+					{
+						// Only if the entity has been advertised, onPreAdvertiseEntity will take care of the non-advertised ones later
+						if (controlledEntity.wasAdvertised())
+						{
+							auto isOverLatency = false;
+
+							// Only if Latency is greater than 0
+							if (msrpAccumulatedLatency > 0)
+							{
+								auto const& sink = controlledEntity.getSinkConnectionInformation(streamIndex);
+
+								// If the Stream is Connected, search for the Talker we are connected to
+								if (sink.state == entity::model::StreamInputConnectionInfo::State::Connected)
+								{
+									// Take a "scoped locked" shared copy of the ControlledEntity
+									auto talkerEntity = getControlledEntityImplGuard(sink.talkerStream.entityID, true);
+
+									if (talkerEntity)
+									{
+										auto const& talker = *talkerEntity;
+
+										// Only process advertised entities, onPreAdvertiseEntity will take care of the non-advertised ones later
+										if (talker.wasAdvertised())
+										{
+											try
+											{
+												auto const& talkerStreamOutputNode = talker.getStreamOutputNode(talker.getCurrentConfigurationIndex(), sink.talkerStream.streamIndex);
+												if (talkerStreamOutputNode.dynamicModel.streamDynamicInfo)
+												{
+													isOverLatency = msrpAccumulatedLatency > (*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency;
+												}
+											}
+											catch (ControlledEntity::Exception const&)
+											{
+												// Ignore Exception
+											}
+										}
+									}
+								}
+							}
+
+							updateStreamInputLatency(controlledEntity, streamIndex, isOverLatency);
+						}
+					}
+				},
+				[this, &controlledEntity, streamIndex](entity::model::StreamDynamicInfo const& streamDynamicInfo)
+				{
+					// Entity was advertised to the user, notify observers
+					if (controlledEntity.wasAdvertised())
+					{
+						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputDynamicInfoChanged, this, &controlledEntity, streamIndex, streamDynamicInfo);
+					}
+				});
+		}
+	}
+#endif
 }
 
 void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const streamFormatRequired, bool const milanExtendedRequired, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
@@ -604,6 +735,7 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 	}
 	updateStreamOutputRunningStatus(controlledEntity, streamIndex, !info.streamInfoFlags.test(entity::StreamInfoFlag::StreamingWait), notFoundBehavior);
 
+#if 0
 	// According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
 	// This means that we should always replace the previously stored StreamInfo data with the last one received
 	{
@@ -667,6 +799,39 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 			}
 		}
 	}
+#else
+	// According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
+	// This means that we should always replace the previously stored StreamInfo data with the last one received
+	// Unfortunately it proves very difficult to do so for some devices (like when receiving a SET_STREAM_INFO with only one field set, it must generate a GET_STREAM_INFO with all fields set)
+	// So we'll retrieve the current StreamDynamicInfo and update it with the new data
+
+	// Retrieve StreamDynamicInfo
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
+	{
+		auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+		if (streamDynamicModel)
+		{
+			updateStreamDynamicInfoData(streamDynamicModel, info,
+				[this, &controlledEntity, streamIndex](std::uint32_t const msrpAccumulatedLatency)
+				{
+					// Entity was advertised to the user, notify observers
+					if (controlledEntity.wasAdvertised())
+					{
+						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onMaxTransitTimeChanged, this, &controlledEntity, streamIndex, std::chrono::nanoseconds{ msrpAccumulatedLatency });
+					}
+				},
+				[this, &controlledEntity, streamIndex](entity::model::StreamDynamicInfo const& streamDynamicInfo)
+				{
+					// Entity was advertised to the user, notify observers
+					if (controlledEntity.wasAdvertised())
+					{
+						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputDynamicInfoChanged, this, &controlledEntity, streamIndex, streamDynamicInfo);
+					}
+				});
+		}
+	}
+#endif
 }
 
 void ControllerImpl::updateEntityName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
