@@ -70,5 +70,10 @@ add_custom_command(
 	VERBATIM
 )
 
+# Set specific compile flag for aemPayloads_tests.cpp
+if(MSVC)
+	set_source_files_properties(aemPayloads_tests.cpp PROPERTIES COMPILE_FLAGS /bigobj)
+endif()
+
 # Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
 cu_setup_deploy_runtime(Tests ${INSTALL_TEST_FLAG} ${SIGN_FLAG})
