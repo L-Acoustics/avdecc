@@ -645,28 +645,29 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 								// If the Stream is Connected, search for the Talker we are connected to
 								if (sink.state == entity::model::StreamInputConnectionInfo::State::Connected)
 								{
-									// Take a "scoped locked" shared copy of the ControlledEntity
+									// Take a "scoped locked" shared copy of the ControlledEntity // Only process advertised entities, onPreAdvertiseEntity will take care of the non-advertised ones later
 									auto talkerEntity = getControlledEntityImplGuard(sink.talkerStream.entityID, true);
 
 									if (talkerEntity)
 									{
 										auto const& talker = *talkerEntity;
 
-										// Only process advertised entities, onPreAdvertiseEntity will take care of the non-advertised ones later
-										if (talker.wasAdvertised())
+										try
 										{
-											try
+											auto const& talkerStreamOutputNode = talker.getStreamOutputNode(talker.getCurrentConfigurationIndex(), sink.talkerStream.streamIndex);
+											// If we have StreamDynamicInfo data
+											if (talkerStreamOutputNode.dynamicModel.streamDynamicInfo)
 											{
-												auto const& talkerStreamOutputNode = talker.getStreamOutputNode(talker.getCurrentConfigurationIndex(), sink.talkerStream.streamIndex);
-												if (talkerStreamOutputNode.dynamicModel.streamDynamicInfo)
+												// If we have a msrpAccumulatedLatency value
+												if ((*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
 												{
-													isOverLatency = msrpAccumulatedLatency > (*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency;
+													isOverLatency = msrpAccumulatedLatency > *(*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency;
 												}
 											}
-											catch (ControlledEntity::Exception const&)
-											{
-												// Ignore Exception
-											}
+										}
+										catch (ControlledEntity::Exception const&)
+										{
+											// Ignore Exception
 										}
 									}
 								}
@@ -4874,11 +4875,13 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 											}
 
 											// Check for Latency Error (if the Listener was advertised before this Talker, it couldn't check Talker's PresentationTime, so do it now)
+											// If we have StreamDynamicInfo data
 											if (streamOutputNode.dynamicModel.streamDynamicInfo && streamInputNode.dynamicModel.streamDynamicInfo)
 											{
-												if ((*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency > (*streamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
+												// If we have a msrpAccumulatedLatency value
+												if ((*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency && (*streamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
 												{
-													updateStreamInputLatency(listenerEntity, streamIndex, true);
+													updateStreamInputLatency(listenerEntity, streamIndex, *(*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency > *(*streamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency);
 												}
 											}
 										}
@@ -4940,11 +4943,13 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 							try
 							{
 								auto const& talkerStreamOutputNode = talkerEntity.getStreamOutputNode(talkerEntity.getCurrentConfigurationIndex(), talkerStreamIndex);
+								// If we have StreamDynamicInfo data
 								if (talkerStreamOutputNode.dynamicModel.streamDynamicInfo && streamInputNode.dynamicModel.streamDynamicInfo)
 								{
-									if ((*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency > (*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
+									// If we have a msrpAccumulatedLatency value
+									if ((*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency && (*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
 									{
-										isOverLatency = true;
+										isOverLatency = *(*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency > *(*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency;
 									}
 								}
 							}
