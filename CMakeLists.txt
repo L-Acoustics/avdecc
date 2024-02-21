@@ -12,7 +12,7 @@ cmake_minimum_required(VERSION 3.22)
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task) which will be labelled 1.5.0-beta3
 set(LA_AVDECC_VERSION 4.0.0.11)
 set(LA_AVDECC_CONTROLLER_VERSION 4.0.0.14)
-set(LA_AVDECC_C_VERSION 4.0.0.7)
+set(LA_AVDECC_C_VERSION 4.0.0.8)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 

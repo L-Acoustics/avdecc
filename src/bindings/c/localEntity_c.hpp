@@ -35,7 +35,7 @@ namespace avdecc
 {
 namespace bindings
 {
-LA_AVDECC_BINDINGS_C_API la::avdecc::entity::AggregateEntity& LA_AVDECC_BINDINGS_C_CALL_CONVENTION getAggregateEntity(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle);
+la::avdecc::entity::AggregateEntity& getAggregateEntity(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle);
 }
 } // namespace avdecc
 } // namespace la
