@@ -39,6 +39,9 @@
 #ifdef HAVE_PROTOCOL_INTERFACE_VIRTUAL
 #	include "protocolInterface/protocolInterface_virtual.hpp"
 #endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
+#ifdef HAVE_PROTOCOL_INTERFACE_SERIAL
+#	include "protocolInterface/protocolInterface_serial.hpp"
+#endif // HAVE_PROTOCOL_INTERFACE_SERIAL
 
 namespace la
 {
@@ -196,6 +199,14 @@ ProtocolInterface* LA_AVDECC_CALL_CONVENTION ProtocolInterface::createRawProtoco
 		case Type::Virtual:
 			return ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(networkInterfaceName, { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }, executorName);
 #endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
+#if defined(HAVE_PROTOCOL_INTERFACE_SERIAL)
+		case Type::Serial:
+			return ProtocolInterfaceSerial::createRawProtocolInterfaceSerial(networkInterfaceName, executorName);
+#endif // HAVE_PROTOCOL_INTERFACE_SERIAL
+#if defined(HAVE_PROTOCOL_INTERFACE_LOCAL)
+		case Type::Local:
+			return ProtocolInterfaceLocal::createRawProtocolInterfaceLocal(networkInterfaceName, executorName);
+#endif // HAVE_PROTOCOL_INTERFACE_LOCAL
 		default:
 			break;
 	}
@@ -222,6 +233,10 @@ std::string LA_AVDECC_CALL_CONVENTION ProtocolInterface::typeToString(Type const
 			return "IEEE Std 1722.1 proxy";
 		case Type::Virtual:
 			return "Virtual interface";
+		case Type::Serial:
+			return "Serial port interface";
+		case Type::Local:
+			return "Local domain socket interface";
 		default:
 			return "Unknown protocol interface type";
 	}
@@ -264,6 +279,22 @@ ProtocolInterface::SupportedProtocolInterfaceTypes LA_AVDECC_CALL_CONVENTION Pro
 			s_supportedProtocolInterfaceTypes.set(Type::Virtual);
 		}
 #endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
+
+		// Serial
+#if defined(HAVE_PROTOCOL_INTERFACE_SERIAL)
+		if (protocol::ProtocolInterfaceSerial::isSupported())
+		{
+			s_supportedProtocolInterfaceTypes.set(Type::Serial);
+		}
+#endif // HAVE_PROTOCOL_INTERFACE_SERIAL
+
+		// Local domain socket
+#if defined(HAVE_PROTOCOL_INTERFACE_LOCAL)
+		if (protocol::ProtocolInterfaceLocal::isSupported())
+		{
+			s_supportedProtocolInterfaceTypes.set(Type::Local);
+		}
+#endif // HAVE_PROTOCOL_INTERFACE_LOCAL
 	}
 
 	return s_supportedProtocolInterfaceTypes;
