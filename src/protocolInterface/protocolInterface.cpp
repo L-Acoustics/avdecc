@@ -42,6 +42,9 @@
 #ifdef HAVE_PROTOCOL_INTERFACE_SERIAL
 #	include "protocolInterface/protocolInterface_serial.hpp"
 #endif // HAVE_PROTOCOL_INTERFACE_SERIAL
+#ifdef HAVE_PROTOCOL_INTERFACE_LOCAL
+#	include "protocolInterface/protocolInterface_local.hpp"
+#endif // HAVE_PROTOCOL_INTERFACE_LOCAL
 
 namespace la
 {
