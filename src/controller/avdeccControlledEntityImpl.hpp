@@ -471,6 +471,7 @@ private:
 	void switchToCachedTreeModelAccessStrategy() noexcept;
 	bool isEntityModelComplete(model::EntityNode const& entityNode, std::uint16_t const configurationsCount) const noexcept;
 	void buildVirtualNodes(model::ConfigurationNode& configNode) noexcept;
+	void warnOrFixPortMapping(entity::model::AudioMapping const& sourceMapping, entity::model::AudioMapping& destinationMapping) const noexcept;
 	void addOrFixStreamPortInputMapping(entity::model::AudioMappings& mappings, entity::model::AudioMapping const& mapping) const noexcept;
 	void fixStreamPortInputMappings(std::map<entity::model::StreamPortIndex, model::StreamPortInputNode>& streamPorts) noexcept;
 	void fixStreamPortMappings(model::ConfigurationNode& configNode) noexcept;
