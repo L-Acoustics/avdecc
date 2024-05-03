@@ -31,14 +31,15 @@
 #include "entity/controllerEntityImpl.hpp"
 #include "protocolInterface/protocolInterface_virtual.hpp"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <string>
 #include <thread>
 #include <chrono>
 #include <future>
 
-//namespace
-//{
+namespace
+{
 //class ControlledEntity : public ::testing::Test
 //{
 //public:
@@ -54,7 +55,28 @@
 //	{
 //	}
 //};
-//}
+
+class LogObserver : public la::avdecc::logger::Logger::Observer
+{
+public:
+	virtual ~LogObserver() noexcept override
+	{
+		la::avdecc::logger::Logger::getInstance().unregisterObserver(this);
+	}
+
+	MOCK_METHOD(void, onLogWarn, (), (const noexcept));
+
+private:
+	virtual void onLogItem(la::avdecc::logger::Level const level, la::avdecc::logger::LogItem const* const item) noexcept override
+	{
+		std::cout << "[" << la::avdecc::logger::Logger::getInstance().levelToString(level) << "] " << item->getMessage() << std::endl;
+		if (level == la::avdecc::logger::Level::Warn)
+		{
+			onLogWarn();
+		}
+	}
+};
+} // namespace
 
 TEST(ControlledEntity, VirtualEntityLoad)
 {
@@ -85,7 +107,7 @@ TEST(ControlledEntity, VirtualEntityLoad)
 	}
 }
 
-TEST(ControlledEntity, AddChannelMappings)
+TEST(ControlledEntity, AddInputChannelMappings)
 {
 	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
 	// Load entity
@@ -113,7 +135,7 @@ TEST(ControlledEntity, AddChannelMappings)
 	EXPECT_TRUE(Mapping == e.getStreamPortInputAudioMappings(StreamPort).at(0));
 }
 
-TEST(ControlledEntity, ReplaceChannelMappingWithDifferentStream)
+TEST(ControlledEntity, ReplaceInputChannelMappingWithDifferentStream)
 {
 	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
 	// Load entity
@@ -138,7 +160,44 @@ TEST(ControlledEntity, ReplaceChannelMappingWithDifferentStream)
 	EXPECT_TRUE(MappingS1 == e.getStreamPortInputAudioMappings(StreamPort).at(0));
 }
 
-TEST(ControlledEntity, GetInvalidMappings)
+TEST(ControlledEntity, AddDuplicateInputChannelMapping)
+{
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Load entity
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+	{
+		EXPECT_CALL(obs, onLogWarn()).Times(testing::AnyNumber());
+		auto const [error, message] = controller->loadVirtualEntityFromJson("data/Listener_EmptyMappings.json", flags);
+		EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+		EXPECT_STREQ("", message.c_str());
+	}
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 })));
+	constexpr auto StreamPort = la::avdecc::entity::model::StreamPortIndex{ 0u };
+	auto const Mapping = la::avdecc::entity::model::AudioMapping{ 0, 0, 0, 0 };
+
+	// Add one mapping from Stream 0
+	{
+		EXPECT_CALL(obs, onLogWarn()).Times(0);
+		e.addStreamPortInputAudioMappings(StreamPort, la::avdecc::entity::model::AudioMappings{ Mapping }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+		ASSERT_TRUE(e.getStreamPortInputAudioMappings(StreamPort).size() == 1) << "Mappings should have one mapping";
+		EXPECT_TRUE(Mapping == e.getStreamPortInputAudioMappings(StreamPort).at(0));
+	}
+
+	// Add duplicate mapping
+	{
+		EXPECT_CALL(obs, onLogWarn()).Times(1);
+		e.addStreamPortInputAudioMappings(StreamPort, la::avdecc::entity::model::AudioMappings{ Mapping }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+		ASSERT_TRUE(e.getStreamPortInputAudioMappings(StreamPort).size() == 1) << "Mappings should have one mapping";
+		EXPECT_TRUE(Mapping == e.getStreamPortInputAudioMappings(StreamPort).at(0));
+	}
+}
+
+TEST(ControlledEntity, GetInvalidInputMappings)
 {
 	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
 	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
@@ -163,7 +222,7 @@ TEST(ControlledEntity, GetInvalidMappings)
 }
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-TEST(ControlledEntity, AddRedundantChannelMappings)
+TEST(ControlledEntity, AddRedundantInputChannelMappings)
 {
 	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
 	// Load entity
@@ -198,6 +257,133 @@ TEST(ControlledEntity, AddRedundantChannelMappings)
 	EXPECT_TRUE(RedundantMapping == e.getStreamPortInputAudioMappings(StreamPort).at(1));
 	ASSERT_TRUE(e.getStreamPortInputNonRedundantAudioMappings(StreamPort).size() == 1) << "NonRedundantMappings should not have changed though";
 	EXPECT_TRUE(RedundantMapping == e.getStreamPortInputNonRedundantAudioMappings(StreamPort).at(0)) << "NonRedundantMappings should return the mappings for the Primary Stream";
+}
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
+TEST(ControlledEntity, AddOutputChannelMappings)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Load entity
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/Talker_EmptyMappings.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(la::avdecc::UniqueIdentifier{ 0x001B92FFFF000002 })));
+	constexpr auto StreamPort = la::avdecc::entity::model::StreamPortIndex{ 0u };
+	auto const Mapping = la::avdecc::entity::model::AudioMapping{ 0, 0, 0, 0 };
+
+	// Add "no" mapping
+	e.addStreamPortOutputAudioMappings(StreamPort, la::avdecc::entity::model::AudioMappings{}, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	EXPECT_TRUE(e.getStreamPortOutputAudioMappings(StreamPort).empty()) << "Mappings should still be empty";
+
+	// Add one mapping
+	e.addStreamPortOutputAudioMappings(StreamPort, la::avdecc::entity::model::AudioMappings{ Mapping }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	ASSERT_TRUE(e.getStreamPortOutputAudioMappings(StreamPort).size() == 1) << "Mappings should have one mapping";
+	EXPECT_TRUE(Mapping == e.getStreamPortOutputAudioMappings(StreamPort).at(0));
+
+	// Add same mapping
+	e.addStreamPortOutputAudioMappings(StreamPort, la::avdecc::entity::model::AudioMappings{ Mapping }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	ASSERT_TRUE(e.getStreamPortOutputAudioMappings(StreamPort).size() == 1) << "Mappings should have one mapping";
+	EXPECT_TRUE(Mapping == e.getStreamPortOutputAudioMappings(StreamPort).at(0));
+}
+
+TEST(ControlledEntity, ReplaceOutputChannelMappingWithDifferentStream)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Load entity
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/Talker_EmptyMappings.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(la::avdecc::UniqueIdentifier{ 0x001B92FFFF000002 })));
+	constexpr auto StreamPort = la::avdecc::entity::model::StreamPortIndex{ 0u };
+	auto const MappingS0 = la::avdecc::entity::model::AudioMapping{ 0, 0, 0, 0 };
+	auto const MappingS1 = la::avdecc::entity::model::AudioMapping{ 0, 0, 1, 0 };
+
+	// Add one mapping from Cluster 0 Channel 0 to Stream 0 Channel 0
+	e.addStreamPortOutputAudioMappings(StreamPort, la::avdecc::entity::model::AudioMappings{ MappingS0 }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	ASSERT_TRUE(e.getStreamPortOutputAudioMappings(StreamPort).size() == 1) << "Mappings should have one mapping";
+	EXPECT_TRUE(MappingS0 == e.getStreamPortOutputAudioMappings(StreamPort).at(0));
+
+	// Add "conflicting" mapping from Cluster 0 Channel 1 to Stream 0 Channel 0
+	e.addStreamPortOutputAudioMappings(StreamPort, la::avdecc::entity::model::AudioMappings{ MappingS1 }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	ASSERT_TRUE(e.getStreamPortOutputAudioMappings(StreamPort).size() == 1) << "Mappings should have one mapping (replaced)";
+	EXPECT_TRUE(MappingS1 == e.getStreamPortOutputAudioMappings(StreamPort).at(0));
+}
+
+TEST(ControlledEntity, AddDuplicateOutputChannelMapping)
+{
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Load entity
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/Talker_EmptyMappings.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(la::avdecc::UniqueIdentifier{ 0x001B92FFFF000002 })));
+	constexpr auto StreamPort = la::avdecc::entity::model::StreamPortIndex{ 0u };
+	auto const Mapping = la::avdecc::entity::model::AudioMapping{ 0, 0, 0, 0 };
+
+	// Add one mapping from Stream 0
+	{
+		EXPECT_CALL(obs, onLogWarn()).Times(0);
+		e.addStreamPortOutputAudioMappings(StreamPort, la::avdecc::entity::model::AudioMappings{ Mapping }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+		ASSERT_TRUE(e.getStreamPortOutputAudioMappings(StreamPort).size() == 1) << "Mappings should have one mapping";
+		EXPECT_TRUE(Mapping == e.getStreamPortOutputAudioMappings(StreamPort).at(0));
+	}
+
+	// Add duplicate mapping
+	{
+		EXPECT_CALL(obs, onLogWarn()).Times(1);
+		e.addStreamPortOutputAudioMappings(StreamPort, la::avdecc::entity::model::AudioMappings{ Mapping }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+		ASSERT_TRUE(e.getStreamPortOutputAudioMappings(StreamPort).size() == 1) << "Mappings should have one mapping";
+		EXPECT_TRUE(Mapping == e.getStreamPortOutputAudioMappings(StreamPort).at(0));
+	}
+}
+
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+TEST(ControlledEntity, AddRedundantOutputChannelMappings)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Load entity
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/Talker_EmptyMappings.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(la::avdecc::UniqueIdentifier{ 0x001B92FFFF000002 })));
+	constexpr auto StreamPort = la::avdecc::entity::model::StreamPortIndex{ 0u };
+	auto const PrimaryMapping = la::avdecc::entity::model::AudioMapping{ 3, 0, 0, 0 };
+	auto const SecondaryMapping = la::avdecc::entity::model::AudioMapping{ 4, 0, 0, 0 };
+
+	// Add "no" mapping
+	e.addStreamPortOutputAudioMappings(StreamPort, la::avdecc::entity::model::AudioMappings{}, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	EXPECT_TRUE(e.getStreamPortOutputAudioMappings(StreamPort).empty()) << "Mappings should still be empty";
+
+	// Add one mapping
+	e.addStreamPortOutputAudioMappings(StreamPort, la::avdecc::entity::model::AudioMappings{ SecondaryMapping }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	ASSERT_TRUE(e.getStreamPortOutputAudioMappings(StreamPort).size() == 1) << "Mappings should have one mapping";
+	EXPECT_TRUE(SecondaryMapping == e.getStreamPortOutputAudioMappings(StreamPort).at(0));
+
+	// Add same mapping
+	e.addStreamPortOutputAudioMappings(StreamPort, la::avdecc::entity::model::AudioMappings{ SecondaryMapping }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	ASSERT_TRUE(e.getStreamPortOutputAudioMappings(StreamPort).size() == 1) << "Mappings should have one mapping";
+	EXPECT_TRUE(SecondaryMapping == e.getStreamPortOutputAudioMappings(StreamPort).at(0));
+
+	// Add redundancy mapping
+	e.addStreamPortOutputAudioMappings(StreamPort, la::avdecc::entity::model::AudioMappings{ PrimaryMapping }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	ASSERT_TRUE(e.getStreamPortOutputAudioMappings(StreamPort).size() == 2) << "Mappings should have changed";
+	EXPECT_TRUE(SecondaryMapping == e.getStreamPortOutputAudioMappings(StreamPort).at(0));
+	EXPECT_TRUE(PrimaryMapping == e.getStreamPortOutputAudioMappings(StreamPort).at(1));
+	ASSERT_TRUE(e.getStreamPortOutputNonRedundantAudioMappings(StreamPort).size() == 1) << "NonRedundantMappings should not have changed though";
+	EXPECT_TRUE(PrimaryMapping == e.getStreamPortOutputNonRedundantAudioMappings(StreamPort).at(0)) << "NonRedundantMappings should return the mappings for the Primary Stream";
 }
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 

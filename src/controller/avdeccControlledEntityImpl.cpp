@@ -1289,6 +1289,51 @@ void ControlledEntityImpl::clearStreamPortInputAudioMappings(entity::model::Stre
 	}
 }
 
+void ControlledEntityImpl::warnOrFixPortMapping(entity::model::AudioMapping const& sourceMapping, entity::model::AudioMapping& destinationMapping) const noexcept
+{
+	if (destinationMapping == sourceMapping) // If received duplicate existing mapping
+	{
+		LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Duplicate StreamPortOutput AudioMappings found: ") + std::to_string(destinationMapping.streamIndex) + ":" + std::to_string(destinationMapping.streamChannel) + ":" + std::to_string(destinationMapping.clusterOffset) + ":" + std::to_string(destinationMapping.clusterChannel));
+	}
+	else // Otherwise it is a conflicting mapping (replace), update the cluster information
+	{
+		destinationMapping = sourceMapping;
+	}
+}
+
+void ControlledEntityImpl::addOrFixStreamPortInputMapping(entity::model::AudioMappings& mappings, entity::model::AudioMapping const& mapping) const noexcept
+{
+	AVDECC_ASSERT(_advertised, "Should not be called if entity is not advertised yet");
+
+	// Search for another mapping associated to the same destination (cluster), which is not allowed except in redundancy
+	auto foundIt = std::find_if(mappings.begin(), mappings.end(),
+		[&mapping](entity::model::AudioMapping const& map)
+		{
+			return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
+		});
+	// Not found, add the new mapping
+	if (foundIt == mappings.end())
+	{
+		mappings.push_back(mapping);
+	}
+	else // Otherwise, replace the previous mapping (or add it as well, if this is part of a redundant stream pair)
+	{
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+		// Get the redundant stream index (if any) for the mapping
+		auto const redundantIndex = getRedundantStreamInputIndex(mapping.streamIndex);
+		// If it exists and it matches the one we found, check if StreamChannel is the same => It means we have a redundant stream pair, so add the mapping
+		if (redundantIndex && (*redundantIndex == foundIt->streamIndex) && (foundIt->streamChannel == mapping.streamChannel))
+		{
+			mappings.push_back(mapping);
+		}
+		else
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+		{
+			warnOrFixPortMapping(mapping, *foundIt);
+		}
+	}
+}
+
 void ControlledEntityImpl::addStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
 	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
@@ -1300,14 +1345,13 @@ void ControlledEntityImpl::addStreamPortInputAudioMappings(entity::model::Stream
 			auto& dynamicMap = dynamicModel->dynamicAudioMap;
 
 			// Process audio mappings
-			for (auto const& map : mappings)
+			if (!_advertised) // If device is not advertised yet simply add the mapping to the list. A check will be done when the entity is advertised.
 			{
-				// If device is not advertised yet simply add the mapping to the list. A check will be done when the entity is advertised.
-				if (!_advertised)
-				{
-					dynamicMap.push_back(map);
-				}
-				else
+				dynamicMap.insert(dynamicMap.end(), mappings.begin(), mappings.end());
+			}
+			else
+			{
+				for (auto const& map : mappings)
 				{
 					addOrFixStreamPortInputMapping(dynamicMap, map);
 				}
@@ -1383,19 +1427,11 @@ void ControlledEntityImpl::addStreamPortOutputAudioMappings(entity::model::Strea
 				// Not found, add the new mapping
 				if (foundIt == dynamicMap.end())
 				{
-#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-					// TODO: If StreamIndex is redundant and the other Stream Pair is already in the map, validate it's the same ClusterIndex and ClusterChannel
-#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 					dynamicMap.push_back(map);
 				}
 				else // Otherwise, replace the previous mapping
 				{
-					if (*foundIt != map)
-					{
-						LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Duplicate StreamPortOutput AudioMappings found: ") + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + ":" + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + " replaced by " + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel));
-						foundIt->clusterOffset = map.clusterOffset;
-						foundIt->clusterChannel = map.clusterChannel;
-					}
+					warnOrFixPortMapping(map, *foundIt);
 				}
 			}
 		}
@@ -3041,42 +3077,6 @@ void ControlledEntityImpl::buildVirtualNodes(model::ConfigurationNode& configNod
 	// Build RedundantStreamNodes
 	buildRedundancyNodes(configNode);
 #	endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
-}
-
-void ControlledEntityImpl::addOrFixStreamPortInputMapping(entity::model::AudioMappings& mappings, entity::model::AudioMapping const& mapping) const noexcept
-{
-	// Search for another mapping associated to the same destination (cluster), which is not allowed except in redundancy
-	auto foundIt = std::find_if(mappings.begin(), mappings.end(),
-		[&mapping](entity::model::AudioMapping const& map)
-		{
-			return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
-		});
-	// Not found, add the new mapping
-	if (foundIt == mappings.end())
-	{
-		mappings.push_back(mapping);
-	}
-	else // Otherwise, replace the previous mapping (or add it as well, if this is part of a redundant stream pair)
-	{
-#	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-		// Get the redundant stream index (if any) for the mapping
-		auto const redundantIndex = getRedundantStreamInputIndex(mapping.streamIndex);
-		// If it exists and it matches the one we found, check if StreamChannel is the same => It means we have a redundant stream pair, so add the mapping
-		if (redundantIndex && (*redundantIndex == foundIt->streamIndex) && (foundIt->streamChannel == mapping.streamChannel))
-		{
-			mappings.push_back(mapping);
-		}
-		else
-#	endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
-		{
-			if (*foundIt != mapping)
-			{
-				LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Duplicate StreamPortInput AudioMappings found: ") + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + ":" + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + " replaced by " + std::to_string(mapping.streamIndex) + ":" + std::to_string(mapping.streamChannel) + ":" + std::to_string(mapping.clusterOffset) + ":" + std::to_string(mapping.clusterChannel));
-				foundIt->streamIndex = mapping.streamIndex;
-				foundIt->streamChannel = mapping.streamChannel;
-			}
-		}
-	}
 }
 
 void ControlledEntityImpl::fixStreamPortInputMappings(std::map<entity::model::StreamPortIndex, model::StreamPortInputNode>& streamPorts) noexcept
