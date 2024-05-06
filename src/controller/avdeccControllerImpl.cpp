@@ -6263,13 +6263,13 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 								{
 									auto& clockDomainNode = clockDomainKV.second;
 
-									// We are now connected, check if the last node had a status of StreamNotConnected for that listener
-									if (conState == entity::model::StreamInputConnectionInfo::State::Connected)
+									// We are now connected and we are not changing the talker
+									if (conState == entity::model::StreamInputConnectionInfo::State::Connected && ((previousInfo.talkerStream.entityID == info.talkerStream.entityID && info.talkerStream.entityID) || !previousInfo.talkerStream.entityID))
 									{
 										if (AVDECC_ASSERT_WITH_RET(!clockDomainNode.mediaClockChain.empty(), "Chain should not be empty"))
 										{
-											auto& lastNode = clockDomainNode.mediaClockChain.back();
-											if (lastNode.status == model::MediaClockChainNode::Status::StreamNotConnected && lastNode.entityID == listenerStream.entityID)
+											// Check if the last node had a status of StreamNotConnected for that listener
+											if (auto& lastNode = clockDomainNode.mediaClockChain.back(); lastNode.status == model::MediaClockChainNode::Status::StreamNotConnected && lastNode.entityID == listenerStream.entityID)
 											{
 												// Save the domain/stream indexes, we'll continue from it
 												auto const continueDomainIndex = lastNode.clockDomainIndex;
@@ -6283,7 +6283,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 											}
 										}
 									}
-									// We are now disconnected, check for any node in the chain that had an Active status with that listener
+									// We are now disconnected or we are changing the talker, check for any node in the chain that had an Active status with that listener
 									else
 									{
 										// Check if the chain has a node on that disconnected listener entity
