@@ -6231,8 +6231,12 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 				auto& listener = *listenerEntity;
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputConnectionChanged, this, &listener, listenerStream.streamIndex, info, changedByOther);
 
+				auto isTalkerStreamChanged = previousInfo.talkerStream != info.talkerStream;
+				auto isReplacingTalker = isTalkerStreamChanged && previousInfo.talkerStream.entityID && info.talkerStream.entityID;
+				auto isConnectingNewTalker = conState == entity::model::StreamInputConnectionInfo::State::Connected && !isReplacingTalker;
+
 				// If the Listener was already advertised, check if talker StreamIdentification changed (no need to do it during listener enumeration, the connections to the talker will be updated when the listener is ready to advertise)
-				if (previousInfo.talkerStream != info.talkerStream)
+				if (isTalkerStreamChanged)
 				{
 					if (previousInfo.talkerStream.entityID)
 					{
@@ -6264,7 +6268,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 									auto& clockDomainNode = clockDomainKV.second;
 
 									// We are now connected and we are not changing the talker
-									if (conState == entity::model::StreamInputConnectionInfo::State::Connected && ((previousInfo.talkerStream.entityID == info.talkerStream.entityID && info.talkerStream.entityID) || !previousInfo.talkerStream.entityID))
+									if (isConnectingNewTalker)
 									{
 										if (AVDECC_ASSERT_WITH_RET(!clockDomainNode.mediaClockChain.empty(), "Chain should not be empty"))
 										{
