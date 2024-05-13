@@ -6269,7 +6269,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 										if (AVDECC_ASSERT_WITH_RET(!clockDomainNode.mediaClockChain.empty(), "Chain should not be empty"))
 										{
 											// Check if the last node had a status of StreamNotConnected for that listener
-											if (auto& lastNode = clockDomainNode.mediaClockChain.back(); lastNode.status == model::MediaClockChainNode::Status::StreamNotConnected && lastNode.entityID == listenerStream.entityID)
+											if (auto const& lastNode = clockDomainNode.mediaClockChain.back(); lastNode.status == model::MediaClockChainNode::Status::StreamNotConnected && lastNode.entityID == listenerStream.entityID)
 											{
 												// Save the domain/stream indexes, we'll continue from it
 												auto const continueDomainIndex = lastNode.clockDomainIndex;
