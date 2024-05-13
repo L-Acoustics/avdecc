@@ -6232,9 +6232,6 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputConnectionChanged, this, &listener, listenerStream.streamIndex, info, changedByOther);
 
 				auto isTalkerStreamChanged = previousInfo.talkerStream != info.talkerStream;
-				auto isReplacingTalker = isTalkerStreamChanged && previousInfo.talkerStream.entityID && info.talkerStream.entityID;
-				auto isConnectingNewTalker = conState == entity::model::StreamInputConnectionInfo::State::Connected && !isReplacingTalker;
-
 				// If the Listener was already advertised, check if talker StreamIdentification changed (no need to do it during listener enumeration, the connections to the talker will be updated when the listener is ready to advertise)
 				if (isTalkerStreamChanged)
 				{
@@ -6255,59 +6252,85 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 					// Lock to protect _controlledEntities
 					auto const lg = std::lock_guard{ _lock };
 
-					// Update all entities for which the chain has a node with a connection to that stream
-					for (auto& [eid, entity] : _controlledEntities)
+					// detects which connection transition is happening
+					auto isConnecting = info.state == entity::model::StreamInputConnectionInfo::State::Connected && previousInfo.state == entity::model::StreamInputConnectionInfo::State::NotConnected;
+					auto isDisconnecting = info.state == entity::model::StreamInputConnectionInfo::State::NotConnected && previousInfo.state == entity::model::StreamInputConnectionInfo::State::Connected;
+					auto isConnectingToDifferentTalker = info.state == entity::model::StreamInputConnectionInfo::State::Connected && previousInfo.state == entity::model::StreamInputConnectionInfo::State::Connected && isTalkerStreamChanged;
+					auto isLegacyFastConnecting = info.state == entity::model::StreamInputConnectionInfo::State::FastConnecting || previousInfo.state == entity::model::StreamInputConnectionInfo::State::FastConnecting;
+
+					auto updateMediaClockChain = std::function<void(ControlledEntityImpl&, model::ClockDomainNode&)>{ nullptr };
+
+					// We are now connected and we are not changing the talker
+					if (isConnecting)
 					{
-						if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
+						updateMediaClockChain = [this, &listenerStream](ControlledEntityImpl& entity, model::ClockDomainNode& clockDomainNode)
 						{
-							auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-							if (configNode != nullptr)
+							if (AVDECC_ASSERT_WITH_RET(!clockDomainNode.mediaClockChain.empty(), "Chain should not be empty"))
 							{
-								for (auto& clockDomainKV : configNode->clockDomains)
+								// Check if the last node had a status of StreamNotConnected for that listener
+								if (auto const& lastNode = clockDomainNode.mediaClockChain.back(); lastNode.status == model::MediaClockChainNode::Status::StreamNotConnected && lastNode.entityID == listenerStream.entityID)
 								{
-									auto& clockDomainNode = clockDomainKV.second;
+									// Save the domain/stream indexes, we'll continue from it
+									auto const continueDomainIndex = lastNode.clockDomainIndex;
+									auto const continueStreamOutputIndex = lastNode.streamOutputIndex;
 
-									// We are now connected and we are not changing the talker
-									if (isConnectingNewTalker)
+									// Remove the node
+									clockDomainNode.mediaClockChain.pop_back();
+
+									// Update the chain starting from this entity
+									computeAndUpdateMediaClockChain(entity, clockDomainNode, listenerStream.entityID, continueDomainIndex, continueStreamOutputIndex, {});
+								}
+							}
+						};
+					}
+					// We are now disconnected or we are changing the talker, check for any node in the chain that had an Active status with that listener
+					else if (isDisconnecting || isConnectingToDifferentTalker)
+					{
+						updateMediaClockChain = [this, &listenerStream](ControlledEntityImpl& entity, model::ClockDomainNode& clockDomainNode)
+						{
+							// Check if the chain has a node on that disconnected listener entity
+							for (auto nodeIt = clockDomainNode.mediaClockChain.begin(); nodeIt != clockDomainNode.mediaClockChain.end(); ++nodeIt)
+							{
+								auto const& node = *nodeIt;
+								if (node.status == model::MediaClockChainNode::Status::Active && node.type == model::MediaClockChainNode::Type::StreamInput && node.entityID == listenerStream.entityID && node.streamInputIndex && *node.streamInputIndex == listenerStream.streamIndex)
+								{
+									// Save the domain/stream indexes, we'll continue from it
+									auto const continueDomainIndex = nodeIt->clockDomainIndex;
+									auto const continueStreamOutputIndex = nodeIt->streamOutputIndex;
+
+									// Remove this node and all following nodes
+									clockDomainNode.mediaClockChain.erase(nodeIt, clockDomainNode.mediaClockChain.end());
+
+									// Update the chain starting from this entity
+									computeAndUpdateMediaClockChain(entity, clockDomainNode, listenerStream.entityID, continueDomainIndex, continueStreamOutputIndex, {});
+									break;
+								}
+							}
+						};
+					}
+					else if (isLegacyFastConnecting)
+					{
+						LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Legacy FastConnect transition for listener entity {}, nothing to do", utils::toHexString(listenerStream.entityID, true));
+					}
+					else
+					{
+						AVDECC_ASSERT(false, "Unsupported connection transition");
+					}
+
+					if (updateMediaClockChain)
+					{
+						// Update all entities for which the chain has a node with a connection to that stream
+						for (auto& [eid, entity] : _controlledEntities)
+						{
+							if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
+							{
+								auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+								if (configNode != nullptr)
+								{
+									for (auto& clockDomainKV : configNode->clockDomains)
 									{
-										if (AVDECC_ASSERT_WITH_RET(!clockDomainNode.mediaClockChain.empty(), "Chain should not be empty"))
-										{
-											// Check if the last node had a status of StreamNotConnected for that listener
-											if (auto const& lastNode = clockDomainNode.mediaClockChain.back(); lastNode.status == model::MediaClockChainNode::Status::StreamNotConnected && lastNode.entityID == listenerStream.entityID)
-											{
-												// Save the domain/stream indexes, we'll continue from it
-												auto const continueDomainIndex = lastNode.clockDomainIndex;
-												auto const continueStreamOutputIndex = lastNode.streamOutputIndex;
-
-												// Remove the node
-												clockDomainNode.mediaClockChain.pop_back();
-
-												// Update the chain starting from this entity
-												computeAndUpdateMediaClockChain(*entity, clockDomainNode, listenerStream.entityID, continueDomainIndex, continueStreamOutputIndex, {});
-											}
-										}
-									}
-									// We are now disconnected or we are changing the talker, check for any node in the chain that had an Active status with that listener
-									else
-									{
-										// Check if the chain has a node on that disconnected listener entity
-										for (auto nodeIt = clockDomainNode.mediaClockChain.begin(); nodeIt != clockDomainNode.mediaClockChain.end(); ++nodeIt)
-										{
-											auto const& node = *nodeIt;
-											if (node.status == model::MediaClockChainNode::Status::Active && node.type == model::MediaClockChainNode::Type::StreamInput && node.entityID == listenerStream.entityID && node.streamInputIndex && *node.streamInputIndex == listenerStream.streamIndex)
-											{
-												// Save the domain/stream indexes, we'll continue from it
-												auto const continueDomainIndex = nodeIt->clockDomainIndex;
-												auto const continueStreamOutputIndex = nodeIt->streamOutputIndex;
-
-												// Remove this node and all following nodes
-												clockDomainNode.mediaClockChain.erase(nodeIt, clockDomainNode.mediaClockChain.end());
-
-												// Update the chain starting from this entity
-												computeAndUpdateMediaClockChain(*entity, clockDomainNode, listenerStream.entityID, continueDomainIndex, continueStreamOutputIndex, {});
-												break;
-											}
-										}
+										auto& clockDomainNode = clockDomainKV.second;
+										updateMediaClockChain(*entity, clockDomainNode);
 									}
 								}
 							}
