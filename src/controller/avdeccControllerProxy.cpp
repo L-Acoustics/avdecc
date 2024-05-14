@@ -2349,7 +2349,6 @@ void ControllerVirtualProxy::setMaxTransitTime(UniqueIdentifier const targetEnti
 			_realInterface->setMaxTransitTime(targetEntityID, streamIndex, maxTransitTime, handler);
 		}
 	}
-
 }
 
 void ControllerVirtualProxy::getMaxTransitTime(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, GetMaxTransitTimeHandler const& handler) const noexcept

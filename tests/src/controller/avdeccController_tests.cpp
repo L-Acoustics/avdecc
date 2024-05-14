@@ -1377,6 +1377,11 @@ static auto constexpr Entity11 = la::avdecc::UniqueIdentifier{ 0x000000000000001
 static auto constexpr Entity12 = la::avdecc::UniqueIdentifier{ 0x0000000000000012 }; // No connections           // CD.0 on External
 static auto constexpr Entity13 = la::avdecc::UniqueIdentifier{ 0x0000000000000013 }; // SI.2 connected to E14.2  // CD.0 on SI.2
 static auto constexpr Entity14 = la::avdecc::UniqueIdentifier{ 0x0000000000000014 }; // SI.2 connected to E13.2  // CD.0 on Internal, CD.1 on SI.2 // SI.2, SO.2 on CD.1
+static auto constexpr Entity0A = la::avdecc::UniqueIdentifier{ 0x000000000000000A }; // CD.0 on Internal
+static auto constexpr Entity0B = la::avdecc::UniqueIdentifier{ 0x000000000000000B }; // CD.0 on Internal
+static auto constexpr Entity0C = la::avdecc::UniqueIdentifier{ 0x000000000000000C }; // CD.0 on SI.MCRF connected to E0A
+static auto constexpr Entity1C = la::avdecc::UniqueIdentifier{ 0x000000000000001C }; // CD.0 on SI.MCRF connected to E0B
+static auto constexpr Entity0D = la::avdecc::UniqueIdentifier{ 0x000000000000000D }; // SI.0 connected to E0C.0	 // CD.0 on SI.0
 
 // *****************************
 // Testing static state
@@ -2502,6 +2507,346 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchConnect)
 				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Undefined, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Recursive, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(MediaClockModel_F, StreamInput_ReplaceTalkerForSingleEntity)
+{
+	loadEntityFile("data/MediaClockModel/Entity_0x0A.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0B.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0C.json");
+
+	try
+	{
+		auto& c = getControllerImpl();
+		// Check initial state
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0C);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(2u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity0A, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+
+		// Expect Controller::Observer::onMediaClockChainChanged() to be called
+		registerMockObserver();
+		EXPECT_CALL(*this, onMediaClockChainChanged(::testing::_, c.getControlledEntityGuard(Entity0C).get(), la::avdecc::entity::model::ClockDomainIndex{ 0u }, ::testing::_));
+
+		// Replace connection of MCRF to entity 0B stream
+		c.handleListenerStreamStateNotification(la::avdecc::entity::model::StreamIdentification{ Entity0B, la::avdecc::entity::model::StreamIndex{ 2u } }, la::avdecc::entity::model::StreamIdentification{ Entity0C, la::avdecc::entity::model::StreamIndex{ 2u } }, true, la::avdecc::entity::ConnectionFlags{}, true);
+
+		// Validate chain has been updated
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0C);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(2u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity0B, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(MediaClockModel_F, StreamInput_ReplaceTalkerForMiddleChainEntity)
+{
+	/*	Initial state:
+			Entity C CS:CRF connected to SO:CRF from Entity A
+			Entity 1 CS:SI connected to SO:1 from Entity C
+		Then Replace Clock Source of Entity C with Entity B SO:CRF
+		Both entities C and D should reflect the Media clock change
+	*/
+
+	loadEntityFile("data/MediaClockModel/Entity_0x0A.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0B.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0C.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0D.json");
+
+	try
+	{
+		auto& c = getControllerImpl();
+		// Check initial state for Entity 0C
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0C);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(2u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity0A, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+
+		// Check initial state for Entity 0D
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0D);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(3u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0D, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity0C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[2];
+				EXPECT_EQ(Entity0A, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+
+		// Expect Controller::Observer::onMediaClockChainChanged() to be called
+		registerMockObserver();
+		EXPECT_CALL(*this, onMediaClockChainChanged(::testing::_, c.getControlledEntityGuard(Entity0D).get(), la::avdecc::entity::model::ClockDomainIndex{ 0u }, ::testing::_));
+		EXPECT_CALL(*this, onMediaClockChainChanged(::testing::_, c.getControlledEntityGuard(Entity0C).get(), la::avdecc::entity::model::ClockDomainIndex{ 0u }, ::testing::_));
+
+		// Replace connection of MCRF to entity 0B stream
+		c.handleListenerStreamStateNotification(la::avdecc::entity::model::StreamIdentification{ Entity0B, la::avdecc::entity::model::StreamIndex{ 2u } }, la::avdecc::entity::model::StreamIdentification{ Entity0C, la::avdecc::entity::model::StreamIndex{ 2u } }, true, la::avdecc::entity::ConnectionFlags{}, true);
+
+		// Validate chain has been updated for Entity 0C
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0C);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(2u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity0B, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+
+		// Validate chain has been updated for Entity 0D
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0D);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(3u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0D, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity0C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[2];
+				EXPECT_EQ(Entity0B, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(MediaClockModel_F, StreamInput_ReplaceTalkerForLastChainEntity)
+{
+	/*	Initial state:
+			Entity C CS:CRF connected to SO:CRF from Entity A
+			Entity 1C CS:CRF connected to SO:CRF from Entity B
+			Entity D CS:SI connected to SO:0 from Entity C
+		Then Replace Clock Source of Entity D with Entity 1C SO:0 from entity 1C
+	*/
+
+	loadEntityFile("data/MediaClockModel/Entity_0x0A.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0B.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0C.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x1C.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0D.json");
+
+	try
+	{
+		auto& c = getControllerImpl();
+		// Check initial state for Entity 0D
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0D);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(3u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0D, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity0C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[2];
+				EXPECT_EQ(Entity0A, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+
+		// Expect Controller::Observer::onMediaClockChainChanged() to be called
+		registerMockObserver();
+		EXPECT_CALL(*this, onMediaClockChainChanged(::testing::_, c.getControlledEntityGuard(Entity0D).get(), la::avdecc::entity::model::ClockDomainIndex{ 0u }, ::testing::_));
+
+		// Replace connection of SI to entity 1C stream
+		c.handleListenerStreamStateNotification(la::avdecc::entity::model::StreamIdentification{ Entity1C, la::avdecc::entity::model::StreamIndex{ 0u } }, la::avdecc::entity::model::StreamIdentification{ Entity0D, la::avdecc::entity::model::StreamIndex{ 0u } }, true, la::avdecc::entity::ConnectionFlags{}, true);
+
+		// Validate chain has been updated for Entity 0D
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0D);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(3u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0D, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity1C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[2];
+				EXPECT_EQ(Entity0B, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
 			}
