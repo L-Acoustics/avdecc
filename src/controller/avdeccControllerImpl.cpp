@@ -6252,7 +6252,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 					// Lock to protect _controlledEntities
 					auto const lg = std::lock_guard{ _lock };
 
-					// detects which connection transition is happening
+					// Detects which connection transition is happening
 					auto isConnecting = info.state == entity::model::StreamInputConnectionInfo::State::Connected && previousInfo.state == entity::model::StreamInputConnectionInfo::State::NotConnected;
 					auto isDisconnecting = info.state == entity::model::StreamInputConnectionInfo::State::NotConnected && previousInfo.state == entity::model::StreamInputConnectionInfo::State::Connected;
 					auto isConnectingToDifferentTalker = info.state == entity::model::StreamInputConnectionInfo::State::Connected && previousInfo.state == entity::model::StreamInputConnectionInfo::State::Connected && isTalkerStreamChanged;
@@ -6310,7 +6310,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 					}
 					else if (isLegacyFastConnecting)
 					{
-						LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Legacy FastConnect transition for listener entity {}, nothing to do", utils::toHexString(listenerStream.entityID, true));
+						LOG_CONTROLLER_DEBUG(UniqueIdentifier::getNullUniqueIdentifier(), "Legacy FastConnect transition for listener entity {}, nothing to do", utils::toHexString(listenerStream.entityID, true));
 					}
 					else
 					{
