@@ -1303,7 +1303,7 @@ void ControlledEntityImpl::warnOrFixPortMapping(entity::model::AudioMapping cons
 
 void ControlledEntityImpl::addOrFixStreamPortInputMapping(entity::model::AudioMappings& mappings, entity::model::AudioMapping const& mapping) const noexcept
 {
-	AVDECC_ASSERT(_advertised, "Should not be called if entity is not advertised yet");
+	AVDECC_ASSERT(_advertised || _enumerationSteps.empty(), "Should not be called if entity is not advertised yet (except if about to be)");
 
 	// Search for another mapping associated to the same destination (cluster), which is not allowed except in redundancy
 	auto foundIt = std::find_if(mappings.begin(), mappings.end(),
