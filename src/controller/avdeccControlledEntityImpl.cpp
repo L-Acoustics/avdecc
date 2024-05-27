@@ -450,7 +450,15 @@ entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString
 		auto const globalOffset = stringReference.getGlobalOffset();
 		if (globalOffset < configurationDynamicModel->localizedStrings.size())
 		{
-			return configurationDynamicModel->localizedStrings.at(entity::model::StringsIndex(globalOffset));
+			// It may happen that the string is not in the map (eg. device failed to load it), so we have to check
+			if (auto const it = configurationDynamicModel->localizedStrings.find(entity::model::StringsIndex(globalOffset)); it != configurationDynamicModel->localizedStrings.end())
+			{
+				return it->second;
+			}
+			else
+			{
+				LOG_CONTROLLER_WARN(_entity.getEntityID(), "LocalizedStringReference not found in localizedStrings: {} (global offset: {})", stringReference.getValue(), globalOffset);
+			}
 		}
 		else
 		{

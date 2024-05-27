@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Updating StreamInfo data partially, in case endpoint doesn't send full update
 - isOverLatency diagnostics not properly set if msrpAccumulatedLatency is not set
 - _Media Clock Chain_ not recomputed when a connection changes without disconnecting first
+- [Crash when trying to access unknown localized string](https://github.com/L-Acoustics/avdecc/issues/153)
 
 ## [3.4.1] - 2023-01-11
 ### Fixed
