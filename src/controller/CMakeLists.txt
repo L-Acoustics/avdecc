@@ -111,7 +111,7 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(${PROJECT_NAME}_cxx PRIVATE nlohmann_json)
+		target_link_libraries(${PROJECT_NAME}_cxx PRIVATE nlohmann_json::nlohmann_json)
 	endif()
 
 	# Setup install (and signing)
@@ -139,7 +139,7 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(${PROJECT_NAME}_static PRIVATE nlohmann_json)
+		target_link_libraries(${PROJECT_NAME}_static PRIVATE nlohmann_json::nlohmann_json)
 	endif()
 
 	# Link with avdecc using static library

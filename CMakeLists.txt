@@ -111,6 +111,7 @@ endif()
 # Include json
 if(ENABLE_AVDECC_FEATURE_JSON)
 	set(JSON_BuildTests OFF CACHE INTERNAL "Disable JSON unit tests")
+	set(JSON_Install ${INSTALL_AVDECC_HEADERS} CACHE INTERNAL "Install JSON library")
 	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/json EXCLUDE_FROM_ALL)
 endif()
 
