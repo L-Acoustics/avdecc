@@ -254,4 +254,4 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 endif()
 
 # Configure a few things that has to be done last
-cu_finalize()
+cu_finalize(NO_VSCODE_WORKSPACE)
