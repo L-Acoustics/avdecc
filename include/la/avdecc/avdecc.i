@@ -802,7 +802,7 @@ namespace la.avdecc
 		{
 			_error = error;
 		}
-		Error getError()
+		public Error getError()
 		{
 			return _error;
 		}

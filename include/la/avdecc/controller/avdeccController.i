@@ -456,7 +456,7 @@ namespace la.avdecc.controller
 		{
 			_type = type;
 		}
-		Type getType()
+		public Type getType()
 		{
 			return _type;
 		}
@@ -484,7 +484,7 @@ namespace la.avdecc.controller
 		{
 			_error = error;
 		}
-		Error getError()
+		public Error getError()
 		{
 			return _error;
 		}
