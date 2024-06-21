@@ -1460,7 +1460,7 @@ protected:
 	*       except if the class template parameter is a recursive mutex kind (or EmptyLock).
 	*/
 	template<class DerivedObserver, typename Method, typename... Parameters>
-	void notifyObserversMethod(Method&& method, Parameters&&... params) const noexcept
+	void notifyObserversMethod(Method&& method, Parameters const&... params) const noexcept
 	{
 		if (method != nullptr)
 		{
@@ -1476,7 +1476,8 @@ protected:
 				// Using try-catch to protect ourself from errors in the handler
 				try
 				{
-					(static_cast<DerivedObserver*>(*it)->*method)(std::forward<Parameters>(params)...);
+					// We must **not** use std::forward here, we don't want to allow the observer to modify the parameters
+					(static_cast<DerivedObserver*>(*it)->*method)(params...);
 				}
 				catch (...)
 				{
