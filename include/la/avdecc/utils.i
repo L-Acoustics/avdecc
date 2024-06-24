@@ -28,6 +28,7 @@ public:
 	using underlying_value_type = UnderlyingType<EnumType>::value_type;
 	static constexpr size_t value_size = sizeof(underlying_value_type) * 8;
 
+	EnumBitfield() noexcept = default;
 	template<typename... Values>
 	constexpr explicit EnumBitfield(value_type const value, Values const... values) noexcept;
 	void assign(underlying_value_type const value) noexcept;
