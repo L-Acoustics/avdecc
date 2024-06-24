@@ -177,19 +177,11 @@ public:
 	class UnderlyingType<nspacename::bitname>
 	{
 	public:
-//#if defined(SWIGCSHARP)
-	//using value_type = std::uint32_t; // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
-//#else
 	using value_type = underlyingtype;
-//#endif
 	};
 	}
 	%}
-//#if defined(SWIGCSHARP)
-	//%apply std::uint32_t { la::avdecc::utils::UnderlyingType<nspacename::bitname>::value_type }; // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
-//#else
 	%apply underlyingtype { la::avdecc::utils::UnderlyingType<nspacename::bitname>::value_type };
-//#endif
 	%template(bitfieldname) la::avdecc::utils::EnumBitfield<nspacename::bitname>;
 %enddef
 
