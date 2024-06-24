@@ -163,7 +163,7 @@ public:
 %define DEFINE_ENUM_CLASS(nspacename, bitname, type)
 	%nspace nspacename::bitname;
 #if defined(SWIGCSHARP)
-	%typemap(csbase) nspacename::bitname "uint" // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
+	%typemap(csbase, replace="1") nspacename::bitname "uint" // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
 #else
 	%typemap(csbase) nspacename::bitname type
 #endif
