@@ -18,6 +18,12 @@
 		#include <la/avdecc/internals/entityModel.hpp>
 %}
 
+#if defined(USE_SIZE_T_64)
+// Use 64-bit size_t
+%apply unsigned long long { size_t };
+%apply const unsigned long long & { const size_t & };
+#endif
+
 // C# Specifics
 #if defined(SWIGCSHARP)
 // Optimize code generation by enabling RVO
