@@ -78,6 +78,8 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 
 	if (controlledEntity)
 	{
+		auto guardedEntity = ControlledEntityImplGuard{ std::move(controlledEntity), true };
+
 		// New entity get everything we can from it
 		auto steps = ControlledEntityImpl::EnumerationSteps{};
 
@@ -101,13 +103,13 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 		// Currently, we have nothing more to get if the entity does not support AEM
 
 		// Set Steps
-		controlledEntity->setEnumerationSteps(steps);
+		guardedEntity->setEnumerationSteps(steps);
 
 		// Save the time we start enumeration
-		controlledEntity->setStartEnumerationTime(std::chrono::steady_clock::now());
+		guardedEntity->setStartEnumerationTime(std::chrono::steady_clock::now());
 
 		// Check first enumeration step
-		checkEnumerationSteps(controlledEntity.get());
+		checkEnumerationSteps(guardedEntity.get());
 	}
 	else
 	{
