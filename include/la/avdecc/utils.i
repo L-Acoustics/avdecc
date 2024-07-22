@@ -28,6 +28,7 @@ public:
 	using underlying_value_type = UnderlyingType<EnumType>::value_type;
 	static constexpr size_t value_size = sizeof(underlying_value_type) * 8;
 
+	EnumBitfield() noexcept = default;
 	template<typename... Values>
 	constexpr explicit EnumBitfield(value_type const value, Values const... values) noexcept;
 	void assign(underlying_value_type const value) noexcept;
@@ -163,7 +164,7 @@ public:
 %define DEFINE_ENUM_CLASS(nspacename, bitname, type)
 	%nspace nspacename::bitname;
 #if defined(SWIGCSHARP)
-	%typemap(csbase) nspacename::bitname "uint" // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
+	%typemap(csbase, replace="1") nspacename::bitname "uint" // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
 #else
 	%typemap(csbase) nspacename::bitname type
 #endif
@@ -177,19 +178,11 @@ public:
 	class UnderlyingType<nspacename::bitname>
 	{
 	public:
-//#if defined(SWIGCSHARP)
-	//using value_type = std::uint32_t; // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
-//#else
 	using value_type = underlyingtype;
-//#endif
 	};
 	}
 	%}
-//#if defined(SWIGCSHARP)
-	//%apply std::uint32_t { la::avdecc::utils::UnderlyingType<nspacename::bitname>::value_type }; // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
-//#else
 	%apply underlyingtype { la::avdecc::utils::UnderlyingType<nspacename::bitname>::value_type };
-//#endif
 	%template(bitfieldname) la::avdecc::utils::EnumBitfield<nspacename::bitname>;
 %enddef
 

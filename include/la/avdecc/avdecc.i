@@ -35,6 +35,12 @@
 	#include <la/avdecc/internals/endStation.hpp>
 %}
 
+#if defined(USE_SIZE_T_64)
+// Use 64-bit size_t
+%apply unsigned long long { size_t };
+%apply const unsigned long long & { const size_t & };
+#endif
+
 // Optimize code generation by enabling RVO
 %typemap(out, optimal="1") SWIGTYPE
 %{
@@ -208,11 +214,11 @@ DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
 %rename("%s") la::avdecc::entity::LocalEntity; // Unignore class
 %rename("lockEntity") la::avdecc::entity::LocalEntity::lock; // Rename method
 %rename("unlockEntity") la::avdecc::entity::LocalEntity::unlock; // Rename method
-%typemap(csbase) la::avdecc::entity::LocalEntity::AemCommandStatus "ushort"
-%typemap(csbase) la::avdecc::entity::LocalEntity::AaCommandStatus "ushort"
-%typemap(csbase) la::avdecc::entity::LocalEntity::MvuCommandStatus "ushort"
-%typemap(csbase) la::avdecc::entity::LocalEntity::ControlStatus "ushort"
-%typemap(csbase) la::avdecc::entity::LocalEntity::AdvertiseFlag "uint" // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
+%typemap(csbase, replace="1") la::avdecc::entity::LocalEntity::AemCommandStatus "ushort"
+%typemap(csbase, replace="1") la::avdecc::entity::LocalEntity::AaCommandStatus "ushort"
+%typemap(csbase, replace="1") la::avdecc::entity::LocalEntity::MvuCommandStatus "ushort"
+%typemap(csbase, replace="1") la::avdecc::entity::LocalEntity::ControlStatus "ushort"
+%typemap(csbase, replace="1") la::avdecc::entity::LocalEntity::AdvertiseFlag "uint" // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
 %rename("not") operator!(LocalEntity::AemCommandStatus const status); // Not put in a namespace https://github.com/swig/swig/issues/2459
 %rename("or") operator|(LocalEntity::AemCommandStatus const lhs, LocalEntity::AemCommandStatus const rhs); // Not put in a namespace https://github.com/swig/swig/issues/2459
 %ignore operator|=(LocalEntity::AemCommandStatus& lhs, LocalEntity::AemCommandStatus const rhs); // Don't know how to properly bind this with correct type defined (SWIG generates a SWIGTYPE_p file for this)

@@ -60,6 +60,40 @@ if(NOT AVDECC_SWIG_LANGUAGES)
 	set(AVDECC_SWIG_LANGUAGES "csharp" CACHE STRING "Set the languages to compile as SWIG wrappers." FORCE)
 endif()
 
+############ Check dependencies
+
+# avdecc-tests needs avdecc.lib
+if(BUILD_AVDECC_TESTS)
+	set(BUILD_AVDECC_LIB_STATIC_RT_SHARED TRUE CACHE BOOL "Build avdecc static library (runtime shared)." FORCE)
+endif()
+
+# avdecc-examples needs avdecc.lib
+if(BUILD_AVDECC_EXAMPLES)
+	set(BUILD_AVDECC_LIB_STATIC_RT_SHARED TRUE CACHE BOOL "Build avdecc static library (runtime shared)." FORCE)
+endif()
+
+if(NOT CMAKE_HOST_APPLE AND BUILD_AVDECC_INTERFACE_MAC)
+	set(BUILD_AVDECC_INTERFACE_MAC FALSE)
+endif()
+
+if(BUILD_AVDECC_INTERFACE_PROXY)
+	message(FATAL_ERROR "Proxy interface not supported yet.")
+endif()
+
+if(NOT BUILD_AVDECC_INTERFACE_PCAP AND NOT BUILD_AVDECC_INTERFACE_MAC AND NOT BUILD_AVDECC_INTERFACE_PROXY)
+	message(FATAL_ERROR "At least one valid protocol interface must be built.")
+endif()
+
+# Build bindings requires the building of the libraries
+if(BUILD_AVDECC_BINDINGS_CSHARP AND NOT BUILD_AVDECC_LIB_SHARED_CXX)
+	set(BUILD_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Build C++ shared library." FORCE)
+endif()
+
+# Install bindings requires the installation of the libraries
+if(INSTALL_AVDECC_BINDINGS AND NOT INSTALL_AVDECC_LIB_SHARED_CXX)
+	set(INSTALL_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Install C++ shared library." FORCE)
+endif()
+
 ############ CMake configuration
 
 project(LA_avdecc)
@@ -111,7 +145,7 @@ endif()
 # Include json
 if(ENABLE_AVDECC_FEATURE_JSON)
 	set(JSON_BuildTests OFF CACHE INTERNAL "Disable JSON unit tests")
-	set(JSON_Install ${INSTALL_AVDECC_HEADERS} CACHE INTERNAL "Install JSON library")
+	set(JSON_Install (${INSTALL_AVDECC_LIB_SHARED_CXX} OR ${INSTALL_AVDECC_LIB_STATIC} OR ${INSTALL_AVDECC_HEADERS}) CACHE INTERNAL "Install JSON library")
 	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/json EXCLUDE_FROM_ALL)
 endif()
 
@@ -151,30 +185,6 @@ if(${INSTALL_AVDECC_TESTS})
 endif()
 if(${ENABLE_CODE_SIGNING})
 	set(SIGN_FLAG "SIGN")
-endif()
-
-############ Check dependencies
-
-# avdecc-tests needs avdecc.lib
-if(BUILD_AVDECC_TESTS)
-	set(BUILD_AVDECC_LIB_STATIC_RT_SHARED TRUE CACHE BOOL "Build avdecc static library (runtime shared)." FORCE)
-endif()
-
-# avdecc-examples needs avdecc.lib
-if(BUILD_AVDECC_EXAMPLES)
-	set(BUILD_AVDECC_LIB_STATIC_RT_SHARED TRUE CACHE BOOL "Build avdecc static library (runtime shared)." FORCE)
-endif()
-
-if(NOT CMAKE_HOST_APPLE AND BUILD_AVDECC_INTERFACE_MAC)
-	set(BUILD_AVDECC_INTERFACE_MAC FALSE)
-endif()
-
-if(BUILD_AVDECC_INTERFACE_PROXY)
-	message(FATAL_ERROR "Proxy interface not supported yet.")
-endif()
-
-if(NOT BUILD_AVDECC_INTERFACE_PCAP AND NOT BUILD_AVDECC_INTERFACE_MAC AND NOT BUILD_AVDECC_INTERFACE_PROXY)
-	message(FATAL_ERROR "At least one valid protocol interface must be built.")
 endif()
 
 ############ Define pcap variables
