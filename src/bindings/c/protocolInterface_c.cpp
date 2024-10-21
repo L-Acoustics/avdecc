@@ -205,11 +205,11 @@ LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_
 	return static_cast<avdecc_protocol_interface_error_t>(avdecc_protocol_interface_error_no_error);
 }
 
-LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_create(avdecc_protocol_interface_type_t const protocolInterfaceType, avdecc_const_string_t interfaceName, avdecc_const_string_t executorName, LA_AVDECC_PROTOCOL_INTERFACE_HANDLE* const createdProtocolInterfaceHandle)
+LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_create(avdecc_protocol_interface_type_t const protocolInterfaceType, avdecc_const_string_t networkInterfaceID, avdecc_const_string_t executorName, LA_AVDECC_PROTOCOL_INTERFACE_HANDLE* const createdProtocolInterfaceHandle)
 {
 	try
 	{
-		*createdProtocolInterfaceHandle = s_ProtocolInterfaceManager.createObject(static_cast<la::avdecc::protocol::ProtocolInterface::Type>(protocolInterfaceType), std::string(interfaceName), std::string(executorName));
+		*createdProtocolInterfaceHandle = s_ProtocolInterfaceManager.createObject(static_cast<la::avdecc::protocol::ProtocolInterface::Type>(protocolInterfaceType), std::string(networkInterfaceID), std::string(executorName));
 	}
 	catch (la::avdecc::protocol::ProtocolInterface::Exception const& e)
 	{

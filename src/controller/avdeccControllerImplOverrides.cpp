@@ -55,12 +55,12 @@ namespace controller
 /* ************************************************************ */
 /* Controller overrides                                         */
 /* ************************************************************ */
-ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName, entity::controller::Interface const* const virtualEntityInterface)
+ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceID, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName, entity::controller::Interface const* const virtualEntityInterface)
 	: _preferedLocale(preferedLocale)
 {
 	try
 	{
-		_endStation = EndStation::create(protocolInterfaceType, interfaceName, executorName);
+		_endStation = EndStation::create(protocolInterfaceType, networkInterfaceID, executorName);
 		_controller = _endStation->addControllerEntity(progID, entityModelID, entityModelTree, this);
 		_controllerProxy = std::make_unique<ControllerVirtualProxy>(_endStation->getProtocolInterface(), _controller, virtualEntityInterface);
 	}

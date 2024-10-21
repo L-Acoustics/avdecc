@@ -84,19 +84,19 @@ public:
 	* @brief Factory method to create a new EndStation.
 	* @details Creates a new EndStation as a unique pointer.
 	* @param[in] protocolInterfaceType The protocol interface type to use.
-	* @param[in] networkInterfaceName The name of the network interface to use. Use #la::avdecc::networkInterface::enumerateInterfaces to get a valid interface name.
+	* @param[in] networkInterfaceID The ID of the network interface to use. Use #la::avdecc::networkInterface::enumerateInterfaces to get a valid interface ID.
 	* @param[in] executorName The name of the executor to use to dispatch incoming messages (must be created before the call). If empty, a default executor will be created.
 	* @return A new EndStation as a EndStation::UniquePointer.
 	* @note Might throw an Exception.
 	* @warning This class is currently NOT thread-safe.
 	*/
-	static UniquePointer create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceName, std::optional<std::string> const& executorName)
+	static UniquePointer create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceID, std::optional<std::string> const& executorName)
 	{
 		auto deleter = [](EndStation* self)
 		{
 			self->destroy();
 		};
-		return UniquePointer(createRawEndStation(protocolInterfaceType, networkInterfaceName, executorName), deleter);
+		return UniquePointer(createRawEndStation(protocolInterfaceType, networkInterfaceID, executorName), deleter);
 	}
 
 	/**
@@ -135,7 +135,7 @@ protected:
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API EndStation* LA_AVDECC_CALL_CONVENTION createRawEndStation(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceName, std::optional<std::string> const& executorName);
+	static LA_AVDECC_API EndStation* LA_AVDECC_CALL_CONVENTION createRawEndStation(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceID, std::optional<std::string> const& executorName);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;

@@ -62,8 +62,8 @@ public:
 	/* Public APIs                                                  */
 	/* ************************************************************ */
 	/** Constructor */
-	ProtocolInterfacePcapImpl(std::string const& networkInterfaceName, std::string const& executorName)
-		: ProtocolInterfacePcap(networkInterfaceName, executorName)
+	ProtocolInterfacePcapImpl(std::string const& networkInterfaceID, std::string const& executorName)
+		: ProtocolInterfacePcap(networkInterfaceID, executorName)
 	{
 		static constexpr int PCAP_BufferSize = 65536;
 		static constexpr int PCAP_PromiscMode = 1;
@@ -76,9 +76,9 @@ public:
 		std::array<char, PCAP_ERRBUF_SIZE> errbuf;
 #ifdef _WIN32
 		// NPF device name
-		auto const pcapInterfaceName = std::string("\\Device\\NPF_") + networkInterfaceName;
+		auto const pcapInterfaceName = std::string("\\Device\\NPF_") + networkInterfaceID;
 #else // !_WIN32
-		auto const pcapInterfaceName = networkInterfaceName;
+		auto const pcapInterfaceName = networkInterfaceID;
 #endif // _WIN32
 		auto pcap = _pcapLibrary.open_live((pcapInterfaceName).c_str(), PCAP_BufferSize, PCAP_PromiscMode, PCAP_TimeoutMsec, errbuf.data());
 		// Failed to open interface (might be disabled)
@@ -86,7 +86,7 @@ public:
 		{
 #ifdef _WIN32
 			// Try without NPF prefix
-			pcap = _pcapLibrary.open_live((networkInterfaceName).c_str(), PCAP_BufferSize, PCAP_PromiscMode, PCAP_TimeoutMsec, errbuf.data());
+			pcap = _pcapLibrary.open_live((networkInterfaceID).c_str(), PCAP_BufferSize, PCAP_PromiscMode, PCAP_TimeoutMsec, errbuf.data());
 			// Let's assume it's Win10pcap
 			if (pcap != nullptr)
 			{
@@ -700,8 +700,8 @@ private:
 	EthernetPacketDispatcher<ProtocolInterfacePcapImpl> _ethernetPacketDispatcher{ this, _stateMachineManager };
 };
 
-ProtocolInterfacePcap::ProtocolInterfacePcap(std::string const& networkInterfaceName, std::string const& executorName)
-	: ProtocolInterface(networkInterfaceName, executorName)
+ProtocolInterfacePcap::ProtocolInterfacePcap(std::string const& networkInterfaceID, std::string const& executorName)
+	: ProtocolInterface(networkInterfaceID, executorName)
 {
 }
 
@@ -719,9 +719,9 @@ bool ProtocolInterfacePcap::isSupported() noexcept
 	}
 }
 
-ProtocolInterfacePcap* ProtocolInterfacePcap::createRawProtocolInterfacePcap(std::string const& networkInterfaceName, std::string const& executorName)
+ProtocolInterfacePcap* ProtocolInterfacePcap::createRawProtocolInterfacePcap(std::string const& networkInterfaceID, std::string const& executorName)
 {
-	return new ProtocolInterfacePcapImpl(networkInterfaceName, executorName);
+	return new ProtocolInterfacePcapImpl(networkInterfaceID, executorName);
 }
 
 } // namespace protocol

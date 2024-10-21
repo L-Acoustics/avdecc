@@ -672,12 +672,12 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity::model::jsonSerializer, Flags, Fla
 %extend la::avdecc::EndStation
 {
 public:
-	static std::unique_ptr<la::avdecc::EndStation> create(/*protocol::ProtocolInterface::Type const protocolInterfaceType, */std::string const& networkInterfaceName, std::optional<std::string> const& executorName)
+	static std::unique_ptr<la::avdecc::EndStation> create(/*protocol::ProtocolInterface::Type const protocolInterfaceType, */std::string const& networkInterfaceID, std::optional<std::string> const& executorName)
 	{
 		try
 		{
 			// Right now, force PCap as we cannot bind the protocolInterfaceType enum correctly
-			return std::unique_ptr<la::avdecc::EndStation>{ la::avdecc::EndStation::create(la::avdecc::protocol::ProtocolInterface::Type::PCap, networkInterfaceName, executorName).release() };
+			return std::unique_ptr<la::avdecc::EndStation>{ la::avdecc::EndStation::create(la::avdecc::protocol::ProtocolInterface::Type::PCap, networkInterfaceID, executorName).release() };
 		}
 		catch (la::avdecc::EndStation::Exception const& e)
 		{

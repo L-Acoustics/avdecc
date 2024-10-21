@@ -266,7 +266,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::mo
 }
 
 /** EndStation Entry point */
-EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceName, std::optional<std::string> const& executorName)
+EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceID, std::optional<std::string> const& executorName)
 {
 	try
 	{
@@ -300,7 +300,7 @@ EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(protocol::
 			executorWrapper = ExecutorManager::getInstance().registerExecutor(exName, ExecutorWithDispatchQueue::create(exName, utils::ThreadPriority::Highest));
 		}
 
-		return new EndStationImpl(std::move(executorWrapper), protocol::ProtocolInterface::create(protocolInterfaceType, networkInterfaceName, exName));
+		return new EndStationImpl(std::move(executorWrapper), protocol::ProtocolInterface::create(protocolInterfaceType, networkInterfaceID, exName));
 	}
 	catch (protocol::ProtocolInterface::Exception const& e)
 	{

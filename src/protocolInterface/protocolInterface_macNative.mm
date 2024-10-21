@@ -187,13 +187,13 @@ public:
 	using ProtocolInterfaceMacNative::getVendorUniqueDelegate;
 
 	/** Constructor */
-	ProtocolInterfaceMacNativeImpl(std::string const& networkInterfaceName, std::string const& executorName)
-		: ProtocolInterfaceMacNative(networkInterfaceName, executorName)
+	ProtocolInterfaceMacNativeImpl(std::string const& networkInterfaceID, std::string const& executorName)
+		: ProtocolInterfaceMacNative(networkInterfaceID, executorName)
 	{
 		// Should not be there if the interface is not supported
 		AVDECC_ASSERT(isSupported(), "Should not be there if the interface is not supported");
 
-		auto* intName = [BridgeInterface getNSString:networkInterfaceName];
+		auto* intName = [BridgeInterface getNSString:networkInterfaceID];
 
 #if 0 // We don't need to check for AVB capability/enable on the interface, AVDECC do not require an AVB compatible interface \
 	// Check the interface is AVB enabled
@@ -753,8 +753,8 @@ private:
 	CommandEntities _commandEntities{};
 };
 
-ProtocolInterfaceMacNative::ProtocolInterfaceMacNative(std::string const& networkInterfaceName, std::string const& executorName)
-	: ProtocolInterface(networkInterfaceName, executorName)
+ProtocolInterfaceMacNative::ProtocolInterfaceMacNative(std::string const& networkInterfaceID, std::string const& executorName)
+	: ProtocolInterface(networkInterfaceID, executorName)
 {
 }
 
@@ -763,9 +763,9 @@ bool ProtocolInterfaceMacNative::isSupported() noexcept
 	return [BridgeInterface isSupported];
 }
 
-ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfaceMacNative(std::string const& networkInterfaceName, std::string const& executorName)
+ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfaceMacNative(std::string const& networkInterfaceID, std::string const& executorName)
 {
-	return new ProtocolInterfaceMacNativeImpl(networkInterfaceName, executorName);
+	return new ProtocolInterfaceMacNativeImpl(networkInterfaceID, executorName);
 }
 
 } // namespace protocol

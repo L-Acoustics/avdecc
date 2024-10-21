@@ -503,9 +503,9 @@ public:
 	* @brief Factory method to create a new Controller.
 	* @details Creates a new Controller as a unique pointer.
 	* @param[in] protocolInterfaceType The protocol interface type to use.
-	* @param[in] interfaceName The name of the interface to bind the controller to.
+	* @param[in] networkInterfaceID The ID of the interface to bind the controller to.
 	*            Use #la::avdecc::networkInterface::enumerateInterfaces to get a list of valid
-	*            interfaces, and pass the 'name' field of a #la::avdecc::networkInterface::Interface
+	*            interfaces, and pass the 'id' field of a #la::avdecc::networkInterface::Interface
 	*            to this method.
 	* @param[in] progID ID that will be used to generate the #UniqueIdentifier for this controller.
 	* @param[in] entityModelID EntityModelID to publish for this controller. You can use entity::model::makeEntityModelID to create this value.
@@ -515,15 +515,15 @@ public:
 	* @param[in] executorName The name of the executor to use to dispatch incoming messages (must be created before the call). If empty, a default executor will be created.
 	* @param[in] virtualEntityInterface The virtual entity interface to forward network calls to when manipulating a virtual entity, or null to use the network interface.
 	* @return A new Controller as a Controller::UniquePointer.
-	* @note Throws Exception if interfaceName is invalid or inaccessible, or if progID is already used on the local computer.
+	* @note Throws Exception if networkInterfaceID is invalid or inaccessible, or if progID is already used on the local computer.
 	*/
-	static UniquePointer create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName, entity::controller::Interface const* const virtualEntityInterface)
+	static UniquePointer create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceID, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName, entity::controller::Interface const* const virtualEntityInterface)
 	{
 		auto deleter = [](Controller* controller)
 		{
 			controller->destroy();
 		};
-		return UniquePointer(createRawController(protocolInterfaceType, interfaceName, progID, entityModelID, preferedLocale, entityModelTree, executorName, virtualEntityInterface), deleter);
+		return UniquePointer(createRawController(protocolInterfaceType, networkInterfaceID, progID, entityModelID, preferedLocale, entityModelTree, executorName, virtualEntityInterface), deleter);
 	}
 
 	/** Returns the UniqueIdentifier this instance of the controller is using to identify itself on the network */
@@ -670,7 +670,7 @@ protected:
 
 private:
 	/** Create method for COM-like interface */
-	static LA_AVDECC_CONTROLLER_API Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION createRawController(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName, entity::controller::Interface const* const virtualEntityInterface);
+	static LA_AVDECC_CONTROLLER_API Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION createRawController(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceID, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName, entity::controller::Interface const* const virtualEntityInterface);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;

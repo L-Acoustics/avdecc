@@ -78,7 +78,7 @@ public:
 		UnknownLocalEntity = 4, /**< Unknown local entity. */
 		InvalidEntityType = 5, /**< Invalid entity type for the operation. */
 		DuplicateLocalEntityID = 6, /**< The EntityID specified in a LocalEntity is already in use by another local entity. */
-		InterfaceNotFound = 7, /**< Specified interfaceName not found. */
+		InterfaceNotFound = 7, /**< Specified InterfaceID not found. */
 		InvalidParameters = 8, /**< Specified parameters are invalid. */
 		InterfaceNotSupported = 9, /**< This protocol interface is not in the list of supported protocol interfaces. */
 		MessageNotSupported = 10, /**< This type of message is not supported by this protocol interface. */
@@ -208,18 +208,18 @@ public:
 	* @brief Factory method to create a new ProtocolInterface.
 	* @details Creates a new ProtocolInterface as a unique pointer.
 	* @param[in] protocolInterfaceType The protocol interface type to use.
-	* @param[in] networkInterfaceName The name of the network interface to use. Use #la::networkInterface::NetworkInterfaceHelper::enumerateInterfaces to get a valid interface name.
+	* @param[in] networkInterfaceID The ID of the network interface to use. Use #la::networkInterface::NetworkInterfaceHelper::enumerateInterfaces to get a valid interface ID.
 	* @param[in] executorName The name of the executor to use to dispatch incoming messages.
 	* @return A new ProtocolInterface as a ProtocolInterface::UniquePointer.
 	* @note Might throw an Exception.
 	*/
-	static UniquePointer create(Type const protocolInterfaceType, std::string const& networkInterfaceName, std::string const& executorName)
+	static UniquePointer create(Type const protocolInterfaceType, std::string const& networkInterfaceID, std::string const& executorName)
 	{
 		auto deleter = [](ProtocolInterface* self)
 		{
 			self->destroy();
 		};
-		return UniquePointer(createRawProtocolInterface(protocolInterfaceType, networkInterfaceName, executorName), deleter);
+		return UniquePointer(createRawProtocolInterface(protocolInterfaceType, networkInterfaceID, executorName), deleter);
 	}
 
 	/* ************************************************************ */
@@ -317,21 +317,21 @@ protected:
 	/**
 	* @brief Create a ProtocolInterface associated with specified network interface name.
 	* @details Create a ProtocolInterface associated with specified network interface name, checking the interface actually exists.
-	* @param[in] networkInterfaceName The name of the network interface.
+	* @param[in] networkInterfaceID The ID of the network interface.
 	* @param[in] executorName The name of the executor to use to dispatch incoming messages.
-	* @note Throws Exception if networkInterfaceName is invalid or inaccessible.
+	* @note Throws Exception if networkInterfaceID is invalid or inaccessible.
 	*/
-	ProtocolInterface(std::string const& networkInterfaceName, std::string const& executorName);
+	ProtocolInterface(std::string const& networkInterfaceID, std::string const& executorName);
 
 	/**
 	* @brief Create a ProtocolInterface associated with specified network interface name and MAC address.
 	* @details Create a ProtocolInterface associated with specified network interface name and MAC address, not checking if the interface exists.
-	* @param[in] networkInterfaceName The name of the network interface.
+	* @param[in] networkInterfaceID The ID of the network interface.
 	* @param[in] macAddress The MAC address associated with the network interface. Cannot be all 0.
 	* @param[in] executorName The name of the executor to use to dispatch incoming messages.
-	* @note Throws Exception if networkInterfaceName or macAddress is invalid or inaccessible.
+	* @note Throws Exception if networkInterfaceID or macAddress is invalid or inaccessible.
 	*/
-	ProtocolInterface(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress, std::string const& executorName);
+	ProtocolInterface(std::string const& networkInterfaceID, networkInterface::MacAddress const& macAddress, std::string const& executorName);
 
 	virtual ~ProtocolInterface() noexcept = default;
 
@@ -344,11 +344,11 @@ protected:
 	/** Returns the VendorUniqueDelegate handling the specified protocolIdentifier, or nullptr if none has been registered. WARNING: Once returned, the pointed object is NOT locked. */
 	VendorUniqueDelegate* getVendorUniqueDelegate(VuAecpdu::ProtocolIdentifier const& protocolIdentifier) const noexcept;
 
-	std::string const _networkInterfaceName{};
+	std::string const _networkInterfaceID{};
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API ProtocolInterface* LA_AVDECC_CALL_CONVENTION createRawProtocolInterface(Type const protocolInterfaceType, std::string const& networkInterfaceName, std::string const& executorName);
+	static LA_AVDECC_API ProtocolInterface* LA_AVDECC_CALL_CONVENTION createRawProtocolInterface(Type const protocolInterfaceType, std::string const& networkInterfaceID, std::string const& executorName);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;
