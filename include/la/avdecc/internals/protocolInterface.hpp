@@ -313,6 +313,9 @@ public:
 	ProtocolInterface& operator=(ProtocolInterface const&) = delete;
 	ProtocolInterface& operator=(ProtocolInterface&&) = delete;
 
+	/** Destructor */
+	virtual ~ProtocolInterface() noexcept = default;
+
 protected:
 	/**
 	* @brief Create a ProtocolInterface associated with specified network interface name.
@@ -332,8 +335,6 @@ protected:
 	* @note Throws Exception if networkInterfaceID or macAddress is invalid or inaccessible.
 	*/
 	ProtocolInterface(std::string const& networkInterfaceID, networkInterface::MacAddress const& macAddress, std::string const& executorName);
-
-	virtual ~ProtocolInterface() noexcept = default;
 
 	/** Returns true is the specified AecpMessageType is a Response kind, false if it's a Command kind. */
 	static bool isAecpResponseMessageType(AecpMessageType const messageType) noexcept;

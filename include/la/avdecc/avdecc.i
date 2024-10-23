@@ -33,6 +33,8 @@
 	#include <la/avdecc/internals/entity.hpp>
 	#include <la/avdecc/internals/controllerEntity.hpp>
 	#include <la/avdecc/internals/endStation.hpp>
+	#include <la/avdecc/internals/protocolVuAecpdu.hpp>
+	#include <la/avdecc/internals/protocolInterface.hpp>
 %}
 
 #if defined(USE_SIZE_T_64)
@@ -429,23 +431,63 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Interface)
 ////////////////////////////////////////
 // Protocol Interface
 ////////////////////////////////////////
-#if 0 // Too much to define right now only to get ProtocolInterface::Type
+// Bind enums
+DEFINE_ENUM_CLASS(la::avdecc::protocol::ProtocolInterface, Type, "uint")
+
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
-
-%nspace la::avdecc::protocol::VuAecpdu;
-%rename("%s") la::avdecc::protocol::VuAecpdu; // Unignore class
 
 %nspace la::avdecc::protocol::ProtocolInterface;
 %rename("%s") la::avdecc::protocol::ProtocolInterface; // Unignore class
 //%ignore la::avdecc::protocol::ProtocolInterface::ProtocolInterface(ProtocolInterface&&); // Ignore move constructor
 //%ignore la::avdecc::protocol::ProtocolInterface::operator=; // Ignore copy operator
+%ignore la::avdecc::protocol::ProtocolInterface::registerVendorUniqueDelegate; // Ignore method (we don't want to handle VendorUniqueDelegate now)
+%ignore la::avdecc::protocol::ProtocolInterface::unregisterVendorUniqueDelegate; // Ignore method (we don't want to handle VendorUniqueDelegate now)
+%ignore la::avdecc::protocol::ProtocolInterface::unregisterAllVendorUniqueDelegates; // Ignore method (we don't want to handle VendorUniqueDelegate now)
+%ignore la::avdecc::protocol::ProtocolInterface::sendAdpMessage; // Ignore method (we don't want to handle Adpdu now)
+%ignore la::avdecc::protocol::ProtocolInterface::sendAecpMessage; // Ignore method (we don't want to handle Aecpdu now)
+%ignore la::avdecc::protocol::ProtocolInterface::sendAcmpMessage; // Ignore method (we don't want to handle Acmpdu now)
+%ignore la::avdecc::protocol::ProtocolInterface::sendAecpCommand; // Ignore method (we don't want to handle Aecpdu now)
+%ignore la::avdecc::protocol::ProtocolInterface::sendAecpResponse; // Ignore method (we don't want to handle Aecpdu now)
+%ignore la::avdecc::protocol::ProtocolInterface::sendAcmpCommand; // Ignore method (we don't want to handle Acmpdu now)
+%ignore la::avdecc::protocol::ProtocolInterface::sendAcmpResponse; // Ignore method (we don't want to handle Acmpdu now)
+%ignore la::avdecc::protocol::ProtocolInterface::getVuAecpCommandTimeout; // Ignore method (we don't want to handle VuAecpdu now)
+%ignore la::avdecc::protocol::ProtocolInterface::getVendorUniqueDelegate; // Ignore method (we don't want to handle VuAecpdu now)
+%unique_ptr(la::avdecc::protocol::ProtocolInterface) // Define unique_ptr for ProtocolInterface
+// Extend the class
+%extend la::avdecc::protocol::ProtocolInterface
+{
+public:
+	static std::unique_ptr<la::avdecc::protocol::ProtocolInterface> create(la::avdecc::protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceID, std::string const& executorName)
+	{
+		try
+		{
+			return std::unique_ptr<la::avdecc::protocol::ProtocolInterface>{ la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, networkInterfaceID, executorName).release() };
+		}
+		catch (la::avdecc::protocol::ProtocolInterface::Exception const& e)
+		{
+			SWIG_CSharpSetPendingExceptionProtocolInterface(e.getError(), e.what());
+			return nullptr;
+		}
+	}
+};
+%ignore la::avdecc::protocol::ProtocolInterface::create; // Ignore it, will be wrapped (because std::unique_ptr doesn't support custom deleters - Ticket #2411)
+
+// Throw typemap
+%typemap (throws, canthrow=1) la::avdecc::protocol::ProtocolInterface::Exception %{
+	SWIG_CSharpSetPendingExceptionProtocolInterface($1.getError(), $1.what());
+	return $null;
+%}
+
+// Define catches for methods that can throw
+%catches(la::avdecc::protocol::ProtocolInterface::Exception) la::avdecc::protocol::ProtocolInterface::create;
 
 // Include c++ declaration file
-%include "la/avdecc/internals/protocolVuAecpdu.hpp"
 %include "la/avdecc/internals/protocolInterface.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
-#endif
+
+// Define templates
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::protocol::ProtocolInterface, SupportedProtocolInterfaceTypes, Type, std::uint32_t)
 
 
 ////////////////////////////////////////
@@ -718,6 +760,20 @@ public:
 		exceptionCallback(message);
 	}
 
+	// la::avdecc::protocol::ProtocolInterface::Exception
+	typedef void (SWIGSTDCALL* ProtocolInterfaceExceptionCallback_t)(la::avdecc::protocol::ProtocolInterface::Error const error, char const* const message);
+	ProtocolInterfaceExceptionCallback_t protocolInterfaceExceptionCallback = NULL;
+
+	extern "C" SWIGEXPORT void SWIGSTDCALL ProtocolInterfaceExceptionRegisterCallback(ProtocolInterfaceExceptionCallback_t cb)
+	{
+		protocolInterfaceExceptionCallback = cb;
+	}
+
+	static void SWIG_CSharpSetPendingExceptionProtocolInterface(la::avdecc::protocol::ProtocolInterface::Error const error, char const* const message)
+	{
+		protocolInterfaceExceptionCallback(error, message);
+	}
+
 	// la::avdecc::EndStation::Exception
 	typedef void (SWIGSTDCALL* EndStationExceptionCallback_t)(la::avdecc::EndStation::Error const error, char const* const message);
 	EndStationExceptionCallback_t endStationExceptionCallback = NULL;
@@ -753,6 +809,27 @@ public:
 		}
 	}
 	static ExceptionHelper exceptionHelper = new ExceptionHelper();
+
+	// la::avdecc::protocol::ProtocolInterface::Exception
+	class ProtocolInterfaceExceptionHelper
+	{
+		public delegate void ProtocolInterfaceExceptionDelegate(la.avdecc.protocol.ProtocolInterfaceException.Error error, string message);
+		static ProtocolInterfaceExceptionDelegate protocolInterfaceDelegate = new ProtocolInterfaceExceptionDelegate(SetPendingProtocolInterfaceException);
+
+		[global::System.Runtime.InteropServices.DllImport("$dllimport", EntryPoint="ProtocolInterfaceExceptionRegisterCallback")]
+		public static extern void ProtocolInterfaceExceptionRegisterCallback(ProtocolInterfaceExceptionDelegate protocolInterfaceDelegate);
+
+		static void SetPendingProtocolInterfaceException(la.avdecc.protocol.ProtocolInterfaceException.Error error, string message)
+		{
+			SWIGPendingException.Set(new la.avdecc.protocol.ProtocolInterfaceException(error, message));
+		}
+
+		static ProtocolInterfaceExceptionHelper()
+		{
+			ProtocolInterfaceExceptionRegisterCallback(protocolInterfaceDelegate);
+		}
+	}
+	static ProtocolInterfaceExceptionHelper protocolInterfaceExceptionHelper = new ProtocolInterfaceExceptionHelper();
 
 	// la::avdecc::EndStation::Exception
 	class EndStationExceptionHelper
@@ -813,6 +890,40 @@ namespace la.avdecc
 			return _error;
 		}
 		private Error _error = Error.NoError;
+	}
+
+	namespace protocol
+	{
+		// la::avdecc::protocol::ProtocolInterface::Exception
+		class ProtocolInterfaceException : global::System.ApplicationException
+		{
+			public enum Error
+			{
+				NoError = 0,
+				TransportError = 1, /**< Transport interface error. This is critical and the interface is no longer usable. */
+				Timeout = 2, /**< A timeout occured during the operation. */
+				UnknownRemoteEntity = 3, /**< Unknown remote entity. */
+				UnknownLocalEntity = 4, /**< Unknown local entity. */
+				InvalidEntityType = 5, /**< Invalid entity type for the operation. */
+				DuplicateLocalEntityID = 6, /**< The EntityID specified in a LocalEntity is already in use by another local entity. */
+				InterfaceNotFound = 7, /**< Specified InterfaceID not found. */
+				InvalidParameters = 8, /**< Specified parameters are invalid. */
+				InterfaceNotSupported = 9, /**< This protocol interface is not in the list of supported protocol interfaces. */
+				MessageNotSupported = 10, /**< This type of message is not supported by this protocol interface. */
+				ExecutorNotInitialized = 11, /**< The executor is not initialized. */
+				InternalError = 99, /**< Internal error, please report the issue. */
+			}
+			public ProtocolInterfaceException(Error error, string message)
+				: base(message)
+			{
+				_error = error;
+			}
+			public Error getError()
+			{
+				return _error;
+			}
+			private Error _error = Error.NoError;
+		}
 	}
 }
 %}
