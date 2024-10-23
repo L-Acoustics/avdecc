@@ -93,4 +93,14 @@ if(BUILD_AVDECC_CONTROLLER)
 		# Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
 		cu_setup_deploy_runtime(EntityDumper ${INSTALL_EXAMPLE_FLAG} ${SIGN_FLAG})
 	endif()
+
+	if(BUILD_AVDECC_BINDINGS_CSHARP)
+		# Only include if the CMake generator is single-config
+		if(CMAKE_CONFIGURATION_TYPES)
+			message("CMake generator is multi-config, skipping C# example")
+		else()
+			# Network interfaces enumerator using C# bindings
+			add_subdirectory(discoveryCSharp)
+		endif()
+	endif()
 endif()
