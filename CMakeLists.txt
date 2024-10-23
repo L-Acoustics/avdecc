@@ -93,9 +93,17 @@ cu_setup_project_version_variables(${LA_AVDECC_VERSION})
 # Set minimum OSX/iOS version
 cu_setup_apple_minimum_versions(MACOS 10.13)
 
+include(FetchContent)
+
 # Include fmtlib
 if(ENABLE_AVDECC_USE_FMTLIB)
-	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/fmtlib EXCLUDE_FROM_ALL)
+	FetchContent_Declare(
+	  fmt
+	  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+	  GIT_TAG        0c9fce2ffefecfdce794e1859584e25877b7b592 # release-11.0.2
+	  FIND_PACKAGE_ARGS NAMES fmt
+	)
+	FetchContent_MakeAvailable(fmt)
 endif()
 
 # Include json
@@ -224,7 +232,13 @@ if(BUILD_AVDECC_TESTS AND NOT VS_USE_CLANG)
 	set(BUILD_GMOCK ON CACHE BOOL "Build the googlemock subproject" FORCE)
 	set(INSTALL_GTEST OFF CACHE BOOL "Disable installation of googletest. (Projects embedding googletest may want to turn this OFF.)" FORCE)
 	# Include gtest framework
-	add_subdirectory(externals/3rdparty/gtest)
+	FetchContent_Declare(
+	  googletest
+	  GIT_REPOSITORY https://github.com/google/googletest.git
+	  GIT_TAG        703bd9caab50b139428cea1aaff9974ebee5742e # release-1.10.0
+	  FIND_PACKAGE_ARGS NAMES GTest
+	)
+	FetchContent_MakeAvailable(googletest)
 	# Include our unit tests
 	add_subdirectory(tests)
 endif()
