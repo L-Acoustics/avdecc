@@ -197,6 +197,13 @@ DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
 ////////////////////////////////////////
 // Entity/LocalEntity
 ////////////////////////////////////////
+// Bind enums
+DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity, AemCommandStatus, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity, AaCommandStatus, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity, MvuCommandStatus, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity, ControlStatus, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity, AdvertiseFlag, "byte")
+
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
@@ -216,11 +223,6 @@ DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
 %rename("%s") la::avdecc::entity::LocalEntity; // Unignore class
 %rename("lockEntity") la::avdecc::entity::LocalEntity::lock; // Rename method
 %rename("unlockEntity") la::avdecc::entity::LocalEntity::unlock; // Rename method
-%typemap(csbase, replace="1") la::avdecc::entity::LocalEntity::AemCommandStatus "ushort"
-%typemap(csbase, replace="1") la::avdecc::entity::LocalEntity::AaCommandStatus "ushort"
-%typemap(csbase, replace="1") la::avdecc::entity::LocalEntity::MvuCommandStatus "ushort"
-%typemap(csbase, replace="1") la::avdecc::entity::LocalEntity::ControlStatus "ushort"
-%typemap(csbase, replace="1") la::avdecc::entity::LocalEntity::AdvertiseFlag "uint" // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
 %rename("not") operator!(LocalEntity::AemCommandStatus const status); // Not put in a namespace https://github.com/swig/swig/issues/2459
 %rename("or") operator|(LocalEntity::AemCommandStatus const lhs, LocalEntity::AemCommandStatus const rhs); // Not put in a namespace https://github.com/swig/swig/issues/2459
 %ignore operator|=(LocalEntity::AemCommandStatus& lhs, LocalEntity::AemCommandStatus const rhs); // Don't know how to properly bind this with correct type defined (SWIG generates a SWIGTYPE_p file for this)
@@ -241,6 +243,8 @@ DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
 
 // Define templates
 %template(InterfaceInformationMap) std::map<la::avdecc::entity::model::AvbInterfaceIndex, la::avdecc::entity::Entity::InterfaceInformation>;
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity::LocalEntity, AdvertiseFlags, AdvertiseFlag, std::uint8_t)
+
 
 ////////////////////////////////////////
 // ControllerEntity
