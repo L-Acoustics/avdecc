@@ -383,8 +383,39 @@ public:
 
 	/** Constructor from a MemoryBuffer */
 	MemoryBufferView(MemoryBuffer const& buffer) noexcept
-		: _data(buffer.data())
-		, _size(buffer.size())
+		: MemoryBufferView{ buffer, 0, buffer.size() }
+	{
+	}
+
+	MemoryBufferView(MemoryBuffer const& buffer, size_t const offset) // Throw std::invalid_argument if offset is out of bounds
+		: MemoryBufferView{ buffer, offset, buffer.size() - offset }
+	{
+		// Check offset validity
+		if (offset > buffer.size())
+		{
+			throw std::invalid_argument("Offset is out of buffer bounds");
+		}
+	}
+
+	MemoryBufferView(MemoryBuffer const& buffer, size_t const offset, size_t const size) // Throw std::invalid_argument if offset is out of bounds or size is too big
+		: _data{ buffer.data() + offset }
+		, _size{ size }
+	{
+		// Check offset validity
+		if (offset > buffer.size())
+		{
+			throw std::invalid_argument("Offset is out of buffer bounds");
+		}
+		// Check size validity
+		if (size > buffer.size() - offset)
+		{
+			throw std::invalid_argument("Size is too big for the buffer");
+		}
+	}
+
+	MemoryBufferView(void const* const ptr, size_t const bytes) noexcept
+		: _data{ static_cast<MemoryBuffer::value_type const*>(ptr) }
+		, _size{ bytes }
 	{
 	}
 

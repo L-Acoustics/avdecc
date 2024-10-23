@@ -17,10 +17,7 @@
 %ignore la::avdecc::MemoryBuffer::operator=;
 // Ignore move constructor
 %ignore la::avdecc::MemoryBuffer::MemoryBuffer(MemoryBuffer&&);
-// Rename const data() getter
-//%rename("constData") la::avdecc::MemoryBuffer::data() const; // RIGHT NOW IGNORE IT AS WE NEED TO FIND A WAY TO MARSHALL THE RETURNED POINTER
-%ignore la::avdecc::MemoryBuffer::data(); // RIGHT NOW IGNORE IT AS WE NEED TO FIND A WAY TO MARSHALL THE RETURNED POINTER
-%ignore la::avdecc::MemoryBuffer::data() const; // RIGHT NOW IGNORE IT AS WE NEED TO FIND A WAY TO MARSHALL THE RETURNED POINTER
+%ignore la::avdecc::MemoryBuffer::data() const; // Ignore const data getter, always return the non-const version
 // Extend the class
 %extend la::avdecc::MemoryBuffer
 {
@@ -41,10 +38,7 @@
 %ignore la::avdecc::MemoryBufferView::operator=;
 // Ignore move constructor
 %ignore la::avdecc::MemoryBufferView::MemoryBufferView(MemoryBufferView&&);
-// Rename const data() getter
-//%rename("constData") la::avdecc::MemoryBufferView::data() const; // RIGHT NOW IGNORE IT AS WE NEED TO FIND A WAY TO MARSHALL THE RETURNED POINTER
-%ignore la::avdecc::MemoryBufferView::data(); // RIGHT NOW IGNORE IT AS WE NEED TO FIND A WAY TO MARSHALL THE RETURNED POINTER
-%ignore la::avdecc::MemoryBufferView::data() const; // RIGHT NOW IGNORE IT AS WE NEED TO FIND A WAY TO MARSHALL THE RETURNED POINTER
+%ignore la::avdecc::MemoryBufferView::data() const; // Ignore const data getter, always return the non-const version
 // Extend the class
 %extend la::avdecc::MemoryBufferView
 {
@@ -58,11 +52,18 @@
 }
 
 #ifdef SWIGCSHARP
-// Marshalling for void pointers
+// Marshalling for void pointers (as input parameters)
 %apply unsigned char INPUT[]  { void const* const }
+// Marshalling for uint8 pointers as function return value
+%apply void* VOID_INT_PTR { std::uint8_t* }
 #endif
 
 // Include c++ declaration file
 %include "la/avdecc/memoryBuffer.hpp"
 
-
+#ifdef SWIGCSHARP
+// Clear marshalling for void pointers
+%clear void const* const;
+// Clear marshalling for uint8 pointers
+%clear std::uint8_t*;
+#endif
