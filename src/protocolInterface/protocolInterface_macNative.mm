@@ -1023,7 +1023,20 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 			case kIOReturnBadArgument:
 				return la::avdecc::protocol::ProtocolInterface::Error::InternalError;
 			default:
-				NSLog(@"Not handled IOReturn error code: %x\n", code);
+				NSLog(@"Not handled AVBErrorDomain error code: %x\n", code);
+				AVDECC_ASSERT(false, "Not handled error code");
+				return la::avdecc::protocol::ProtocolInterface::Error::TransportError;
+		}
+	}
+	else if ([[error domain] isEqualToString:@"IOErrorDomain"])
+	{
+		auto const code = IOReturn(error.code);
+		switch (code)
+		{
+			case kIOReturnOffline: // Code sometimes returned as IOErrorDomain if the NetworkInterface is not Connected (eg. cable not plugged)
+				return la::avdecc::protocol::ProtocolInterface::Error::UnknownLocalEntity;
+			default:
+				NSLog(@"Not handled IOErrorDomain error code: %x\n", code);
 				AVDECC_ASSERT(false, "Not handled error code");
 				return la::avdecc::protocol::ProtocolInterface::Error::TransportError;
 		}
