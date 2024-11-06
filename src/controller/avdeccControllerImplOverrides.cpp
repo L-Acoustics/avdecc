@@ -416,6 +416,12 @@ bool ControllerImpl::discoverRemoteEntity(UniqueIdentifier const entityID) const
 	return _controller->discoverRemoteEntity(entityID);
 }
 
+bool ControllerImpl::forgetRemoteEntity(UniqueIdentifier const entityID) const noexcept
+{
+	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Requesting remote entity {} removal", utils::toHexString(entityID, true));
+	return _controller->forgetRemoteEntity(entityID);
+}
+
 void ControllerImpl::setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept
 {
 	_controller->setAutomaticDiscoveryDelay(delay);
@@ -3180,26 +3186,9 @@ bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 	ExecutorManager::getInstance().pushJob(exName,
 		[this, entityID]()
 		{
-			// Make a copy of the Entity object since it will be destroyed during onEntityOffline
-			auto e = std::unique_ptr<entity::Entity>{ nullptr };
-			{
-				{
-					// Lock to protect _controlledEntities
-					std::lock_guard<decltype(_lock)> const lg(_lock);
-
-					auto entityIt = _controlledEntities.find(entityID);
-					// Entity not found
-					if (entityIt == _controlledEntities.end())
-					{
-						return;
-					}
-					e = std::make_unique<entity::Entity>(entityIt->second->getEntity());
-				}
-			}
-
 			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
-			onEntityOffline(_controller, entityID);
-			onEntityOnline(_controller, entityID, *e);
+			forgetRemoteEntity(entityID);
+			discoverRemoteEntity(entityID);
 		});
 
 	// Flush executor to be sure everything is loaded before returning

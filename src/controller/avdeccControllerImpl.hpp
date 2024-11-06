@@ -83,6 +83,7 @@ private:
 	virtual void disableEntityAdvertising(std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
 	virtual bool discoverRemoteEntities() const noexcept override;
 	virtual bool discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept override;
+	virtual bool forgetRemoteEntity(UniqueIdentifier const entityID) const noexcept override;
 	virtual void setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept override;
 	virtual void enableEntityModelCache() noexcept override;
 	virtual void disableEntityModelCache() noexcept override;

@@ -347,11 +347,9 @@ void ControllerImpl::updateConfiguration(entity::controller::Interface const* co
 	controlledEntity.setCurrentConfiguration(configurationIndex, notFoundBehavior);
 
 	// Right now, simulate the entity going offline then online again - TODO: Handle multiple configurations, see https://github.com/L-Acoustics/avdecc/issues/3
-	auto const e = static_cast<entity::Entity>(controlledEntity.getEntity()); // Make a copy of the Entity object since it will be destroyed during onEntityOffline (use static_cast to prevent warning with 'auto' not being a reference)
-	auto const entityID = e.getEntityID();
-	auto* self = const_cast<ControllerImpl*>(this);
-	self->onEntityOffline(controller, entityID);
-	self->onEntityOnline(controller, entityID, e);
+	auto const entityID = controlledEntity.getEntity().getEntityID();
+	forgetRemoteEntity(entityID);
+	discoverRemoteEntity(entityID);
 }
 
 void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
