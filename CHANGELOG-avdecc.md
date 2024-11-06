@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - la::avdecc::entity::controller::Delegate is now virtual pure, but a new derivated visitor (with all default implementation) has been added: la::avdecc::entity::controller::DefaultedDelegate
 - [Executor name can be provided when creating an EndStation](https://github.com/L-Acoustics/avdecc/issues/132)
 - *entity::model::validateControlValues* now returns an enum value as well as an error message
+- Mechanism to refresh an entity (same for Configuration change) totally revamped to be more consistent
 
 ### Fixed
 - Crash when unpacking vendor specific control values

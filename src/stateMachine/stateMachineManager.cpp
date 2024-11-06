@@ -544,6 +544,11 @@ void Manager::discoverMessageSent() noexcept
 	_discoveryStateMachine.discoverMessageSent();
 }
 
+ProtocolInterface::Error Manager::forgetRemoteEntity(UniqueIdentifier const entityID) noexcept
+{
+	return _discoveryStateMachine.forgetRemoteEntity(entityID);
+}
+
 /* ************************************************************ */
 /* Sending entry points                                         */
 /* ************************************************************ */

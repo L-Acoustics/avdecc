@@ -280,6 +280,11 @@ private:
 		return err;
 	}
 
+	virtual Error forgetRemoteEntity(UniqueIdentifier const entityID) const noexcept override
+	{
+		return _stateMachineManager.forgetRemoteEntity(entityID);
+	}
+
 	virtual Error setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) const noexcept override
 	{
 		return _stateMachineManager.setAutomaticDiscoveryDelay(delay);
