@@ -6525,6 +6525,65 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 	return { avdecc::jsonSerializer::DeserializationError::NoError, "" };
 }
 
+ControllerImpl::SharedControlledEntityImpl ControllerImpl::deregisterVirtualControlledEntity(UniqueIdentifier const entityID) noexcept
+{
+	auto sharedControlledEntity = decltype(_controlledEntities)::value_type::second_type{};
+
+	// Check if entity is virtual
+	{
+		// Lock to protect _controlledEntities
+		std::lock_guard<decltype(_lock)> const lg(_lock);
+
+		auto entityIt = _controlledEntities.find(entityID);
+		// Entity not found
+		if (entityIt == _controlledEntities.end())
+		{
+			return sharedControlledEntity;
+		}
+		// Entity is not virtual
+		if (!entityIt->second->isVirtual())
+		{
+			return sharedControlledEntity;
+		}
+		// Take a shared ownership on the ControlledEntity (without locking it)
+		sharedControlledEntity = entityIt->second;
+	}
+
+	// Ready to remove using the network executor
+	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
+	auto& executor = ExecutorManager::getInstance();
+
+	// Job to run
+	auto const job = [this, entityID]()
+	{
+		onEntityOffline(_controller, entityID);
+	};
+
+	// If current thread is Executor thread, directly call handler
+	if (std::this_thread::get_id() == executor.getExecutorThread(exName))
+	{
+		job();
+	}
+	else
+	{
+		executor.pushJob(exName,
+			[this, job]()
+			{
+				auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
+
+				job();
+			});
+
+		// Flush executor to be sure everything is loaded before returning
+		executor.flush(exName);
+	}
+
+	// Clear entity as virtual
+	_controllerProxy->clearVirtualEntity(entityID);
+
+	return sharedControlledEntity;
+}
+
 ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntityFromJson(json const& object, entity::model::jsonSerializer::Flags const flags, ControlledEntityImpl::LockInformation::SharedPointer const& lockInfo)
 {
 	try
