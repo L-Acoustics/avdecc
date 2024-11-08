@@ -344,12 +344,61 @@ void ControllerImpl::updateLockedState(ControlledEntityImpl& controlledEntity, m
 
 void ControllerImpl::updateConfiguration(entity::controller::Interface const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	controlledEntity.setCurrentConfiguration(configurationIndex, notFoundBehavior);
+	if (controlledEntity.isVirtual())
+	{
+		// FIXME: Move 'canChangeVirtualEntityConfiguration' to a real public method
+		auto const canChangeVirtualEntityConfiguration = [](ControlledEntityImpl const& controlledEntity, entity::model::ConfigurationIndex const configurationIndex) noexcept
+		{
+			// Check if this is a virtual entity
+			if (!controlledEntity.isVirtual())
+			{
+				return false;
+			}
+			// Check if the model is valid for the new configuration (ask the AemCache)
+			try
+			{
+				auto const& currentConfigNode = controlledEntity.getCurrentConfigurationNode();
+				return EntityModelCache::isModelValidForConfiguration(currentConfigNode);
+			}
+			catch (ControlledEntity::Exception const&)
+			{
+				return false;
+			}
+		};
+		// For a virtual entity, make sure a change of configuration is possible
+		if (canChangeVirtualEntityConfiguration(controlledEntity, configurationIndex))
+		{
+			// Changing the configuration on a Virtual entity is tricky: A different configuration is like a different entity, some part of the model is only valid for the current configuration (like connections) so we need to make sure we update all related entities accordingly. We'll do that by temporarily removing the entity (declare it offline)
+			auto* self = const_cast<ControllerImpl*>(this);
 
-	// Right now, simulate the entity going offline then online again - TODO: Handle multiple configurations, see https://github.com/L-Acoustics/avdecc/issues/3
-	auto const entityID = controlledEntity.getEntity().getEntityID();
-	forgetRemoteEntity(entityID);
-	discoverRemoteEntity(entityID);
+			auto const entityID = controlledEntity.getEntity().getEntityID();
+
+			// Deregister the ControlledEntity
+			auto sharedControlledEntity = self->deregisterVirtualControlledEntity(entityID);
+
+			// Change the current configuration
+			controlledEntity.setCurrentConfiguration(configurationIndex, notFoundBehavior);
+
+			// Re-register entity
+			self->registerVirtualControlledEntity(std::move(sharedControlledEntity));
+		}
+		else
+		{
+			// Otherwise remote the entity and log an error
+			auto const entityID = controlledEntity.getEntity().getEntityID();
+			// Shouldn't have been called if the configuration was not valid, log an error and remove the entity
+			LOG_CONTROLLER_ERROR(entityID, "Requested Virtual entity configuration is not valid (call canChangeVirtualEntityConfiguration() before trying to change the configuration of a Virtual entity), removing entity");
+			forgetRemoteEntity(entityID);
+		}
+	}
+	else
+	{
+		// For real entities, simulate going offline then online again (to properly update the model)
+		auto const entityID = controlledEntity.getEntity().getEntityID();
+		forgetRemoteEntity(entityID);
+		discoverRemoteEntity(entityID);
+		// We don't need to change the current configuration, the entity will be re-enumarated
+	}
 }
 
 void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
