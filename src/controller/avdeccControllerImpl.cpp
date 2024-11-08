@@ -6476,32 +6476,49 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 	// Set entity as virtual
 	_controllerProxy->setVirtualEntity(entityID);
 
-	// Ready to advertise using the network executor
 	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
-	ExecutorManager::getInstance().pushJob(exName,
-		[this, entityID]()
+	auto& executor = ExecutorManager::getInstance();
+
+	// Job to run
+	auto const job = [this, entityID]()
+	{
+		auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+		if (AVDECC_ASSERT_WITH_RET(!!controlledEntity, "Entity should be in the list"))
 		{
-			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
+			checkEnumerationSteps(controlledEntity.get());
+		}
+	};
 
-			auto controlledEntity = getControlledEntityImplGuard(entityID);
-
-			if (AVDECC_ASSERT_WITH_RET(!!controlledEntity, "Entity should be in the list"))
+	// If current thread is Executor thread, directly call handler
+	if (std::this_thread::get_id() == executor.getExecutorThread(exName))
+	{
+		job();
+	}
+	else
+	{
+		// Ready to advertise using the network executor
+		auto const exName = _endStation->getProtocolInterface()->getExecutorName();
+		executor.pushJob(exName,
+			[this, job]()
 			{
-				checkEnumerationSteps(controlledEntity.get());
-			}
-		});
+				auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
 
-	// Insert a special "marker" job in the queue (and wait for it to be executed) to be sure everything is loaded before returning
-	auto markerPromise = std::promise<void>{};
-	ExecutorManager::getInstance().pushJob(exName,
-		[&markerPromise]()
-		{
-			markerPromise.set_value();
-		});
+				job();
+			});
 
-	// Wait for the marker job to be executed
-	[[maybe_unused]] auto const status = markerPromise.get_future().wait_for(std::chrono::seconds{ 30 });
-	AVDECC_ASSERT(status == std::future_status::ready, "Timeout waiting for marker job to be executed");
+		// Insert a special "marker" job in the queue (and wait for it to be executed) to be sure everything is loaded before returning
+		auto markerPromise = std::promise<void>{};
+		executor.pushJob(exName,
+			[&markerPromise]()
+			{
+				markerPromise.set_value();
+			});
+
+		// Wait for the marker job to be executed
+		[[maybe_unused]] auto const status = markerPromise.get_future().wait_for(std::chrono::seconds{ 30 });
+		AVDECC_ASSERT(status == std::future_status::ready, "Timeout waiting for marker job to be executed");
+	}
 
 	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Successfully registered virtual entity with ID {}", utils::toHexString(entityID, true));
 
