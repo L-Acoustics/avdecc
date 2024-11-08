@@ -3206,38 +3206,7 @@ bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 
 bool ControllerImpl::unloadVirtualEntity(UniqueIdentifier const entityID) noexcept
 {
-	// Check if entity is virtual
-	{
-		// Lock to protect _controlledEntities
-		std::lock_guard<decltype(_lock)> const lg(_lock);
-
-		auto entityIt = _controlledEntities.find(entityID);
-		// Entity not found
-		if (entityIt == _controlledEntities.end())
-		{
-			return false;
-		}
-		// Entity is not virtual
-		if (!entityIt->second->isVirtual())
-		{
-			return false;
-		}
-	}
-
-	// Ready to remove using the network executor
-	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
-	ExecutorManager::getInstance().pushJob(exName,
-		[this, entityID]()
-		{
-			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
-
-			onEntityOffline(_controller, entityID);
-		});
-
-	// Flush executor to be sure everything is loaded before returning
-	ExecutorManager::getInstance().flush(exName);
-
-	return true;
+	return !!deregisterVirtualControlledEntity(entityID);
 }
 
 } // namespace controller
