@@ -3163,7 +3163,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 
 bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 {
-	// Check if entity is not virtual
+	auto isVirtual = false;
 	{
 		// Lock to protect _controlledEntities
 		std::lock_guard<decltype(_lock)> const lg(_lock);
@@ -3174,21 +3174,28 @@ bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 		{
 			return false;
 		}
-		// Entity is virtual
-		if (entityIt->second->isVirtual())
-		{
-			return false;
-		}
+		isVirtual = entityIt->second->isVirtual();
 	}
 
 	// Ready to remove using the network executor
 	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
 	ExecutorManager::getInstance().pushJob(exName,
-		[this, entityID]()
+		[this, entityID, isVirtual]()
 		{
 			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
-			forgetRemoteEntity(entityID);
-			discoverRemoteEntity(entityID);
+
+			if (isVirtual)
+			{
+				// Deregister the ControlledEntity
+				auto sharedControlledEntity = deregisterVirtualControlledEntity(entityID);
+				// Re-register entity
+				registerVirtualControlledEntity(std::move(sharedControlledEntity));
+			}
+			else
+			{
+				forgetRemoteEntity(entityID);
+				discoverRemoteEntity(entityID);
+			}
 		});
 
 	// Flush executor to be sure everything is loaded before returning

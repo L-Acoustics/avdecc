@@ -647,7 +647,7 @@ public:
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadEntityModelFile(std::string const& filePath) noexcept = 0;
 
 	/* Other helpful methods */
-	/** Re-enumerates the specified entity (physical entity only). */
+	/** Re-enumerates the specified entity */
 	virtual bool refreshEntity(UniqueIdentifier const entityID) noexcept = 0;
 	/** Removes a Virtual Entity from the controller */
 	virtual bool unloadVirtualEntity(UniqueIdentifier const entityID) noexcept = 0;
