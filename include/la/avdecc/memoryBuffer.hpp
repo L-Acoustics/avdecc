@@ -32,6 +32,7 @@
 #include <cstring> // memmove / memcpy
 #include <cstdlib> // free / realloc
 #include <algorithm> // min
+#include <stdexcept> // invalid_argument
 
 namespace la
 {
