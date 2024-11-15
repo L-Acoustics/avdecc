@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - isOverLatency diagnostics not properly set if msrpAccumulatedLatency is not set
 - _Media Clock Chain_ not recomputed when a connection changes without disconnecting first
 - [Crash when trying to access unknown localized string](https://github.com/L-Acoustics/avdecc/issues/153)
+- Locales from all configurations are loaded (if defined) for virtual entities
 
 ## [3.4.1] - 2023-01-11
 ### Fixed

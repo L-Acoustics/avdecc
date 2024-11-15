@@ -6495,7 +6495,18 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::loadControlledEntityF
 	// Choose a locale
 	if (entity.hasAnyConfiguration())
 	{
-		chooseLocale(&entity, entity.getCurrentConfigurationIndex(), "en-US", nullptr);
+		// Load locale for each configuration
+		try
+		{
+			auto const& entityNode = entity.getEntityNode();
+			for (auto const& [configurationIndex, configurationNode] : entityNode.configurations)
+			{
+				chooseLocale(&entity, configurationIndex, "en-US", nullptr);
+			}
+		}
+		catch (ControlledEntity::Exception const&)
+		{
+		}
 	}
 
 	auto const entityID = entity.getEntity().getEntityID();
