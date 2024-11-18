@@ -93,6 +93,11 @@ public:
 		return !_protocolInterface->discoverRemoteEntity(entityID);
 	}
 
+	virtual bool forgetRemoteEntity(UniqueIdentifier const entityID) const noexcept override
+	{
+		return !_protocolInterface->forgetRemoteEntity(entityID);
+	}
+
 	virtual void setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept override
 	{
 		_protocolInterface->setAutomaticDiscoveryDelay(delay);

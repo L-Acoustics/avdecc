@@ -83,6 +83,7 @@ private:
 	virtual void disableEntityAdvertising(std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
 	virtual bool discoverRemoteEntities() const noexcept override;
 	virtual bool discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept override;
+	virtual bool forgetRemoteEntity(UniqueIdentifier const entityID) const noexcept override;
 	virtual void setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept override;
 	virtual void enableEntityModelCache() noexcept override;
 	virtual void disableEntityModelCache() noexcept override;
@@ -698,6 +699,7 @@ private:
 #ifdef ENABLE_AVDECC_FEATURE_JSON
 	static SharedControlledEntityImpl loadControlledEntityFromJson(nlohmann::json const& object, entity::model::jsonSerializer::Flags const flags, ControlledEntityImpl::LockInformation::SharedPointer const& lockInfo);
 	std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> registerVirtualControlledEntity(SharedControlledEntityImpl&& controlledEntity) noexcept;
+	SharedControlledEntityImpl deregisterVirtualControlledEntity(UniqueIdentifier const entityID) noexcept; // Deregister a virtual entity, returning the associated SharedControlledEntity (not locked)
 	static SharedControlledEntityImpl createControlledEntityFromJson(nlohmann::json const& object, entity::model::jsonSerializer::Flags const flags, ControlledEntityImpl::LockInformation::SharedPointer const& lockInfo); // Throws DeserializationException
 	static std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<SharedControlledEntityImpl>> deserializeJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError, ControlledEntityImpl::LockInformation::SharedPointer const& lockInfo) noexcept;
 	static std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedControlledEntityImpl> deserializeJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, ControlledEntityImpl::LockInformation::SharedPointer const& lockInfo) noexcept;

@@ -63,6 +63,7 @@ public:
 
 	void setDiscoveryDelay(std::chrono::milliseconds const delay = DefaultDiscoverySendDelay) noexcept; // 0 as delay means never send automatic DISCOVER messages
 	void discoverMessageSent() noexcept;
+	ProtocolInterface::Error forgetRemoteEntity(UniqueIdentifier const entityID) noexcept;
 	void checkRemoteEntitiesTimeoutExpiracy() noexcept;
 	void checkDiscovery() noexcept;
 	void handleAdpEntityAvailable(Adpdu const& adpdu) noexcept;

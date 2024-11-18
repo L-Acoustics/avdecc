@@ -331,8 +331,10 @@ public:
 
 private:
 	// Private members
-	mutable std::mutex _lock{};
+	mutable std::mutex _executorsLock{};
+	mutable std::mutex _executorThreadsLock{}; // Use a separate lock as we need to be able to query the threadIds even if executor are currently locked (eg. by a flush)
 	std::unordered_map<std::string, Executor::UniquePointer> _executors{};
+	std::unordered_map<std::string, std::thread::id> _executorThreadIds{};
 };
 
 class ExecutorWrapperImpl final : public ExecutorManager::ExecutorWrapper
@@ -396,18 +398,25 @@ private:
 
 bool ExecutorManagerImpl::isExecutorRegistered(std::string const& name) const noexcept
 {
-	auto const lg = std::lock_guard(_lock);
+	auto const lg = std::lock_guard(_executorsLock);
 	return _executors.find(name) != _executors.end();
 }
 
 ExecutorManager::ExecutorWrapper::UniquePointer ExecutorManagerImpl::registerExecutor(std::string const& name, Executor::UniquePointer&& executor)
 {
-	auto const lg = std::lock_guard(_lock);
+	auto const lg = std::lock_guard(_executorsLock);
+	auto const tid = executor->getExecutorThread();
 	auto const result = _executors.try_emplace(name, std::move(executor));
 	// If the insertion failed, throw an exception
 	if (!result.second)
 	{
 		throw std::runtime_error{ "ExecutorManager: Executor with name '" + name + "' already exists" };
+	}
+
+	// Store the threadId of that executor
+	{
+		auto const tlg = std::lock_guard(_executorThreadsLock);
+		_executorThreadIds[name] = tid;
 	}
 
 	auto deleter = [](ExecutorWrapper* self)
@@ -419,7 +428,7 @@ ExecutorManager::ExecutorWrapper::UniquePointer ExecutorManagerImpl::registerExe
 
 bool ExecutorManagerImpl::destroyExecutor(std::string const& name) noexcept
 {
-	auto const lg = std::lock_guard(_lock);
+	auto const lg = std::lock_guard(_executorsLock);
 	if (auto const it = _executors.find(name); it != _executors.end())
 	{
 		_executors.erase(it);
@@ -431,7 +440,7 @@ bool ExecutorManagerImpl::destroyExecutor(std::string const& name) noexcept
 
 void ExecutorManagerImpl::pushJob(std::string const& name, Executor::Job&& job) noexcept
 {
-	auto const lg = std::lock_guard(_lock);
+	auto const lg = std::lock_guard(_executorsLock);
 	if (auto const it = _executors.find(name); it != _executors.end())
 	{
 		it->second->pushJob(std::move(job));
@@ -440,7 +449,7 @@ void ExecutorManagerImpl::pushJob(std::string const& name, Executor::Job&& job) 
 
 void ExecutorManagerImpl::flush(std::string const& name) noexcept
 {
-	auto const lg = std::lock_guard(_lock);
+	auto const lg = std::lock_guard(_executorsLock);
 	if (auto const it = _executors.find(name); it != _executors.end())
 	{
 		it->second->flush();
@@ -449,10 +458,10 @@ void ExecutorManagerImpl::flush(std::string const& name) noexcept
 
 std::thread::id ExecutorManagerImpl::getExecutorThread(std::string const& name) const noexcept
 {
-	auto const lg = std::lock_guard(_lock);
-	if (auto const it = _executors.find(name); it != _executors.end())
+	auto const lg = std::lock_guard(_executorThreadsLock);
+	if (auto const it = _executorThreadIds.find(name); it != _executorThreadIds.end())
 	{
-		return it->second->getExecutorThread();
+		return it->second;
 	}
 	return {};
 }

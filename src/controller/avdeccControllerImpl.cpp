@@ -344,14 +344,61 @@ void ControllerImpl::updateLockedState(ControlledEntityImpl& controlledEntity, m
 
 void ControllerImpl::updateConfiguration(entity::controller::Interface const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	controlledEntity.setCurrentConfiguration(configurationIndex, notFoundBehavior);
+	if (controlledEntity.isVirtual())
+	{
+		// FIXME: Move 'canChangeVirtualEntityConfiguration' to a real public method
+		auto const canChangeVirtualEntityConfiguration = [](ControlledEntityImpl const& controlledEntity, entity::model::ConfigurationIndex const configurationIndex) noexcept
+		{
+			// Check if this is a virtual entity
+			if (!controlledEntity.isVirtual())
+			{
+				return false;
+			}
+			// Check if the model is valid for the new configuration (ask the AemCache)
+			try
+			{
+				auto const& currentConfigNode = controlledEntity.getCurrentConfigurationNode();
+				return EntityModelCache::isModelValidForConfiguration(currentConfigNode);
+			}
+			catch (ControlledEntity::Exception const&)
+			{
+				return false;
+			}
+		};
+		// For a virtual entity, make sure a change of configuration is possible
+		if (canChangeVirtualEntityConfiguration(controlledEntity, configurationIndex))
+		{
+			// Changing the configuration on a Virtual entity is tricky: A different configuration is like a different entity, some part of the model is only valid for the current configuration (like connections) so we need to make sure we update all related entities accordingly. We'll do that by temporarily removing the entity (declare it offline)
+			auto* self = const_cast<ControllerImpl*>(this);
 
-	// Right now, simulate the entity going offline then online again - TODO: Handle multiple configurations, see https://github.com/L-Acoustics/avdecc/issues/3
-	auto const e = static_cast<entity::Entity>(controlledEntity.getEntity()); // Make a copy of the Entity object since it will be destroyed during onEntityOffline (use static_cast to prevent warning with 'auto' not being a reference)
-	auto const entityID = e.getEntityID();
-	auto* self = const_cast<ControllerImpl*>(this);
-	self->onEntityOffline(controller, entityID);
-	self->onEntityOnline(controller, entityID, e);
+			auto const entityID = controlledEntity.getEntity().getEntityID();
+
+			// Deregister the ControlledEntity
+			auto sharedControlledEntity = self->deregisterVirtualControlledEntity(entityID);
+
+			// Change the current configuration
+			controlledEntity.setCurrentConfiguration(configurationIndex, notFoundBehavior);
+
+			// Re-register entity
+			self->registerVirtualControlledEntity(std::move(sharedControlledEntity));
+		}
+		else
+		{
+			// Otherwise remote the entity and log an error
+			auto const entityID = controlledEntity.getEntity().getEntityID();
+			// Shouldn't have been called if the configuration was not valid, log an error and remove the entity
+			LOG_CONTROLLER_ERROR(entityID, "Requested Virtual entity configuration is not valid (call canChangeVirtualEntityConfiguration() before trying to change the configuration of a Virtual entity), removing entity");
+			forgetRemoteEntity(entityID);
+		}
+	}
+	else
+	{
+		// For real entities, simulate going offline then online again (to properly update the model)
+		auto const entityID = controlledEntity.getEntity().getEntityID();
+		forgetRemoteEntity(entityID);
+		discoverRemoteEntity(entityID);
+		// We don't need to change the current configuration, the entity will be re-enumarated
+	}
 }
 
 void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
@@ -6448,7 +6495,18 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::loadControlledEntityF
 	// Choose a locale
 	if (entity.hasAnyConfiguration())
 	{
-		chooseLocale(&entity, entity.getCurrentConfigurationIndex(), "en-US", nullptr);
+		// Load locale for each configuration
+		try
+		{
+			auto const& entityNode = entity.getEntityNode();
+			for (auto const& [configurationIndex, configurationNode] : entityNode.configurations)
+			{
+				chooseLocale(&entity, configurationIndex, "en-US", nullptr);
+			}
+		}
+		catch (ControlledEntity::Exception const&)
+		{
+		}
 	}
 
 	auto const entityID = entity.getEntity().getEntityID();
@@ -6478,36 +6536,112 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 	// Set entity as virtual
 	_controllerProxy->setVirtualEntity(entityID);
 
-	// Ready to advertise using the network executor
 	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
-	ExecutorManager::getInstance().pushJob(exName,
-		[this, entityID]()
+	auto& executor = ExecutorManager::getInstance();
+
+	// Job to run
+	auto const job = [this, entityID]()
+	{
+		auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+		if (AVDECC_ASSERT_WITH_RET(!!controlledEntity, "Entity should be in the list"))
 		{
-			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
+			checkEnumerationSteps(controlledEntity.get());
+		}
+	};
 
-			auto controlledEntity = getControlledEntityImplGuard(entityID);
-
-			if (AVDECC_ASSERT_WITH_RET(!!controlledEntity, "Entity should be in the list"))
+	// If current thread is Executor thread, directly call handler
+	if (std::this_thread::get_id() == executor.getExecutorThread(exName))
+	{
+		job();
+	}
+	else
+	{
+		// Ready to advertise using the network executor
+		auto const exName = _endStation->getProtocolInterface()->getExecutorName();
+		executor.pushJob(exName,
+			[this, job]()
 			{
-				checkEnumerationSteps(controlledEntity.get());
-			}
-		});
+				auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
 
-	// Insert a special "marker" job in the queue (and wait for it to be executed) to be sure everything is loaded before returning
-	auto markerPromise = std::promise<void>{};
-	ExecutorManager::getInstance().pushJob(exName,
-		[&markerPromise]()
-		{
-			markerPromise.set_value();
-		});
+				job();
+			});
 
-	// Wait for the marker job to be executed
-	[[maybe_unused]] auto const status = markerPromise.get_future().wait_for(std::chrono::seconds{ 30 });
-	AVDECC_ASSERT(status == std::future_status::ready, "Timeout waiting for marker job to be executed");
+		// Insert a special "marker" job in the queue (and wait for it to be executed) to be sure everything is loaded before returning
+		auto markerPromise = std::promise<void>{};
+		executor.pushJob(exName,
+			[&markerPromise]()
+			{
+				markerPromise.set_value();
+			});
+
+		// Wait for the marker job to be executed
+		[[maybe_unused]] auto const status = markerPromise.get_future().wait_for(std::chrono::seconds{ 30 });
+		AVDECC_ASSERT(status == std::future_status::ready, "Timeout waiting for marker job to be executed");
+	}
 
 	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Successfully registered virtual entity with ID {}", utils::toHexString(entityID, true));
 
 	return { avdecc::jsonSerializer::DeserializationError::NoError, "" };
+}
+
+ControllerImpl::SharedControlledEntityImpl ControllerImpl::deregisterVirtualControlledEntity(UniqueIdentifier const entityID) noexcept
+{
+	auto sharedControlledEntity = decltype(_controlledEntities)::value_type::second_type{};
+
+	// Check if entity is virtual
+	{
+		// Lock to protect _controlledEntities
+		std::lock_guard<decltype(_lock)> const lg(_lock);
+
+		auto entityIt = _controlledEntities.find(entityID);
+		// Entity not found
+		if (entityIt == _controlledEntities.end())
+		{
+			return sharedControlledEntity;
+		}
+		// Entity is not virtual
+		if (!entityIt->second->isVirtual())
+		{
+			return sharedControlledEntity;
+		}
+		// Take a shared ownership on the ControlledEntity (without locking it)
+		sharedControlledEntity = entityIt->second;
+	}
+
+	// Ready to remove using the network executor
+	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
+	auto& executor = ExecutorManager::getInstance();
+
+	// Job to run
+	auto const job = [this, entityID]()
+	{
+		onEntityOffline(_controller, entityID);
+	};
+
+	// If current thread is Executor thread, directly call handler
+	if (std::this_thread::get_id() == executor.getExecutorThread(exName))
+	{
+		job();
+	}
+	else
+	{
+		executor.pushJob(exName,
+			[this, job]()
+			{
+				auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
+
+				job();
+			});
+
+		// Flush executor to be sure everything is loaded before returning
+		executor.flush(exName);
+	}
+
+	// Clear entity as virtual
+	_controllerProxy->clearVirtualEntity(entityID);
+
+	return sharedControlledEntity;
 }
 
 ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntityFromJson(json const& object, entity::model::jsonSerializer::Flags const flags, ControlledEntityImpl::LockInformation::SharedPointer const& lockInfo)

@@ -61,6 +61,29 @@ void DiscoveryStateMachine::discoverMessageSent() noexcept
 	_lastDiscovery = std::chrono::steady_clock::now();
 }
 
+ProtocolInterface::Error DiscoveryStateMachine::forgetRemoteEntity(UniqueIdentifier const entityID) noexcept
+{
+	// Lock
+	auto const lg = std::lock_guard{ *_manager };
+
+	// Check if we already know this entity
+	auto entityIt = _discoveredEntities.find(entityID);
+
+	// Not found it in the list, return now
+	if (entityIt == _discoveredEntities.end())
+	{
+		return ProtocolInterface::Error::UnknownRemoteEntity;
+	}
+
+	// Remove from the list
+	_discoveredEntities.erase(entityIt);
+
+	// Notify delegate
+	utils::invokeProtectedMethod(&Delegate::onRemoteEntityOffline, _delegate, entityID);
+
+	return ProtocolInterface::Error::NoError;
+}
+
 void DiscoveryStateMachine::checkRemoteEntitiesTimeoutExpiracy() noexcept
 {
 	// Lock
@@ -223,21 +246,7 @@ void DiscoveryStateMachine::handleAdpEntityDeparting(Adpdu const& adpdu) noexcep
 
 	auto const entityID = adpdu.getEntityID();
 
-	// Lock
-	auto const lg = std::lock_guard{ *_manager };
-
-	// Check if we already know this entity
-	auto entityIt = _discoveredEntities.find(entityID);
-
-	// Not found it in the list, ignore it
-	if (entityIt == _discoveredEntities.end())
-		return;
-
-	// Remove from the list
-	_discoveredEntities.erase(entityIt);
-
-	// Notify delegate
-	utils::invokeProtectedMethod(&Delegate::onRemoteEntityOffline, _delegate, entityID);
+	forgetRemoteEntity(entityID);
 }
 
 void DiscoveryStateMachine::notifyDiscoveredRemoteEntities(Delegate& delegate) const noexcept

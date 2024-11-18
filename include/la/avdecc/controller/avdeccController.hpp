@@ -538,6 +538,8 @@ public:
 	virtual bool discoverRemoteEntities() const noexcept = 0;
 	/** Requests a targetted remote entity discovery. */
 	virtual bool discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept = 0;
+	/** Forgets the specified remote entity. */
+	virtual bool forgetRemoteEntity(UniqueIdentifier const entityID) const noexcept = 0;
 	/** Sets automatic discovery delay. 0 (default) for no automatic discovery. */
 	virtual void setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept = 0;
 	/** Enables the EntityModel cache */
@@ -645,7 +647,7 @@ public:
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadEntityModelFile(std::string const& filePath) noexcept = 0;
 
 	/* Other helpful methods */
-	/** Re-enumerates the specified entity (physical entity only). */
+	/** Re-enumerates the specified entity */
 	virtual bool refreshEntity(UniqueIdentifier const entityID) noexcept = 0;
 	/** Removes a Virtual Entity from the controller */
 	virtual bool unloadVirtualEntity(UniqueIdentifier const entityID) noexcept = 0;

@@ -416,6 +416,12 @@ bool ControllerImpl::discoverRemoteEntity(UniqueIdentifier const entityID) const
 	return _controller->discoverRemoteEntity(entityID);
 }
 
+bool ControllerImpl::forgetRemoteEntity(UniqueIdentifier const entityID) const noexcept
+{
+	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Requesting remote entity {} removal", utils::toHexString(entityID, true));
+	return _controller->forgetRemoteEntity(entityID);
+}
+
 void ControllerImpl::setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept
 {
 	_controller->setAutomaticDiscoveryDelay(delay);
@@ -3157,7 +3163,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 
 bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 {
-	// Check if entity is not virtual
+	auto isVirtual = false;
 	{
 		// Lock to protect _controlledEntities
 		std::lock_guard<decltype(_lock)> const lg(_lock);
@@ -3168,38 +3174,28 @@ bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 		{
 			return false;
 		}
-		// Entity is virtual
-		if (entityIt->second->isVirtual())
-		{
-			return false;
-		}
+		isVirtual = entityIt->second->isVirtual();
 	}
 
 	// Ready to remove using the network executor
 	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
 	ExecutorManager::getInstance().pushJob(exName,
-		[this, entityID]()
+		[this, entityID, isVirtual]()
 		{
-			// Make a copy of the Entity object since it will be destroyed during onEntityOffline
-			auto e = std::unique_ptr<entity::Entity>{ nullptr };
-			{
-				{
-					// Lock to protect _controlledEntities
-					std::lock_guard<decltype(_lock)> const lg(_lock);
-
-					auto entityIt = _controlledEntities.find(entityID);
-					// Entity not found
-					if (entityIt == _controlledEntities.end())
-					{
-						return;
-					}
-					e = std::make_unique<entity::Entity>(entityIt->second->getEntity());
-				}
-			}
-
 			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
-			onEntityOffline(_controller, entityID);
-			onEntityOnline(_controller, entityID, *e);
+
+			if (isVirtual)
+			{
+				// Deregister the ControlledEntity
+				auto sharedControlledEntity = deregisterVirtualControlledEntity(entityID);
+				// Re-register entity
+				registerVirtualControlledEntity(std::move(sharedControlledEntity));
+			}
+			else
+			{
+				forgetRemoteEntity(entityID);
+				discoverRemoteEntity(entityID);
+			}
 		});
 
 	// Flush executor to be sure everything is loaded before returning
@@ -3210,38 +3206,7 @@ bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 
 bool ControllerImpl::unloadVirtualEntity(UniqueIdentifier const entityID) noexcept
 {
-	// Check if entity is virtual
-	{
-		// Lock to protect _controlledEntities
-		std::lock_guard<decltype(_lock)> const lg(_lock);
-
-		auto entityIt = _controlledEntities.find(entityID);
-		// Entity not found
-		if (entityIt == _controlledEntities.end())
-		{
-			return false;
-		}
-		// Entity is not virtual
-		if (!entityIt->second->isVirtual())
-		{
-			return false;
-		}
-	}
-
-	// Ready to remove using the network executor
-	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
-	ExecutorManager::getInstance().pushJob(exName,
-		[this, entityID]()
-		{
-			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
-
-			onEntityOffline(_controller, entityID);
-		});
-
-	// Flush executor to be sure everything is loaded before returning
-	ExecutorManager::getInstance().flush(exName);
-
-	return true;
+	return !!deregisterVirtualControlledEntity(entityID);
 }
 
 } // namespace controller

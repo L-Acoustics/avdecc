@@ -99,6 +99,7 @@ public:
 	/* ************************************************************ */
 	ProtocolInterface::Error setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept;
 	void discoverMessageSent() noexcept;
+	ProtocolInterface::Error forgetRemoteEntity(UniqueIdentifier const entityID) noexcept;
 
 	/* ************************************************************ */
 	/* Sending entry points                                         */
