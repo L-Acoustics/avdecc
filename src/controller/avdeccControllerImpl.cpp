@@ -342,12 +342,12 @@ void ControllerImpl::updateLockedState(ControlledEntityImpl& controlledEntity, m
 	}
 }
 
-void ControllerImpl::updateConfiguration(entity::controller::Interface const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+void ControllerImpl::updateConfiguration(entity::controller::Interface const* const /*controller*/, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	if (controlledEntity.isVirtual())
 	{
 		// FIXME: Move 'canChangeVirtualEntityConfiguration' to a real public method
-		auto const canChangeVirtualEntityConfiguration = [](ControlledEntityImpl const& controlledEntity, entity::model::ConfigurationIndex const configurationIndex) noexcept
+		auto const canChangeVirtualEntityConfiguration = [](ControlledEntityImpl const& controlledEntity, entity::model::ConfigurationIndex const /*configurationIndex*/) noexcept
 		{
 			// Check if this is a virtual entity
 			if (!controlledEntity.isVirtual())
