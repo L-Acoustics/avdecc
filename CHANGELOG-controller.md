@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [Support for PTP_INSTANCE/PTP_PORT descriptors](https://github.com/L-Acoustics/avdecc/issues/117)
 - Support for GET_DYNAMIC_INFO command (Fast enumeration)
 - Support for setMaxTransitTime command (as a replacement for setStreamInfo to change the presentation time)
+- [Support for read-only properties change for virtual entities](https://github.com/L-Acoustics/avdecc/issues/162)
 
 ### Changed
 - Complete controller entity model refactoring to support descriptors at non-configuration level

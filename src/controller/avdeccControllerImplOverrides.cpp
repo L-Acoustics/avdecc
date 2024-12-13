@@ -3209,6 +3209,115 @@ bool ControllerImpl::unloadVirtualEntity(UniqueIdentifier const entityID) noexce
 	return !!deregisterVirtualControlledEntity(entityID);
 }
 
+/* ************************************************************ */
+/* VirtualControlledEntityInterface overrides                   */
+/* ************************************************************ */
+void ControllerImpl::setEntityCounters(UniqueIdentifier const targetEntityID, entity::model::EntityCounters const& counters) noexcept
+{
+	// Check if targetEntityID is a virtual entity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	if (controlledEntity && controlledEntity->isVirtual())
+	{
+		// Convert descriptor specific counters to generic descriptor counters
+		auto validCounters = entity::EntityCounterValidFlags{};
+		auto descriptorCounters = entity::model::DescriptorCounters{};
+
+		for (auto const [flag, counter] : counters)
+		{
+			validCounters.set(flag);
+			descriptorCounters[validCounters.getPosition(flag)] = counter;
+		}
+
+		// Use the "update**" method, there are many things to do
+		updateEntityCounters(*controlledEntity, validCounters, descriptorCounters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+	}
+}
+
+void ControllerImpl::setAvbInterfaceCounters(UniqueIdentifier const targetEntityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceCounters const& counters) noexcept
+{
+	// Check if targetEntityID is a virtual entity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	if (controlledEntity && controlledEntity->isVirtual())
+	{
+		// Convert descriptor specific counters to generic descriptor counters
+		auto validCounters = entity::AvbInterfaceCounterValidFlags{};
+		auto descriptorCounters = entity::model::DescriptorCounters{};
+
+		for (auto const [flag, counter] : counters)
+		{
+			validCounters.set(flag);
+			descriptorCounters[validCounters.getPosition(flag)] = counter;
+		}
+
+		// Use the "update**" method, there are many things to do
+		updateAvbInterfaceCounters(*controlledEntity, avbInterfaceIndex, validCounters, descriptorCounters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+	}
+}
+
+void ControllerImpl::setClockDomainCounters(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockDomainCounters const& counters) noexcept
+{
+	// Check if targetEntityID is a virtual entity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	if (controlledEntity && controlledEntity->isVirtual())
+	{
+		// Convert descriptor specific counters to generic descriptor counters
+		auto validCounters = entity::ClockDomainCounterValidFlags{};
+		auto descriptorCounters = entity::model::DescriptorCounters{};
+
+		for (auto const [flag, counter] : counters)
+		{
+			validCounters.set(flag);
+			descriptorCounters[validCounters.getPosition(flag)] = counter;
+		}
+
+		// Use the "update**" method, there are many things to do
+		updateClockDomainCounters(*controlledEntity, clockDomainIndex, validCounters, descriptorCounters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+	}
+}
+
+void ControllerImpl::setStreamInputCounters(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInputCounters const& counters) noexcept
+{
+	// Check if targetEntityID is a virtual entity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	if (controlledEntity && controlledEntity->isVirtual())
+	{
+		// Convert descriptor specific counters to generic descriptor counters
+		auto validCounters = entity::StreamInputCounterValidFlags{};
+		auto descriptorCounters = entity::model::DescriptorCounters{};
+
+		for (auto const [flag, counter] : counters)
+		{
+			validCounters.set(flag);
+			descriptorCounters[validCounters.getPosition(flag)] = counter;
+		}
+
+		// Use the "update**" method, there are many things to do
+		updateStreamInputCounters(*controlledEntity, streamIndex, validCounters, descriptorCounters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+	}
+}
+
+void ControllerImpl::setStreamOutputCounters(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamOutputCounters const& counters) noexcept
+{
+	// Check if targetEntityID is a virtual entity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	if (controlledEntity && controlledEntity->isVirtual())
+	{
+		// Convert descriptor specific counters to generic descriptor counters
+		auto validCounters = entity::StreamOutputCounterValidFlags{};
+		auto descriptorCounters = entity::model::DescriptorCounters{};
+
+		for (auto const [flag, counter] : counters)
+		{
+			validCounters.set(flag);
+			descriptorCounters[validCounters.getPosition(flag)] = counter;
+		}
+
+		// Use the "update**" method, there are many things to do
+		updateStreamOutputCounters(*controlledEntity, streamIndex, validCounters, descriptorCounters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+	}
+}
+
+
 } // namespace controller
 } // namespace avdecc
 } // namespace la

@@ -33,6 +33,7 @@
 #include <la/avdecc/memoryBuffer.hpp>
 
 #include "internals/avdeccControlledEntity.hpp"
+#include "internals/avdeccVirtualControlledEntityInterface.hpp"
 #include "internals/exports.hpp"
 
 #include <memory>
@@ -120,7 +121,7 @@ LA_AVDECC_CONTROLLER_API std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CAL
 * @brief A Controller type entity.
 * @details Controller handling local and remote entities discovery (ControlledEntity), state tracking every change in them and interacting with them through commands and queries.
 */
-class Controller : public la::avdecc::utils::Subject<Controller, std::recursive_mutex>
+class Controller : public la::avdecc::utils::Subject<Controller, std::recursive_mutex>, public VirtualControlledEntityInterface
 {
 public:
 	using UniquePointer = std::unique_ptr<Controller, void (*)(Controller*)>;
@@ -513,7 +514,7 @@ public:
 	*                           If the specified locale is not found on the entity, then english is used.
 	* @param[in] entityModelTree The entity model tree to use for this controller entity, or null to not expose a model.
 	* @param[in] executorName The name of the executor to use to dispatch incoming messages (must be created before the call). If empty, a default executor will be created.
-	* @param[in] virtualEntityInterface The virtual entity interface to forward network calls to when manipulating a virtual entity, or null to use the network interface.
+	* @param[in] virtualEntityInterface The virtual entity interface to forward network calls to when manipulating a virtual entity, or null to always use the network interface.
 	* @return A new Controller as a Controller::UniquePointer.
 	* @note Throws Exception if networkInterfaceID is invalid or inaccessible, or if progID is already used on the local computer.
 	*/
