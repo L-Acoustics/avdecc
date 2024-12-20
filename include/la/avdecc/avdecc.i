@@ -43,12 +43,23 @@
 %apply const unsigned long long & { const size_t & };
 #endif
 
+// C# Specifics
+#if defined(SWIGCSHARP)
 // Optimize code generation by enabling RVO
 %typemap(out, optimal="1") SWIGTYPE
 %{
 	$result = new $1_ltype($1);
 %}
+// Marshal all std::string as UTF8Str
+%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
+// Expose internal constructor and methods publicly, some dependant modules may need it
+#	if !defined(SWIGIMPORTED)
+#	define PUBLIC_BUT_HIDDEN [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)] public
+	SWIG_CSBODY_PROXY(PUBLIC_BUT_HIDDEN, PUBLIC_BUT_HIDDEN, SWIGTYPE)
+#	endif
+#endif
 
+// Force define AVDECC C/C++ API Macros to nothing
 #define LA_AVDECC_API
 #define LA_AVDECC_CALL_CONVENTION
 
