@@ -35,6 +35,11 @@
 %typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
 // Better debug display
 %typemap(csattributes) la::avdecc::entity::model::AvdeccFixedString "[System.Diagnostics.DebuggerDisplay(\"{toString()}\")]"
+// Expose internal constructor and methods publicly, some dependant modules may need it
+#	if !defined(SWIGIMPORTED)
+#	define PUBLIC_BUT_HIDDEN [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)] public
+	SWIG_CSBODY_PROXY(PUBLIC_BUT_HIDDEN, PUBLIC_BUT_HIDDEN, SWIGTYPE)
+#	endif
 #endif
 
 // Force define AVDECC C/C++ API Macros to nothing
