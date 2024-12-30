@@ -82,7 +82,7 @@ struct StreamDynamicInfo
 	std::optional<MsrpFailureCode> msrpFailureCode{ std::nullopt };
 	std::optional<BridgeIdentifier> msrpFailureBridgeID{ std::nullopt };
 	std::optional<std::uint16_t> streamVlanID{ std::nullopt };
-	// Milan additions
+	// Milan 1.0 additions
 	std::optional<StreamInfoFlagsEx> streamInfoFlagsEx{ std::nullopt };
 	std::optional<ProbingStatus> probingStatus{ std::nullopt };
 	std::optional<protocol::AcmpStatus> acmpStatus{ std::nullopt };

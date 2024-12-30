@@ -1558,7 +1558,7 @@ inline void to_json(json& j, StreamDynamicInfo const& info)
 		j[keyName::StreamDynamicInfo_MsrpFailureBridgeID] = utils::toHexString(*info.msrpFailureBridgeID, true, true);
 	}
 	j[keyName::StreamDynamicInfo_StreamVlanID] = info.streamVlanID;
-	// Milan additions
+	// Milan 1.0 additions
 	j[keyName::StreamDynamicInfo_FlagsEx] = info.streamInfoFlagsEx;
 	j[keyName::StreamDynamicInfo_ProbingStatus] = info.probingStatus;
 	j[keyName::StreamDynamicInfo_AcmpStatus] = info.acmpStatus;
@@ -1606,7 +1606,7 @@ inline void from_json(json const& j, StreamDynamicInfo& info)
 		}
 	}
 	get_optional_value(j, keyName::StreamDynamicInfo_StreamVlanID, info.streamVlanID);
-	// Milan additions
+	// Milan 1.0 additions
 	get_optional_value(j, keyName::StreamDynamicInfo_FlagsEx, info.streamInfoFlagsEx);
 	get_optional_value(j, keyName::StreamDynamicInfo_ProbingStatus, info.probingStatus);
 	get_optional_value(j, keyName::StreamDynamicInfo_AcmpStatus, info.acmpStatus);
