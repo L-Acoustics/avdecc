@@ -180,41 +180,83 @@ void LocalEntityImpl<SuperClass>::onAecpCommand(protocol::ProtocolInterface* con
 }
 
 template<class SuperClass>
-protocol::Aecpdu::UniquePointer LocalEntityImpl<SuperClass>::createAecpdu([[maybe_unused]] protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, bool const isResponse) noexcept
+protocol::Aecpdu::UniquePointer LocalEntityImpl<SuperClass>::createAecpdu(protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, bool const isResponse) noexcept
 {
-	AVDECC_ASSERT(protocolIdentifier == la::avdecc::protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!");
-	return protocol::MvuAecpdu::create(isResponse);
+	if (AVDECC_ASSERT_WITH_RET(protocolIdentifier == protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!"))
+	{
+		return protocol::MvuAecpdu::create(isResponse);
+	}
+	return { nullptr, nullptr };
 }
 
 template<class SuperClass>
-bool LocalEntityImpl<SuperClass>::areHandledByControllerStateMachine([[maybe_unused]] protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier) const noexcept
+bool LocalEntityImpl<SuperClass>::areHandledByControllerStateMachine(protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier) const noexcept
 {
-	AVDECC_ASSERT(protocolIdentifier == la::avdecc::protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!");
-	return true;
+	if (AVDECC_ASSERT_WITH_RET(protocolIdentifier == protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!"))
+	{
+		return true;
+	}
+	return false;
 }
 
 template<class SuperClass>
-std::uint32_t LocalEntityImpl<SuperClass>::getVuAecpCommandTimeoutMsec([[maybe_unused]] protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& /*aecpdu*/) noexcept
+std::uint32_t LocalEntityImpl<SuperClass>::getVuAecpCommandTimeoutMsec(protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& /*aecpdu*/) const noexcept
 {
-	AVDECC_ASSERT(protocolIdentifier == la::avdecc::protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!");
-	return 250u;
+	if (AVDECC_ASSERT_WITH_RET(protocolIdentifier == protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!"))
+	{
+		return 250u;
+	}
+	return 0u;
+}
+
+template<class SuperClass>
+bool LocalEntityImpl<SuperClass>::isVuAecpUnsolicitedResponse(protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& aecpdu) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(protocolIdentifier == protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!"))
+	{
+		AVDECC_ASSERT(aecpdu.getMessageType() == protocol::AecpMessageType::VendorUniqueResponse, "isVuAecpUnsolicitedResponse called for something else than a VendorUniqueResponse");
+		auto const& mvuAecp = static_cast<protocol::MvuAecpdu const&>(aecpdu);
+		return mvuAecp.getUnsolicited();
+	}
+	return false;
 }
 
 template<class SuperClass>
 void LocalEntityImpl<SuperClass>::onVuAecpCommand(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, la::avdecc::protocol::VuAecpdu const& aecpdu) noexcept
 {
-	AVDECC_ASSERT(aecpdu.getMessageType() == protocol::AecpMessageType::VendorUniqueCommand, "onVuAecpCommand called for something else than a VendorUniqueCommand");
-	AVDECC_ASSERT(protocolIdentifier == la::avdecc::protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!");
-
-	// Ignore messages not for me
-	if (aecpdu.getTargetEntityID() != SuperClass::getEntityID())
-		return;
-
-	// Forward to subclass
-	if (!onUnhandledAecpVuCommand(pi, protocolIdentifier, aecpdu))
+	if (AVDECC_ASSERT_WITH_RET(protocolIdentifier == protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!"))
 	{
-		// Reflect back the command, and return a NotImplemented error code (there is no "NotSupported" code for MVU)
-		reflectAecpCommand(pi, aecpdu, protocol::AecpStatus::NotImplemented);
+		AVDECC_ASSERT(aecpdu.getMessageType() == protocol::AecpMessageType::VendorUniqueCommand, "onVuAecpCommand called for something else than a VendorUniqueCommand");
+
+		// Ignore messages not for me
+		if (aecpdu.getTargetEntityID() != SuperClass::getEntityID())
+			return;
+
+		// Forward to subclass
+		if (!onUnhandledAecpVuCommand(pi, protocolIdentifier, aecpdu))
+		{
+			// Reflect back the command, and return a NotImplemented error code (there is no "NotSupported" code for MVU)
+			reflectAecpCommand(pi, aecpdu, protocol::AecpStatus::NotImplemented);
+		}
+	}
+}
+
+template<class SuperClass>
+void LocalEntityImpl<SuperClass>::onVuAecpResponse(protocol::ProtocolInterface* const /*pi*/, protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& /*aecpdu*/) noexcept
+{
+	// Currently never called as we only register for MVU, and MVU uses ControllerStateMachine
+	if (AVDECC_ASSERT_WITH_RET(protocolIdentifier == protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!"))
+	{
+		AVDECC_ASSERT(false, "onVuAecpResponse should be handled by derivated class");
+	}
+}
+
+template<class SuperClass>
+void LocalEntityImpl<SuperClass>::onVuAecpUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& /*aecpdu*/) noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(protocolIdentifier == protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!"))
+	{
+		AVDECC_ASSERT(false, "onVuAecpResponse should be handled by derivated class");
 	}
 }
 

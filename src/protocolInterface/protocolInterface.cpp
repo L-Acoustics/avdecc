@@ -146,7 +146,7 @@ bool ProtocolInterface::isAecpResponseMessageType(AecpMessageType const messageT
 	return false;
 }
 
-std::uint32_t ProtocolInterface::getVuAecpCommandTimeout(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept
+std::uint32_t ProtocolInterface::getVendorUniqueCommandTimeout(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept
 {
 	auto timeout = std::uint32_t{ 250u };
 
@@ -157,11 +157,43 @@ std::uint32_t ProtocolInterface::getVuAecpCommandTimeout(VuAecpdu::ProtocolIdent
 	{
 		auto* vuDelegate = vudIt->second;
 
-		AVDECC_ASSERT(vuDelegate->areHandledByControllerStateMachine(protocolIdentifier), "getVuAecpCommandTimeout should only be called for VendorUniqueDelegates that let the ControllerStateMachine handle sending commands");
+		AVDECC_ASSERT(vuDelegate->areHandledByControllerStateMachine(protocolIdentifier), "getVuAecpCommandTimeout should only be called for VendorUniqueDelegates that let the ControllerStateMachine handle sending/receiving commands");
 		timeout = vuDelegate->getVuAecpCommandTimeoutMsec(protocolIdentifier, aecpdu);
 	}
 
 	return timeout;
+}
+
+bool ProtocolInterface::isVendorUniqueUnsolicitedResponse(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept
+{
+	auto isUnsol = false;
+
+	// Lock
+	auto const lg = std::lock_guard{ *this };
+
+	if (auto const vudIt = _vendorUniqueDelegates.find(protocolIdentifier); vudIt != _vendorUniqueDelegates.end())
+	{
+		auto* vuDelegate = vudIt->second;
+
+		AVDECC_ASSERT(vuDelegate->areHandledByControllerStateMachine(protocolIdentifier), "isVendorUniqueUnsolicitedResponse should only be called for VendorUniqueDelegates that let the ControllerStateMachine handle sending/receiving commands");
+		isUnsol = vuDelegate->isVuAecpUnsolicitedResponse(protocolIdentifier, aecpdu);
+	}
+
+	return isUnsol;
+}
+
+void ProtocolInterface::handleVendorUniqueUnsolicitedResponse(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) noexcept
+{
+	// Lock
+	auto const lg = std::lock_guard{ *this };
+
+	if (auto const vudIt = _vendorUniqueDelegates.find(protocolIdentifier); vudIt != _vendorUniqueDelegates.end())
+	{
+		auto* vuDelegate = vudIt->second;
+
+		AVDECC_ASSERT(vuDelegate->areHandledByControllerStateMachine(protocolIdentifier), "handleVendorUniqueUnsolicitedResponse should only be called for VendorUniqueDelegates that let the ControllerStateMachine handle sending/receiving commands");
+		vuDelegate->onVuAecpUnsolicitedResponse(this, protocolIdentifier, aecpdu);
+	}
 }
 
 ProtocolInterface::VendorUniqueDelegate* ProtocolInterface::getVendorUniqueDelegate(VuAecpdu::ProtocolIdentifier const& protocolIdentifier) const noexcept

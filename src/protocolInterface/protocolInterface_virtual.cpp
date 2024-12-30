@@ -329,12 +329,14 @@ private:
 	/* stateMachine::ProtocolInterfaceDelegate overrides            */
 	/* ************************************************************ */
 	virtual void onAecpCommand(Aecpdu const& aecpdu) noexcept override;
+	virtual void onVuAecpUnsolicitedResponse(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) noexcept override;
 	virtual void onAcmpCommand(Acmpdu const& acmpdu) noexcept override;
 	virtual void onAcmpResponse(Acmpdu const& acmpdu) noexcept override;
 	virtual Error sendMessage(Adpdu const& adpdu) const noexcept override;
 	virtual Error sendMessage(Aecpdu const& aecpdu) const noexcept override;
 	virtual Error sendMessage(Acmpdu const& acmpdu) const noexcept override;
 	virtual std::uint32_t getVuAecpCommandTimeoutMsec(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept override;
+	virtual bool isVuAecpUnsolicitedResponse(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept override;
 
 	/* ************************************************************ */
 	/* stateMachine::AdvertiseStateMachine::Delegate overrides      */
@@ -644,6 +646,11 @@ void ProtocolInterfaceVirtualImpl::onAecpCommand(Aecpdu const& aecpdu) noexcept
 	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpCommand, this, aecpdu);
 }
 
+void ProtocolInterfaceVirtualImpl::onVuAecpUnsolicitedResponse(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) noexcept
+{
+	handleVendorUniqueUnsolicitedResponse(protocolIdentifier, aecpdu);
+}
+
 void ProtocolInterfaceVirtualImpl::onAcmpCommand(Acmpdu const& acmpdu) noexcept
 {
 	// Notify observers
@@ -731,7 +738,12 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendMessage(Acmpdu const&
 /* *** Other methods **** */
 std::uint32_t ProtocolInterfaceVirtualImpl::getVuAecpCommandTimeoutMsec(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept
 {
-	return getVuAecpCommandTimeout(protocolIdentifier, aecpdu);
+	return getVendorUniqueCommandTimeout(protocolIdentifier, aecpdu);
+}
+
+bool ProtocolInterfaceVirtualImpl::isVuAecpUnsolicitedResponse(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept
+{
+	return isVendorUniqueUnsolicitedResponse(protocolIdentifier, aecpdu);
 }
 
 /* ************************************************************ */

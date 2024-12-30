@@ -272,8 +272,9 @@ private:
 		return checkQueue(protocolInterface, info, macAddress, inflight, retIt);
 	}
 
-	bool isAEMUnsolicitedResponse(Aecpdu const& aecpdu) const noexcept;
+	bool isAemUnsolicitedResponse(Aecpdu const& aecpdu) const noexcept;
 	bool shouldRearmTimer(Aecpdu const& aecpdu) const noexcept;
+	bool isVuUnsolicitedResponse(Aecpdu const& aecpdu) const noexcept;
 	void resetAecpCommandTimeoutValue(AecpCommandInfo& command) const noexcept;
 	void resetAcmpCommandTimeoutValue(AcmpCommandInfo& command) const noexcept;
 	AecpSequenceID getNextAecpSequenceID(CommandEntityInfo& info) noexcept;

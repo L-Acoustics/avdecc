@@ -367,6 +367,11 @@ private:
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpCommand, this, aecpdu);
 	}
 
+	virtual void onVuAecpUnsolicitedResponse(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) noexcept override
+	{
+		handleVendorUniqueUnsolicitedResponse(protocolIdentifier, aecpdu);
+	}
+
 	/* **** ACMP notifications **** */
 	virtual void onAcmpCommand(Acmpdu const& acmpdu) noexcept override
 	{
@@ -447,7 +452,12 @@ private:
 	/* *** Other methods **** */
 	virtual std::uint32_t getVuAecpCommandTimeoutMsec(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept override
 	{
-		return getVuAecpCommandTimeout(protocolIdentifier, aecpdu);
+		return getVendorUniqueCommandTimeout(protocolIdentifier, aecpdu);
+	}
+
+	virtual bool isVuAecpUnsolicitedResponse(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept override
+	{
+		return isVendorUniqueUnsolicitedResponse(protocolIdentifier, aecpdu);
 	}
 
 	/* ************************************************************ */
@@ -504,7 +514,6 @@ private:
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpAemUnsolicitedResponse, this, aecpdu);
 	}
-
 	virtual void onAecpAemIdentifyNotification(AemAecpdu const& aecpdu) noexcept override
 	{
 		// Notify observers

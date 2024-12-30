@@ -40,7 +40,7 @@ namespace protocol
 class MvuAecpdu final : public VuAecpdu
 {
 public:
-	static constexpr size_t HeaderLength = 2; /* Reserved + CommandType */
+	static constexpr size_t HeaderLength = 2; /* Unsolicited + CommandType */
 	static constexpr size_t MaximumPayloadLength_17221 = Aecpdu::MaximumLength_1722_1 - Aecpdu::HeaderLength - VuAecpdu::HeaderLength - HeaderLength;
 	static constexpr size_t MaximumPayloadBufferLength = Aecpdu::MaximumLength_BigPayloads - Aecpdu::HeaderLength - VuAecpdu::HeaderLength - HeaderLength;
 	static constexpr size_t MaximumSendPayloadBufferLength = Aecpdu::MaximumSendLength - Aecpdu::HeaderLength - VuAecpdu::HeaderLength - HeaderLength;
@@ -70,10 +70,12 @@ public:
 	virtual LA_AVDECC_API ~MvuAecpdu() noexcept override;
 
 	// Setters
+	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION setUnsolicited(bool const unsolicited) noexcept;
 	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION setCommandType(MvuCommandType const commandType) noexcept;
 	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION setCommandSpecificData(void const* const commandSpecificData, size_t const commandSpecificDataLength);
 
 	// Getters
+	LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION getUnsolicited() const noexcept;
 	LA_AVDECC_API MvuCommandType LA_AVDECC_CALL_CONVENTION getCommandType() const noexcept;
 	LA_AVDECC_API Payload LA_AVDECC_CALL_CONVENTION getPayload() const noexcept;
 
@@ -100,6 +102,7 @@ private:
 	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept override;
 
 	// Mvu header data
+	bool _unsolicited{ false };
 	MvuCommandType _commandType{ MvuCommandType::InvalidCommandType };
 	std::array<std::uint8_t, MaximumPayloadBufferLength> _commandSpecificData{};
 	size_t _commandSpecificDataLength{ 0u };

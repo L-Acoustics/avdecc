@@ -1230,14 +1230,7 @@ void AggregateEntityImpl::onAecpAemUnsolicitedResponse(protocol::ProtocolInterfa
 	{
 		_controllerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
 	}
-	if (_listenerCapabilityDelegate != nullptr)
-	{
-		_listenerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
-	}
-	if (_talkerCapabilityDelegate != nullptr)
-	{
-		_talkerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
-	}
+	// Listener and Talker don't handle AEM Unsolicited Notifications
 }
 void AggregateEntityImpl::onAecpAemIdentifyNotification(protocol::ProtocolInterface* const pi, protocol::AemAecpdu const& aecpdu) noexcept
 {
@@ -1245,14 +1238,7 @@ void AggregateEntityImpl::onAecpAemIdentifyNotification(protocol::ProtocolInterf
 	{
 		_controllerCapabilityDelegate->onAecpAemIdentifyNotification(pi, aecpdu);
 	}
-	if (_listenerCapabilityDelegate != nullptr)
-	{
-		_listenerCapabilityDelegate->onAecpAemIdentifyNotification(pi, aecpdu);
-	}
-	if (_talkerCapabilityDelegate != nullptr)
-	{
-		_talkerCapabilityDelegate->onAecpAemIdentifyNotification(pi, aecpdu);
-	}
+	// Listener and Talker don't handle AEM IDENTIFY
 }
 
 /* **** ACMP notifications **** */
@@ -1323,6 +1309,18 @@ void AggregateEntityImpl::onAecpResponseTime(protocol::ProtocolInterface* const 
 		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).onAecpResponseTime(pi, entityID, responseTime);
 	}
 	// Listener and Talker don't really care about statistics
+}
+
+/* ************************************************************************** */
+/* protocol::ProtocolInterface::VendorUniqueDelegate overrides                */
+/* ************************************************************************** */
+void AggregateEntityImpl::onVuAecpUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& aecpdu) noexcept
+{
+	if (_controllerCapabilityDelegate != nullptr)
+	{
+		_controllerCapabilityDelegate->onAecpVuUnsolicitedResponse(pi, protocolIdentifier, aecpdu);
+	}
+	// Listener and Talker don't handle MVU Unsolicited Notifications
 }
 
 /* ************************************************************************** */

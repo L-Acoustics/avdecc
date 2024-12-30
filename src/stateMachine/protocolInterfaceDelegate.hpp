@@ -41,6 +41,7 @@ public:
 
 	/* **** AECP notifications **** */
 	virtual void onAecpCommand(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept = 0;
+	virtual void onVuAecpUnsolicitedResponse(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, la::avdecc::protocol::VuAecpdu const& aecpdu) noexcept = 0;
 	/* **** ACMP notifications **** */
 	virtual void onAcmpCommand(la::avdecc::protocol::Acmpdu const& acmpdu) noexcept = 0;
 	virtual void onAcmpResponse(la::avdecc::protocol::Acmpdu const& acmpdu) noexcept = 0;
@@ -50,6 +51,7 @@ public:
 	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Acmpdu const& acmpdu) const noexcept = 0;
 	/* *** Other methods **** */
 	virtual std::uint32_t getVuAecpCommandTimeoutMsec(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, la::avdecc::protocol::VuAecpdu const& aecpdu) const noexcept = 0;
+	virtual bool isVuAecpUnsolicitedResponse(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, la::avdecc::protocol::VuAecpdu const& aecpdu) const noexcept = 0;
 };
 
 } // namespace stateMachine
