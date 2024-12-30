@@ -547,8 +547,8 @@ private:
 	/* ************************************************************************** */
 	virtual protocol::Aecpdu::UniquePointer createAecpdu(protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, bool const isResponse) noexcept override;
 	virtual bool areHandledByControllerStateMachine(protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier) const noexcept override;
-	virtual std::uint32_t getVuAecpCommandTimeoutMsec(protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& aecpdu) noexcept override;
-	virtual void onVuAecpCommand(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, la::avdecc::protocol::VuAecpdu const& aecpdu) noexcept override;
+	virtual std::uint32_t getVuAecpCommandTimeoutMsec(protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& aecpdu) const noexcept override;
+	virtual void onVuAecpCommand(protocol::ProtocolInterface* const pi, protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& aecpdu) noexcept override;
 
 	// Internal variables
 	std::recursive_mutex _lock{}; // Lock to protect writable fields (not used for the BasicLockable concept of the class itself)

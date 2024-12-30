@@ -247,7 +247,7 @@ inline void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 		{
 			return true;
 		}
-		virtual std::uint32_t getVuAecpCommandTimeoutMsec(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) noexcept override
+		virtual std::uint32_t getVuAecpCommandTimeoutMsec(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) const noexcept override
 		{
 			return 250u;
 		}
