@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for GET_DYNAMIC_INFO command
 - Support for SET/GET_MAX_TRANSIT_TIME command
 - Json schema AEM_Schema.json added to newly created resources/schemas directory
+- Unsolicited notifications support for VendorUnique messages
 
 ### Changed
 - la::avdecc::entity::controller::Delegate is now virtual pure, but a new derivated visitor (with all default implementation) has been added: la::avdecc::entity::controller::DefaultedDelegate
