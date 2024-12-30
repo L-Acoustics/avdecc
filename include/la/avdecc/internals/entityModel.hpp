@@ -383,7 +383,7 @@ struct StreamInfo
 	MsrpFailureCode msrpFailureCode{ MsrpFailureCode::NoFailure };
 	BridgeIdentifier msrpFailureBridgeID{ 0u };
 	std::uint16_t streamVlanID{ 0u };
-	// Milan additions
+	// Milan 1.0 additions
 	std::optional<StreamInfoFlagsEx> streamInfoFlagsEx{ std::nullopt };
 	std::optional<ProbingStatus> probingStatus{ std::nullopt };
 	std::optional<protocol::AcmpStatus> acmpStatus{ std::nullopt };

@@ -490,7 +490,7 @@ static void updateStreamDynamicInfoData(entity::model::StreamNodeDynamicModel* c
 	{
 		dynamicInfo.streamVlanID = info.streamVlanID;
 	}
-	// Milan additions - Only replace if we have the extended info in the payload (otherwise we'll keep the previous value)
+	// Milan 1.0 additions - Only replace if we have the extended info in the payload (otherwise we'll keep the previous value)
 	if (info.streamInfoFlagsEx)
 	{
 		dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
@@ -639,7 +639,7 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 		{
 			dynamicInfo.streamVlanID = info.streamVlanID;
 		}
-		// Milan additions
+		// Milan 1.0 additions
 		dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
 		dynamicInfo.probingStatus = info.probingStatus;
 		dynamicInfo.acmpStatus = info.acmpStatus;
@@ -825,7 +825,7 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 		{
 			dynamicInfo.streamVlanID = info.streamVlanID;
 		}
-		// Milan additions
+		// Milan 1.0 additions
 		dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
 		dynamicInfo.probingStatus = info.probingStatus;
 		dynamicInfo.acmpStatus = info.acmpStatus;

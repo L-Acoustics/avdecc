@@ -340,7 +340,7 @@ avdecc_entity_model_stream_info_t make_stream_info(entity::model::StreamInfo con
 	i.msrp_failure_code = static_cast<avdecc_entity_model_msrp_failure_code_t>(info.msrpFailureCode);
 	i.msrp_failure_bridge_id = info.msrpFailureBridgeID;
 	i.stream_vlan_id = info.streamVlanID;
-	// Milan additions
+	// Milan 1.0 additions
 	i.stream_info_flags_ex_valid = !!info.streamInfoFlagsEx;
 	i.stream_info_flags_ex = static_cast<avdecc_entity_stream_info_flags_ex_t>(info.streamInfoFlagsEx ? (*info.streamInfoFlagsEx).value() : 0u);
 	i.probing_status_valid = !!info.probingStatus;
@@ -1212,7 +1212,7 @@ entity::model::StreamInfo make_stream_info(avdecc_entity_model_stream_info_cp co
 	i.msrpFailureCode = static_cast<entity::model::MsrpFailureCode>(info->msrp_failure_code);
 	i.msrpFailureBridgeID = info->msrp_failure_bridge_id;
 	i.streamVlanID = info->stream_vlan_id;
-	// Milan additions
+	// Milan 1.0 additions
 	if (info->stream_info_flags_ex_valid)
 	{
 		auto f = entity::StreamInfoFlagsEx{};

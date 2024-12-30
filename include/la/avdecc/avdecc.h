@@ -160,7 +160,7 @@ typedef struct avdecc_entity_model_stream_info_s
 	avdecc_entity_model_msrp_failure_code_t msrp_failure_code;
 	avdecc_bridge_identifier_t msrp_failure_bridge_id;
 	unsigned short stream_vlan_id;
-	// Milan additions
+	// Milan 1.0 additions
 	avdecc_bool_t stream_info_flags_ex_valid;
 	avdecc_entity_stream_info_flags_ex_t stream_info_flags_ex;
 	avdecc_bool_t probing_status_valid;
