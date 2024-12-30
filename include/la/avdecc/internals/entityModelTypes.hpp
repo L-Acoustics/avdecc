@@ -1533,7 +1533,7 @@ constexpr bool operator<(StreamIdentification const& lhs, StreamIdentification c
 	return (lhs.entityID.getValue() < rhs.entityID.getValue()) || (lhs.entityID == rhs.entityID && lhs.streamIndex < rhs.streamIndex);
 }
 
-/** Probing Status - Milan-2019 Clause 6.8.6 */
+/** Probing Status - Milan 1.0 Clause 6.8.6 */
 enum class ProbingStatus : std::uint8_t
 {
 	Disabled = 0x00, /** The sink is not probing because it is not bound. */
