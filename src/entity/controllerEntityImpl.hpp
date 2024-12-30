@@ -222,6 +222,11 @@ private:
 	virtual void onAecpResponseTime(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept override;
 
 	/* ************************************************************************** */
+	/* protocol::ProtocolInterface::VendorUniqueDelegate overrides                */
+	/* ************************************************************************** */
+	virtual void onVuAecpUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& aecpdu) noexcept override;
+
+	/* ************************************************************************** */
 	/* LocalEntityImpl overrides                                                  */
 	/* ************************************************************************** */
 	virtual bool onUnhandledAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept override;

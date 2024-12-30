@@ -310,35 +310,43 @@ public:
 				// Only process it if it's targeted to a registered local command entity (which is set in the ControllerID field)
 				if (auto const commandEntityIt = _commandEntities.find(controllerID); commandEntityIt != _commandEntities.end())
 				{
-					auto& commandEntityInfo = commandEntityIt->second;
-					auto const targetID = vuAecp.getTargetEntityID();
-
-					if (auto inflightIt = commandEntityInfo.inflightVendorUniqueCommands.find(targetID); inflightIt != commandEntityInfo.inflightVendorUniqueCommands.end())
+					// Check if it's a VU unsolicited response
+					if (vuDelegate->isVuAecpUnsolicitedResponse(vuProtocolID, vuAecp))
 					{
-						auto& inflightCommands = inflightIt->second;
-						auto const sequenceID = vuAecp.getSequenceID();
-						auto commandIt = std::find_if(inflightCommands.begin(), inflightCommands.end(),
-							[sequenceID](VendorUniqueCommandInfo const& command)
+						vuDelegate->onVuAecpUnsolicitedResponse(this, vuProtocolID, vuAecp);
+					}
+					else
+					{
+						auto& commandEntityInfo = commandEntityIt->second;
+						auto const targetID = vuAecp.getTargetEntityID();
+
+						if (auto inflightIt = commandEntityInfo.inflightVendorUniqueCommands.find(targetID); inflightIt != commandEntityInfo.inflightVendorUniqueCommands.end())
+						{
+							auto& inflightCommands = inflightIt->second;
+							auto const sequenceID = vuAecp.getSequenceID();
+							auto commandIt = std::find_if(inflightCommands.begin(), inflightCommands.end(),
+								[sequenceID](VendorUniqueCommandInfo const& command)
+								{
+									return command.sequenceID == sequenceID;
+								});
+							// If the sequenceID is not found, it means the response already timed out (arriving too late)
+							if (commandIt != inflightCommands.end())
 							{
-								return command.sequenceID == sequenceID;
-							});
-						// If the sequenceID is not found, it means the response already timed out (arriving too late)
-						if (commandIt != inflightCommands.end())
-						{
-							auto& info = *commandIt;
+								auto& info = *commandIt;
 
-							// Move the query (it will be deleted)
-							auto vuAecpQuery = std::move(info);
+								// Move the query (it will be deleted)
+								auto vuAecpQuery = std::move(info);
 
-							// Remove the command from inflight list
-							commandEntityInfo.inflightVendorUniqueCommands.erase(inflightIt);
+								// Remove the command from inflight list
+								commandEntityInfo.inflightVendorUniqueCommands.erase(inflightIt);
 
-							// Call completion handler
-							utils::invokeProtectedHandler(vuAecpQuery.resultHandler, &vuAecp, ProtocolInterface::Error::NoError);
-						}
-						else
-						{
-							LOG_CONTROLLER_STATE_MACHINE_DEBUG(targetID, std::string("VendorUnique command with sequenceID ") + std::to_string(sequenceID) + " unexpected (timed out already?)");
+								// Call completion handler
+								utils::invokeProtectedHandler(vuAecpQuery.resultHandler, &vuAecp, ProtocolInterface::Error::NoError);
+							}
+							else
+							{
+								LOG_CONTROLLER_STATE_MACHINE_DEBUG(targetID, std::string("VendorUnique command with sequenceID ") + std::to_string(sequenceID) + " unexpected (timed out already?)");
+							}
 						}
 					}
 				}
@@ -604,6 +612,10 @@ private:
 	{
 		AVDECC_ASSERT(false, "Should never be called");
 	}
+	virtual void onVuAecpUnsolicitedResponse(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) noexcept override
+	{
+		handleVendorUniqueUnsolicitedResponse(protocolIdentifier, aecpdu);
+	}
 	/* **** ACMP notifications **** */
 	virtual void onAcmpCommand(la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override
 	{
@@ -632,7 +644,12 @@ private:
 	/* *** Other methods **** */
 	virtual std::uint32_t getVuAecpCommandTimeoutMsec(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, la::avdecc::protocol::VuAecpdu const& aecpdu) const noexcept override
 	{
-		return getVuAecpCommandTimeout(protocolIdentifier, aecpdu);
+		return getVendorUniqueCommandTimeout(protocolIdentifier, aecpdu);
+	}
+
+	virtual bool isVuAecpUnsolicitedResponse(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, la::avdecc::protocol::VuAecpdu const& aecpdu) const noexcept override
+	{
+		return isVendorUniqueUnsolicitedResponse(protocolIdentifier, aecpdu);
 	}
 
 #pragma mark la::avdecc::utils::Subject overrides
@@ -923,18 +940,19 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 		{
 			// Set MVU fields
 			auto const* const bytes = static_cast<std::uint8_t const*>(message.protocolSpecificData.bytes);
-			auto pos = decltype(bytesLen){ 0 };
+			auto buffer = la::avdecc::protocol::DeserializationBuffer{ bytes, bytesLen };
 
-			// Skip reserved field
-			++pos;
+			std::uint16_t u_ct;
 
-			// Read CommandType
-			auto commandType = *reinterpret_cast<la::avdecc::protocol::MvuCommandType const*>(bytes + pos);
-			++pos;
+			// Read CommandType / Unsol flag
+			buffer >> u_ct;
+			auto const unsolicited = ((u_ct & 0x8000) >> 15) != 0;
+			auto const commandType = static_cast<la::avdecc::protocol::MvuCommandType>(u_ct & 0x7fff);
 			mvu.setCommandType(commandType);
+			mvu.setUnsolicited(unsolicited);
 
 			// Read CommandSpecificData
-			mvu.setCommandSpecificData(reinterpret_cast<void const*>(bytes + pos), bytesLen - pos);
+			mvu.setCommandSpecificData(buffer.currentData(), buffer.remaining());
 
 			return vuAecpdu;
 		}
@@ -2150,7 +2168,6 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 	{
 		return _protocolInterface->handleVendorUniqueResponseReceived(static_cast<la::avdecc::protocol::VuAecpdu const&>(*aecpdu));
 	}
-
 
 	// Ignore all other messages in this handler, expected responses will be handled by the block of aecp.sendCommand() method
 	return NO;

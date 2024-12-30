@@ -2293,6 +2293,31 @@ void CapabilityDelegate::onAecpAemIdentifyNotification(protocol::ProtocolInterfa
 	utils::invokeProtectedMethod(&controller::Delegate::onEntityIdentifyNotification, _controllerDelegate, &_controllerInterface, aecpdu.getTargetEntityID());
 }
 
+void CapabilityDelegate::onAecpVuUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& aecpdu) noexcept
+{
+	// Ignore messages not for me
+	if (_controllerID != aecpdu.getControllerEntityID())
+		return;
+
+	auto const messageType = aecpdu.getMessageType();
+
+	if (messageType == protocol::AecpMessageType::VendorUniqueResponse)
+	{
+		// Currently only handle MVU
+		if (AVDECC_ASSERT_WITH_RET(protocolIdentifier == protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!"))
+		{
+			auto const& mvu = static_cast<protocol::MvuAecpdu const&>(aecpdu);
+			if (AVDECC_ASSERT_WITH_RET(mvu.getUnsolicited(), "Should only be triggered for unsollicited notifications"))
+			{
+				// Process MVU message without any error or answer callbacks, it's not an expected response
+				processMvuAecpResponse(mvu.getCommandType(), &aecpdu, nullptr, {});
+				// Statistics
+				utils::invokeProtectedMethod(&controller::Delegate::onMvuAecpUnsolicitedReceived, _controllerDelegate, &_controllerInterface, aecpdu.getTargetEntityID(), aecpdu.getSequenceID());
+			}
+		}
+	}
+}
+
 /* **** ACMP notifications **** */
 void CapabilityDelegate::onAcmpCommand(protocol::ProtocolInterface* const /*pi*/, protocol::Acmpdu const& /*acmpdu*/) noexcept
 {
@@ -4575,16 +4600,10 @@ void CapabilityDelegate::processMvuAecpResponse(protocol::MvuCommandType const c
 		{ protocol::MvuCommandType::GetMilanInfo.getValue(),
 			[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
 				auto const [milanInfo] = protocol::mvuPayload::deserializeGetMilanInfoResponse(mvu.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::mvuPayload::deserializeGetMilanInfoResponse(mvu.getPayload());
-				entity::model::MilanInfo const milanInfo = std::get<0>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = mvu.getTargetEntityID();
 
+				// Notify handlers
 				answerCallback.invoke<controller::Interface::GetMilanInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, milanInfo);
 			} },
 	};
@@ -4592,9 +4611,17 @@ void CapabilityDelegate::processMvuAecpResponse(protocol::MvuCommandType const c
 	auto const& it = s_Dispatch.find(responseCommandType.getValue());
 	if (it == s_Dispatch.end())
 	{
-		// It's an expected response, this is an internal error since we sent a command and didn't implement the code to handle the response
-		LOG_CONTROLLER_ENTITY_ERROR(mvu.getTargetEntityID(), "Failed to process MVU response: Unhandled command type {} ({})", std::string(responseCommandType), utils::toHexString(responseCommandType.getValue()));
-		utils::invokeProtectedHandler(onErrorCallback, LocalEntity::MvuCommandStatus::InternalError);
+		// If this is an unsolicited notification, simply log we do not handle the message
+		if (mvu.getUnsolicited())
+		{
+			LOG_CONTROLLER_ENTITY_DEBUG(mvu.getTargetEntityID(), "Unsolicited MVU response {} not handled ({})", std::string(responseCommandType), utils::toHexString(responseCommandType.getValue()));
+		}
+		// But if it's an expected response, this is an internal error since we sent a command and didn't implement the code to handle the response
+		else
+		{
+			LOG_CONTROLLER_ENTITY_ERROR(mvu.getTargetEntityID(), "Failed to process MVU response: Unhandled command type {} ({})", std::string(responseCommandType), utils::toHexString(responseCommandType.getValue()));
+			utils::invokeProtectedHandler(onErrorCallback, LocalEntity::MvuCommandStatus::InternalError);
+		}
 	}
 	else
 	{

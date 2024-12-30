@@ -787,6 +787,14 @@ void ControllerEntityImpl::onAecpResponseTime(protocol::ProtocolInterface* const
 }
 
 /* ************************************************************************** */
+/* protocol::ProtocolInterface::VendorUniqueDelegate overrides                */
+/* ************************************************************************** */
+void ControllerEntityImpl::onVuAecpUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& aecpdu) noexcept
+{
+	_controllerCapabilityDelegate->onAecpVuUnsolicitedResponse(pi, protocolIdentifier, aecpdu);
+}
+
+/* ************************************************************************** */
 /* LocalEntityImpl overrides                                                  */
 /* ************************************************************************** */
 bool ControllerEntityImpl::onUnhandledAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept

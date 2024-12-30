@@ -530,6 +530,8 @@ public:
 	virtual void onAecpResponseTime(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept = 0;
 	/** Notification for when an AEM-AECP Unsolicited Response was received. */
 	virtual void onAemAecpUnsolicitedReceived(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept = 0;
+	/** Notification for when an MVU-AECP Unsolicited Response was received. */
+	virtual void onMvuAecpUnsolicitedReceived(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept = 0;
 
 	// Defaulted compiler auto-generated methods
 	Delegate() noexcept = default;
@@ -693,6 +695,8 @@ public:
 	virtual void onAecpResponseTime(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const& /*entityID*/, std::chrono::milliseconds const& /*responseTime*/) noexcept override {}
 	/** Notification for when an AEM-AECP Unsolicited Response was received. */
 	virtual void onAemAecpUnsolicitedReceived(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const& /*entityID*/, la::avdecc::protocol::AecpSequenceID const /*sequenceID*/) noexcept override {}
+	/** Notification for when an MVU-AECP Unsolicited Response was received. */
+	virtual void onMvuAecpUnsolicitedReceived(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const& /*entityID*/, la::avdecc::protocol::AecpSequenceID const /*sequenceID*/) noexcept override {}
 
 	// Defaulted compiler auto-generated methods
 	DefaultedDelegate() noexcept = default;

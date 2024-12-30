@@ -459,7 +459,9 @@ DEFINE_ENUM_CLASS(la::avdecc::protocol::ProtocolInterface, Type, "uint")
 %ignore la::avdecc::protocol::ProtocolInterface::sendAecpResponse; // Ignore method (we don't want to handle Aecpdu now)
 %ignore la::avdecc::protocol::ProtocolInterface::sendAcmpCommand; // Ignore method (we don't want to handle Acmpdu now)
 %ignore la::avdecc::protocol::ProtocolInterface::sendAcmpResponse; // Ignore method (we don't want to handle Acmpdu now)
-%ignore la::avdecc::protocol::ProtocolInterface::getVuAecpCommandTimeout; // Ignore method (we don't want to handle VuAecpdu now)
+%ignore la::avdecc::protocol::ProtocolInterface::getVendorUniqueCommandTimeout; // Ignore method (we don't want to handle VuAecpdu now)
+%ignore la::avdecc::protocol::ProtocolInterface::isVendorUniqueUnsolicitedResponse; // Ignore method (we don't want to handle VuAecpdu now)
+%ignore la::avdecc::protocol::ProtocolInterface::handleVendorUniqueUnsolicitedResponse; // Ignore method (we don't want to handle VuAecpdu now)
 %ignore la::avdecc::protocol::ProtocolInterface::getVendorUniqueDelegate; // Ignore method (we don't want to handle VuAecpdu now)
 %unique_ptr(la::avdecc::protocol::ProtocolInterface) // Define unique_ptr for ProtocolInterface
 // Extend the class
