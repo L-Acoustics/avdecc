@@ -194,7 +194,7 @@ public:
 		}
 
 		/** Gets the timeout value (in milliseconds) for the provided VuAecpdu. Called only if areHandledByControllerStateMachine() returned true. */
-		virtual std::uint32_t getVuAecpCommandTimeoutMsec(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) noexcept
+		virtual std::uint32_t getVuAecpCommandTimeoutMsec(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) const noexcept
 		{
 			return 250u;
 		}
