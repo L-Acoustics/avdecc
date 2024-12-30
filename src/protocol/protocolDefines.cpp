@@ -414,7 +414,7 @@ AaAecpStatus::operator std::string() const noexcept
 	return it->second;
 }
 
-/** Milan Vendor Unique AECP Status - Milan-2019 Clause 7.2.3 */
+/** Milan Vendor Unique AECP Status - Milan 1.0 Clause 7.2.3 */
 MvuAecpStatus::operator std::string() const noexcept
 {
 	static std::unordered_map<MvuAecpStatus::value_type, std::string> s_MvuAecpStatusMapping = {
@@ -430,7 +430,7 @@ MvuAecpStatus::operator std::string() const noexcept
 	return it->second;
 }
 
-/** Milan Vendor Unique Command Type - Milan-2019 Clause 7.2.2.3 */
+/** Milan Vendor Unique Command Type - Milan 1.0 Clause 7.2.2.3 */
 MvuCommandType const MvuCommandType::GetMilanInfo{ 0 };
 MvuCommandType const MvuCommandType::InvalidCommandType{ 0xffff };
 
