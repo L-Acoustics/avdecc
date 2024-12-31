@@ -145,6 +145,7 @@ DEFINE_AEM_TYPES_ENUM_CLASS(PtpPortType, "ushort")
 DEFINE_AEM_TYPES_ENUM_CLASS(StandardControlType, "ulong")
 DEFINE_AEM_TYPES_ENUM_CLASS(ProbingStatus, "byte")
 DEFINE_AEM_TYPES_ENUM_CLASS(MsrpFailureCode, "byte")
+DEFINE_AEM_TYPES_ENUM_CLASS(DefaultMediaClockReferencePriority, "byte")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -231,6 +232,7 @@ DEFINE_ENUM_CLASS(la::avdecc::entity, StreamInputCounterValidFlag, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity, StreamOutputCounterValidFlag, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity, StreamOutputCounterValidFlag17221, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity, MilanInfoFeaturesFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity, MediaClockReferenceInfoFlag, "byte")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -262,6 +264,7 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamInputCounterValidFlags, Str
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlags, StreamOutputCounterValidFlag, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlags17221, StreamOutputCounterValidFlag17221, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MilanInfoFeaturesFlags, MilanInfoFeaturesFlag, std::uint32_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MediaClockReferenceInfoFlags, MediaClockReferenceInfoFlag, std::uint8_t)
 
 
 ////////////////////////////////////////
@@ -392,6 +395,8 @@ DEFINE_AEM_STRUCT(StreamInfo);
 DEFINE_AEM_STRUCT(AvbInfo);
 DEFINE_AEM_STRUCT(AsPath);
 DEFINE_AEM_STRUCT(MilanInfo);
+DEFINE_AEM_STRUCT(MilanDynamicState);
+DEFINE_AEM_STRUCT(MediaClockReferenceInfo);
 
 // Some ignores
 %ignore la::avdecc::entity::model::makeEntityModelID; // Ignore, not needed

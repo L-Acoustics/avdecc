@@ -401,8 +401,19 @@ enum class MilanInfoFeaturesFlag : std::uint32_t
 {
 	None = 0u,
 	Redundancy = 1u << 0, /**< The entity supports the milan redundancy scheme. */
+	TalkerDynamicMappingsWhileRunning = 1u << 1, /**< The entity supports changing dynamic mappings of talker streams while streaming. */
 };
 using MilanInfoFeaturesFlags = utils::EnumBitfield<MilanInfoFeaturesFlag>;
+
+/** Media Clock Reference Info Flags - Milan 1.2 Clause 5.4.4.4 */
+enum class MediaClockReferenceInfoFlag : std::uint8_t
+{
+	None = 0u,
+	UserMediaClockReferencePriorityValid = 1u << 0, /**< The value in the user_media_clock_reference_priority field is valid. */
+	MediaClockDomainNameValid = 1u << 1, /**< The value in the media_clock_domain_name field is valid. */
+	/* Bits 0 to 5 reserved for future use */
+};
+using MediaClockReferenceInfoFlags = utils::EnumBitfield<MediaClockReferenceInfoFlag>;
 
 } // namespace entity
 } // namespace avdecc
