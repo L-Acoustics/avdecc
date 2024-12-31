@@ -432,8 +432,13 @@ inline void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterf
 		}
 
 	private:
-		virtual void onEntityOnline(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::Entity const& /*entity*/) noexcept override
+		virtual void onEntityOnline(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::Entity const& entity) noexcept override
 		{
+			if (entity.getControllerCapabilities().test(la::avdecc::entity::ControllerCapability::Implemented))
+			{
+				outputText("Ignoring discovered controller entity\n");
+				return;
+			}
 			outputText("Found an entity (either local or remote)\n");
 			_foundEntity = entityID;
 		}
