@@ -39,6 +39,7 @@ static inline void checkResponsePayload(MvuAecpdu::Payload const& payload, entit
 		{
 			throw IncorrectPayloadSizeException();
 		}
+		throw NotImplementedException();
 	}
 	else
 	{

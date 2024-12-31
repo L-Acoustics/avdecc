@@ -4618,6 +4618,12 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{
 			it->second(_controllerDelegate, &_controllerInterface, status, aem, answerCallback, protocolViolationCallback);
 		}
+		catch ([[maybe_unused]] protocol::aemPayload::NotImplementedException const& e)
+		{
+			LOG_CONTROLLER_ENTITY_DEBUG(aem.getTargetEntityID(), "Received a NOT_IMPLEMENTED AEM response ({}) from {}", std::string(responseCommandType), utils::toHexString(aem.getTargetEntityID(), true));
+			utils::invokeProtectedHandler(onErrorCallback, LocalEntity::AemCommandStatus::NotImplemented);
+			return;
+		}
 		catch (protocol::aemPayload::IncorrectPayloadSizeException const& e)
 		{
 			checkProcessInvalidNonSuccessResponse(e.what());
@@ -4772,6 +4778,12 @@ void CapabilityDelegate::processMvuAecpResponse(protocol::MvuCommandType const c
 		try
 		{
 			it->second(_controllerDelegate, &_controllerInterface, status, mvu, answerCallback, protocolViolationCallback);
+		}
+		catch ([[maybe_unused]] protocol::mvuPayload::NotImplementedException const& e)
+		{
+			LOG_CONTROLLER_ENTITY_DEBUG(mvu.getTargetEntityID(), "Received a NOT_IMPLEMENTED MVU response ({}) from {}", std::string(responseCommandType), utils::toHexString(mvu.getTargetEntityID(), true));
+			utils::invokeProtectedHandler(onErrorCallback, LocalEntity::MvuCommandStatus::NotImplemented);
+			return;
 		}
 		catch ([[maybe_unused]] protocol::mvuPayload::IncorrectPayloadSizeException const& e)
 		{

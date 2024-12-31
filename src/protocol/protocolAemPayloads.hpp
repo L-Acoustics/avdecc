@@ -54,6 +54,16 @@ public:
 	}
 };
 
+/** Exception when receiving NOT_IMPLEMENTED reponse status */
+class NotImplementedException final : public Exception
+{
+public:
+	NotImplementedException()
+		: Exception("Incorrect payload size")
+	{
+	}
+};
+
 /** Exception when receiving a payload the library does not handle yet */
 class UnsupportedValueException final : public Exception
 {
