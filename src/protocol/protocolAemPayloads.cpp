@@ -1758,16 +1758,16 @@ std::tuple<UniqueIdentifier> deserializeSetAssociationIDResponse(entity::LocalEn
 /** GET_ASSOCIATION_ID Response - IEEE1722.1-2013 Clause 7.4.20.2 */
 Serializer<AecpAemGetAssociationIDResponsePayloadSize> serializeGetAssociationIDResponse(UniqueIdentifier const associationID)
 {
-	// Same as GET_ASSOCIATION_ID Command
+	// Same as SET_ASSOCIATION_ID Command
 	static_assert(AecpAemGetAssociationIDResponsePayloadSize == AecpAemSetAssociationIDCommandPayloadSize, "GET_ASSOCIATION_ID Response no longer the same as SET_ASSOCIATION_ID Command");
 	return serializeSetAssociationIDCommand(associationID);
 }
 
 std::tuple<UniqueIdentifier> deserializeGetAssociationIDResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
-	// Same as GET_ASSOCIATION_ID Command
+	// Same as SET_ASSOCIATION_ID Command
 	static_assert(AecpAemGetAssociationIDResponsePayloadSize == AecpAemSetAssociationIDCommandPayloadSize, "GET_ASSOCIATION_ID Response no longer the same as SET_ASSOCIATION_ID Command");
-	checkResponsePayload(payload, status, AecpAemSetAssociationIDCommandPayloadSize, AecpAemGetAssociationIDResponsePayloadSize);
+	checkResponsePayload(payload, status, AecpAemGetAssociationIDCommandPayloadSize, AecpAemGetAssociationIDResponsePayloadSize);
 	return deserializeSetAssociationIDCommand(payload);
 }
 
