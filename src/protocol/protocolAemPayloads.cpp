@@ -51,6 +51,7 @@ static inline void checkResponsePayload(AemAecpdu::Payload const& payload, entit
 		{
 			throw IncorrectPayloadSizeException();
 		}
+		throw NotImplementedException();
 	}
 	else
 	{

@@ -45,6 +45,16 @@ public:
 	}
 };
 
+/** Exception when receiving NOT_IMPLEMENTED reponse status */
+class NotImplementedException final : public Exception
+{
+public:
+	NotImplementedException()
+		: Exception("Incorrect payload size")
+	{
+	}
+};
+
 // All serialization methods might throw a std::invalid_argument if serialization goes wrong
 // All deserialization methods might throw a la::avdecc:Exception if deserialization goes wrong
 
