@@ -80,6 +80,8 @@ using DescriptorCounterValidFlag = std::uint32_t; /** Counters valid flag - IEEE
 using DescriptorCounter = std::uint32_t; /** Counter - IEEE1722.1-2013 Clause 7.4.42 */
 using OperationID = std::uint16_t; /** OperationID for OPERATIONS returned by an entity to a controller - IEEE1722.1-2013 Clause 7.4.53 */
 using BridgeIdentifier = std::uint64_t;
+using SystemUniqueIdentifier = std::uint32_t; /** System Unique Identifier - Milan 1.2 Clause 5.4.4.2 */
+using MediaClockReferencePriority = std::uint8_t; /** Media Clock Reference Priority - Milan 1.2 Clause 5.4.4.4 */
 
 constexpr DescriptorIndex getInvalidDescriptorIndex() noexcept
 {
@@ -1587,6 +1589,36 @@ constexpr bool operator==(MsrpFailureCode const lhs, std::underlying_type_t<Msrp
 }
 
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION msrpFailureCodeToString(MsrpFailureCode const msrpFailureCode) noexcept;
+
+/** Default Media Clock Reference Priority - Milan 1.2 Clause 7.6.1.1 */
+enum class DefaultMediaClockReferencePriority : MediaClockReferencePriority
+{
+	Highest = 255, /**< Highest priority */
+	DedicatedGenerators = 240, /**< Dedicated media clock reference generators */
+	MatrixMixingDevices = 224, /**< Matrix mixing devices, signal routers, network switches with central audio processing capability */
+	MixingConsoles = 208, /**< Mixing consoles */
+	Stageboxes = 192, /**< Stageboxes, network interfaces */
+	Processors = 176, /**< Loudspeaker processors */
+	Amplifiers = 160, /**< Amplifiers, powered loudspeakers, in-ear transmitters */
+	RecordingDevices = 144, /**< Recording devices */
+	Default = 128, /**< Default (if the device provides no data, this is taken as its priority) */
+	EffectProcessingDevices = 112, /**< Effect processing devices */
+	WirelessReceivers = 80, /**< Wireless receivers */
+	Microphones = 64, /**< Microphones */
+	Instruments = 48, /**< Instruments */
+	Lowest = 0, /**< Lowest priority */
+};
+constexpr bool operator==(DefaultMediaClockReferencePriority const lhs, DefaultMediaClockReferencePriority const rhs)
+{
+	return static_cast<std::underlying_type_t<DefaultMediaClockReferencePriority>>(lhs) == static_cast<std::underlying_type_t<DefaultMediaClockReferencePriority>>(rhs);
+}
+
+constexpr bool operator==(DefaultMediaClockReferencePriority const lhs, std::underlying_type_t<DefaultMediaClockReferencePriority> const rhs)
+{
+	return static_cast<std::underlying_type_t<DefaultMediaClockReferencePriority>>(lhs) == rhs;
+}
+
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION defaultMediaClockReferencePriorityToString(DefaultMediaClockReferencePriority const mcrPriority) noexcept;
 
 } // namespace model
 } // namespace entity
