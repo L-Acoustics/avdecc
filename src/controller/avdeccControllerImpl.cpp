@@ -5621,8 +5621,8 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 	}
 }
 
-/* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetMilanModel (MVU) */
-bool ControllerImpl::processGetMilanModelFailureStatus(entity::ControllerEntity::MvuCommandStatus const status, ControlledEntityImpl* const entity, ControlledEntityImpl::MilanInfoType const milanInfoType, bool const optionalForMilan) noexcept
+/* This method handles non-success AemCommandStatus returned while getting EnumerationStep::GetMilanModel (MVU) */
+bool ControllerImpl::processGetMilanInfoFailureStatus(entity::ControllerEntity::MvuCommandStatus const status, ControlledEntityImpl* const entity, ControlledEntityImpl::MilanInfoType const milanInfoType, bool const optionalForMilan) noexcept
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
@@ -5700,7 +5700,7 @@ bool ControllerImpl::processGetMilanModelFailureStatus(entity::ControllerEntity:
 	}
 }
 
-/* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetStaticModel (AEM) */
+/* This method handles non-success AemCommandStatus returned while getting EnumerationStep::GetStaticModel (AEM) */
 bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
@@ -5783,7 +5783,7 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 	}
 }
 
-/* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDynamicInfo for AECP commands */
+/* This method handles non-success AemCommandStatus returned while getting EnumerationStep::GetDynamicInfo for AECP commands */
 bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
@@ -5872,7 +5872,74 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 	}
 }
 
-/* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands */
+/* This method handles non-success MvuCommandStatus returned while getting EnumerationStep::GetDynamicInfo for MVU commands */
+bool ControllerImpl::processGetMvuDynamicInfoFailureStatus(entity::ControllerEntity::MvuCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex, ControlledEntity::CompatibilityFlag const flagToRemoveIfUnsupported) noexcept
+{
+	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
+
+	auto const entityID = entity->getEntity().getEntityID();
+	auto const action = getFailureActionForMvuCommandStatus(status);
+	switch (action)
+	{
+		case FailureAction::MisbehaveContinue:
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			return true;
+		case FailureAction::NotAuthenticated:
+			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
+			return true;
+		case FailureAction::WarningContinue:
+			return true;
+		case FailureAction::ErrorContinue:
+			[[fallthrough]];
+		case FailureAction::BadArguments:
+			[[fallthrough]];
+		case FailureAction::NotSupported:
+			if (flagToRemoveIfUnsupported != ControlledEntity::CompatibilityFlag::None)
+			{
+				// Remove specified compatibility flag
+				if (entity->getCompatibilityFlags().test(flagToRemoveIfUnsupported))
+				{
+					LOG_CONTROLLER_WARN(entityID, "Milan mandatory dynamic info not supported by the entity: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+					removeCompatibilityFlag(this, *entity, flagToRemoveIfUnsupported);
+				}
+			}
+			return true;
+		case FailureAction::TimedOut:
+			[[fallthrough]];
+		case FailureAction::Busy:
+		{
+			auto const [shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
+			if (shouldRetry)
+			{
+				queryInformation(entity, configurationIndex, dynamicInfoType, descriptorIndex, subIndex, retryTimer);
+			}
+			else
+			{
+				// Too many retries, result depends on FailureAction and AemCommandStatus
+				if (action == FailureAction::TimedOut)
+				{
+					if (flagToRemoveIfUnsupported != ControlledEntity::CompatibilityFlag::None)
+					{
+						// Remove specified compatibility flag
+						if (entity->getCompatibilityFlags().test(flagToRemoveIfUnsupported))
+						{
+							LOG_CONTROLLER_WARN(entityID, "Too many timeouts for Milan mandatory dynamic info: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+							removeCompatibilityFlag(this, *entity, flagToRemoveIfUnsupported);
+						}
+					}
+				}
+			}
+			return true;
+		}
+		case FailureAction::ErrorFatal:
+			return false;
+		default:
+			return false;
+	}
+}
+
+/* This method handles non-success ControlStatus returned while getting EnumerationStep::GetDynamicInfo for ACMP commands */
 bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, bool const optionalForMilan) noexcept
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
@@ -5957,7 +6024,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 	}
 }
 
-/* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands with a connection index */
+/* This method handles non-success ControlStatus returned while getting EnumerationStep::GetDynamicInfo for ACMP commands with a connection index */
 bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::StreamIdentification const& talkerStream, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
@@ -6042,7 +6109,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 	}
 }
 
-/* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDescriptorDynamicInfo (AEM) */
+/* This method handles non-success AemCommandStatus returned while getting EnumerationStep::GetDescriptorDynamicInfo (AEM) */
 bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, bool const optionalForMilan) noexcept
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");

@@ -70,7 +70,7 @@ void ControllerImpl::onGetMilanInfoResult(entity::controller::Interface const* c
 			}
 			else
 			{
-				if (!processGetMilanModelFailureStatus(status, controlledEntity.get(), ControlledEntityImpl::MilanInfoType::MilanInfo))
+				if (!processGetMilanInfoFailureStatus(status, controlledEntity.get(), ControlledEntityImpl::MilanInfoType::MilanInfo))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::GetMilanInfo);
