@@ -44,6 +44,7 @@
 // Other defines
 #define ENABLE_AVDECC_FEATURE_REDUNDANCY 1
 
+
 ////////////////////////////////////////
 // Utils
 ////////////////////////////////////////
@@ -85,7 +86,7 @@
 // Define some macros
 %define DEFINE_AEM_TYPES_ENUM_CLASS(name, type)
 	%nspace la::avdecc::entity::model::name;
-	%typemap(csbase) la::avdecc::entity::model::name type
+	%typemap(csbase, replace="1") la::avdecc::entity::model::name type // Required for C# to use the correct type (especially when 'enum class' is derived from an alias type)
 	%rename("isEqual") la::avdecc::entity::model::operator==(name const, name const); // Not put in a namespace https://github.com/swig/swig/issues/2459
 	%rename("$ignore") la::avdecc::entity::model::operator==(name const, std::underlying_type_t<name> const);
 %enddef
@@ -186,9 +187,9 @@ DEFINE_AEM_TYPES_CLASS(SamplingRate);
 DEFINE_AEM_TYPES_CLASS(StreamFormat);
 DEFINE_AEM_TYPES_CLASS(LocalizedStringReference);
 DEFINE_AEM_TYPES_CLASS(ControlValueUnit);
-%typemap(csbase) la::avdecc::entity::model::ControlValueUnit::Unit "byte"
+// %typemap(csbase) la::avdecc::entity::model::ControlValueUnit::Unit "byte" // Not required anymore
 DEFINE_AEM_TYPES_CLASS(ControlValueType);
-%typemap(csbase) la::avdecc::entity::model::ControlValueType::Type "ushort"
+// %typemap(csbase) la::avdecc::entity::model::ControlValueType::Type "ushort" // Not required anymore
 DEFINE_AEM_TYPES_CLASS_BASE(ControlValues);
 %ignore la::avdecc::entity::model::ControlValues::operator bool() const noexcept;
 
@@ -320,9 +321,6 @@ DEFINE_TYPED_PROTOCOL_CLASS(AcmpStatus, AcmpStatusTypedDefine, std::uint8_t)
 %include "la/avdecc/internals/protocolDefines.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
-// Define templates
-%template(DescriptorCountMap) std::unordered_map<la::avdecc::entity::model::DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash>;
-
 
 ////////////////////////////////////////
 // Entity Model
@@ -364,7 +362,13 @@ DEFINE_TYPED_PROTOCOL_CLASS(AcmpStatus, AcmpStatusTypedDefine, std::uint8_t)
 %enddef
 
 // Define optionals
+DEFINE_OPTIONAL_SIMPLE(OptUInt8, std::uint8_t, (byte)0)
+DEFINE_OPTIONAL_SIMPLE(OptUInt16, std::uint16_t, (ushort)0)
+DEFINE_OPTIONAL_SIMPLE(OptUInt32, std::uint32_t, (uint)0)
+DEFINE_OPTIONAL_SIMPLE(OptUInt64, std::uint64_t, (ulong)0)
+//DEFINE_OPTIONAL_SIMPLE(OptDescriptorIndex, la::avdecc::entity::model::DescriptorIndex, avdeccEntityModel.getInvalidDescriptorIndex()) // Currently we cannot define both OptUInt16 and OptDescriptorIndex (or they mix up). We'll define each Descriptor type once we use a TypedDefine
 DEFINE_OPTIONAL_SIMPLE(OptProbingStatus, la::avdecc::entity::model::ProbingStatus, la.avdecc.entity.model.ProbingStatus.Disabled)
+DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AvdeccFixedString, OptAvdeccFixedString)
 DEFINE_OPTIONAL_CLASS(la::avdecc::entity, StreamInfoFlagsEx, OptStreamInfoFlagsEx)
 DEFINE_OPTIONAL_CLASS(la::avdecc::protocol, AcmpStatus, OptAcmpStatus)
 

@@ -181,11 +181,6 @@ public:
 // Entity Model
 ////////////////////////////////////////
 // Define optionals before including entityModel.i (we need to declare the optionals before the underlying types are defined)
-DEFINE_OPTIONAL_SIMPLE(OptUInt8, std::uint8_t, (byte)0)
-DEFINE_OPTIONAL_SIMPLE(OptUInt16, std::uint16_t, (ushort)0)
-DEFINE_OPTIONAL_SIMPLE(OptUInt32, std::uint32_t, (uint)0)
-DEFINE_OPTIONAL_SIMPLE(OptUInt64, std::uint64_t, (ulong)0)
-//DEFINE_OPTIONAL_SIMPLE(OptDescriptorIndex, la::avdecc::entity::model::DescriptorIndex, avdeccEntityModel.getInvalidDescriptorIndex()) // Currently we cannot define both OptUInt16 and OptDescriptorIndex (or they mix up). We'll define each Descriptor type once we use a TypedDefine
 DEFINE_OPTIONAL_SIMPLE(OptMsrpFailureCode, la::avdecc::entity::model::MsrpFailureCode, la.avdecc.entity.model.MsrpFailureCode.NoFailure)
 DEFINE_OPTIONAL_CLASS(la::avdecc, UniqueIdentifier, OptUniqueIdentifier)
 DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
