@@ -214,6 +214,7 @@ public:
 	virtual UniqueIdentifier getLockingControllerID() const noexcept override;
 	virtual entity::Entity const& getEntity() const noexcept override;
 	virtual std::optional<entity::model::MilanInfo> getMilanInfo() const noexcept override;
+	virtual std::optional<entity::model::MilanDynamicState> getMilanDynamicState() const noexcept override;
 	virtual std::optional<entity::model::ControlIndex> getIdentifyControlIndex() const noexcept override;
 	virtual bool isEntityModelValidForCaching() const noexcept override;
 	virtual bool isIdentifying() const noexcept override;
@@ -332,6 +333,7 @@ public:
 	void setLockState(model::LockState const state) noexcept;
 	void setLockingController(UniqueIdentifier const controllerID) noexcept;
 	void setMilanInfo(entity::model::MilanInfo const& info) noexcept;
+	void setMilanDynamicState(entity::model::MilanDynamicState const& state) noexcept;
 
 	// Setters of the Statistics
 	void setAecpRetryCounter(std::uint64_t const value) noexcept;
@@ -524,6 +526,7 @@ private:
 	std::optional<protocol::AecpSequenceID> _expectedMvuSequenceID{ std::nullopt };
 	// Milan specific information
 	std::optional<entity::model::MilanInfo> _milanInfo{ std::nullopt };
+	std::optional<entity::model::MilanDynamicState> _milanDynamicState{ std::nullopt };
 	// Entity variables
 	entity::Entity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model

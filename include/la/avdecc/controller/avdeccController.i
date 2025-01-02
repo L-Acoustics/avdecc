@@ -73,6 +73,7 @@
 
 // Define optionals
 DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, MilanInfo, OptMilanInfo)
+DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, MilanDynamicState, OptMilanDynamicState)
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
