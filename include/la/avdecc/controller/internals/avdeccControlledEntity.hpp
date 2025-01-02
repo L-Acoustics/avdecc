@@ -92,6 +92,7 @@ public:
 
 		IEEE17221 = 1u << 0, /** Classic IEEE1722.1 entity */
 		Milan = 1u << 1, /** MILAN compatible entity */
+		Milan1_2 = 1u << 2, /** MILAN 1.2 compatible entity */
 
 		IEEE17221Warning = 1u << 5, /** IEEE17221 compatible entity but with minor warnings in the model/behavior that do not retrograde a IEEE17221 entity (this flag it additive with IEEE17221 flag) */
 		MilanWarning = 1u << 6, /** MILAN compatible entity but with minor warnings in the model/behavior that do not retrograde a Milan entity (this flag it additive with Milan flag) */

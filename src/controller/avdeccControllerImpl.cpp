@@ -183,6 +183,19 @@ void ControllerImpl::addCompatibilityFlag(ControllerImpl const* const controller
 				}
 			}
 			break;
+		case ControlledEntity::CompatibilityFlag::Milan1_2:
+			if (!newFlags.test(ControlledEntity::CompatibilityFlag::Misbehaving))
+			{
+				newFlags.set(ControlledEntity::CompatibilityFlag::IEEE17221); // A Milan device is also an IEEE1722.1 compatible device
+				newFlags.set(ControlledEntity::CompatibilityFlag::Milan); // A Milan 1.2 device is also an Milan compatible device
+				newFlags.set(flag);
+				// If device was already with IEEE warning, also add MilanWarning flag
+				if (newFlags.test(ControlledEntity::CompatibilityFlag::IEEE17221Warning))
+				{
+					newFlags.set(ControlledEntity::CompatibilityFlag::MilanWarning);
+				}
+			}
+			break;
 		case ControlledEntity::CompatibilityFlag::IEEE17221Warning:
 			if (AVDECC_ASSERT_WITH_RET(newFlags.test(ControlledEntity::CompatibilityFlag::IEEE17221), "Adding IEEE17221Warning flag for a non IEEE17221 device"))
 			{
@@ -243,6 +256,7 @@ void ControllerImpl::removeCompatibilityFlag(ControllerImpl const* const control
 			{
 				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity not fully IEEE1722.1 compliant");
 				newFlags.reset(ControlledEntity::CompatibilityFlag::Milan); // A non compliant IEEE1722.1 device is not Milan compliant either
+				newFlags.reset(ControlledEntity::CompatibilityFlag::Milan1_2); // A non compliant Milan device is not Milan 1.2 compliant either
 				newFlags.reset(flag);
 			}
 			break;
@@ -251,6 +265,15 @@ void ControllerImpl::removeCompatibilityFlag(ControllerImpl const* const control
 			if (newFlags.test(ControlledEntity::CompatibilityFlag::Milan))
 			{
 				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity not fully Milan compliant");
+				newFlags.reset(ControlledEntity::CompatibilityFlag::Milan1_2); // A non compliant Milan device is not Milan 1.2 compliant either
+				newFlags.reset(flag);
+			}
+			break;
+		case ControlledEntity::CompatibilityFlag::Milan1_2:
+			// If device was Milan 1.2 compliant
+			if (newFlags.test(ControlledEntity::CompatibilityFlag::Milan1_2))
+			{
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity not fully Milan 1.2 compliant");
 				newFlags.reset(flag);
 			}
 			break;
