@@ -979,7 +979,7 @@ void ControllerImpl::onAecpResponseTime(entity::controller::Interface const* con
 	}
 }
 
-void ControllerImpl::onAemAecpUnsolicitedReceived(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept
+void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID, std::function<std::uint32_t(ControlledEntityImpl&)> const& incrementUnsolicitedCounter, std::function<std::uint32_t(ControlledEntityImpl&)> const& incrementUnsolicitedLossCounter, std::function<bool(ControlledEntityImpl&, la::avdecc::protocol::AecpSequenceID)> const& hasLostUnsolicitedNotification, void (Controller::Observer::*notifyUnsolicitedCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t), void (Controller::Observer::*notifyUnsolicitedLossCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t)) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -991,17 +991,17 @@ void ControllerImpl::onAemAecpUnsolicitedReceived(entity::controller::Interface 
 		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 		// Check for loss of unsolicited notification
-		if (entity.hasLostUnsolicitedNotification(sequenceID))
+		if (hasLostUnsolicitedNotification(entity, sequenceID))
 		{
 			LOG_CONTROLLER_WARN(entityID, "Unsolicited notification lost detected");
 
 			// Update statistics
-			auto const value = entity.incrementAemAecpUnsolicitedLossCounter();
+			auto const value = incrementUnsolicitedLossCounter(entity);
 
 			// Entity was advertised to the user, notify observers
 			if (entity.wasAdvertised())
 			{
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAemAecpUnsolicitedLossCounterChanged, this, &entity, value);
+				notifyObserversMethod<Controller::Observer>(notifyUnsolicitedLossCounterChanged, this, static_cast<ControlledEntity const*>(&entity), value);
 			}
 
 			// As part of #50 (for now), just unsubscribe from unsolicited notifications
@@ -1015,14 +1015,24 @@ void ControllerImpl::onAemAecpUnsolicitedReceived(entity::controller::Interface 
 		}
 
 		// Update statistics
-		auto const value = entity.incrementAemAecpUnsolicitedCounter();
+		auto const value = incrementUnsolicitedCounter(entity);
 
 		// Entity was advertised to the user, notify observers
 		if (entity.wasAdvertised())
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAemAecpUnsolicitedCounterChanged, this, &entity, value);
+			notifyObserversMethod<Controller::Observer>(notifyUnsolicitedCounterChanged, this, static_cast<ControlledEntity const*>(&entity), value);
 		}
 	}
+}
+
+void ControllerImpl::onAemAecpUnsolicitedReceived(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept
+{
+	handleAecpUnsolicitedReceived(entityID, sequenceID, &ControlledEntityImpl::incrementAemAecpUnsolicitedCounter, &ControlledEntityImpl::incrementAemAecpUnsolicitedLossCounter, &ControlledEntityImpl::hasLostAemUnsolicitedNotification, &Controller::Observer::onAemAecpUnsolicitedCounterChanged, &Controller::Observer::onAemAecpUnsolicitedLossCounterChanged);
+}
+
+void ControllerImpl::onMvuAecpUnsolicitedReceived(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept
+{
+	handleAecpUnsolicitedReceived(entityID, sequenceID, &ControlledEntityImpl::incrementMvuAecpUnsolicitedCounter, &ControlledEntityImpl::incrementMvuAecpUnsolicitedLossCounter, &ControlledEntityImpl::hasLostMvuUnsolicitedNotification, &Controller::Observer::onMvuAecpUnsolicitedCounterChanged, &Controller::Observer::onMvuAecpUnsolicitedLossCounterChanged);
 }
 
 } // namespace controller

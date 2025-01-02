@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [Support for read-only properties change for virtual entities](https://github.com/L-Acoustics/avdecc/issues/162)
 - la::avdecc::controller::Controller::createVirtualEntityFromEntityModelFile method
 - la::avdecc::entity::model::VirtualEntityBuilder class to help creating virtual entities from EntityModel files
+- Unsolicited notifications support for VendorUnique messages, with statistics counters
 
 ### Changed
 - Complete controller entity model refactoring to support descriptors at non-configuration level

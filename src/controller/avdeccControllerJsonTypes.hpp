@@ -83,6 +83,8 @@ constexpr auto ControlledEntityStatistics_AecpUnexpectedResponseCounter = "aecp_
 constexpr auto ControlledEntityStatistics_AecpResponseAverageTime = "aecp_response_average_time";
 constexpr auto ControlledEntityStatistics_AemAecpUnsolicitedCounter = "aem_aecp_unsolicited_counter";
 constexpr auto ControlledEntityStatistics_AemAecpUnsolicitedLossCounter = "aem_aecp_unsolicited_loss_counter";
+constexpr auto ControlledEntityStatistics_MvuAecpUnsolicitedCounter = "mvu_aecp_unsolicited_counter";
+constexpr auto ControlledEntityStatistics_MvuAecpUnsolicitedLossCounter = "mvu_aecp_unsolicited_loss_counter";
 constexpr auto ControlledEntityStatistics_EnumerationTime = "enumeration_time";
 
 /* ControlledEntityDiagnostics */
