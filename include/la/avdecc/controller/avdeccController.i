@@ -371,6 +371,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::controller::Controller::DefaultedObserver)
 %rename("%s") Handler_Entity_float;
 %rename("%s") Handler_Entity_AaCommandStatus_DeviceMemoryBuffer;
 %rename("%s") Handler_Entity_AaCommandStatus;
+%rename("%s") Handler_Entity_MvuCommandStatus;
 #if TYPED_DESCRIPTOR_INDEXES
 %rename("%s") Handler_Entity_Entity_StreamIndex_StreamIndex_ControlStatus;
 %rename("%s") Handler_Entity_Entity_StreamIndex_ControlStatus;
@@ -394,6 +395,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::controller::Controller::DefaultedObserver)
 %std_function(Handler_Entity_float, bool, la::avdecc::controller::ControlledEntity const* const entity, float const percentComplete);
 %std_function(Handler_Entity_AaCommandStatus_DeviceMemoryBuffer, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::AaCommandStatus const status, la::avdecc::controller::Controller::DeviceMemoryBuffer const& memoryBuffer);
 %std_function(Handler_Entity_AaCommandStatus, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::AaCommandStatus const status);
+%std_function(Handler_Entity_MvuCommandStatus, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::MvuCommandStatus const status);
 #if TYPED_DESCRIPTOR_INDEXES
 %std_function(Handler_Entity_Entity_StreamIndex_StreamIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const talkerStreamIndex, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);
 %std_function(Handler_Entity_StreamIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);

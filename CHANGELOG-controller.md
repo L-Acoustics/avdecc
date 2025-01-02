@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - la::avdecc::controller::Controller::createVirtualEntityFromEntityModelFile method
 - la::avdecc::entity::model::VirtualEntityBuilder class to help creating virtual entities from EntityModel files
 - Unsolicited notifications support for VendorUnique messages, with statistics counters
+- Milan 1.2 MVU commands:
+  - SET_SYSTEM_UNIQUE_ID
+  - GET_SYSTEM_UNIQUE_ID
+  - SET_MEDIA_CLOCK_REFERENCE_INFO
+  - GET_MEDIA_CLOCK_REFERENCE_INFO
 
 ### Changed
 - Complete controller entity model refactoring to support descriptors at non-configuration level
