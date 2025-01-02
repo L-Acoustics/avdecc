@@ -1586,6 +1586,16 @@ void ControlledEntityImpl::setMilanDynamicState(entity::model::MilanDynamicState
 {
 	_milanDynamicState = state;
 }
+
+void ControlledEntityImpl::setSystemUniqueID(entity::model::SystemUniqueIdentifier const uniqueID) noexcept
+{
+	if (!_milanDynamicState)
+	{
+		_milanDynamicState = entity::model::MilanDynamicState{};
+	}
+	_milanDynamicState->systemUniqueID = uniqueID;
+}
+
 // Setters of the Statistics
 void ControlledEntityImpl::setAecpRetryCounter(std::uint64_t const value) noexcept
 {
@@ -2884,6 +2894,10 @@ std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const 
 			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (STREAM_INPUT)";
 		case DynamicInfoType::GetStreamOutputCounters:
 			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (STREAM_OUTPUT)";
+		case DynamicInfoType::GetSystemUniqueID:
+			return protocol::MvuCommandType::GetSystemUniqueID;
+		case DynamicInfoType::GetMediaClockReferenceInfo:
+			return protocol::MvuCommandType::GetMediaClockReferenceInfo;
 		default:
 			return "Unknown DynamicInfoType";
 	}
