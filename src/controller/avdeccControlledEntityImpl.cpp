@@ -646,6 +646,16 @@ std::uint64_t ControlledEntityImpl::getAemAecpUnsolicitedLossCounter() const noe
 	return _aemAecpUnsolicitedLossCounter;
 }
 
+std::uint64_t ControlledEntityImpl::getMvuAecpUnsolicitedCounter() const noexcept
+{
+	return _mvuAecpUnsolicitedCounter;
+}
+
+std::uint64_t ControlledEntityImpl::getMvuAecpUnsolicitedLossCounter() const noexcept
+{
+	return _mvuAecpUnsolicitedLossCounter;
+}
+
 std::chrono::milliseconds const& ControlledEntityImpl::getEnumerationTime() const noexcept
 {
 	return _enumerationTime;
@@ -1598,6 +1608,16 @@ void ControlledEntityImpl::setAemAecpUnsolicitedLossCounter(std::uint64_t const 
 	_aemAecpUnsolicitedLossCounter = value;
 }
 
+void ControlledEntityImpl::setMvuAecpUnsolicitedCounter(std::uint64_t const value) noexcept
+{
+	_mvuAecpUnsolicitedCounter = value;
+}
+
+void ControlledEntityImpl::setMvuAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept
+{
+	_mvuAecpUnsolicitedLossCounter = value;
+}
+
 void ControlledEntityImpl::setEnumerationTime(std::chrono::milliseconds const& value) noexcept
 {
 	_enumerationTime = value;
@@ -2283,6 +2303,18 @@ std::uint64_t ControlledEntityImpl::incrementAemAecpUnsolicitedLossCounter() noe
 	return _aemAecpUnsolicitedLossCounter;
 }
 
+std::uint64_t ControlledEntityImpl::incrementMvuAecpUnsolicitedCounter() noexcept
+{
+	++_mvuAecpUnsolicitedCounter;
+	return _mvuAecpUnsolicitedCounter;
+}
+
+std::uint64_t ControlledEntityImpl::incrementMvuAecpUnsolicitedLossCounter() noexcept
+{
+	++_mvuAecpUnsolicitedLossCounter;
+	return _mvuAecpUnsolicitedLossCounter;
+}
+
 void ControlledEntityImpl::setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept
 {
 	_enumerationStartTime = std::move(startTime);
@@ -2701,7 +2733,8 @@ void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const is
 	// If unsubscribing, reset the expected sequence id
 	if (!isSubscribed)
 	{
-		_expectedSequenceID = std::nullopt;
+		_expectedAemSequenceID = std::nullopt;
+		_expectedMvuSequenceID = std::nullopt;
 	}
 }
 
@@ -2777,22 +2810,32 @@ ControlledEntity::Diagnostics& ControlledEntityImpl::getDiagnostics() noexcept
 	return _diagnostics;
 }
 
-bool ControlledEntityImpl::hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept
+bool ControlledEntityImpl::hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID) noexcept
 {
 	auto unmatched = false;
-	if (_isSubscribedToUnsolicitedNotifications && _milanInfo && _milanInfo->protocolVersion == 1)
+	if (_isSubscribedToUnsolicitedNotifications && _milanInfo && _milanInfo->protocolVersion >= 1)
 	{
 		// Compare received sequenceID and expected one, if it's not the first one received.
 		// We don't expect 0 as first value, since the controller itself might restart (with the same entityID) without properly deregistering first,
 		// in which case the entity will send unsolicited continuing the previous sequence.
-		if (_expectedSequenceID.has_value())
+		if (expectedSequenceID.has_value())
 		{
-			unmatched = *_expectedSequenceID != sequenceID;
+			unmatched = *expectedSequenceID != sequenceID;
 		}
 		// Update next expected sequence ID
-		_expectedSequenceID = static_cast<protocol::AecpSequenceID>(sequenceID + 1u);
+		expectedSequenceID = static_cast<protocol::AecpSequenceID>(sequenceID + 1u);
 	}
 	return unmatched;
+}
+
+bool ControlledEntityImpl::hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept
+{
+	return hasLostUnsolicitedNotification(sequenceID, _expectedAemSequenceID);
+}
+
+bool ControlledEntityImpl::hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept
+{
+	return hasLostUnsolicitedNotification(sequenceID, _expectedMvuSequenceID);
 }
 
 // Static methods

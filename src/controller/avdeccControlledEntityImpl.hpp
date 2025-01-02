@@ -272,6 +272,8 @@ public:
 	virtual std::chrono::milliseconds const& getAecpResponseAverageTime() const noexcept override;
 	virtual std::uint64_t getAemAecpUnsolicitedCounter() const noexcept override;
 	virtual std::uint64_t getAemAecpUnsolicitedLossCounter() const noexcept override;
+	virtual std::uint64_t getMvuAecpUnsolicitedCounter() const noexcept override;
+	virtual std::uint64_t getMvuAecpUnsolicitedLossCounter() const noexcept override;
 	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept override;
 
 	// Diagnostics
@@ -338,6 +340,8 @@ public:
 	void setAecpResponseAverageTime(std::chrono::milliseconds const& value) noexcept;
 	void setAemAecpUnsolicitedCounter(std::uint64_t const value) noexcept;
 	void setAemAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept;
+	void setMvuAecpUnsolicitedCounter(std::uint64_t const value) noexcept;
+	void setMvuAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept;
 	void setEnumerationTime(std::chrono::milliseconds const& value) noexcept;
 
 	// Setters of the Diagnostics
@@ -375,6 +379,8 @@ public:
 	std::chrono::milliseconds const& updateAecpResponseTimeAverage(std::chrono::milliseconds const& responseTime) noexcept;
 	std::uint64_t incrementAemAecpUnsolicitedCounter() noexcept;
 	std::uint64_t incrementAemAecpUnsolicitedLossCounter() noexcept;
+	std::uint64_t incrementMvuAecpUnsolicitedCounter() noexcept;
+	std::uint64_t incrementMvuAecpUnsolicitedLossCounter() noexcept;
 	void setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept;
 	void setEndEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& endTime) noexcept;
 
@@ -446,7 +452,8 @@ public:
 	bool isRedundantSecondaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	bool isRedundantSecondaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	Diagnostics& getDiagnostics() noexcept;
-	bool hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
+	bool hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
+	bool hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
 	entity::model::EntityTree const& getEntityModelTree() const noexcept;
 	void buildEntityModelGraph(entity::model::EntityTree const& entityTree) noexcept;
 
@@ -476,6 +483,7 @@ private:
 	void addOrFixStreamPortInputMapping(entity::model::AudioMappings& mappings, entity::model::AudioMapping const& mapping) const noexcept;
 	void fixStreamPortInputMappings(std::map<entity::model::StreamPortIndex, model::StreamPortInputNode>& streamPorts) noexcept;
 	void fixStreamPortMappings(model::ConfigurationNode& configNode) noexcept;
+	bool hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID) noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	void buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -512,7 +520,8 @@ private:
 	UniqueIdentifier _owningControllerID{}; // EID of the controller currently owning (who acquired) this entity
 	model::LockState _lockState{ model::LockState::Undefined };
 	UniqueIdentifier _lockingControllerID{}; // EID of the controller currently locking (who locked) this entity
-	std::optional<protocol::AecpSequenceID> _expectedSequenceID{ std::nullopt };
+	std::optional<protocol::AecpSequenceID> _expectedAemSequenceID{ std::nullopt };
+	std::optional<protocol::AecpSequenceID> _expectedMvuSequenceID{ std::nullopt };
 	// Milan specific information
 	std::optional<entity::model::MilanInfo> _milanInfo{ std::nullopt };
 	// Entity variables
@@ -540,6 +549,8 @@ private:
 	std::chrono::milliseconds _aecpResponseAverageTime{};
 	std::uint64_t _aemAecpUnsolicitedCounter{ 0ull };
 	std::uint64_t _aemAecpUnsolicitedLossCounter{ 0ull };
+	std::uint64_t _mvuAecpUnsolicitedCounter{ 0ull };
+	std::uint64_t _mvuAecpUnsolicitedLossCounter{ 0ull };
 	std::chrono::time_point<std::chrono::steady_clock> _enumerationStartTime{}; // Intermediate variable used by _enumerationTime
 	std::chrono::milliseconds _enumerationTime{};
 	// Diagnostics
