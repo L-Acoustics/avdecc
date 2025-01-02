@@ -6778,6 +6778,17 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 			}
 		}
 
+		// Read Milan Dynamic State, if present
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessMilan) && flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel))
+		{
+			auto milanDynamicState = std::optional<entity::model::MilanDynamicState>{};
+			get_optional_value(object, jsonSerializer::keyName::ControlledEntity_MilanDynamicState, milanDynamicState);
+			if (milanDynamicState)
+			{
+				entity.setMilanDynamicState(*milanDynamicState);
+			}
+		}
+
 		return controlledEntity;
 	}
 	catch (avdecc::Exception const& e)

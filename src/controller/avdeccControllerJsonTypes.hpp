@@ -121,6 +121,7 @@ constexpr auto ControlledEntity_AdpInformation = "adp_information";
 constexpr auto ControlledEntity_EntityModel = "entity_model";
 constexpr auto ControlledEntity_EntityModelID = "entity_model_id";
 constexpr auto ControlledEntity_MilanInformation = "milan_information";
+constexpr auto ControlledEntity_MilanDynamicState = "milan_dynamic_state";
 constexpr auto ControlledEntity_EntityState = "state";
 constexpr auto ControlledEntity_Statistics = "statistics";
 constexpr auto ControlledEntity_Diagnostics = "diagnostics";

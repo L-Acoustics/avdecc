@@ -112,6 +112,16 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 			}
 		}
 
+		// Dump Milan Dynamic State, if present
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessMilan) && flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel))
+		{
+			auto const milanDynamicState = entity.getMilanDynamicState();
+			if (milanDynamicState)
+			{
+				object[keyName::ControlledEntity_MilanDynamicState] = *milanDynamicState;
+			}
+		}
+
 		// Dump Entity State
 		if (flags.test(entity::model::jsonSerializer::Flag::ProcessState))
 		{

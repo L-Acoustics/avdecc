@@ -230,6 +230,11 @@ std::optional<entity::model::MilanInfo> ControlledEntityImpl::getMilanInfo() con
 	return _milanInfo;
 }
 
+std::optional<entity::model::MilanDynamicState> ControlledEntityImpl::getMilanDynamicState() const noexcept
+{
+	return _milanDynamicState;
+}
+
 std::optional<entity::model::ControlIndex> ControlledEntityImpl::getIdentifyControlIndex() const noexcept
 {
 	return _identifyControlIndex;
@@ -1577,6 +1582,10 @@ void ControlledEntityImpl::setMilanInfo(entity::model::MilanInfo const& info) no
 	_milanInfo = info;
 }
 
+void ControlledEntityImpl::setMilanDynamicState(entity::model::MilanDynamicState const& state) noexcept
+{
+	_milanDynamicState = state;
+}
 // Setters of the Statistics
 void ControlledEntityImpl::setAecpRetryCounter(std::uint64_t const value) noexcept
 {
