@@ -6558,7 +6558,6 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 	else
 	{
 		// Ready to advertise using the network executor
-		auto const exName = _endStation->getProtocolInterface()->getExecutorName();
 		executor.pushJob(exName,
 			[this, job]()
 			{
