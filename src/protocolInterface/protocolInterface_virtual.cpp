@@ -430,7 +430,7 @@ void ProtocolInterfaceVirtualImpl::shutdown() noexcept
 
 UniqueIdentifier ProtocolInterfaceVirtualImpl::getDynamicEID() const noexcept
 {
-	UniqueIdentifier::value_type eid{ 0u };
+	auto eid = UniqueIdentifier::value_type{ 0u };
 	auto const& macAddress = getMacAddress();
 	static auto s_CurrentProgID = std::uint16_t{ 0u };
 
@@ -439,14 +439,14 @@ UniqueIdentifier ProtocolInterfaceVirtualImpl::getDynamicEID() const noexcept
 	eid += macAddress[1];
 	eid <<= 8;
 	eid += macAddress[2];
-	eid <<= 16;
-	eid += ++s_CurrentProgID;
 	eid <<= 8;
 	eid += macAddress[3];
 	eid <<= 8;
 	eid += macAddress[4];
 	eid <<= 8;
 	eid += macAddress[5];
+	eid <<= 16;
+	eid += ++s_CurrentProgID;
 
 	return UniqueIdentifier{ eid };
 }

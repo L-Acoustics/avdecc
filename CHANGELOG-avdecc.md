@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Crash when unpacking vendor specific control values
 - [Incorrect linkage for some C bindings methods](https://github.com/L-Acoustics/avdecc/issues/148)
+- [ProcotolInterface pcap getDynamicEID incorrect](https://github.com/L-Acoustics/avdecc/issues/154)
 
 ## [3.4.1] - 2023-01-11
 

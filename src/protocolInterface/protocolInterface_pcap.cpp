@@ -45,6 +45,7 @@
 #include <memory>
 #include <chrono>
 #include <cstdlib>
+#include <ctime>
 #ifdef __linux__
 #	include <csignal>
 #endif // __linux__
@@ -199,7 +200,7 @@ private:
 
 	virtual UniqueIdentifier getDynamicEID() const noexcept override
 	{
-		UniqueIdentifier::value_type eid{ 0u };
+		auto eid = UniqueIdentifier::value_type{ 0u };
 		auto const& macAddress = getMacAddress();
 
 		eid += macAddress[0];
@@ -207,15 +208,15 @@ private:
 		eid += macAddress[1];
 		eid <<= 8;
 		eid += macAddress[2];
-		eid <<= 16;
-		std::srand(static_cast<unsigned int>(std::time(0)));
-		eid += static_cast<std::uint16_t>((std::rand() % 0xFFFD) + 1);
 		eid <<= 8;
 		eid += macAddress[3];
 		eid <<= 8;
 		eid += macAddress[4];
 		eid <<= 8;
 		eid += macAddress[5];
+		eid <<= 16;
+		std::srand(static_cast<unsigned int>(std::time(0)));
+		eid += static_cast<std::uint16_t>((std::rand() % 0xFFFD) + 1);
 
 		return UniqueIdentifier{ eid };
 	}
