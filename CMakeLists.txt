@@ -30,8 +30,8 @@ option(BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING "Pcap protocol interface uses
 option(BUILD_AVDECC_INTERFACE_MAC "Build the macOS native protocol interface (macOS only)." TRUE)
 option(BUILD_AVDECC_INTERFACE_PROXY "Build the proxy protocol interface." FALSE)
 option(BUILD_AVDECC_INTERFACE_VIRTUAL "Build the virtual protocol interface (for unit tests)." TRUE)
-option(BUILD_AVDECC_INTERFACE_SERIAL "Build the serial protocol interface." FALSE)
-option(BUILD_AVDECC_INTERFACE_LOCAL "Build the local domain socket protocol interface." FALSE)
+option(BUILD_AVDECC_INTERFACE_SERIAL "Build the serial protocol interface (macOS and linux only)." TRUE)
+option(BUILD_AVDECC_INTERFACE_LOCAL "Build the local domain socket protocol interface (macOS and linux only)." TRUE)
 
 # Install options
 option(INSTALL_AVDECC_EXAMPLES "Install examples." FALSE)
@@ -61,40 +61,6 @@ option(ALLOW_SEND_BIG_AECP_PAYLOADS "Allow sending AECP payloads bigger than the
 # Configuration options
 if(NOT AVDECC_SWIG_LANGUAGES)
 	set(AVDECC_SWIG_LANGUAGES "csharp" CACHE STRING "Set the languages to compile as SWIG wrappers." FORCE)
-endif()
-
-############ Check dependencies
-
-# avdecc-tests needs avdecc.lib
-if(BUILD_AVDECC_TESTS)
-	set(BUILD_AVDECC_LIB_STATIC_RT_SHARED TRUE CACHE BOOL "Build avdecc static library (runtime shared)." FORCE)
-endif()
-
-# avdecc-examples needs avdecc.lib
-if(BUILD_AVDECC_EXAMPLES)
-	set(BUILD_AVDECC_LIB_STATIC_RT_SHARED TRUE CACHE BOOL "Build avdecc static library (runtime shared)." FORCE)
-endif()
-
-if(NOT CMAKE_HOST_APPLE AND BUILD_AVDECC_INTERFACE_MAC)
-	set(BUILD_AVDECC_INTERFACE_MAC FALSE)
-endif()
-
-if(BUILD_AVDECC_INTERFACE_PROXY)
-	message(FATAL_ERROR "Proxy interface not supported yet.")
-endif()
-
-if(NOT BUILD_AVDECC_INTERFACE_PCAP AND NOT BUILD_AVDECC_INTERFACE_MAC AND NOT BUILD_AVDECC_INTERFACE_PROXY)
-	message(FATAL_ERROR "At least one valid protocol interface must be built.")
-endif()
-
-# Build bindings requires the building of the libraries
-if(BUILD_AVDECC_BINDINGS_CSHARP AND NOT BUILD_AVDECC_LIB_SHARED_CXX)
-	set(BUILD_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Build C++ shared library." FORCE)
-endif()
-
-# Install bindings requires the installation of the libraries
-if(INSTALL_AVDECC_BINDINGS AND NOT INSTALL_AVDECC_LIB_SHARED_CXX)
-	set(INSTALL_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Install C++ shared library." FORCE)
 endif()
 
 ############ CMake configuration
@@ -137,6 +103,53 @@ cu_setup_project_version_variables(${LA_AVDECC_VERSION})
 
 # Set minimum OSX/iOS version
 cu_setup_apple_minimum_versions(MACOS 10.13)
+
+############ Check dependencies
+
+# avdecc-tests needs avdecc.lib
+if(BUILD_AVDECC_TESTS)
+	set(BUILD_AVDECC_LIB_STATIC_RT_SHARED TRUE CACHE BOOL "Build avdecc static library (runtime shared)." FORCE)
+endif()
+
+# avdecc-examples needs avdecc.lib
+if(BUILD_AVDECC_EXAMPLES)
+	set(BUILD_AVDECC_LIB_STATIC_RT_SHARED TRUE CACHE BOOL "Build avdecc static library (runtime shared)." FORCE)
+endif()
+
+# Cannot build 'macOS native protocol interface' from non-macOS host
+if(NOT CMAKE_HOST_APPLE AND BUILD_AVDECC_INTERFACE_MAC)
+	set(BUILD_AVDECC_INTERFACE_MAC FALSE)
+endif()
+
+# Cannot build 'serial protocol interface' for Windows target
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND BUILD_AVDECC_INTERFACE_SERIAL)
+	set(BUILD_AVDECC_INTERFACE_SERIAL FALSE)
+endif()
+
+# Cannot build 'local domain socket protocol interface' for Windows target
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND BUILD_AVDECC_INTERFACE_LOCAL)
+	set(BUILD_AVDECC_INTERFACE_LOCAL FALSE)
+endif()
+
+if(BUILD_AVDECC_INTERFACE_PROXY)
+	message(FATAL_ERROR "Proxy interface not supported yet.")
+endif()
+
+if(NOT BUILD_AVDECC_INTERFACE_PCAP AND NOT BUILD_AVDECC_INTERFACE_MAC AND NOT BUILD_AVDECC_INTERFACE_PROXY AND NOT BUILD_AVDECC_INTERFACE_VIRTUAL AND NOT BUILD_AVDECC_INTERFACE_SERIAL AND NOT BUILD_AVDECC_INTERFACE_LOCAL)
+	message(FATAL_ERROR "At least one valid protocol interface must be built.")
+endif()
+
+# Build bindings requires the building of the libraries
+if(BUILD_AVDECC_BINDINGS_CSHARP AND NOT BUILD_AVDECC_LIB_SHARED_CXX)
+	set(BUILD_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Build C++ shared library." FORCE)
+endif()
+
+# Install bindings requires the installation of the libraries
+if(INSTALL_AVDECC_BINDINGS AND NOT INSTALL_AVDECC_LIB_SHARED_CXX)
+	set(INSTALL_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Install C++ shared library." FORCE)
+endif()
+
+############ Setup dependencies
 
 # Include fmtlib
 if(ENABLE_AVDECC_USE_FMTLIB)
