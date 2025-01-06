@@ -31,6 +31,8 @@ option(BUILD_AVDECC_INTERFACE_MAC "Build the macOS native protocol interface (ma
 option(BUILD_AVDECC_INTERFACE_PROXY "Build the proxy protocol interface." FALSE)
 option(BUILD_AVDECC_INTERFACE_VIRTUAL "Build the virtual protocol interface (for unit tests)." TRUE)
 option(BUILD_AVDECC_INTERFACE_SERIAL "Build the serial protocol interface." FALSE)
+option(BUILD_AVDECC_INTERFACE_LOCAL "Build the local domain socket protocol interface." FALSE)
+
 # Install options
 option(INSTALL_AVDECC_EXAMPLES "Install examples." FALSE)
 option(INSTALL_AVDECC_TESTS "Install unit tests." FALSE)

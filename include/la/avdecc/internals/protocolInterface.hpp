@@ -67,6 +67,7 @@ public:
 		Proxy = 1u << 2, /**< IEEE Std 1722.1 Proxy protocol interface. */
 		Virtual = 1u << 3, /**< Virtual protocol interface. */
 		Serial = 1u << 4, /**< Serial port protocol interface. */
+		Local = 1u << 5, /**< Local domain socket protocol interface. */
 	};
 
 	/** Possible Error status returned (or thrown) by a ProtocolInterface */
