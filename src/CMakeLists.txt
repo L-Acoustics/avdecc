@@ -222,6 +222,19 @@ if(BUILD_AVDECC_INTERFACE_VIRTUAL)
 	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_VIRTUAL")
 endif()
 
+# Serial Protocol interface
+if(BUILD_AVDECC_INTERFACE_SERIAL)
+	list(APPEND SOURCE_FILES_PROTOCOL_INTERFACE
+		protocolInterface/protocolInterface_serial.cpp
+		protocolInterface/cobsSerialization.cpp
+	)
+	list(APPEND HEADER_FILES_PROTOCOL_INTERFACE
+		protocolInterface/protocolInterface_serial.hpp
+		protocolInterface/cobsSerialization.hpp
+	)
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_SERIAL")
+endif()
+
 # Features
 if(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_REDUNDANCY")
