@@ -604,7 +604,7 @@ private:
 
 		while (!_shouldTerminate)
 		{
-			iovec iov = { .iov_base = payloadBuffer, .iov_len = sizeof(payloadBuffer) };
+			auto iov = iovec{ payloadBuffer, sizeof(payloadBuffer) };
 			msghdr msg{};
 
 			pollfd.events = POLLIN;
@@ -634,14 +634,14 @@ private:
 
 	Error sendPacket(SerializationBuffer const& buffer) const noexcept
 	{
-		iovec iov = { .iov_base = const_cast<void*>(reinterpret_cast<const void*>(buffer.data())), .iov_len = buffer.size() };
+		auto iov = iovec{ const_cast<void*>(reinterpret_cast<const void*>(buffer.data())), buffer.size() };
 		msghdr msg{};
 
 		msg.msg_iov = &iov;
 		msg.msg_iovlen = 1;
 
 		auto const bytesSent = sendmsg(_fd, &msg, 0);
-		if (bytesSent != buffer.size())
+		if (static_cast<size_t>(bytesSent) != buffer.size())
 		{
 			return Error::TransportError;
 		}
