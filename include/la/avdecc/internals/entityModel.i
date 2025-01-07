@@ -36,6 +36,7 @@
 %{
     $result = new $1_ltype(($1_ltype const&)$1);
 %}
+#pragma SWIG nowarn=474
 // Marshal all std::string as UTF8Str
 %typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
 // Better debug display
@@ -84,7 +85,6 @@
 	}
 #endif
 }
-
 
 // Include c++ declaration file
 %include "la/avdecc/internals/uniqueIdentifier.hpp"
@@ -312,6 +312,7 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MediaClockReferenceInfoFlags, Med
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
 // TODO: Would be easier to map these types to the underlying integer type (but how to do it?)
+%warnfilter(315) TypedDefine; // Hide warning about the TypedDefine template being undefined
 DEFINE_TYPED_PROTOCOL_CLASS(AdpMessageType, AdpMessageTypedDefine, std::uint8_t)
 DEFINE_TYPED_PROTOCOL_CLASS(AecpMessageType, AecpMessageTypedDefine, std::uint8_t)
 DEFINE_TYPED_PROTOCOL_CLASS(AecpStatus, AecpStatusTypedDefine, std::uint8_t)

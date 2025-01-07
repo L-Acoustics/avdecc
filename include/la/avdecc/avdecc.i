@@ -9,6 +9,8 @@
 // Define basic types
 #define SWIG_STD_OPTIONAL_DEFAULT_TYPES
 
+#pragma SWIG nowarn=303 // Ignore warning %extend defined for an undeclared class 'name'.
+
 %include <stl.i>
 %include <std_string.i>
 %include <std_set.i>
@@ -55,6 +57,7 @@
 %{
 	$result = new $1_ltype($1);
 %}
+#pragma SWIG nowarn=474
 // Marshal all std::string as UTF8Str
 %typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
 // Expose internal constructor and methods publicly, some dependant modules may need it
@@ -462,6 +465,8 @@ DEFINE_ENUM_CLASS(la::avdecc::protocol::ProtocolInterface, Type, "uint")
 
 %nspace la::avdecc::protocol::ProtocolInterface;
 %rename("%s") la::avdecc::protocol::ProtocolInterface; // Unignore class
+%rename("Lock") la::avdecc::protocol::ProtocolInterface::lock; // Reserved keyword
+%rename("Unlock") la::avdecc::protocol::ProtocolInterface::lock; // Rename as well to match "lock" renaming
 //%ignore la::avdecc::protocol::ProtocolInterface::ProtocolInterface(ProtocolInterface&&); // Ignore move constructor
 //%ignore la::avdecc::protocol::ProtocolInterface::operator=; // Ignore copy operator
 %ignore la::avdecc::protocol::ProtocolInterface::registerVendorUniqueDelegate; // Ignore method (we don't want to handle VendorUniqueDelegate now)
