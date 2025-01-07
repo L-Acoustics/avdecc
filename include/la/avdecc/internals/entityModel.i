@@ -2,7 +2,12 @@
 // AVDECC ENTITY MODEL SWIG file
 ////////////////////////////////////////
 
-%module avdeccEntityModel
+%module(csbegin="#nullable enable\n") avdeccEntityModel
+
+// Use Nullable Reference Types for Optional (requires C# >= 8.0)
+#define SWIG_STD_OPTIONAL_USE_NULLABLE_REFERENCE_TYPES
+// Define basic types
+#define SWIG_STD_OPTIONAL_DEFAULT_TYPES
 
 %include <stdint.i>
 %include <std_string.i>
@@ -10,8 +15,8 @@
 %include <std_vector.i>
 %include <std_array.i>
 %include <std_set.i>
+%include <std_optional.i>
 %include "la/avdecc/internals/std_unordered_map.i" // From https://github.com/microsoft/CNTK/blob/master/bindings/csharp/Swig/std_unordered_map.i and https://github.com/swig/swig/pull/2480
-%include "la/avdecc/internals/optional.i"
 
 // Generated wrapper file needs to include our header file
 %{
@@ -367,15 +372,11 @@ DEFINE_TYPED_PROTOCOL_CLASS(AcmpStatus, AcmpStatusTypedDefine, std::uint8_t)
 %enddef
 
 // Define optionals
-DEFINE_OPTIONAL_SIMPLE(OptUInt8, std::uint8_t, (byte)0)
-DEFINE_OPTIONAL_SIMPLE(OptUInt16, std::uint16_t, (ushort)0)
-DEFINE_OPTIONAL_SIMPLE(OptUInt32, std::uint32_t, (uint)0)
-DEFINE_OPTIONAL_SIMPLE(OptUInt64, std::uint64_t, (ulong)0)
-//DEFINE_OPTIONAL_SIMPLE(OptDescriptorIndex, la::avdecc::entity::model::DescriptorIndex, avdeccEntityModel.getInvalidDescriptorIndex()) // Currently we cannot define both OptUInt16 and OptDescriptorIndex (or they mix up). We'll define each Descriptor type once we use a TypedDefine
-DEFINE_OPTIONAL_SIMPLE(OptProbingStatus, la::avdecc::entity::model::ProbingStatus, la.avdecc.entity.model.ProbingStatus.Disabled)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AvdeccFixedString, OptAvdeccFixedString)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity, StreamInfoFlagsEx, OptStreamInfoFlagsEx)
-DEFINE_OPTIONAL_CLASS(la::avdecc::protocol, AcmpStatus, OptAcmpStatus)
+//optional_arithmetic(la::avdecc::entity::model::DescriptorIndex, OptDescriptorIndex) // Currently we cannot define both OptUInt16 and OptDescriptorIndex (or they mix up). We'll define each Descriptor type once we use a TypedDefine
+%optional_arithmetic(la::avdecc::entity::model::ProbingStatus, OptProbingStatus)
+%optional(la::avdecc::entity::model::AvdeccFixedString)
+%optional(la::avdecc::entity::StreamInfoFlagsEx)
+%optional(la::avdecc::protocol::AcmpStatus)
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable

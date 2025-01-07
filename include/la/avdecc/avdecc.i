@@ -2,7 +2,12 @@
 // AVDECC LIBRARY SWIG file
 ////////////////////////////////////////
 
-%module(directors="1") avdecc
+%module(directors="1", csbegin="#nullable enable\n") avdecc
+
+// Use Nullable Reference Types for Optional (requires C# >= 8.0)
+#define SWIG_STD_OPTIONAL_USE_NULLABLE_REFERENCE_TYPES
+// Define basic types
+#define SWIG_STD_OPTIONAL_DEFAULT_TYPES
 
 %include <stl.i>
 %include <std_string.i>
@@ -12,6 +17,7 @@
 %include <std_map.i>
 %include <windows.i>
 %include <std_unique_ptr.i>
+%include <std_optional.i>
 #if 0
 %include <swiginterface.i>
 #endif
@@ -19,7 +25,6 @@
 %include <arrays_csharp.i>
 #endif
 %include "la/avdecc/internals/chrono.i"
-%include "la/avdecc/internals/optional.i"
 %include "la/avdecc/internals/std_function.i"
 %include "la/avdecc/internals/std_tuple.i"
 
@@ -111,7 +116,6 @@ enum class ThreadPriority
 %unique_ptr(la::avdecc::Executor) // Define unique_ptr for Executor
 // TODO: Would be nice to have the handler in the same namespace as the class (ie. be able to pass a namespace to std_function)
 %std_function(Handler_Empty, void);
-DEFINE_OPTIONAL_CLASS(std, string, OptStdString)
 
 %nspace la::avdecc::ExecutorWithDispatchQueue;
 %rename("%s") la::avdecc::ExecutorWithDispatchQueue; // Unignore class
@@ -192,10 +196,10 @@ public:
 // Entity Model
 ////////////////////////////////////////
 // Define optionals before including entityModel.i (we need to declare the optionals before the underlying types are defined)
-DEFINE_OPTIONAL_SIMPLE(OptMsrpFailureCode, la::avdecc::entity::model::MsrpFailureCode, la.avdecc.entity.model.MsrpFailureCode.NoFailure)
-DEFINE_OPTIONAL_CLASS(la::avdecc, UniqueIdentifier, OptUniqueIdentifier)
-DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, MediaClockReferenceInfo, OptMediaClockReferenceInfo)
+%optional_arithmetic(la::avdecc::entity::model::MsrpFailureCode, OptMsrpFailureCode)
+%optional(la::avdecc::UniqueIdentifier)
+%optional(la::networkInterface::MacAddress)
+%optional(la::avdecc::entity::model::MediaClockReferenceInfo)
 
 // Import entity model
 %import "la/avdecc/internals/entityModel.i"
@@ -614,15 +618,14 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::protocol::ProtocolInterface, SupportedPro
 %enddef
 
 // Define optionals
-DEFINE_OPTIONAL_SIMPLE(OptBool, bool, false)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamDynamicInfo, OptStreamDynamicInfo)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AvbInterfaceInfo, OptAvbInterfaceInfo)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AsPath, OptAsPath)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, EntityCounters, OptEntityCounters)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamInputCounters, OptStreamInputCounters)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamOutputCounters, OptStreamOutputCounters)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AvbInterfaceCounters, OptAvbInterfaceCounters)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, ClockDomainCounters, OptClockDomainCounters)
+%optional(la::avdecc::entity::model::StreamDynamicInfo)
+%optional(la::avdecc::entity::model::AvbInterfaceInfo)
+%optional(la::avdecc::entity::model::AsPath)
+%optional(la::avdecc::entity::model::EntityCounters)
+%optional(la::avdecc::entity::model::StreamInputCounters)
+%optional(la::avdecc::entity::model::StreamOutputCounters)
+%optional(la::avdecc::entity::model::AvbInterfaceCounters)
+%optional(la::avdecc::entity::model::ClockDomainCounters)
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable

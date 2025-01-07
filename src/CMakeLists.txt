@@ -392,14 +392,12 @@ if(BUILD_AVDECC_BINDINGS_CSHARP)
 		"${CU_ROOT_DIR}/include/la/avdecc/utils.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/memoryBuffer.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/chrono.i"
-		"${CU_ROOT_DIR}/include/la/avdecc/internals/csharp_optional.i"
-		"${CU_ROOT_DIR}/include/la/avdecc/internals/optional.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/swig_foreach.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_function.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_tuple.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_unordered_map.i"
 	)
-	cu_setup_swig_target(VERSION 4.3 TARGET_NAME ${PROJECT_NAME}::shared INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES FILE_DEPENDENCIES ${SWIG_FILE_DEPENDENCIES} INSTALL_CONFIGURATIONS Release Debug OUTVAR_PREFIX_SUPPORT_FILES_FOLDER SUPPORT_FILES_FOLDER)
+	cu_setup_swig_target(VERSION 4.4 TARGET_NAME ${PROJECT_NAME}::shared INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES FILE_DEPENDENCIES ${SWIG_FILE_DEPENDENCIES} INSTALL_CONFIGURATIONS Release Debug OUTVAR_PREFIX_SUPPORT_FILES_FOLDER SUPPORT_FILES_FOLDER)
 
 	# Post process generated targets
 	foreach(SWIG_LANG ${AVDECC_SWIG_LANGUAGES})
@@ -429,15 +427,13 @@ if(BUILD_AVDECC_BINDINGS_CSHARP)
 		"${CU_ROOT_DIR}/include/la/avdecc/memoryBuffer.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/logger.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/chrono.i"
-		"${CU_ROOT_DIR}/include/la/avdecc/internals/csharp_optional.i"
-		"${CU_ROOT_DIR}/include/la/avdecc/internals/optional.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/swig_foreach.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_function.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_tuple.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_unordered_map.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/entityModel.i"
 	)
-	cu_setup_swig_target(VERSION 4.3 TARGET_NAME ${PROJECT_NAME}::shared INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES FILE_DEPENDENCIES ${SWIG_FILE_DEPENDENCIES} INSTALL_CONFIGURATIONS Release Debug OUTVAR_PREFIX_SUPPORT_FILES_FOLDER SUPPORT_FILES_FOLDER)
+	cu_setup_swig_target(VERSION 4.4 TARGET_NAME ${PROJECT_NAME}::shared INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES FILE_DEPENDENCIES ${SWIG_FILE_DEPENDENCIES} INSTALL_CONFIGURATIONS Release Debug OUTVAR_PREFIX_SUPPORT_FILES_FOLDER SUPPORT_FILES_FOLDER)
 
 	# Post process generated targets
 	foreach(SWIG_LANG ${AVDECC_SWIG_LANGUAGES})
