@@ -2,7 +2,12 @@
 // AVDECC CONTROLLER LIBRARY SWIG file
 ////////////////////////////////////////
 
-%module(directors="1") avdeccController
+%module(directors="1", csbegin="#nullable enable\n") avdeccController
+
+// Use Nullable Reference Types for Optional (requires C# >= 8.0)
+#define SWIG_STD_OPTIONAL_USE_NULLABLE_REFERENCE_TYPES
+// Define basic types
+#define SWIG_STD_OPTIONAL_DEFAULT_TYPES
 
 %include <stl.i>
 %include <std_string.i>
@@ -13,6 +18,7 @@
 %include <std_map.i>
 %include <windows.i>
 %include <std_unique_ptr.i>
+%include <std_optional.i>
 #ifdef SWIGCSHARP
 %include <arrays_csharp.i>
 #endif
@@ -83,8 +89,8 @@
 %nspace la::avdecc::controller::model::MediaClockChainNode::Status;
 
 // Define optionals
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, MilanInfo, OptMilanInfo)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, MilanDynamicState, OptMilanDynamicState)
+%optional(la::avdecc::entity::model::MilanInfo)
+%optional(la::avdecc::entity::model::MilanDynamicState)
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
