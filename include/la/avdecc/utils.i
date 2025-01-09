@@ -3,6 +3,7 @@
 ////////////////////////////////////////
 
 %include <stdint.i>
+%include <swiginterface.i>
 
 // Define a helper template to handle std::underlying_type_t
 %inline %{
@@ -190,4 +191,10 @@ public:
 	%nspace classname;
 	%rename("%s") classname; // Unignore class
 	%feature("director") classname;
+%enddef
+
+%define DEFINE_INTERFACE_CLASS(classname)
+	%nspace classname;
+	%rename("%s") classname; // Unignore class
+	%interface_impl(classname); // Define as interface
 %enddef
