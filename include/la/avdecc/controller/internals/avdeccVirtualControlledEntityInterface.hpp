@@ -39,7 +39,7 @@ namespace controller
 /* ************************************************************************** */
 /**
 * @brief Interface to set read-only values of a virtual ControlledEntity.
-* @details This interface is used to set read-only values of a virtual ControlledEntity. If an y of the methods is called on a non-virtual ControlledEntity, the call will be silently ignored.
+* @details This interface is used to set read-only values of a virtual ControlledEntity. If any of the methods is called on a non-virtual ControlledEntity, the call will be silently ignored.
 */
 class VirtualControlledEntityInterface
 {

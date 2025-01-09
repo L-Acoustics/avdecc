@@ -235,6 +235,19 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller::ControlledEntity, Compatibili
 
 
 ////////////////////////////////////////
+// VIRTUAL CONTROLLED ENTITY INTERFACE
+////////////////////////////////////////
+// Bind structs and classes
+%rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
+
+DEFINE_INTERFACE_CLASS(la::avdecc::controller::VirtualControlledEntityInterface)
+
+// Include c++ declaration file
+%include "la/avdecc/controller/internals/avdeccVirtualControlledEntityInterface.hpp"
+%rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
+
+
+////////////////////////////////////////
 // AVDECC CONTROLLER
 ////////////////////////////////////////
 // Define Observer templates
