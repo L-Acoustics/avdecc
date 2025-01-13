@@ -289,6 +289,11 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 						outputText("Unit acquired: " + la::avdecc::utils::toHexString(entity->getEntity().getEntityID(), true) + "\n");
 					}
 				});
+			_controller->setSystemUniqueID(entity->getEntity().getEntityID(), la::avdecc::UniqueIdentifier{ 1 },
+				[](la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::ControllerEntity::MvuCommandStatus const status)
+				{
+					outputText("setSystemUniqueID response: " + la::avdecc::entity::ControllerEntity::statusToString(status) + "\n");
+				});
 		}
 		else if (entity->getEntity().getTalkerCapabilities().test(la::avdecc::entity::TalkerCapability::Implemented))
 		{
