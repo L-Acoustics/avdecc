@@ -340,7 +340,7 @@ enum class ClockDomainCounterValidFlag : model::DescriptorCounterValidFlag
 };
 using ClockDomainCounterValidFlags = utils::EnumBitfield<ClockDomainCounterValidFlag>;
 
-/* STREAM_INPUT Counters - IEEE1722.1-2021 Clause 7.4.42.2.4 / Milan 1.0 Clause 6.8.10 */
+/* STREAM_INPUT Counters - IEEE1722.1-2021 Clause 7.4.42.2.4 / Milan 1.2 Clause 5.3.8.10 */
 enum class StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
 {
 	None = 0u,
@@ -369,7 +369,7 @@ enum class StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
 };
 using StreamInputCounterValidFlags = utils::EnumBitfield<StreamInputCounterValidFlag>;
 
-/* STREAM_OUTPUT Counters - Milan 1.0 Clause 6.7.7/7.3.25 */
+/* STREAM_OUTPUT Counters - Milan 1.2 Clause 5.3.7.7 */
 enum class StreamOutputCounterValidFlag : model::DescriptorCounterValidFlag
 {
 	None = 0u,
@@ -396,7 +396,7 @@ enum class StreamOutputCounterValidFlag17221 : model::DescriptorCounterValidFlag
 };
 using StreamOutputCounterValidFlags17221 = utils::EnumBitfield<StreamOutputCounterValidFlag17221>;
 
-/** Milan Info Features Flags - Milan 1.0 Clause 7.4.1 */
+/** Milan Info Features Flags - Milan 1.2 Clause 5.4.4.1 */
 enum class MilanInfoFeaturesFlag : std::uint32_t
 {
 	None = 0u,

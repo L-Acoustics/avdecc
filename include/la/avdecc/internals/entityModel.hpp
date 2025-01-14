@@ -435,7 +435,7 @@ inline bool operator!=(AsPath const& lhs, AsPath const& rhs) noexcept
 	return !(lhs == rhs);
 }
 
-/** GET_MILAN_INFO - Milan 1.0 Clause 7.4.1 */
+/** GET_MILAN_INFO - Milan 1.2 Clause 5.4.4.1 */
 struct MilanInfo
 {
 	std::uint32_t protocolVersion{ 0u };
