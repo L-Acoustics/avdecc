@@ -1597,7 +1597,7 @@ enum class DefaultMediaClockReferencePriority : MediaClockReferencePriority
 	DedicatedGenerators = 240, /**< Dedicated media clock reference generators */
 	MatrixMixingDevices = 224, /**< Matrix mixing devices, signal routers, network switches with central audio processing capability */
 	MixingConsoles = 208, /**< Mixing consoles */
-	Stageboxes = 192, /**< Stageboxes, network interfaces */
+	Stageboxes = 192, /**< Stageboxes, audio interfaces */
 	Processors = 176, /**< Loudspeaker processors */
 	Amplifiers = 160, /**< Amplifiers, powered loudspeakers, in-ear transmitters */
 	RecordingDevices = 144, /**< Recording devices */

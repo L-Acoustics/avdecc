@@ -797,7 +797,7 @@ std::string LA_AVDECC_CALL_CONVENTION defaultMediaClockReferencePriorityToString
 		case DefaultMediaClockReferencePriority::MixingConsoles:
 			return "Mixing consoles";
 		case DefaultMediaClockReferencePriority::Stageboxes:
-			return "Stageboxes, network interfaces";
+			return "Stageboxes, audio interfaces";
 		case DefaultMediaClockReferencePriority::Processors:
 			return "Loudspeaker processors";
 		case DefaultMediaClockReferencePriority::Amplifiers:
