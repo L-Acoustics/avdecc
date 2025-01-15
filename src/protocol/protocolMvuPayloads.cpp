@@ -80,7 +80,7 @@ void deserializeGetMilanInfoCommand(MvuAecpdu::Payload const& payload)
 
 	des >> reserved16;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetMilanInfoCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetMilanInfoCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return;
 }
@@ -114,7 +114,7 @@ std::tuple<entity::model::MilanInfo> deserializeGetMilanInfoResponse(entity::Loc
 	des >> reserved16;
 	des >> info.protocolVersion >> info.featuresFlags >> info.certificationVersion;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetMilanInfoResponsePayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetMilanInfoResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(info);
 }
@@ -151,7 +151,7 @@ std::tuple<entity::model::SystemUniqueIdentifier> deserializeSetSystemUniqueIDCo
 	des >> reserved16;
 	des >> systemUniqueID;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpMvuSetSystemUniqueIDCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpMvuSetSystemUniqueIDCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(systemUniqueID);
 }
@@ -245,7 +245,7 @@ std::tuple<entity::model::ClockDomainIndex, entity::MediaClockReferenceInfoFlags
 	des >> reserved32;
 	des >> domainName;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpMvuSetMediaClockReferenceInfoCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpMvuSetMediaClockReferenceInfoCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(clockDomainIndex, flags, defaultMcrPrio, userMcrPrio, domainName);
 }
@@ -294,7 +294,7 @@ std::tuple<entity::model::ClockDomainIndex> deserializeGetMediaClockReferenceInf
 
 	des >> clockDomainIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetMediaClockReferenceInfoCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetMediaClockReferenceInfoCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(clockDomainIndex);
 }
