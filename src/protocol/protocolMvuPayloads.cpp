@@ -208,7 +208,7 @@ Serializer<AecpMvuSetMediaClockReferenceInfoCommandPayloadSize> serializeSetMedi
 {
 	auto ser = Serializer<AecpMvuSetMediaClockReferenceInfoCommandPayloadSize>{};
 	auto const reserved8 = std::uint8_t{ 0u };
-	auto const reserved32 = std::uint8_t{ 0u };
+	auto const reserved32 = std::uint32_t{ 0u };
 
 	ser << clockDomainIndex;
 	ser << flags << reserved8 << defaultMcrPrio << userMcrPrio;
@@ -233,7 +233,7 @@ std::tuple<entity::model::ClockDomainIndex, entity::MediaClockReferenceInfoFlags
 	// Check payload
 	auto des = Deserializer{ commandPayload, commandPayloadLength };
 	auto reserved8 = std::uint8_t{ 0u };
-	auto reserved32 = std::uint8_t{ 0u };
+	auto reserved32 = std::uint32_t{ 0u };
 	auto clockDomainIndex = entity::model::ClockDomainIndex{};
 	auto flags = entity::MediaClockReferenceInfoFlags{};
 	auto defaultMcrPrio = entity::model::DefaultMediaClockReferencePriority{};
