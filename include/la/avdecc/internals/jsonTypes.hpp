@@ -1646,6 +1646,21 @@ inline void from_json(json const& j, AsPath& path)
 	j.get_to(path.sequence);
 }
 
+/* MediaClockReferenceInfo conversion */
+inline void to_json(json& j, MediaClockReferenceInfo const& info)
+{
+	j[keyName::MediaClockReferenceInfo_DefaultMediaClockPriority] = info.defaultMediaClockPriority;
+	j[keyName::MediaClockReferenceInfo_UserMediaClockPriority] = info.userMediaClockPriority;
+	j[keyName::MediaClockReferenceInfo_MediaClockDomainName] = info.mediaClockDomainName;
+}
+
+inline void from_json(json const& j, MediaClockReferenceInfo& info)
+{
+	j.at(keyName::MediaClockReferenceInfo_DefaultMediaClockPriority).get_to(info.defaultMediaClockPriority);
+	get_optional_value(j, keyName::MediaClockReferenceInfo_UserMediaClockPriority, info.userMediaClockPriority);
+	get_optional_value(j, keyName::MediaClockReferenceInfo_MediaClockDomainName, info.mediaClockDomainName);
+}
+
 /* EntityNodeStaticModel conversion */
 inline void to_json(json& j, EntityNodeStaticModel const& s)
 {
@@ -2744,21 +2759,6 @@ inline void to_json(json& j, MilanDynamicState const& state)
 inline void from_json(json const& j, MilanDynamicState& state)
 {
 	get_optional_value(j, keyName::MilanDynamicState_SystemUniqueID, state.systemUniqueID);
-}
-
-/* MediaClockReferenceInfo conversion */
-inline void to_json(json& j, MediaClockReferenceInfo const& info)
-{
-	j[keyName::MediaClockReferenceInfo_DefaultMediaClockPriority] = info.defaultMediaClockPriority;
-	j[keyName::MediaClockReferenceInfo_UserMediaClockPriority] = info.userMediaClockPriority;
-	j[keyName::MediaClockReferenceInfo_MediaClockDomainName] = info.mediaClockDomainName;
-}
-
-inline void from_json(json const& j, MediaClockReferenceInfo& info)
-{
-	j.at(keyName::MediaClockReferenceInfo_DefaultMediaClockPriority).get_to(info.defaultMediaClockPriority);
-	get_optional_value(j, keyName::MediaClockReferenceInfo_UserMediaClockPriority, info.userMediaClockPriority);
-	get_optional_value(j, keyName::MediaClockReferenceInfo_MediaClockDomainName, info.mediaClockDomainName);
 }
 
 } // namespace model

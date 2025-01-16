@@ -1939,8 +1939,8 @@ void ControllerImpl::updateMediaClockReferenceInfo(ControlledEntityImpl& control
 	auto* const domainDynamicModel = controlledEntity.getModelAccessStrategy().getClockDomainNodeDynamicModel(*currentConfigurationIndexOpt, clockDomainIndex, notFoundBehavior);
 	if (domainDynamicModel)
 	{
-		// Never initialized or changed
-		if (!domainDynamicModel->mediaClockReferenceInfo || *domainDynamicModel->mediaClockReferenceInfo != info)
+		// Info changed
+		if (domainDynamicModel->mediaClockReferenceInfo != info)
 		{
 			domainDynamicModel->mediaClockReferenceInfo = info;
 
