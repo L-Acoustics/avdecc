@@ -146,7 +146,7 @@ struct ClockDomainNodeDynamicModel
 	ClockSourceIndex clockSourceIndex{ ClockSourceIndex(0u) };
 	std::optional<ClockDomainCounters> counters{ std::nullopt };
 	// Milan 1.2 additions
-	std::optional<MediaClockReferenceInfo> mediaClockReferenceInfo{ std::nullopt };
+	MediaClockReferenceInfo mediaClockReferenceInfo{};
 };
 
 struct TimingNodeDynamicModel
