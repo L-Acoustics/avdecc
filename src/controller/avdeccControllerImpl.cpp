@@ -1926,7 +1926,7 @@ void ControllerImpl::updateSystemUniqueID(ControlledEntityImpl& controlledEntity
 	}
 }
 
-void ControllerImpl::updateMediaClockReferenceInfo(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::MediaClockReferenceInfo const& info, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+void ControllerImpl::updateMediaClockReferenceInfo(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& info, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
@@ -1936,17 +1936,23 @@ void ControllerImpl::updateMediaClockReferenceInfo(ControlledEntityImpl& control
 		return;
 	}
 
-	auto* const domainDynamicModel = controlledEntity.getModelAccessStrategy().getClockDomainNodeDynamicModel(*currentConfigurationIndexOpt, clockDomainIndex, notFoundBehavior);
-	if (domainDynamicModel)
+	auto* const domainNode = controlledEntity.getModelAccessStrategy().getClockDomainNode(*currentConfigurationIndexOpt, clockDomainIndex, notFoundBehavior);
+	if (domainNode)
 	{
 		// Info changed
-		if (domainDynamicModel->mediaClockReferenceInfo != info)
+		if (domainNode->dynamicModel.mediaClockReferenceInfo != info)
 		{
-			domainDynamicModel->mediaClockReferenceInfo = info;
+			domainNode->dynamicModel.mediaClockReferenceInfo = info;
 
 			// Entity was advertised to the user, notify observers
 			if (controlledEntity.wasAdvertised())
 			{
+				// Check if defaultPriority has changed after the entity has been advertised this is a critical error from the device
+				if (domainNode->staticModel.defaultMediaClockPriority != defaultPriority)
+				{
+					LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Read-only 'DefaultMediaClockReferencePriority' value changed for CLOCK_DOMAIN:{} ({} -> {})", clockDomainIndex, utils::to_integral(domainNode->staticModel.defaultMediaClockPriority), utils::to_integral(defaultPriority));
+					ControllerImpl::removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan1_2);
+				}
 				// Notify observers
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onMediaClockReferenceInfoChanged, this, &controlledEntity, clockDomainIndex, info);
 			}
@@ -2605,7 +2611,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			queryFunc = [this, entityID, descriptorIndex](entity::ControllerEntity* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getMediaClockReferenceInfo (MediaClockIndex={})", descriptorIndex);
-				controller->getMediaClockReferenceInfo(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetMediaClockReferenceInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
+				controller->getMediaClockReferenceInfo(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetMediaClockReferenceInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		default:

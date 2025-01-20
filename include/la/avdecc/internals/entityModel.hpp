@@ -473,14 +473,13 @@ inline bool operator!=(MilanDynamicState const& lhs, MilanDynamicState const& rh
 /** GET_MEDIA_CLOCK_REFERENCE_INFO - Milan 1.2 Clause 5.4.4.5 */
 struct MediaClockReferenceInfo
 {
-	DefaultMediaClockReferencePriority defaultMediaClockPriority{ DefaultMediaClockReferencePriority::Default };
 	std::optional<MediaClockReferencePriority> userMediaClockPriority{ std::nullopt };
 	std::optional<AvdeccFixedString> mediaClockDomainName{ std::nullopt };
 };
 
 inline bool operator==(MediaClockReferenceInfo const& lhs, MediaClockReferenceInfo const& rhs) noexcept
 {
-	return (lhs.defaultMediaClockPriority == rhs.defaultMediaClockPriority) && (lhs.userMediaClockPriority == rhs.userMediaClockPriority) && (lhs.mediaClockDomainName == rhs.mediaClockDomainName);
+	return (lhs.userMediaClockPriority == rhs.userMediaClockPriority) && (lhs.mediaClockDomainName == rhs.mediaClockDomainName);
 }
 
 inline bool operator!=(MediaClockReferenceInfo const& lhs, MediaClockReferenceInfo const& rhs) noexcept

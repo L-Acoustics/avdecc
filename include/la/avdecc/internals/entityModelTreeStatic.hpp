@@ -194,6 +194,8 @@ struct ClockDomainNodeStaticModel
 {
 	LocalizedStringReference localizedDescription{};
 	ClockSources clockSources{};
+	// Milan 1.2 additions
+	DefaultMediaClockReferencePriority defaultMediaClockPriority{ DefaultMediaClockReferencePriority::Default };
 };
 
 struct TimingNodeStaticModel

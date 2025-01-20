@@ -3233,9 +3233,9 @@ void ControllerImpl::onGetSystemUniqueIDResult(entity::controller::Interface con
 	}
 }
 
-void ControllerImpl::onGetMediaClockReferenceInfoResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::MediaClockReferenceInfo const& info) noexcept
+void ControllerImpl::onGetMediaClockReferenceInfoResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& info) noexcept
 {
-	LOG_CONTROLLER_TRACE(entityID, "onGetMediaClockReferenceInfoResult (ClockDomainIndex={} DefaultPrio={}): {}", clockDomainIndex, utils::to_integral(info.defaultMediaClockPriority), entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(entityID, "onGetMediaClockReferenceInfoResult (ClockDomainIndex={} DefaultPrio={}): {}", clockDomainIndex, utils::to_integral(defaultPriority), entity::ControllerEntity::statusToString(status));
 
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -3246,7 +3246,7 @@ void ControllerImpl::onGetMediaClockReferenceInfoResult(entity::controller::Inte
 		{
 			if (!!status)
 			{
-				updateMediaClockReferenceInfo(*controlledEntity, clockDomainIndex, info, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				updateMediaClockReferenceInfo(*controlledEntity, clockDomainIndex, defaultPriority, info, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{

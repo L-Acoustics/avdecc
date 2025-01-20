@@ -2092,7 +2092,7 @@ void CapabilityDelegate::getSystemUniqueID(UniqueIdentifier const targetEntityID
 
 void CapabilityDelegate::setMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, std::optional<model::MediaClockReferencePriority> const userPriority, std::optional<model::AvdeccFixedString> const& domainName, Interface::SetMediaClockReferenceInfoHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, clockDomainIndex, s_emptyMediaClockReferenceInfo);
+	auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, clockDomainIndex, entity::model::DefaultMediaClockReferencePriority::Default, s_emptyMediaClockReferenceInfo);
 	try
 	{
 		auto const buildMediaClockReferenceInfoFlags = [](std::optional<model::MediaClockReferencePriority> const userPriority, std::optional<model::AvdeccFixedString> const& domainName)
@@ -2120,7 +2120,7 @@ void CapabilityDelegate::setMediaClockReferenceInfo(UniqueIdentifier const targe
 
 void CapabilityDelegate::getMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, Interface::GetMediaClockReferenceInfoHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, clockDomainIndex, s_emptyMediaClockReferenceInfo);
+	auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, clockDomainIndex, entity::model::DefaultMediaClockReferencePriority::Default, s_emptyMediaClockReferenceInfo);
 	try
 	{
 		auto const ser = protocol::mvuPayload::serializeGetMediaClockReferenceInfoCommand(clockDomainIndex);
@@ -4659,10 +4659,9 @@ void CapabilityDelegate::processAaAecpResponse(protocol::Aecpdu const* const res
 	answerCallback.invoke<controller::Interface::AddressAccessHandler>(protocolViolationCallback, &_controllerInterface, targetID, status, aa.getTlvData());
 }
 
-static model::MediaClockReferenceInfo buildMediaClockReferenceInfo(MediaClockReferenceInfoFlags const flags, model::DefaultMediaClockReferencePriority const defaultMcrPrio, model::MediaClockReferencePriority const userMcrPrio, model::AvdeccFixedString const& domainName) noexcept
+static model::MediaClockReferenceInfo buildMediaClockReferenceInfo(MediaClockReferenceInfoFlags const flags, model::MediaClockReferencePriority const userMcrPrio, model::AvdeccFixedString const& domainName) noexcept
 {
 	auto mcrInfo = model::MediaClockReferenceInfo{};
-	mcrInfo.defaultMediaClockPriority = defaultMcrPrio;
 	if (flags.test(MediaClockReferenceInfoFlag::UserMediaClockReferencePriorityValid))
 	{
 		mcrInfo.userMediaClockPriority = userMcrPrio;
@@ -4734,10 +4733,10 @@ void CapabilityDelegate::processMvuAecpResponse(protocol::MvuCommandType const c
 				auto const targetID = mvu.getTargetEntityID();
 
 				// Build MediaClockReferenceInfo from payload
-				auto mcrInfo = buildMediaClockReferenceInfo(flags, defaultMcrPrio, userMcrPrio, domainName);
+				auto mcrInfo = buildMediaClockReferenceInfo(flags, userMcrPrio, domainName);
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::SetMediaClockReferenceInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, mcrInfo);
+				answerCallback.invoke<controller::Interface::SetMediaClockReferenceInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, defaultMcrPrio, mcrInfo);
 				if (mvu.getUnsolicited() && delegate && !!status)
 				{
 					utils::invokeProtectedMethod(&controller::Delegate::onMediaClockReferenceInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, mcrInfo);
@@ -4751,10 +4750,10 @@ void CapabilityDelegate::processMvuAecpResponse(protocol::MvuCommandType const c
 				auto const targetID = mvu.getTargetEntityID();
 
 				// Build MediaClockReferenceInfo from payload
-				auto mcrInfo = buildMediaClockReferenceInfo(flags, defaultMcrPrio, userMcrPrio, domainName);
+				auto mcrInfo = buildMediaClockReferenceInfo(flags, userMcrPrio, domainName);
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::GetMediaClockReferenceInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, mcrInfo);
+				answerCallback.invoke<controller::Interface::GetMediaClockReferenceInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, defaultMcrPrio, mcrInfo);
 			} },
 	};
 

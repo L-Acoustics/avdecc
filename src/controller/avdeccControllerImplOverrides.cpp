@@ -2750,7 +2750,7 @@ void ControllerImpl::setMediaClockReferenceInfo(UniqueIdentifier const targetEnt
 
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controllerProxy->setMediaClockReferenceInfo(targetEntityID, clockDomainIndex, userPriority, domainName,
-			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::MediaClockReferenceInfo const& mcrInfo)
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& mcrInfo)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setMediaClockReferenceInfo (): {}", entity::ControllerEntity::statusToString(status));
 
@@ -2764,7 +2764,7 @@ void ControllerImpl::setMediaClockReferenceInfo(UniqueIdentifier const targetEnt
 					// Update media clock reference info
 					if (!!status)
 					{
-						updateMediaClockReferenceInfo(*entity, clockDomainIndex, mcrInfo, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+						updateMediaClockReferenceInfo(*entity, clockDomainIndex, defaultPriority, mcrInfo, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
