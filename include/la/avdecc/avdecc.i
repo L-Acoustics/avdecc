@@ -336,7 +336,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Interface)
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_Tlvs;
 %rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_MilanInfo;
 %rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_SystemUniqueIdentifier;
-%rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_ClockDomainIndex_MediaClockReferenceInfo;
+%rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_ClockDomainIndex_DefaultMediaClockReferencePriority_MediaClockReferenceInfo;
 %rename("%s") Handler_StreamIdentification_StreamIdentification_uint16_t_ConnectionFlags_ControlStatus;
 
 // TODO: Would be nice to have the handler in the same namespace as the class (ie. be able to pass a namespace to std_function)
@@ -414,7 +414,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Interface)
 #endif
 %std_function(Handler_UniqueIdentifier_MvuCommandStatus_MilanInfo, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::MilanInfo const& info);
 %std_function(Handler_UniqueIdentifier_MvuCommandStatus_SystemUniqueIdentifier, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::SystemUniqueIdentifier const systemUniqueID);
-%std_function(Handler_UniqueIdentifier_MvuCommandStatus_ClockDomainIndex_MediaClockReferenceInfo, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::MediaClockReferenceInfo const& mcrInfo);
+%std_function(Handler_UniqueIdentifier_MvuCommandStatus_ClockDomainIndex_DefaultMediaClockReferencePriority_MediaClockReferenceInfo, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::DefaultMediaClockReferencePriority const defaultPriority, la::avdecc::entity::model::MediaClockReferenceInfo const& mcrInfo);
 %std_function(Handler_StreamIdentification_StreamIdentification_uint16_t_ConnectionFlags_ControlStatus, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status);
 
 %nspace la::avdecc::entity::ControllerEntity;

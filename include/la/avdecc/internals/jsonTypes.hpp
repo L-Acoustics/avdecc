@@ -1049,6 +1049,7 @@ constexpr auto ArrayValue_String = "string";
 /* ClockDomainNode */
 constexpr auto ClockDomainNode_Static_LocalizedDescription = "localized_description";
 constexpr auto ClockDomainNode_Static_ClockSources = "clock_sources";
+constexpr auto ClockDomainNode_Static_DefaultMediaClockPriority = "default_media_clock_priority";
 constexpr auto ClockDomainNode_Dynamic_ObjectName = "object_name";
 constexpr auto ClockDomainNode_Dynamic_ClockSourceIndex = "clock_source_index";
 constexpr auto ClockDomainNode_Dynamic_Counters = "counters";
@@ -1131,7 +1132,6 @@ constexpr auto MilanInfo_CertificationVersion = "certification_version";
 constexpr auto MilanDynamicState_SystemUniqueID = "system_unique_id";
 
 /* MediaClockReferenceInfo */
-constexpr auto MediaClockReferenceInfo_DefaultMediaClockPriority = "default_media_clock_priority";
 constexpr auto MediaClockReferenceInfo_UserMediaClockPriority = "user_media_clock_priority";
 constexpr auto MediaClockReferenceInfo_MediaClockDomainName = "media_clock_domain_name";
 
@@ -1649,14 +1649,12 @@ inline void from_json(json const& j, AsPath& path)
 /* MediaClockReferenceInfo conversion */
 inline void to_json(json& j, MediaClockReferenceInfo const& info)
 {
-	j[keyName::MediaClockReferenceInfo_DefaultMediaClockPriority] = info.defaultMediaClockPriority;
 	j[keyName::MediaClockReferenceInfo_UserMediaClockPriority] = info.userMediaClockPriority;
 	j[keyName::MediaClockReferenceInfo_MediaClockDomainName] = info.mediaClockDomainName;
 }
 
 inline void from_json(json const& j, MediaClockReferenceInfo& info)
 {
-	j.at(keyName::MediaClockReferenceInfo_DefaultMediaClockPriority).get_to(info.defaultMediaClockPriority);
 	get_optional_value(j, keyName::MediaClockReferenceInfo_UserMediaClockPriority, info.userMediaClockPriority);
 	get_optional_value(j, keyName::MediaClockReferenceInfo_MediaClockDomainName, info.mediaClockDomainName);
 }
@@ -2610,11 +2608,15 @@ inline void to_json(json& j, ClockDomainNodeStaticModel const& s)
 {
 	j[keyName::ClockDomainNode_Static_LocalizedDescription] = s.localizedDescription;
 	j[keyName::ClockDomainNode_Static_ClockSources] = s.clockSources;
+	// Milan 1.2 additions
+	j[keyName::ClockDomainNode_Static_DefaultMediaClockPriority] = s.defaultMediaClockPriority;
 }
 inline void from_json(json const& j, ClockDomainNodeStaticModel& s)
 {
 	get_optional_value(j, keyName::ClockDomainNode_Static_LocalizedDescription, s.localizedDescription);
 	j.at(keyName::ClockDomainNode_Static_ClockSources).get_to(s.clockSources);
+	// Milan 1.2 additions
+	get_optional_value(j, keyName::ClockDomainNode_Static_DefaultMediaClockPriority, s.defaultMediaClockPriority);
 }
 
 /* ClockDomainNodeDynamicModel conversion */
