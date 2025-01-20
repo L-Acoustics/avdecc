@@ -780,7 +780,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlag, {
 NLOHMANN_JSON_SERIALIZE_ENUM(MilanInfoFeaturesFlag, {
 																											{ MilanInfoFeaturesFlag::None, "UNKNOWN" },
 																											{ MilanInfoFeaturesFlag::Redundancy, "REDUNDANCY" },
-																											{ MilanInfoFeaturesFlag::TalkerDynamicMappingsWhileRunning, " TALKER_DYNAMIC_MAPPINGS_WHILE_RUNNING" },
+																											{ MilanInfoFeaturesFlag::TalkerDynamicMappingsWhileRunning, "TALKER_DYNAMIC_MAPPINGS_WHILE_RUNNING" },
 																										});
 
 /* Entity::CommonInformation conversion */
