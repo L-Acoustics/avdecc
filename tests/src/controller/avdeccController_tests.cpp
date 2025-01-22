@@ -541,6 +541,47 @@ TEST_F(Controller_F, VirtualEntityLoadUTF8)
 	//ASSERT_NE(std::future_status::timeout, status);
 }
 
+TEST_F(Controller_F, VirtualEntityFromEntityModelFile)
+{
+	class Builder : public la::avdecc::controller::model::VirtualEntityBuilder
+	{
+	public:
+		Builder() noexcept = default;
+
+		virtual void build(la::avdecc::entity::Entity::CommonInformation& commonInformation, la::avdecc::entity::Entity::InterfacesInformation& intfcInformation) noexcept override
+		{
+			commonInformation.entityID = la::avdecc::UniqueIdentifier{ 0x0102030405060708 };
+			//commonInformation.entityModelID = la::avdecc::UniqueIdentifier{ 0x1122334455667788 };
+			commonInformation.entityCapabilities = la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported };
+			//commonInformation.talkerStreamSources = 0u;
+			//commonInformation.talkerCapabilities = {};
+			commonInformation.listenerStreamSinks = 2u;
+			commonInformation.listenerCapabilities = la::avdecc::entity::ListenerCapabilities{ la::avdecc::entity::ListenerCapability::Implemented };
+			//commonInformation.controllerCapabilities = {};
+			commonInformation.identifyControlIndex = la::avdecc::entity::model::ControlIndex{ 0u };
+			//commonInformation.associationID = std::nullopt;
+
+			auto const interfaceInfo = la::avdecc::entity::Entity::InterfaceInformation{ la::networkInterface::MacAddress{ 0x06, 0x05, 0x04, 0x03, 0x02, 0x01 }, 31u, 0u, std::nullopt, std::nullopt };
+			intfcInformation[la::avdecc::entity::Entity::GlobalAvbInterfaceIndex] = interfaceInfo;
+		}
+		virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::EntityNodeDynamicModel& model) noexcept override
+		{
+			model.entityName = la::avdecc::entity::model::AvdeccFixedString{ "Test entity" };
+		}
+		virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ConfigurationIndex const /*descriptorIndex*/, la::avdecc::entity::model::ConfigurationNodeDynamicModel& /*model*/) noexcept override
+		{
+			//
+		}
+	};
+
+	auto builder = Builder{};
+	auto& controller = getController();
+	auto const [error, message] = controller.createVirtualEntityFromEntityModelFile("data/SimpleEntityModel.json", &builder, false);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+	// TODO: Check the controlled entity more thoroughly (entityID, entityModelID, ...)
+}
+
 /*
  * TESTING https://github.com/L-Acoustics/avdecc/issues/84
  * Callback returns BadArguments if passed too many mappings
