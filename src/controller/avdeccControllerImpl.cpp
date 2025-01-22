@@ -6909,6 +6909,76 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, Controller
 	}
 }
 
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::model::EntityTree, UniqueIdentifier> ControllerImpl::deserializeJsonEntityModel(std::string const& filePath, bool const isBinaryFormat) noexcept
+{
+	// Try to open the input file
+	auto const mode = std::ios::binary | std::ios::in;
+	auto ifs = std::ifstream{ utils::filePathFromUTF8String(filePath), mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+
+	// Failed to open file for reading
+	if (!ifs.is_open())
+	{
+		return { avdecc::jsonSerializer::DeserializationError::AccessDenied, std::strerror(errno), {}, {} };
+	}
+
+	// Load the JSON object from disk
+	auto object = json{};
+	try
+	{
+		auto flags = entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel };
+		if (isBinaryFormat)
+		{
+			flags.set(entity::model::jsonSerializer::Flag::BinaryFormat);
+			object = json::from_msgpack(ifs);
+		}
+		else
+		{
+			ifs >> object;
+		}
+
+		// Read Entity Tree
+		auto entityTree = entity::model::jsonSerializer::createEntityTree(object.at(jsonSerializer::keyName::ControlledEntity_EntityModel), flags);
+		auto entityModelID = object.at(jsonSerializer::keyName::ControlledEntity_EntityModelID).get<la::avdecc::UniqueIdentifier>();
+		return { avdecc::jsonSerializer::DeserializationError::NoError, "", entityTree, entityModelID };
+	}
+	catch (json::type_error const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what(), {}, {} };
+	}
+	catch (json::parse_error const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::ParseError, e.what(), {}, {} };
+	}
+	catch (json::out_of_range const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::MissingKey, e.what(), {}, {} };
+	}
+	catch (json::other_error const& e)
+	{
+		if (e.id == 555)
+		{
+			return { avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what(), {}, {} };
+		}
+		else
+		{
+			return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what(), {}, {} };
+		}
+	}
+	catch (json::exception const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what(), {}, {} };
+	}
+	catch (avdecc::jsonSerializer::DeserializationException const& e)
+	{
+		return { e.getError(), e.what(), {}, {} };
+	}
+	catch (...)
+	{
+		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here");
+		return { avdecc::jsonSerializer::DeserializationError::InternalError, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here.", {}, {} };
+	}
+}
+
 void ControllerImpl::setupDetachedVirtualControlledEntity(ControlledEntityImpl& entity) noexcept
 {
 	// Notify the ControlledEntity it has been fully loaded
