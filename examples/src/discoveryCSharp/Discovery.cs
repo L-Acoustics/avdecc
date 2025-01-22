@@ -1,3 +1,5 @@
+// #define LOAD_TEST_VIRTUAL_ENTITY
+
 class DiscoveryApp
 {
 	static void Main()
@@ -41,6 +43,36 @@ class DiscoveryApp
 		}
 	}
 
+#if LOAD_TEST_VIRTUAL_ENTITY
+	class Builder : la.avdecc.controller.model.VirtualEntityBuilder
+	{
+		public Builder() : base() { }
+
+		public override void build(Entity.CommonInformation commonInformation, InterfaceInformationMap intfcInformation)
+		{
+			commonInformation.entityID = new la.avdecc.UniqueIdentifier(0x0102030405060708);
+			commonInformation.entityCapabilities = new EntityCapabilities();
+			commonInformation.entityCapabilities.set(la.avdecc.entity.EntityCapability.AemSupported);
+			commonInformation.listenerStreamSinks = 2;
+			commonInformation.listenerCapabilities = new ListenerCapabilities();
+			commonInformation.listenerCapabilities.set(la.avdecc.entity.ListenerCapability.Implemented);
+			commonInformation.identifyControlIndex = 0;
+
+			var interfaceInfo = new la.avdecc.entity.Entity.InterfaceInformation();
+			interfaceInfo.macAddress = new MacAddress(new byte[] { 0x06, 0x05, 0x04, 0x03, 0x02, 0x01 });
+			interfaceInfo.validTime = 31;
+			intfcInformation[la.avdecc.entity.Entity.GlobalAvbInterfaceIndex] = interfaceInfo;
+		}
+		public override void build(ControlledEntity entity, EntityNodeDynamicModel model)
+		{
+			model.entityName = new AvdeccFixedString("SimpleEntity");
+		}
+		public override void build(ControlledEntity entity, ushort descriptorIndex, ConfigurationNodeDynamicModel model)
+		{
+		}
+	}
+#endif // LOAD_TEST_VIRTUAL_ENTITY
+
 	class Discovery : IDisposable
 	{
 		public Discovery(la.avdecc.protocol.ProtocolInterface.Type type, string interfaceID, ushort progID, la.avdecc.UniqueIdentifier entityModelID, string preferedLocale)
@@ -52,6 +84,14 @@ class DiscoveryApp
 				_controller.enableEntityAdvertising(10);
 				_controller.enableEntityModelCache();
 				_controller.enableFastEnumeration();
+#if LOAD_TEST_VIRTUAL_ENTITY
+				var builder = new Builder();
+				var result = _controller.createVirtualEntityFromEntityModelFile("SimpleEntityModel.json", builder, false);
+				if (result.get0() != DeserializationError.NoError)
+				{
+					Console.WriteLine($"Error deserializing entity model: {result.get1()}");
+				}
+#endif // LOAD_TEST_VIRTUAL_ENTITY
 			}
 			catch (la.avdecc.controller.ControllerException e)
 			{
@@ -113,6 +153,7 @@ class DiscoveryApp
 							});
 						}
 					}
+					Console.WriteLine($"New AEM entity online: {entity.getEntity().getEntityID()}");
 				}
 				else
 				{

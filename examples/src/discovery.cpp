@@ -43,6 +43,41 @@
 #include <stdexcept>
 #include <cassert>
 
+//#define LOAD_TEST_VIRTUAL_ENTITY
+
+#if defined(LOAD_TEST_VIRTUAL_ENTITY)
+class Builder : public la::avdecc::controller::model::VirtualEntityBuilder
+{
+public:
+	Builder() noexcept = default;
+
+	virtual void build(la::avdecc::entity::Entity::CommonInformation& commonInformation, la::avdecc::entity::Entity::InterfacesInformation& intfcInformation) noexcept override
+	{
+		commonInformation.entityID = la::avdecc::UniqueIdentifier{ 0x0102030405060708 };
+		//commonInformation.entityModelID = la::avdecc::UniqueIdentifier{ 0x1122334455667788 };
+		commonInformation.entityCapabilities = la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported };
+		//commonInformation.talkerStreamSources = 0u;
+		//commonInformation.talkerCapabilities = {};
+		commonInformation.listenerStreamSinks = 2u;
+		commonInformation.listenerCapabilities = la::avdecc::entity::ListenerCapabilities{ la::avdecc::entity::ListenerCapability::Implemented };
+		//commonInformation.controllerCapabilities = {};
+		commonInformation.identifyControlIndex = la::avdecc::entity::model::ControlIndex{ 0u };
+		//commonInformation.associationID = std::nullopt;
+
+		auto const interfaceInfo = la::avdecc::entity::Entity::InterfaceInformation{ la::networkInterface::MacAddress{ 0x06, 0x05, 0x04, 0x03, 0x02, 0x01 }, 31u, 0u, std::nullopt, std::nullopt };
+		intfcInformation[la::avdecc::entity::Entity::GlobalAvbInterfaceIndex] = interfaceInfo;
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::EntityNodeDynamicModel& model) noexcept override
+	{
+		model.entityName = la::avdecc::entity::model::AvdeccFixedString{ "Test entity" };
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ConfigurationIndex const /*descriptorIndex*/, la::avdecc::entity::model::ConfigurationNodeDynamicModel& /*model*/) noexcept override
+	{
+		//
+	}
+};
+#endif // LOAD_TEST_VIRTUAL_ENTITY
+
 /* ************************************************************************** */
 /* Discovery class                                                            */
 /* ************************************************************************** */
@@ -103,6 +138,19 @@ Discovery::Discovery(la::avdecc::protocol::ProtocolInterface::Type const protoco
 	_controller->enableFastEnumeration();
 	// Set default log level
 	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Trace);
+
+#if defined(LOAD_TEST_VIRTUAL_ENTITY)
+	auto builder = Builder{};
+	auto const [error, message] = _controller->createVirtualEntityFromEntityModelFile("SimpleEntityModel.json", &builder, false);
+	if (error != la::avdecc::jsonSerializer::DeserializationError::NoError)
+	{
+		outputText("Error creating virtual entity: " + std::to_string(static_cast<std::underlying_type_t<decltype(error)>>(error)) + "\n");
+	}
+	else
+	{
+		outputText("Virtual entity created\n");
+	}
+#endif // LOAD_TEST_VIRTUAL_ENTITY
 }
 
 void Discovery::onTransportError(la::avdecc::controller::Controller const* const /*controller*/) noexcept
