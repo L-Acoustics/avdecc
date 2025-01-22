@@ -645,7 +645,9 @@ public:
 	/** Deserializes a JSON file representing an entity, and returns the ControlledEntity without loading it. */
 	static LA_AVDECC_CONTROLLER_API std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedControlledEntity> LA_AVDECC_CONTROLLER_CALL_CONVENTION deserializeControlledEntityFromJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept;
 	/** Loads an EntityModel file and feed it to the EntityModel cache */
-	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadEntityModelFile(std::string const& filePath) noexcept = 0;
+	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> cacheEntityModelFile(std::string const& filePath, bool const isBinaryFormat = true) noexcept = 0;
+	/** Loads an EntityModel file and create a virtual ControlledEntity from it. */
+	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> createVirtualEntityFromEntityModelFile(std::string const& filePath, model::VirtualEntityBuilder* const builder, bool const isBinaryFormat = true) noexcept = 0;
 
 	/* Other helpful methods */
 	/** Re-enumerates the specified entity */

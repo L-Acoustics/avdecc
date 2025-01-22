@@ -78,6 +78,7 @@ DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, MilanInfo, OptMilanInfo)
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::EntityModelVisitor)
+DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::VirtualEntityBuilder)
 
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(MediaClockChain)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE()

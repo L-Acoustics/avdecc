@@ -671,6 +671,25 @@ public:
 	DefaultedEntityModelVisitor& operator=(DefaultedEntityModelVisitor&&) = default;
 };
 
+
+/** Visitor base class for the builder of a Virtual ControlledEntity. */
+class VirtualEntityBuilder
+{
+public:
+	virtual void build(la::avdecc::entity::Entity::CommonInformation& commonInformation, la::avdecc::entity::Entity::InterfacesInformation& intfcInformation) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::EntityNodeDynamicModel& model) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ConfigurationIndex const descriptorIndex, la::avdecc::entity::model::ConfigurationNodeDynamicModel& model) noexcept = 0;
+
+	// Deleted compiler auto-generated methods
+	VirtualEntityBuilder() noexcept = default;
+	virtual ~VirtualEntityBuilder() noexcept = default;
+	VirtualEntityBuilder(VirtualEntityBuilder const&) = delete;
+	VirtualEntityBuilder(VirtualEntityBuilder&&) = delete;
+	VirtualEntityBuilder& operator=(VirtualEntityBuilder const&) = delete;
+	VirtualEntityBuilder& operator=(VirtualEntityBuilder&&) = delete;
+};
+
+
 } // namespace model
 } // namespace controller
 } // namespace avdecc
