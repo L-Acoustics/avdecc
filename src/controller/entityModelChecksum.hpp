@@ -18,7 +18,7 @@
 */
 
 /**
-* @file avdeccControllerImpl.hpp
+* @file entityModelChecksum.hpp
 * @author Christophe Calmejane
 */
 
