@@ -676,6 +676,14 @@ public:
 class VirtualEntityBuilder
 {
 public:
+	// Global state building
+	virtual void build(la::avdecc::controller::model::AcquireState& acquireState, la::avdecc::UniqueIdentifier& owningController) noexcept = 0;
+	virtual void build(la::avdecc::controller::model::LockState& lockState, la::avdecc::UniqueIdentifier& lockingController) noexcept = 0;
+	virtual void build(bool& unsolicitedNotificationsSupported, bool& subscribedToUnsolicitedNotifications) noexcept = 0;
+	virtual void build(std::uint64_t& aecpRetryCounter, std::uint64_t& aecpTimeoutCounter, std::uint64_t& aecpUnexpectedResponseCounter, std::chrono::milliseconds& aecpResponseAverageTime, std::uint64_t& aemAecpUnsolicitedCounter, std::uint64_t& aemAecpUnsolicitedLossCounter, std::chrono::milliseconds& enumerationTime) noexcept = 0;
+	virtual void build(la::avdecc::entity::model::MilanInfo& milanInfo) noexcept = 0;
+
+	// EntityModel building
 	virtual void build(la::avdecc::entity::Entity::CommonInformation& commonInformation, la::avdecc::entity::Entity::InterfacesInformation& intfcInformation) noexcept = 0;
 	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::EntityNodeStaticModel const& staticModel, la::avdecc::entity::model::EntityNodeDynamicModel& dynamicModel) noexcept = 0;
 	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ConfigurationIndex const descriptorIndex, la::avdecc::entity::model::ConfigurationNodeStaticModel const& staticModel, la::avdecc::entity::model::ConfigurationNodeDynamicModel& dynamicModel) noexcept = 0;
@@ -711,6 +719,14 @@ public:
 class DefaultedVirtualEntityBuilder : public VirtualEntityBuilder
 {
 public:
+	// Global state building
+	virtual void build(la::avdecc::controller::model::AcquireState& /*acquireState*/, la::avdecc::UniqueIdentifier& /*owningController*/) noexcept override {}
+	virtual void build(la::avdecc::controller::model::LockState& /*lockState*/, la::avdecc::UniqueIdentifier& /*lockingController*/) noexcept override {}
+	virtual void build(bool& /*unsolicitedNotificationsSupported*/, bool& /*subscribedToUnsolicitedNotifications*/) noexcept override {}
+	virtual void build(std::uint64_t& /*aecpRetryCounter*/, std::uint64_t& /*aecpTimeoutCounter*/, std::uint64_t& /*aecpUnexpectedResponseCounter*/, std::chrono::milliseconds& /*aecpResponseAverageTime*/, std::uint64_t& /*aemAecpUnsolicitedCounter*/, std::uint64_t& /*aemAecpUnsolicitedLossCounter*/, std::chrono::milliseconds& /*enumerationTime*/) noexcept override {}
+	virtual void build(la::avdecc::entity::model::MilanInfo& /*milanInfo*/) noexcept override {}
+
+	// EntityModel building
 	virtual void build(la::avdecc::entity::Entity::CommonInformation& /*commonInformation*/, la::avdecc::entity::Entity::InterfacesInformation& /*intfcInformation*/) noexcept override {}
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::EntityNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::EntityNodeDynamicModel& /*dynamicModel*/) noexcept override {}
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ConfigurationIndex const /*descriptorIndex*/, la::avdecc::entity::model::ConfigurationNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::ConfigurationNodeDynamicModel& /*dynamicModel*/) noexcept override {}

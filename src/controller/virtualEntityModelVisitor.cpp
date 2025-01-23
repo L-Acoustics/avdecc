@@ -45,28 +45,51 @@ VirtualEntityModelVisitor::VirtualEntityModelVisitor(ControlledEntityImpl* const
 	: _controlledEntity{ controlledEntity }
 	, _builder{ builder }
 {
-#if 0
-	// Setters of the global state
-	void setEntity(entity::Entity const& entity) noexcept;
-	InterfaceLinkStatus setAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex, InterfaceLinkStatus const linkStatus) noexcept; // Returns previous link status
-	void setAcquireState(model::AcquireState const state) noexcept;
-	void setOwningController(UniqueIdentifier const controllerID) noexcept;
-	void setLockState(model::LockState const state) noexcept;
-	void setLockingController(UniqueIdentifier const controllerID) noexcept;
-	void setMilanInfo(entity::model::MilanInfo const& info) noexcept;
+	// Build the global state variables
+	// AcquireState
+	{
+		auto state = model::AcquireState{};
+		auto owningController = UniqueIdentifier{};
 
-	// Setters of the Statistics
-	void setAecpRetryCounter(std::uint64_t const value) noexcept;
-	void setAecpTimeoutCounter(std::uint64_t const value) noexcept;
-	void setAecpUnexpectedResponseCounter(std::uint64_t const value) noexcept;
-	void setAecpResponseAverageTime(std::chrono::milliseconds const& value) noexcept;
-	void setAemAecpUnsolicitedCounter(std::uint64_t const value) noexcept;
-	void setAemAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept;
-	void setEnumerationTime(std::chrono::milliseconds const& value) noexcept;
+		// Call the builder
+		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(model::AcquireState&, UniqueIdentifier&)>(&model::VirtualEntityBuilder::build, _builder, state, owningController);
+	}
+	// LockState
+	{
+		auto lockState = model::LockState{};
+		auto lockingController = UniqueIdentifier{};
 
-	// Setters of the Diagnostics
-	void setDiagnostics(Diagnostics const& diags) noexcept;
-#endif
+		// Call the builder
+		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(model::LockState&, UniqueIdentifier&)>(&model::VirtualEntityBuilder::build, _builder, lockState, lockingController);
+	}
+	// UnsolicitedNotifications
+	{
+		auto isSupported = false;
+		auto isSubscribed = false;
+
+		// Call the builder
+		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(bool&, bool&)>(&model::VirtualEntityBuilder::build, _builder, isSupported, isSubscribed);
+	}
+	// Statistics
+	{
+		auto aecpRetryCounter = std::uint64_t{};
+		auto aecpTimeoutCounter = std::uint64_t{};
+		auto aecpUnexpectedResponseCounter = std::uint64_t{};
+		auto aecpResponseAverageTime = std::chrono::milliseconds{};
+		auto aemAecpUnsolicitedCounter = std::uint64_t{};
+		auto aemAecpUnsolicitedLossCounter = std::uint64_t{};
+		auto enumerationTime = std::chrono::milliseconds{};
+
+		// Call the builder
+		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(std::uint64_t&, std::uint64_t&, std::uint64_t&, std::chrono::milliseconds&, std::uint64_t&, std::uint64_t&, std::chrono::milliseconds&)>(&model::VirtualEntityBuilder::build, _builder, aecpRetryCounter, aecpTimeoutCounter, aecpUnexpectedResponseCounter, aecpResponseAverageTime, aemAecpUnsolicitedCounter, aemAecpUnsolicitedLossCounter, enumerationTime);
+	}
+	// MilanInfo
+	{
+		auto info = entity::model::MilanInfo{};
+
+		// Call the builder
+		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(entity::model::MilanInfo&)>(&model::VirtualEntityBuilder::build, _builder, info);
+	}
 }
 
 bool VirtualEntityModelVisitor::isError() const noexcept
@@ -91,7 +114,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get EntityNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::EntityNodeStaticModel const&, entity::model::EntityNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, n->staticModel, n->dynamicModel);
 }
 
@@ -104,7 +127,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get ConfigurationNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ConfigurationIndex, entity::model::ConfigurationNodeStaticModel const&, entity::model::ConfigurationNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
@@ -117,7 +140,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get AudioUnitNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::AudioUnitIndex, entity::model::AudioUnitNodeStaticModel const&, entity::model::AudioUnitNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
@@ -130,7 +153,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get StreamInputNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::StreamIndex, entity::model::StreamNodeStaticModel const&, entity::model::StreamInputNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
@@ -143,7 +166,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get StreamOutputNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::StreamIndex, entity::model::StreamNodeStaticModel const&, entity::model::StreamOutputNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
@@ -156,7 +179,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get JackInputNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::JackIndex, entity::model::JackNodeStaticModel const&, entity::model::JackNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
@@ -169,7 +192,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get JackOutputNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::JackIndex, entity::model::JackNodeStaticModel const&, entity::model::JackNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
@@ -182,7 +205,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get ControlNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ControlIndex, entity::model::DescriptorType, entity::model::ControlNodeStaticModel const&, entity::model::ControlNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, parent->descriptorType, n->staticModel, n->dynamicModel);
 }
 
@@ -195,7 +218,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get AvbInterfaceNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::AvbInterfaceIndex, entity::model::AvbInterfaceNodeStaticModel const&, entity::model::AvbInterfaceNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
@@ -208,7 +231,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get ClockSourceNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ClockSourceIndex, entity::model::ClockSourceNodeStaticModel const&, entity::model::ClockSourceNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
@@ -221,7 +244,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get MemoryObjectNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::MemoryObjectIndex, entity::model::MemoryObjectNodeStaticModel const&, entity::model::MemoryObjectNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
@@ -244,7 +267,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get StreamPortInputNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::StreamPortIndex, entity::model::DescriptorType, entity::model::StreamPortNodeStaticModel const&, entity::model::StreamPortNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, node.descriptorType, n->staticModel, n->dynamicModel);
 }
 
@@ -257,7 +280,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get StreamPortOutputNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::StreamPortIndex, entity::model::DescriptorType, entity::model::StreamPortNodeStaticModel const&, entity::model::StreamPortNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, node.descriptorType, n->staticModel, n->dynamicModel);
 }
 
@@ -270,7 +293,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get AudioClusterNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ClusterIndex, entity::model::AudioClusterNodeStaticModel const&, entity::model::AudioClusterNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
@@ -288,7 +311,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get ControlNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ControlIndex, entity::model::DescriptorType, entity::model::ControlNodeStaticModel const&, entity::model::ControlNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, parent->descriptorType, n->staticModel, n->dynamicModel);
 }
 
@@ -301,7 +324,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get ControlNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ControlIndex, entity::model::DescriptorType, entity::model::ControlNodeStaticModel const&, entity::model::ControlNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, parent->descriptorType, n->staticModel, n->dynamicModel);
 }
 
@@ -314,7 +337,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get ControlNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ControlIndex, entity::model::DescriptorType, entity::model::ControlNodeStaticModel const&, entity::model::ControlNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, parent->descriptorType, n->staticModel, n->dynamicModel);
 }
 
@@ -327,7 +350,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get ClockDomainNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ClockDomainIndex, entity::model::ClockDomainNodeStaticModel const&, entity::model::ClockDomainNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
@@ -345,7 +368,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get TimingNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::TimingIndex, entity::model::TimingNodeStaticModel const&, entity::model::TimingNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
@@ -358,7 +381,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get PtpInstanceNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::PtpInstanceIndex, entity::model::PtpInstanceNodeStaticModel const&, entity::model::PtpInstanceNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
@@ -381,7 +404,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get PtpPortNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::PtpPortIndex, entity::model::PtpPortNodeStaticModel const&, entity::model::PtpPortNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
@@ -414,7 +437,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get StreamInputNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::StreamIndex, model::VirtualIndex, entity::model::StreamNodeStaticModel const&, entity::model::StreamInputNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, parent->virtualIndex, n->staticModel, n->dynamicModel);
 }
 
@@ -427,7 +450,7 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, mode
 		_errorMessage = "Failed to get StreamOutputNode";
 		return;
 	}
-	// Call the visitor
+	// Call the builder
 	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::StreamIndex, model::VirtualIndex, entity::model::StreamNodeStaticModel const&, entity::model::StreamOutputNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, parent->virtualIndex, n->staticModel, n->dynamicModel);
 }
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
