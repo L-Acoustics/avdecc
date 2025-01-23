@@ -44,11 +44,11 @@ class DiscoveryApp
 	}
 
 #if LOAD_TEST_VIRTUAL_ENTITY
-	class Builder : la.avdecc.controller.model.VirtualEntityBuilder
+	class Builder : la.avdecc.controller.model.DefaultedVirtualEntityBuilder
 	{
 		public Builder() : base() { }
 
-		public override void build(Entity.CommonInformation commonInformation, InterfaceInformationMap intfcInformation)
+		public override void build(la.avdecc.entity.Entity.CommonInformation commonInformation, InterfaceInformationMap intfcInformation)
 		{
 			commonInformation.entityID = new la.avdecc.UniqueIdentifier(0x0102030405060708);
 			commonInformation.entityCapabilities = new EntityCapabilities();
@@ -63,12 +63,9 @@ class DiscoveryApp
 			interfaceInfo.validTime = 31;
 			intfcInformation[la.avdecc.entity.Entity.GlobalAvbInterfaceIndex] = interfaceInfo;
 		}
-		public override void build(ControlledEntity entity, EntityNodeDynamicModel model)
+		public override void build(la.avdecc.controller.ControlledEntity entity, la.avdecc.entity.model.EntityNodeStaticModel staticModel, la.avdecc.entity.model.EntityNodeDynamicModel dynamicModel)
 		{
-			model.entityName = new AvdeccFixedString("SimpleEntity");
-		}
-		public override void build(ControlledEntity entity, ushort descriptorIndex, ConfigurationNodeDynamicModel model)
-		{
+			dynamicModel.entityName = new la.avdecc.entity.model.AvdeccFixedString("SimpleEntity");
 		}
 	}
 #endif // LOAD_TEST_VIRTUAL_ENTITY

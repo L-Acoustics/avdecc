@@ -46,7 +46,7 @@
 //#define LOAD_TEST_VIRTUAL_ENTITY
 
 #if defined(LOAD_TEST_VIRTUAL_ENTITY)
-class Builder : public la::avdecc::controller::model::VirtualEntityBuilder
+class Builder : public la::avdecc::controller::model::DefaultedVirtualEntityBuilder
 {
 public:
 	Builder() noexcept = default;
@@ -67,13 +67,9 @@ public:
 		auto const interfaceInfo = la::avdecc::entity::Entity::InterfaceInformation{ la::networkInterface::MacAddress{ 0x06, 0x05, 0x04, 0x03, 0x02, 0x01 }, 31u, 0u, std::nullopt, std::nullopt };
 		intfcInformation[la::avdecc::entity::Entity::GlobalAvbInterfaceIndex] = interfaceInfo;
 	}
-	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::EntityNodeDynamicModel& model) noexcept override
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::EntityNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::EntityNodeDynamicModel& dynamicModel) noexcept override
 	{
-		model.entityName = la::avdecc::entity::model::AvdeccFixedString{ "Test entity" };
-	}
-	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ConfigurationIndex const /*descriptorIndex*/, la::avdecc::entity::model::ConfigurationNodeDynamicModel& /*model*/) noexcept override
-	{
-		//
+		dynamicModel.entityName = la::avdecc::entity::model::AvdeccFixedString{ "Test entity" };
 	}
 };
 #endif // LOAD_TEST_VIRTUAL_ENTITY
