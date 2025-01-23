@@ -84,121 +84,251 @@ std::string VirtualEntityModelVisitor::getErrorMessage() const noexcept
 // la::avdecc::controller::model::EntityModelVisitor overrides
 void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::EntityNode const& /*node*/) noexcept
 {
-	auto* const model = _controlledEntity->getModelAccessStrategy().getEntityNodeDynamicModel(TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
-	if (!model)
+	auto* const n = _controlledEntity->getModelAccessStrategy().getEntityNode(TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
 	{
 		_isError = true;
-		_errorMessage = "Failed to get EntityNodeDynamicModel";
+		_errorMessage = "Failed to get EntityNode";
 		return;
 	}
 	// Call the visitor
-	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::EntityNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, *model);
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::EntityNodeStaticModel const&, entity::model::EntityNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::EntityNode const* const /*parent*/, model::ConfigurationNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::EntityNode const* const /*parent*/, model::ConfigurationNode const& node) noexcept
 {
-	auto* const model = _controlledEntity->getModelAccessStrategy().getConfigurationNodeDynamicModel(node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
-	if (!model)
+	auto* const n = _controlledEntity->getModelAccessStrategy().getConfigurationNode(node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
 	{
 		_isError = true;
-		_errorMessage = "Failed to get ConfigurationNodeDynamicModel";
+		_errorMessage = "Failed to get ConfigurationNode";
 		return;
 	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ConfigurationIndex, entity::model::ConfigurationNodeStaticModel const&, entity::model::ConfigurationNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::AudioUnitNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const parent, model::AudioUnitNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getAudioUnitNode(parent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get AudioUnitNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::AudioUnitIndex, entity::model::AudioUnitNodeStaticModel const&, entity::model::AudioUnitNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::StreamInputNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const parent, model::StreamInputNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getStreamInputNode(parent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get StreamInputNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::StreamIndex, entity::model::StreamNodeStaticModel const&, entity::model::StreamInputNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::StreamOutputNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const parent, model::StreamOutputNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getStreamOutputNode(parent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get StreamOutputNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::StreamIndex, entity::model::StreamNodeStaticModel const&, entity::model::StreamOutputNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::JackInputNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const parent, model::JackInputNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getJackInputNode(parent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get JackInputNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::JackIndex, entity::model::JackNodeStaticModel const&, entity::model::JackNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::JackOutputNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const parent, model::JackOutputNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getJackOutputNode(parent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get JackOutputNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::JackIndex, entity::model::JackNodeStaticModel const&, entity::model::JackNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::JackNode const* const parent, model::ControlNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const grandParent, model::JackNode const* const parent, model::ControlNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getControlNode(grandParent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get ControlNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ControlIndex, entity::model::DescriptorType, entity::model::ControlNodeStaticModel const&, entity::model::ControlNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, parent->descriptorType, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::AvbInterfaceNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const parent, model::AvbInterfaceNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getAvbInterfaceNode(parent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get AvbInterfaceNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::AvbInterfaceIndex, entity::model::AvbInterfaceNodeStaticModel const&, entity::model::AvbInterfaceNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::ClockSourceNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const parent, model::ClockSourceNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getClockSourceNode(parent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get ClockSourceNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ClockSourceIndex, entity::model::ClockSourceNodeStaticModel const&, entity::model::ClockSourceNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::MemoryObjectNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const parent, model::MemoryObjectNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getMemoryObjectNode(parent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get MemoryObjectNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::MemoryObjectIndex, entity::model::MemoryObjectNodeStaticModel const&, entity::model::MemoryObjectNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::LocaleNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::LocaleNode const& /*node*/) noexcept
 {
-	//
+	// Nothing to do, no dynamic model
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::LocaleNode const* const parent, model::StringsNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::LocaleNode const* const /*parent*/, model::StringsNode const& /*node*/) noexcept
 {
-	//
+	// Nothing to do, no dynamic model
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::AudioUnitNode const* const parent, model::StreamPortInputNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const grandParent, model::AudioUnitNode const* const /*parent*/, model::StreamPortInputNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getStreamPortInputNode(grandParent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get StreamPortInputNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::StreamPortIndex, entity::model::DescriptorType, entity::model::StreamPortNodeStaticModel const&, entity::model::StreamPortNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, node.descriptorType, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::AudioUnitNode const* const parent, model::StreamPortOutputNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const grandParent, model::AudioUnitNode const* const /*parent*/, model::StreamPortOutputNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getStreamPortOutputNode(grandParent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get StreamPortOutputNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::StreamPortIndex, entity::model::DescriptorType, entity::model::StreamPortNodeStaticModel const&, entity::model::StreamPortNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, node.descriptorType, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandGrandParent, model::AudioUnitNode const* const grandParent, model::StreamPortNode const* const parent, model::AudioClusterNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const grandGrandParent, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const /*parent*/, model::AudioClusterNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getAudioClusterNode(grandGrandParent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get AudioClusterNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ClusterIndex, entity::model::AudioClusterNodeStaticModel const&, entity::model::AudioClusterNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandGrandParent, model::AudioUnitNode const* const grandParent, model::StreamPortNode const* const parent, model::AudioMapNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandGrandParent*/, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const /*parent*/, model::AudioMapNode const& /*node*/) noexcept
 {
-	//
+	// Nothing to do, no dynamic model
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandGrandParent, model::AudioUnitNode const* const grandParent, model::StreamPortNode const* const parent, model::ControlNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const grandGrandParent, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const parent, model::ControlNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getControlNode(grandGrandParent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get ControlNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ControlIndex, entity::model::DescriptorType, entity::model::ControlNodeStaticModel const&, entity::model::ControlNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, parent->descriptorType, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::AudioUnitNode const* const parent, model::ControlNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const grandParent, model::AudioUnitNode const* const parent, model::ControlNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getControlNode(grandParent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get ControlNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ControlIndex, entity::model::DescriptorType, entity::model::ControlNodeStaticModel const&, entity::model::ControlNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, parent->descriptorType, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::ControlNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const parent, model::ControlNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getControlNode(parent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get ControlNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ControlIndex, entity::model::DescriptorType, entity::model::ControlNodeStaticModel const&, entity::model::ControlNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, parent->descriptorType, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::ClockDomainNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const parent, model::ClockDomainNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getClockDomainNode(parent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get ClockDomainNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::ClockDomainIndex, entity::model::ClockDomainNodeStaticModel const&, entity::model::ClockDomainNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
 void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::ClockDomainNode const* const /*parent*/, model::ClockSourceNode const& /*node*/) noexcept
@@ -206,14 +336,30 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, 
 	// Ignore virtual parenting
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::TimingNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const parent, model::TimingNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getTimingNode(parent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get TimingNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::TimingIndex, entity::model::TimingNodeStaticModel const&, entity::model::TimingNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::PtpInstanceNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const parent, model::PtpInstanceNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getPtpInstanceNode(parent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get PtpInstanceNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::PtpInstanceIndex, entity::model::PtpInstanceNodeStaticModel const&, entity::model::PtpInstanceNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
 void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::TimingNode const* const /*parent*/, model::PtpInstanceNode const& /*node*/) noexcept
@@ -226,9 +372,17 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, 
 	// Ignore virtual parenting
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::PtpInstanceNode const* const parent, model::PtpPortNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const grandParent, model::PtpInstanceNode const* const /*parent*/, model::PtpPortNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getPtpPortNode(grandParent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get PtpPortNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::PtpPortIndex, entity::model::PtpPortNodeStaticModel const&, entity::model::PtpPortNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, n->staticModel, n->dynamicModel);
 }
 
 void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandGrandParent*/, model::TimingNode const* const /*grandParent*/, model::PtpInstanceNode const* const /*parent*/, model::ControlNode const& /*node*/) noexcept
@@ -242,23 +396,39 @@ void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, 
 }
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::RedundantStreamInputNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::RedundantStreamInputNode const& /*node*/) noexcept
 {
-	//
+	// Nothing to do, no dynamic model
 }
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::RedundantStreamOutputNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::RedundantStreamOutputNode const& /*node*/) noexcept
 {
-	//
-}
-
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::RedundantStreamNode const* const parent, model::StreamInputNode const& node) noexcept
-{
-	//
+	// Nothing to do, no dynamic model
 }
 
-void VirtualEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::RedundantStreamNode const* const parent, model::StreamOutputNode const& node) noexcept
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const grandParent, model::RedundantStreamNode const* const parent, model::StreamInputNode const& node) noexcept
 {
-	//
+	auto* const n = _controlledEntity->getModelAccessStrategy().getStreamInputNode(grandParent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get StreamInputNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::StreamIndex, model::VirtualIndex, entity::model::StreamNodeStaticModel const&, entity::model::StreamInputNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, parent->virtualIndex, n->staticModel, n->dynamicModel);
+}
+
+void VirtualEntityModelVisitor::visit(ControlledEntity const* const entity, model::ConfigurationNode const* const grandParent, model::RedundantStreamNode const* const parent, model::StreamOutputNode const& node) noexcept
+{
+	auto* const n = _controlledEntity->getModelAccessStrategy().getStreamOutputNode(grandParent->descriptorIndex, node.descriptorIndex, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	if (!n)
+	{
+		_isError = true;
+		_errorMessage = "Failed to get StreamOutputNode";
+		return;
+	}
+	// Call the visitor
+	utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity const*, entity::model::StreamIndex, model::VirtualIndex, entity::model::StreamNodeStaticModel const&, entity::model::StreamOutputNodeDynamicModel&)>(&model::VirtualEntityBuilder::build, _builder, entity, node.descriptorIndex, parent->virtualIndex, n->staticModel, n->dynamicModel);
 }
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 

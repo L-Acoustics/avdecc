@@ -677,16 +677,69 @@ class VirtualEntityBuilder
 {
 public:
 	virtual void build(la::avdecc::entity::Entity::CommonInformation& commonInformation, la::avdecc::entity::Entity::InterfacesInformation& intfcInformation) noexcept = 0;
-	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::EntityNodeDynamicModel& model) noexcept = 0;
-	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ConfigurationIndex const descriptorIndex, la::avdecc::entity::model::ConfigurationNodeDynamicModel& model) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::EntityNodeStaticModel const& staticModel, la::avdecc::entity::model::EntityNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ConfigurationIndex const descriptorIndex, la::avdecc::entity::model::ConfigurationNodeStaticModel const& staticModel, la::avdecc::entity::model::ConfigurationNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ControlIndex const descriptorIndex, la::avdecc::entity::model::DescriptorType const attachedTo, la::avdecc::entity::model::ControlNodeStaticModel const& staticModel, la::avdecc::entity::model::ControlNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::AudioUnitIndex const descriptorIndex, la::avdecc::entity::model::AudioUnitNodeStaticModel const& staticModel, la::avdecc::entity::model::AudioUnitNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const descriptorIndex, la::avdecc::entity::model::StreamNodeStaticModel const& staticModel, la::avdecc::entity::model::StreamInputNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const descriptorIndex, la::avdecc::entity::model::StreamNodeStaticModel const& staticModel, la::avdecc::entity::model::StreamOutputNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::JackIndex const descriptorIndex, la::avdecc::entity::model::JackNodeStaticModel const& staticModel, la::avdecc::entity::model::JackNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::AvbInterfaceIndex const descriptorIndex, la::avdecc::entity::model::AvbInterfaceNodeStaticModel const& staticModel, la::avdecc::entity::model::AvbInterfaceNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ClockSourceIndex const descriptorIndex, la::avdecc::entity::model::ClockSourceNodeStaticModel const& staticModel, la::avdecc::entity::model::ClockSourceNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::MemoryObjectIndex const descriptorIndex, la::avdecc::entity::model::MemoryObjectNodeStaticModel const& staticModel, la::avdecc::entity::model::MemoryObjectNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamPortIndex const descriptorIndex, la::avdecc::entity::model::DescriptorType const portType, la::avdecc::entity::model::StreamPortNodeStaticModel const& staticModel, la::avdecc::entity::model::StreamPortNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ClusterIndex const descriptorIndex, la::avdecc::entity::model::AudioClusterNodeStaticModel const& staticModel, la::avdecc::entity::model::AudioClusterNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ClockDomainIndex const descriptorIndex, la::avdecc::entity::model::ClockDomainNodeStaticModel const& staticModel, la::avdecc::entity::model::ClockDomainNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::TimingIndex const descriptorIndex, la::avdecc::entity::model::TimingNodeStaticModel const& staticModel, la::avdecc::entity::model::TimingNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::PtpInstanceIndex const descriptorIndex, la::avdecc::entity::model::PtpInstanceNodeStaticModel const& staticModel, la::avdecc::entity::model::PtpInstanceNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::PtpPortIndex const descriptorIndex, la::avdecc::entity::model::PtpPortNodeStaticModel const& staticModel, la::avdecc::entity::model::PtpPortNodeDynamicModel& dynamicModel) noexcept = 0;
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const descriptorIndex, la::avdecc::controller::model::VirtualIndex const redundantIndex, la::avdecc::entity::model::StreamNodeStaticModel const& staticModel, la::avdecc::entity::model::StreamInputNodeDynamicModel& dynamicModel) noexcept = 0;
+	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const descriptorIndex, la::avdecc::controller::model::VirtualIndex const redundantIndex, la::avdecc::entity::model::StreamNodeStaticModel const& staticModel, la::avdecc::entity::model::StreamOutputNodeDynamicModel& dynamicModel) noexcept = 0;
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
-	// Deleted compiler auto-generated methods
+	// Defaulted compiler auto-generated methods
 	VirtualEntityBuilder() noexcept = default;
 	virtual ~VirtualEntityBuilder() noexcept = default;
-	VirtualEntityBuilder(VirtualEntityBuilder const&) = delete;
-	VirtualEntityBuilder(VirtualEntityBuilder&&) = delete;
-	VirtualEntityBuilder& operator=(VirtualEntityBuilder const&) = delete;
-	VirtualEntityBuilder& operator=(VirtualEntityBuilder&&) = delete;
+	VirtualEntityBuilder(VirtualEntityBuilder const&) = default;
+	VirtualEntityBuilder(VirtualEntityBuilder&&) = default;
+	VirtualEntityBuilder& operator=(VirtualEntityBuilder const&) = default;
+	VirtualEntityBuilder& operator=(VirtualEntityBuilder&&) = default;
+};
+
+/** Defaulted version of the builder base class. */
+class DefaultedVirtualEntityBuilder : public VirtualEntityBuilder
+{
+public:
+	virtual void build(la::avdecc::entity::Entity::CommonInformation& /*commonInformation*/, la::avdecc::entity::Entity::InterfacesInformation& /*intfcInformation*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::EntityNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::EntityNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ConfigurationIndex const /*descriptorIndex*/, la::avdecc::entity::model::ConfigurationNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::ConfigurationNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ControlIndex const /*descriptorIndex*/, la::avdecc::entity::model::DescriptorType const /*attachedTo*/, la::avdecc::entity::model::ControlNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::ControlNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AudioUnitIndex const /*descriptorIndex*/, la::avdecc::entity::model::AudioUnitNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::AudioUnitNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*descriptorIndex*/, la::avdecc::entity::model::StreamNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::StreamInputNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*descriptorIndex*/, la::avdecc::entity::model::StreamNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::StreamOutputNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::JackIndex const /*descriptorIndex*/, la::avdecc::entity::model::JackNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::JackNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AvbInterfaceIndex const /*descriptorIndex*/, la::avdecc::entity::model::AvbInterfaceNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::AvbInterfaceNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ClockSourceIndex const /*descriptorIndex*/, la::avdecc::entity::model::ClockSourceNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::ClockSourceNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::MemoryObjectIndex const /*descriptorIndex*/, la::avdecc::entity::model::MemoryObjectNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::MemoryObjectNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamPortIndex const /*descriptorIndex*/, la::avdecc::entity::model::DescriptorType const /*portType*/, la::avdecc::entity::model::StreamPortNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::StreamPortNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ClusterIndex const /*descriptorIndex*/, la::avdecc::entity::model::AudioClusterNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::AudioClusterNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ClockDomainIndex const /*descriptorIndex*/, la::avdecc::entity::model::ClockDomainNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::ClockDomainNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::TimingIndex const /*descriptorIndex*/, la::avdecc::entity::model::TimingNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::TimingNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::PtpInstanceIndex const /*descriptorIndex*/, la::avdecc::entity::model::PtpInstanceNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::PtpInstanceNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::PtpPortIndex const /*descriptorIndex*/, la::avdecc::entity::model::PtpPortNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::PtpPortNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*descriptorIndex*/, la::avdecc::controller::model::VirtualIndex const /*redundantIndex*/, la::avdecc::entity::model::StreamNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::StreamInputNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*descriptorIndex*/, la::avdecc::controller::model::VirtualIndex const /*redundantIndex*/, la::avdecc::entity::model::StreamNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::StreamOutputNodeDynamicModel& /*dynamicModel*/) noexcept override {}
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
+	// Defaulted compiler auto-generated methods
+	DefaultedVirtualEntityBuilder() noexcept = default;
+	virtual ~DefaultedVirtualEntityBuilder() noexcept override = default;
+	DefaultedVirtualEntityBuilder(DefaultedVirtualEntityBuilder const&) = default;
+	DefaultedVirtualEntityBuilder(DefaultedVirtualEntityBuilder&&) = default;
+	DefaultedVirtualEntityBuilder& operator=(DefaultedVirtualEntityBuilder const&) = default;
+	DefaultedVirtualEntityBuilder& operator=(DefaultedVirtualEntityBuilder&&) = default;
 };
 
 
