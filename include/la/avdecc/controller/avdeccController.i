@@ -78,7 +78,20 @@ DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, MilanInfo, OptMilanInfo)
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::EntityModelVisitor)
+%ignore la::avdecc::entity::controller::EntityModelVisitor::EntityModelVisitor(EntityModelVisitor&&); // Ignore move constructor
+%ignore la::avdecc::entity::controller::EntityModelVisitor::operator=; // Ignore copy operator
+
+DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::DefaultedEntityModelVisitor)
+%ignore la::avdecc::entity::controller::DefaultedEntityModelVisitor::DefaultedEntityModelVisitor(DefaultedEntityModelVisitor&&); // Ignore move constructor
+%ignore la::avdecc::entity::controller::DefaultedEntityModelVisitor::operator=; // Ignore copy operator
+
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::VirtualEntityBuilder)
+%ignore la::avdecc::entity::controller::VirtualEntityBuilder::VirtualEntityBuilder(VirtualEntityBuilder&&); // Ignore move constructor
+%ignore la::avdecc::entity::controller::VirtualEntityBuilder::operator=; // Ignore copy operator
+
+DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::DefaultedVirtualEntityBuilder)
+%ignore la::avdecc::entity::controller::DefaultedVirtualEntityBuilder::DefaultedVirtualEntityBuilder(DefaultedVirtualEntityBuilder&&); // Ignore move constructor
+%ignore la::avdecc::entity::controller::DefaultedVirtualEntityBuilder::operator=; // Ignore copy operator
 
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(MediaClockChain)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE()
@@ -296,6 +309,7 @@ public:
 %ignore la::avdecc::controller::Controller::create; // Ignore it, will be wrapped (because std::unique_ptr doesn't support custom deleters - Ticket #2411)
 
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::Controller::Observer)
+DEFINE_OBSERVER_CLASS(la::avdecc::controller::Controller::DefaultedObserver)
 
 #if SUPPORT_EXCLUSIVE_ACCESS
 %nspace la::avdecc::controller::Controller::ExclusiveAccessToken;
