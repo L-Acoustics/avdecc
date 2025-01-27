@@ -82,6 +82,13 @@ VirtualEntityModelVisitor::VirtualEntityModelVisitor(ControlledEntityImpl* const
 
 		// Call the builder
 		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(std::uint64_t&, std::uint64_t&, std::uint64_t&, std::chrono::milliseconds&, std::uint64_t&, std::uint64_t&, std::chrono::milliseconds&)>(&model::VirtualEntityBuilder::build, _builder, aecpRetryCounter, aecpTimeoutCounter, aecpUnexpectedResponseCounter, aecpResponseAverageTime, aemAecpUnsolicitedCounter, aemAecpUnsolicitedLossCounter, enumerationTime);
+	// Diagnostics should be computed automatically
+	// CompatibilityFlags
+	{
+		auto flags = ControlledEntity::CompatibilityFlags{};
+
+		// Call the builder
+		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity::CompatibilityFlags&)>(&model::VirtualEntityBuilder::build, _builder, flags);
 	}
 	// MilanInfo
 	{

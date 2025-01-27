@@ -29,6 +29,7 @@ set (PUBLIC_HEADER_FILES
 	${CU_ROOT_DIR}/include/la/avdecc/controller/avdeccController.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntity.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityModel.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/virtualEntityBuilder.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/exports.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/logItems.hpp
 )

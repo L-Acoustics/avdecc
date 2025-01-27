@@ -34,6 +34,7 @@
 
 #include "internals/avdeccControlledEntity.hpp"
 #include "internals/avdeccVirtualControlledEntityInterface.hpp"
+#include "internals/virtualEntityBuilder.hpp"
 #include "internals/exports.hpp"
 
 #include <memory>

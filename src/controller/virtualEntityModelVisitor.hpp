@@ -25,7 +25,7 @@
 #pragma once
 
 #include "avdeccControlledEntityImpl.hpp"
-#include "la/avdecc/controller/internals/avdeccControlledEntityModel.hpp"
+#include "la/avdecc/controller/internals/virtualEntityBuilder.hpp"
 
 #include <memory>
 #include <string>

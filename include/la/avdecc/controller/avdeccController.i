@@ -85,14 +85,6 @@ DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::DefaultedEntityModelVisitor
 %ignore la::avdecc::entity::controller::DefaultedEntityModelVisitor::DefaultedEntityModelVisitor(DefaultedEntityModelVisitor&&); // Ignore move constructor
 %ignore la::avdecc::entity::controller::DefaultedEntityModelVisitor::operator=; // Ignore copy operator
 
-DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::VirtualEntityBuilder)
-%ignore la::avdecc::entity::controller::VirtualEntityBuilder::VirtualEntityBuilder(VirtualEntityBuilder&&); // Ignore move constructor
-%ignore la::avdecc::entity::controller::VirtualEntityBuilder::operator=; // Ignore copy operator
-
-DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::DefaultedVirtualEntityBuilder)
-%ignore la::avdecc::entity::controller::DefaultedVirtualEntityBuilder::DefaultedVirtualEntityBuilder(DefaultedVirtualEntityBuilder&&); // Ignore move constructor
-%ignore la::avdecc::entity::controller::DefaultedVirtualEntityBuilder::operator=; // Ignore copy operator
-
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(MediaClockChain)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE()
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(EntityModel)
@@ -246,6 +238,25 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity, CompatibilityFlag, "
 // Define templates
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller::ControlledEntity, CompatibilityFlags, CompatibilityFlag, std::uint8_t)
 %template("StreamPortInvalidAudioMappings") std::map<la::avdecc::entity::model::StreamPortIndex, la::avdecc::entity::model::AudioMappings>;
+
+
+////////////////////////////////////////
+// VIRTUAL CONTROLLED ENTITY BUILDER
+////////////////////////////////////////
+// Bind structs and classes
+%rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
+
+DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::VirtualEntityBuilder)
+%ignore la::avdecc::entity::controller::VirtualEntityBuilder::VirtualEntityBuilder(VirtualEntityBuilder&&); // Ignore move constructor
+%ignore la::avdecc::entity::controller::VirtualEntityBuilder::operator=; // Ignore copy operator
+
+DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::DefaultedVirtualEntityBuilder)
+%ignore la::avdecc::entity::controller::DefaultedVirtualEntityBuilder::DefaultedVirtualEntityBuilder(DefaultedVirtualEntityBuilder&&); // Ignore move constructor
+%ignore la::avdecc::entity::controller::DefaultedVirtualEntityBuilder::operator=; // Ignore copy operator
+
+// Include c++ declaration file
+%include "la/avdecc/controller/internals/virtualEntityBuilder.hpp"
+%rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
 
 ////////////////////////////////////////
