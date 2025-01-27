@@ -122,7 +122,6 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Entity)
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
 // Define templates
-// WARNING: Requires https://github.com/swig/swig/issues/2625 to be fixed (or a modified version of the std_map.i file)
 %template(AudioClusterNodeMap) std::map<la::avdecc::entity::model::ClusterIndex, la::avdecc::controller::model::AudioClusterNode>;
 %template(AudioMapNodeMap) std::map<la::avdecc::entity::model::MapIndex, la::avdecc::controller::model::AudioMapNode>;
 %template(ControlNodeMap) std::map<la::avdecc::entity::model::ControlIndex, la::avdecc::controller::model::ControlNode>;
