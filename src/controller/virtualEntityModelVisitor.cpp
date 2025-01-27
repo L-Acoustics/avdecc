@@ -48,19 +48,87 @@ VirtualEntityModelVisitor::VirtualEntityModelVisitor(ControlledEntityImpl* const
 	// Build the global state variables
 	// AcquireState
 	{
-		auto state = model::AcquireState{};
+		auto state = model::AcquireState::NotSupported;
 		auto owningController = UniqueIdentifier{};
 
 		// Call the builder
 		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(model::AcquireState&, UniqueIdentifier&)>(&model::VirtualEntityBuilder::build, _builder, state, owningController);
+
+		// Check if the state is valid
+		switch (state)
+		{
+			case model::AcquireState::Undefined:
+				_isError = true;
+				_errorMessage = "AcquireState cannot be 'Undefined'";
+				return;
+			case model::AcquireState::NotSupported:
+			case model::AcquireState::NotAcquired:
+				owningController = UniqueIdentifier{};
+				break;
+			case model::AcquireState::AcquireInProgress:
+			case model::AcquireState::Acquired:
+			case model::AcquireState::AcquiredByOther:
+			case model::AcquireState::ReleaseInProgress:
+			{
+				if (!owningController)
+				{
+					_isError = true;
+					_errorMessage = "Invalid owningController";
+					return;
+				}
+				break;
+			}
+			default:
+				_isError = true;
+				_errorMessage = "Invalid AcquireState";
+				return;
+		}
+
+		// Set the state
+		_controlledEntity->setAcquireState(state);
+		_controlledEntity->setOwningController(owningController);
 	}
 	// LockState
 	{
-		auto lockState = model::LockState{};
+		auto lockState = model::LockState::NotSupported;
 		auto lockingController = UniqueIdentifier{};
 
 		// Call the builder
 		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(model::LockState&, UniqueIdentifier&)>(&model::VirtualEntityBuilder::build, _builder, lockState, lockingController);
+
+		// Check if the state is valid
+		switch (lockState)
+		{
+			case model::LockState::Undefined:
+				_isError = true;
+				_errorMessage = "LockState cannot be 'Undefined'";
+				return;
+			case model::LockState::NotSupported:
+			case model::LockState::NotLocked:
+				lockingController = UniqueIdentifier{};
+				break;
+			case model::LockState::LockInProgress:
+			case model::LockState::Locked:
+			case model::LockState::LockedByOther:
+			case model::LockState::UnlockInProgress:
+			{
+				if (!lockingController)
+				{
+					_isError = true;
+					_errorMessage = "Invalid lockingController";
+					return;
+				}
+				break;
+			}
+			default:
+				_isError = true;
+				_errorMessage = "Invalid LockState";
+				return;
+		}
+
+		// Set the state
+		_controlledEntity->setLockState(lockState);
+		_controlledEntity->setLockingController(lockingController);
 	}
 	// UnsolicitedNotifications
 	{
@@ -69,6 +137,10 @@ VirtualEntityModelVisitor::VirtualEntityModelVisitor(ControlledEntityImpl* const
 
 		// Call the builder
 		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(bool&, bool&)>(&model::VirtualEntityBuilder::build, _builder, isSupported, isSubscribed);
+
+		// Set the state
+		_controlledEntity->setUnsolicitedNotificationsSupported(isSupported);
+		_controlledEntity->setSubscribedToUnsolicitedNotifications(isSubscribed);
 	}
 	// Statistics
 	{
@@ -82,6 +154,16 @@ VirtualEntityModelVisitor::VirtualEntityModelVisitor(ControlledEntityImpl* const
 
 		// Call the builder
 		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(std::uint64_t&, std::uint64_t&, std::uint64_t&, std::chrono::milliseconds&, std::uint64_t&, std::uint64_t&, std::chrono::milliseconds&)>(&model::VirtualEntityBuilder::build, _builder, aecpRetryCounter, aecpTimeoutCounter, aecpUnexpectedResponseCounter, aecpResponseAverageTime, aemAecpUnsolicitedCounter, aemAecpUnsolicitedLossCounter, enumerationTime);
+
+		// Set the statistics
+		_controlledEntity->setAecpRetryCounter(aecpRetryCounter);
+		_controlledEntity->setAecpTimeoutCounter(aecpTimeoutCounter);
+		_controlledEntity->setAecpUnexpectedResponseCounter(aecpUnexpectedResponseCounter);
+		_controlledEntity->setAecpResponseAverageTime(aecpResponseAverageTime);
+		_controlledEntity->setAemAecpUnsolicitedCounter(aemAecpUnsolicitedCounter);
+		_controlledEntity->setAemAecpUnsolicitedLossCounter(aemAecpUnsolicitedLossCounter);
+		_controlledEntity->setEnumerationTime(enumerationTime);
+	}
 	// Diagnostics should be computed automatically
 	// CompatibilityFlags
 	{
@@ -89,6 +171,9 @@ VirtualEntityModelVisitor::VirtualEntityModelVisitor(ControlledEntityImpl* const
 
 		// Call the builder
 		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity::CompatibilityFlags&)>(&model::VirtualEntityBuilder::build, _builder, flags);
+
+		// Set the flags
+		_controlledEntity->setCompatibilityFlags(flags);
 	}
 	// MilanInfo
 	{
@@ -96,6 +181,9 @@ VirtualEntityModelVisitor::VirtualEntityModelVisitor(ControlledEntityImpl* const
 
 		// Call the builder
 		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(entity::model::MilanInfo&)>(&model::VirtualEntityBuilder::build, _builder, info);
+
+		// Set the info
+		_controlledEntity->setMilanInfo(info);
 	}
 }
 
