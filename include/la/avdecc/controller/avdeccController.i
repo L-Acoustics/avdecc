@@ -172,7 +172,7 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Entity)
 // AVDECC CONTROLLED ENTITY
 ////////////////////////////////////////
 // Bind enums
-DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity, CompatibilityFlag, "byte")
+DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity::CompatibilityFlag, "byte")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -312,9 +312,9 @@ private:
 %template("ControllerObserver") la::avdecc::utils::Observer<la::avdecc::controller::Controller>;
 
 // Bind enums
-DEFINE_ENUM_CLASS(la::avdecc::controller, CompileOption, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::controller::Controller, Error, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::controller::Controller, QueryCommandError, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::controller::CompileOption, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::controller::Controller::Error, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::controller::Controller::QueryCommandError, "uint")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable

@@ -212,11 +212,11 @@ public:
 // Entity/LocalEntity
 ////////////////////////////////////////
 // Bind enums
-DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity, AemCommandStatus, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity, AaCommandStatus, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity, MvuCommandStatus, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity, ControlStatus, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity, AdvertiseFlag, "byte")
+DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity::AemCommandStatus, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity::AaCommandStatus, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity::MvuCommandStatus, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity::ControlStatus, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity::AdvertiseFlag, "byte")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -458,7 +458,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Interface)
 // Protocol Interface
 ////////////////////////////////////////
 // Bind enums
-DEFINE_ENUM_CLASS(la::avdecc::protocol::ProtocolInterface, Type, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::protocol::ProtocolInterface::Type, "uint")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -716,7 +716,7 @@ DEFINE_AEM_TREE_NODE(Entity);
 // JSON SERIALIZATION
 ////////////////////////////////////////
 // Bind enums
-DEFINE_ENUM_CLASS(la::avdecc::entity::model::jsonSerializer, Flag, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::model::jsonSerializer::Flag, "ushort")
 
 // Include c++ declaration file
 %include "la/avdecc/internals/jsonSerialization.hpp"
