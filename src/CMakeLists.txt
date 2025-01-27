@@ -384,7 +384,7 @@ if(BUILD_AVDECC_BINDINGS_CSHARP)
 	include(${CU_BASE_DIR}/helpers/SetupSwig.cmake REQUIRED)
 
 	# avdecc entity model
-	set(NIH_NUGET_DEPENDENCY "la_networkInterfaceHelper:1.2.3")
+	set(NIH_NUGET_DEPENDENCY "la_networkInterfaceHelper:1.2.5")
 	set(AVDECC_ENTITY_MODEL_LIB_NAME ${PROJECT_NAME}EntityModel)
 	set(TARGET_PREFIX ${AVDECC_ENTITY_MODEL_LIB_NAME})
 	set(SWIG_INTERFACE_FILE "${CU_ROOT_DIR}/include/la/avdecc/internals/entityModel.i")
