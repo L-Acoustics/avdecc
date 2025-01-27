@@ -43,6 +43,9 @@ namespace la::avdecc::controller::model
 class VirtualEntityBuilder
 {
 public:
+	// ADP related information, queried first
+	virtual void build(la::avdecc::entity::model::EntityTree const& entityTree, la::avdecc::entity::Entity::CommonInformation& commonInformation, la::avdecc::entity::Entity::InterfacesInformation& intfcInformation) noexcept = 0;
+
 	// Global state building
 	virtual void build(la::avdecc::controller::model::AcquireState& acquireState, la::avdecc::UniqueIdentifier& owningController) noexcept = 0;
 	virtual void build(la::avdecc::controller::model::LockState& lockState, la::avdecc::UniqueIdentifier& lockingController) noexcept = 0;
@@ -52,7 +55,6 @@ public:
 	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& compatibilityFlags) noexcept = 0;
 
 	// EntityModel building
-	virtual void build(la::avdecc::entity::Entity::CommonInformation& commonInformation, la::avdecc::entity::Entity::InterfacesInformation& intfcInformation) noexcept = 0;
 	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::EntityNodeStaticModel const& staticModel, la::avdecc::entity::model::EntityNodeDynamicModel& dynamicModel) noexcept = 0;
 	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ConfigurationIndex const descriptorIndex, la::avdecc::entity::model::ConfigurationNodeStaticModel const& staticModel, la::avdecc::entity::model::ConfigurationNodeDynamicModel& dynamicModel) noexcept = 0;
 	virtual void build(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ControlIndex const descriptorIndex, la::avdecc::entity::model::DescriptorType const attachedTo, la::avdecc::entity::model::ControlNodeStaticModel const& staticModel, la::avdecc::entity::model::ControlNodeDynamicModel& dynamicModel) noexcept = 0;
@@ -87,6 +89,9 @@ public:
 class DefaultedVirtualEntityBuilder : public VirtualEntityBuilder
 {
 public:
+	// ADP related information, queried first
+	virtual void build(la::avdecc::entity::model::EntityTree const& /*entityTree*/, la::avdecc::entity::Entity::CommonInformation& /*commonInformation*/, la::avdecc::entity::Entity::InterfacesInformation& /*intfcInformation*/) noexcept override {}
+
 	// Global state building
 	virtual void build(la::avdecc::controller::model::AcquireState& /*acquireState*/, la::avdecc::UniqueIdentifier& /*owningController*/) noexcept override {}
 	virtual void build(la::avdecc::controller::model::LockState& /*lockState*/, la::avdecc::UniqueIdentifier& /*lockingController*/) noexcept override {}
@@ -96,7 +101,6 @@ public:
 	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& /*compatibilityFlags*/) noexcept override {}
 
 	// EntityModel building
-	virtual void build(la::avdecc::entity::Entity::CommonInformation& /*commonInformation*/, la::avdecc::entity::Entity::InterfacesInformation& /*intfcInformation*/) noexcept override {}
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::EntityNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::EntityNodeDynamicModel& /*dynamicModel*/) noexcept override {}
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ConfigurationIndex const /*descriptorIndex*/, la::avdecc::entity::model::ConfigurationNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::ConfigurationNodeDynamicModel& /*dynamicModel*/) noexcept override {}
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ControlIndex const /*descriptorIndex*/, la::avdecc::entity::model::DescriptorType const /*attachedTo*/, la::avdecc::entity::model::ControlNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::ControlNodeDynamicModel& /*dynamicModel*/) noexcept override {}

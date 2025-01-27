@@ -3188,7 +3188,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 			auto intfcsInfo = entity::Entity::InterfacesInformation{};
 
 			// Build common and interfaces information
-			utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(entity::Entity::CommonInformation&, entity::Entity::InterfacesInformation&)>(&model::VirtualEntityBuilder::build, builder, commonInfo, intfcsInfo);
+			utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(entity::model::EntityTree const&, entity::Entity::CommonInformation&, entity::Entity::InterfacesInformation&)>(&model::VirtualEntityBuilder::build, builder, entityTree, commonInfo, intfcsInfo);
 
 			// Create the ControlledEntity
 			auto controlledEntity = std::make_shared<ControlledEntityImpl>(entity::Entity{ commonInfo, intfcsInfo }, _entitiesSharedLockInformation, true);
