@@ -86,10 +86,10 @@
 %enddef
 
 // Bind enums
-%nspace la::avdecc::controller::model::AcquireState;
-%nspace la::avdecc::controller::model::LockState;
-%nspace la::avdecc::controller::model::MediaClockChainNode::Type;
-%nspace la::avdecc::controller::model::MediaClockChainNode::Status;
+DEFINE_ENUM_CLASS(la::avdecc::controller::model::AcquireState, "byte")
+DEFINE_ENUM_CLASS(la::avdecc::controller::model::LockState, "byte")
+DEFINE_ENUM_CLASS(la::avdecc::controller::model::MediaClockChainNode::Type, "byte");
+DEFINE_ENUM_CLASS(la::avdecc::controller::model::MediaClockChainNode::Status, "byte");
 
 // Define optionals
 %optional(la::avdecc::entity::model::MilanInfo)
