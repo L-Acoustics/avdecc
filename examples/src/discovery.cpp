@@ -51,14 +51,24 @@ class Builder : public la::avdecc::controller::model::DefaultedVirtualEntityBuil
 public:
 	Builder() noexcept = default;
 
-	virtual void build(la::avdecc::entity::Entity::CommonInformation& commonInformation, la::avdecc::entity::Entity::InterfacesInformation& intfcInformation) noexcept override
+	virtual void build(la::avdecc::entity::model::EntityTree const& entityTree, la::avdecc::entity::Entity::CommonInformation& commonInformation, la::avdecc::entity::Entity::InterfacesInformation& intfcInformation) noexcept override
 	{
+		auto const countInputStreams = [](la::avdecc::entity::model::EntityTree const& entityTree)
+		{
+			// Very crude and shouldn't be considered a good example
+			auto count = size_t{ 0u };
+			if (entityTree.configurationTrees.empty())
+			{
+				return count;
+			}
+			return entityTree.configurationTrees.begin()->second.streamInputModels.size();
+		};
 		commonInformation.entityID = la::avdecc::UniqueIdentifier{ 0x0102030405060708 };
 		//commonInformation.entityModelID = la::avdecc::UniqueIdentifier{ 0x1122334455667788 };
 		commonInformation.entityCapabilities = la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported };
 		//commonInformation.talkerStreamSources = 0u;
 		//commonInformation.talkerCapabilities = {};
-		commonInformation.listenerStreamSinks = 2u;
+		commonInformation.listenerStreamSinks = countInputStreams(entityTree);
 		commonInformation.listenerCapabilities = la::avdecc::entity::ListenerCapabilities{ la::avdecc::entity::ListenerCapability::Implemented };
 		//commonInformation.controllerCapabilities = {};
 		commonInformation.identifyControlIndex = la::avdecc::entity::model::ControlIndex{ 0u };

@@ -48,7 +48,7 @@ class DiscoveryApp
 	{
 		public Builder() : base() { }
 
-		public override void build(la.avdecc.entity.Entity.CommonInformation commonInformation, InterfaceInformationMap intfcInformation)
+		public override void build(la.avdecc.entity.model.EntityTree entityTree, la.avdecc.entity.Entity.CommonInformation commonInformation, InterfaceInformationMap intfcInformation)
 		{
 			commonInformation.entityID = new la.avdecc.UniqueIdentifier(0x0102030405060708);
 			commonInformation.entityCapabilities = new EntityCapabilities();
