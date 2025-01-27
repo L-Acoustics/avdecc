@@ -68,7 +68,7 @@ public:
 		commonInformation.entityCapabilities = la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported };
 		//commonInformation.talkerStreamSources = 0u;
 		//commonInformation.talkerCapabilities = {};
-		commonInformation.listenerStreamSinks = countInputStreams(entityTree);
+		commonInformation.listenerStreamSinks = static_cast<decltype(commonInformation.listenerStreamSinks)>(countInputStreams(entityTree));
 		commonInformation.listenerCapabilities = la::avdecc::entity::ListenerCapabilities{ la::avdecc::entity::ListenerCapability::Implemented };
 		//commonInformation.controllerCapabilities = {};
 		commonInformation.identifyControlIndex = la::avdecc::entity::model::ControlIndex{ 0u };
