@@ -67,6 +67,11 @@ class DiscoveryApp
 		{
 			dynamicModel.entityName = new la.avdecc.entity.model.AvdeccFixedString("SimpleEntity");
 		}
+		public override void build(CompatibilityFlags flags)
+		{
+			flags.set(la.avdecc.controller.ControlledEntity.CompatibilityFlag.IEEE17221);
+			flags.set(la.avdecc.controller.ControlledEntity.CompatibilityFlag.Milan);
+		}
 	}
 #endif // LOAD_TEST_VIRTUAL_ENTITY
 

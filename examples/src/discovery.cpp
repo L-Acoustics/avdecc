@@ -71,6 +71,11 @@ public:
 	{
 		dynamicModel.entityName = la::avdecc::entity::model::AvdeccFixedString{ "Test entity" };
 	}
+	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& compatibilityFlags) noexcept override
+	{
+		compatibilityFlags.set(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221);
+		compatibilityFlags.set(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan);
+	}
 };
 #endif // LOAD_TEST_VIRTUAL_ENTITY
 
@@ -95,6 +100,8 @@ public:
 	Discovery& operator=(Discovery&&) = delete;
 
 private:
+	// Private methods
+	std::string flagsToString(la::avdecc::controller::ControlledEntity::CompatibilityFlags const compatibilityFlags) const noexcept;
 	// la::avdecc::Logger::Observer overrides
 	virtual void onLogItem(la::avdecc::logger::Level const level, la::avdecc::logger::LogItem const* const item) noexcept override
 	{
@@ -149,6 +156,32 @@ Discovery::Discovery(la::avdecc::protocol::ProtocolInterface::Type const protoco
 #endif // LOAD_TEST_VIRTUAL_ENTITY
 }
 
+std::string Discovery::flagsToString(la::avdecc::controller::ControlledEntity::CompatibilityFlags const compatibilityFlags) const noexcept
+{
+	auto str = std::string{};
+	if (compatibilityFlags.test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221))
+	{
+		str += "IEEE17221 ";
+	}
+	if (compatibilityFlags.test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan))
+	{
+		str += "Milan ";
+	}
+	if (compatibilityFlags.test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221Warning))
+	{
+		str += "IEEE17221Warning ";
+	}
+	if (compatibilityFlags.test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::MilanWarning))
+	{
+		str += "MilanWarning ";
+	}
+	if (compatibilityFlags.test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Misbehaving))
+	{
+		str += "Misbehaving ";
+	}
+	return str;
+}
+
 void Discovery::onTransportError(la::avdecc::controller::Controller const* const /*controller*/) noexcept
 {
 	outputText("Fatal error on transport layer\n");
@@ -169,7 +202,7 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 		// Filter entities from the same vendor as this controller
 		if (vendorID == VENDOR_ID)
 		{
-			outputText("New LA unit online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
+			outputText("New LA unit online: " + la::avdecc::utils::toHexString(entityID, true) + " (Compatibility: " + flagsToString(entity->getCompatibilityFlags()) + ")\n");
 			_controller->acquireEntity(entity->getEntity().getEntityID(), false,
 				[](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const /*owningEntity*/) noexcept
 				{
