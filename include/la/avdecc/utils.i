@@ -162,12 +162,12 @@ public:
 // Define some useful macros
 ////////////////////////////////////////
 
-%define DEFINE_ENUM_CLASS(nspacename, bitname, type)
-	%nspace nspacename::bitname;
+%define DEFINE_ENUM_CLASS(enumName, type)
+	%nspace enumName;
 #if defined(SWIGCSHARP)
-	%typemap(csbase, replace="1") nspacename::bitname "uint" // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
+	%typemap(csbase, replace="1") enumName "uint" // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
 #else
-	%typemap(csbase) nspacename::bitname type
+	%typemap(csbase) enumName type
 #endif
 %enddef
 
