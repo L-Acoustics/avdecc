@@ -4,10 +4,39 @@
 
 %module(csbegin="#nullable enable\n") avdeccEntityModel
 
+// C# Specifics
+#if defined(SWIGCSHARP)
+// Optimize code generation by enabling RVO
+%typemap(out, optimal="1") SWIGTYPE
+%{
+	$result = new $1_ltype($1);
+%}
+#pragma SWIG nowarn=474
+// Marshal all std::string as UTF8Str
+%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
+// Better debug display
+%typemap(csattributes) la::avdecc::entity::model::AvdeccFixedString "[System.Diagnostics.DebuggerDisplay(\"{toString()}\")]"
+// Expose internal constructor and methods publicly, some dependant modules may need it
+#	if !defined(SWIGIMPORTED)
+#	define PUBLIC_BUT_HIDDEN [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)] public
+	SWIG_CSBODY_PROXY(PUBLIC_BUT_HIDDEN, PUBLIC_BUT_HIDDEN, SWIGTYPE)
+#	endif
 // Use Nullable Reference Types for Optional (requires C# >= 8.0)
 #define SWIG_STD_OPTIONAL_USE_NULLABLE_REFERENCE_TYPES
+// Override default visibility for internal optional class (to make it accessible from other assemblies but not visible)
+#undef SWIG_STD_OPTIONAL_INTERNAL_CLASS_MODIFIER
+#define SWIG_STD_OPTIONAL_INTERNAL_CLASS_MODIFIER PUBLIC_BUT_HIDDEN
+#endif
+
+// Common for all languages
+// Use 64-bit size_t
+#if defined(USE_SIZE_T_64)
+%apply unsigned long long { size_t };
+%apply const unsigned long long & { const size_t & };
+#endif
 // Define basic types
 #define SWIG_STD_OPTIONAL_DEFAULT_TYPES
+
 
 %include <stdint.i>
 %include <std_string.i>
@@ -22,31 +51,6 @@
 %{
 		#include <la/avdecc/internals/entityModel.hpp>
 %}
-
-#if defined(USE_SIZE_T_64)
-// Use 64-bit size_t
-%apply unsigned long long { size_t };
-%apply const unsigned long long & { const size_t & };
-#endif
-
-// C# Specifics
-#if defined(SWIGCSHARP)
-// Optimize code generation by enabling RVO
-%typemap(out, optimal="1") SWIGTYPE
-%{
-    $result = new $1_ltype(($1_ltype const&)$1);
-%}
-#pragma SWIG nowarn=474
-// Marshal all std::string as UTF8Str
-%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
-// Better debug display
-%typemap(csattributes) la::avdecc::entity::model::AvdeccFixedString "[System.Diagnostics.DebuggerDisplay(\"{toString()}\")]"
-// Expose internal constructor and methods publicly, some dependant modules may need it
-#	if !defined(SWIGIMPORTED)
-#	define PUBLIC_BUT_HIDDEN [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)] public
-	SWIG_CSBODY_PROXY(PUBLIC_BUT_HIDDEN, PUBLIC_BUT_HIDDEN, SWIGTYPE)
-#	endif
-#endif
 
 // Force define AVDECC C/C++ API Macros to nothing
 #define LA_AVDECC_API
