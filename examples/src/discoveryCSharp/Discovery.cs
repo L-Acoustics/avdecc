@@ -109,7 +109,7 @@ class DiscoveryApp
 			_controller = null;
 		}
 
-		private class Observer : la.avdecc.controller.Controller.Observer
+		private class Observer : la.avdecc.controller.Controller.DefaultedObserver
 		{
 			public override void onTransportError(la.avdecc.controller.Controller controller)
 			{
@@ -206,65 +206,6 @@ class DiscoveryApp
 				var entityID = entity.getEntity().getEntityID().getValue().ToString("X");
 				Console.WriteLine($"Max Transit Time for {entityID} Stream {streamIndex}: {maxTransitTime} nsec");
 			}
-
-			// unimplemented methods
-			public override void onEntityRedundantInterfaceOnline(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort avbInterfaceIndex, la.avdecc.entity.Entity.InterfaceInformation interfaceInfo) { }
-			public override void onEntityRedundantInterfaceOffline(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort avbInterfaceIndex) { }
-			public override void onEntityCapabilitiesChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity) { }
-			public override void onEntityAssociationIDChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity) { }
-			public override void onGptpChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort avbInterfaceIndex, la.avdecc.UniqueIdentifier grandMasterID, byte grandMasterDomain) { }
-			public override void onUnsolicitedRegistrationChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, bool isSubscribed) { }
-			public override void onCompatibilityFlagsChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, CompatibilityFlags compatibilityFlags) { }
-			public override void onIdentificationStarted(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity) { }
-			public override void onIdentificationStopped(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity) { }
-			public override void onStreamInputConnectionChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamIndex, la.avdecc.entity.model.StreamInputConnectionInfo info, bool changedByOther) { }
-			public override void onStreamOutputConnectionsChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamIndex, StreamIdentificationSet connections) { }
-			public override void onAcquireStateChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, la.avdecc.controller.model.AcquireState acquireState, la.avdecc.UniqueIdentifier owningEntity) { }
-			public override void onLockStateChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, la.avdecc.controller.model.LockState lockState, la.avdecc.UniqueIdentifier lockingEntity) { }
-			public override void onStreamInputFormatChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamIndex, la.avdecc.entity.model.StreamFormat streamFormat) { }
-			public override void onStreamOutputFormatChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamIndex, la.avdecc.entity.model.StreamFormat streamFormat) { }
-			public override void onStreamInputDynamicInfoChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamIndex, la.avdecc.entity.model.StreamDynamicInfo info) { }
-			public override void onStreamOutputDynamicInfoChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamIndex, la.avdecc.entity.model.StreamDynamicInfo info) { }
-			public override void onEntityNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, la.avdecc.entity.model.AvdeccFixedString entityName) { }
-			public override void onEntityGroupNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, la.avdecc.entity.model.AvdeccFixedString entityGroupName) { }
-			public override void onConfigurationNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, la.avdecc.entity.model.AvdeccFixedString configurationName) { }
-			public override void onAudioUnitNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, ushort audioUnitIndex, la.avdecc.entity.model.AvdeccFixedString audioUnitName) { }
-			public override void onStreamInputNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, ushort streamIndex, la.avdecc.entity.model.AvdeccFixedString streamName) { }
-			public override void onStreamOutputNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, ushort streamIndex, la.avdecc.entity.model.AvdeccFixedString streamName) { }
-			public override void onJackInputNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, ushort jackIndex, la.avdecc.entity.model.AvdeccFixedString jackName) { }
-			public override void onJackOutputNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, ushort jackIndex, la.avdecc.entity.model.AvdeccFixedString jackName) { }
-			public override void onAvbInterfaceNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, ushort avbInterfaceIndex, la.avdecc.entity.model.AvdeccFixedString avbInterfaceName) { }
-			public override void onClockSourceNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, ushort clockSourceIndex, la.avdecc.entity.model.AvdeccFixedString clockSourceName) { }
-			public override void onMemoryObjectNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, ushort memoryObjectIndex, la.avdecc.entity.model.AvdeccFixedString memoryObjectName) { }
-			public override void onAudioClusterNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, ushort audioClusterIndex, la.avdecc.entity.model.AvdeccFixedString audioClusterName) { }
-			public override void onControlNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, ushort controlIndex, la.avdecc.entity.model.AvdeccFixedString controlName) { }
-			public override void onClockDomainNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, ushort clockDomainIndex, la.avdecc.entity.model.AvdeccFixedString clockDomainName) { }
-			public override void onTimingNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, ushort timingIndex, la.avdecc.entity.model.AvdeccFixedString timingName) { }
-			public override void onPtpInstanceNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, ushort ptpInstanceIndex, la.avdecc.entity.model.AvdeccFixedString ptpInstanceName) { }
-			public override void onPtpPortNameChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, ushort ptpPortIndex, la.avdecc.entity.model.AvdeccFixedString ptpPortName) { }
-			public override void onAssociationIDChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, la.avdecc.UniqueIdentifier associationID) { }
-			public override void onAudioUnitSamplingRateChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort audioUnitIndex, la.avdecc.entity.model.SamplingRate samplingRate) { }
-			public override void onClockSourceChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort clockDomainIndex, ushort clockSourceIndex) { }
-			public override void onControlValuesChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort controlIndex, la.avdecc.entity.model.ControlValues controlValues) { }
-			public override void onStreamInputStarted(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamIndex) { }
-			public override void onStreamOutputStarted(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamIndex) { }
-			public override void onStreamInputStopped(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamIndex) { }
-			public override void onStreamOutputStopped(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamIndex) { }
-			public override void onAvbInterfaceInfoChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort avbInterfaceIndex, la.avdecc.entity.model.AvbInterfaceInfo info) { }
-			public override void onAsPathChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort avbInterfaceIndex, la.avdecc.entity.model.AsPath asPath) { }
-			public override void onAvbInterfaceLinkStatusChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort avbInterfaceIndex, la.avdecc.controller.ControlledEntity.InterfaceLinkStatus linkStatus) { }
-			public override void onEntityCountersChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, EntityCounters counters) { }
-			public override void onAvbInterfaceCountersChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort avbInterfaceIndex, AvbInterfaceCounters counters) { }
-			public override void onClockDomainCountersChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort clockDomainIndex, ClockDomainCounters counters) { }
-			public override void onStreamInputCountersChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamIndex, StreamInputCounters counters) { }
-			public override void onStreamOutputCountersChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamIndex, StreamOutputCounters counters) { }
-			public override void onMemoryObjectLengthChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort configurationIndex, ushort memoryObjectIndex, ulong length) { }
-			public override void onStreamPortInputAudioMappingsChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamPortIndex) { }
-			public override void onStreamPortOutputAudioMappingsChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamPortIndex) { }
-			public override void onOperationProgress(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, la.avdecc.entity.model.DescriptorType descriptorType, ushort descriptorIndex, ushort operationID, float percentComplete) { }
-			public override void onOperationCompleted(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, la.avdecc.entity.model.DescriptorType descriptorType, ushort descriptorIndex, ushort operationID, bool failed) { }
-			public override void onMediaClockChainChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort clockDomainIndex, MediaClockChainDeque mcChain) { }
-			public override void onDiagnosticsChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, la.avdecc.controller.ControlledEntity.Diagnostics diags) { }
 		}
 
 		private la.avdecc.controller.Controller? _controller = null;
