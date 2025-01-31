@@ -1,4 +1,7 @@
-// #define LOAD_TEST_VIRTUAL_ENTITY
+// #define LOAD_TEST_VIRTUAL_ENTITY_FROM_AEM
+// #define LOAD_TEST_VIRTUAL_ENTITY_FROM_AVE
+
+using la.avdecc.controller;
 
 class DiscoveryApp
 {
@@ -43,7 +46,7 @@ class DiscoveryApp
 		}
 	}
 
-#if LOAD_TEST_VIRTUAL_ENTITY
+#if LOAD_TEST_VIRTUAL_ENTITY_FROM_AEM
 	class Builder : la.avdecc.controller.model.DefaultedVirtualEntityBuilder
 	{
 		public Builder() : base() { }
@@ -73,7 +76,7 @@ class DiscoveryApp
 			flags.set(la.avdecc.controller.ControlledEntity.CompatibilityFlag.Milan);
 		}
 	}
-#endif // LOAD_TEST_VIRTUAL_ENTITY
+#endif // LOAD_TEST_VIRTUAL_ENTITY_FROM_AEM
 
 	class Discovery : IDisposable
 	{
@@ -86,14 +89,30 @@ class DiscoveryApp
 				_controller.enableEntityAdvertising(10);
 				_controller.enableEntityModelCache();
 				_controller.enableFastEnumeration();
-#if LOAD_TEST_VIRTUAL_ENTITY
+#if LOAD_TEST_VIRTUAL_ENTITY_FROM_AEM
 				var builder = new Builder();
 				var result = _controller.createVirtualEntityFromEntityModelFile("SimpleEntityModel.json", builder, false);
 				if (result.get0() != DeserializationError.NoError)
 				{
 					Console.WriteLine($"Error deserializing entity model: {result.get1()}");
 				}
-#endif // LOAD_TEST_VIRTUAL_ENTITY
+#endif // LOAD_TEST_VIRTUAL_ENTITY_FROM_AEM
+#if LOAD_TEST_VIRTUAL_ENTITY_FROM_AVE
+				var flags = new Flags();
+				flags.set(la.avdecc.entity.model.jsonSerializer.Flag.ProcessADP);
+				flags.set(la.avdecc.entity.model.jsonSerializer.Flag.ProcessStaticModel);
+				flags.set(la.avdecc.entity.model.jsonSerializer.Flag.ProcessDynamicModel);
+				flags.set(la.avdecc.entity.model.jsonSerializer.Flag.ProcessMilan);
+				flags.set(la.avdecc.entity.model.jsonSerializer.Flag.ProcessState);
+				flags.set(la.avdecc.entity.model.jsonSerializer.Flag.ProcessStatistics);
+				flags.set(la.avdecc.entity.model.jsonSerializer.Flag.ProcessCompatibility);
+				flags.set(la.avdecc.entity.model.jsonSerializer.Flag.ProcessDiagnostics);
+				var result = _controller.loadVirtualEntityFromJson("SimpleEntity.json", flags);
+				if (result.get0() != DeserializationError.NoError)
+				{
+					Console.WriteLine($"Error deserializing entity model: {result.get1()}");
+				}
+#endif // LOAD_TEST_VIRTUAL_ENTITY_FROM_AVE
 			}
 			catch (la.avdecc.controller.ControllerException e)
 			{
