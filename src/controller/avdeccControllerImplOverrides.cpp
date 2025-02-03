@@ -25,6 +25,7 @@
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
+#include "virtualEntityModelVisitor.hpp"
 #ifdef ENABLE_AVDECC_FEATURE_JSON
 #	include "avdeccControllerJsonTypes.hpp"
 #	include "avdeccControlledEntityJsonSerializer.hpp"
@@ -36,6 +37,7 @@
 #include <la/avdecc/internals/serialization.hpp>
 #include <la/avdecc/internals/protocolAemPayloadSizes.hpp>
 #include <la/avdecc/executor.hpp>
+#include <la/avdecc/utils.hpp>
 
 #include <cstdlib> // free / malloc
 #include <cstring> // strerror
@@ -3153,12 +3155,89 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedCont
 #endif // ENABLE_AVDECC_FEATURE_JSON
 }
 
-std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadEntityModelFile(std::string const& /*filePath*/) noexcept
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::cacheEntityModelFile(std::string const& filePath, bool const isBinaryFormat) noexcept
 {
-	// TODO:
-	//  - Call EndStation::deserializeEntityModelFromJson
-	//  - Feed the cache with the loaded model
-	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Not supported yet" };
+#ifndef ENABLE_AVDECC_FEATURE_JSON
+	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)" };
+
+#else // ENABLE_AVDECC_FEATURE_JSON
+
+	auto [error, errorText, entityTree] = EndStation::deserializeEntityModelFromJson(filePath, false, isBinaryFormat);
+	if (!error)
+	{
+		// TODO: Feed the cache with the loaded model
+		return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Not supported yet" };
+	}
+	return { error, errorText };
+#endif // ENABLE_AVDECC_FEATURE_JSON
+}
+
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::createVirtualEntityFromEntityModelFile(std::string const& filePath, model::VirtualEntityBuilder* const builder, bool const isBinaryFormat) noexcept
+{
+#ifndef ENABLE_AVDECC_FEATURE_JSON
+	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)" };
+
+#else // ENABLE_AVDECC_FEATURE_JSON
+
+	try
+	{
+		auto [error, errorText, entityTree, entityModelID] = deserializeJsonEntityModel(filePath, isBinaryFormat);
+		if (!error)
+		{
+			auto commonInfo = entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), entityModelID };
+			auto intfcsInfo = entity::Entity::InterfacesInformation{};
+
+			// Build common and interfaces information
+			utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(entity::model::EntityTree const&, entity::Entity::CommonInformation&, entity::Entity::InterfacesInformation&)>(&model::VirtualEntityBuilder::build, builder, entityTree, commonInfo, intfcsInfo);
+
+			// Create the ControlledEntity
+			auto controlledEntity = std::make_shared<ControlledEntityImpl>(entity::Entity{ commonInfo, intfcsInfo }, _entitiesSharedLockInformation, true);
+
+			// Build EntityNode from EntityTree
+			controlledEntity->buildEntityModelGraph(entityTree);
+
+			// Build the dynamic part of the entity
+			auto aemVisitor = VirtualEntityModelVisitor{ controlledEntity.get(), builder };
+			controlledEntity->accept(&aemVisitor, true);
+
+			// Validate the dynamic build
+			aemVisitor.validate();
+
+			if (aemVisitor.isError())
+			{
+				return { avdecc::jsonSerializer::DeserializationError::MissingInformation, aemVisitor.getErrorMessage() };
+			}
+
+			// Choose a locale
+			if (controlledEntity->hasAnyConfiguration())
+			{
+				// Load locale for each configuration
+				try
+				{
+					auto const& entityNode = controlledEntity->getEntityNode();
+					for (auto const& [configurationIndex, configurationNode] : entityNode.configurations)
+					{
+						chooseLocale(controlledEntity.get(), configurationIndex, "en-US", nullptr);
+					}
+				}
+				catch (ControlledEntity::Exception const&)
+				{
+				}
+			}
+
+			// Register the virtual entity
+			return registerVirtualControlledEntity(std::move(controlledEntity));
+		}
+		else
+		{
+			return { error, errorText };
+		}
+	}
+	catch (la::avdecc::Exception const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::MissingInformation, e.what() };
+	}
+#endif // ENABLE_AVDECC_FEATURE_JSON
 }
 
 bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept

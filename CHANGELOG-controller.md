@@ -22,12 +22,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for GET_DYNAMIC_INFO command (Fast enumeration)
 - Support for setMaxTransitTime command (as a replacement for setStreamInfo to change the presentation time)
 - [Support for read-only properties change for virtual entities](https://github.com/L-Acoustics/avdecc/issues/162)
+- la::avdecc::controller::Controller::createVirtualEntityFromEntityModelFile method
+- la::avdecc::entity::model::VirtualEntityBuilder class to help creating virtual entities from EntityModel files
 
 ### Changed
 - Complete controller entity model refactoring to support descriptors at non-configuration level
 - EntityModelVisitor is now virtual pure, but a new derivated visitor (with all default implementation) has been added: DefaultedEntityModelVisitor
 - la::avdecc::controller::Controller::Observer is now virtual pure, but a new derivated visitor (with all default implementation) has been added: la::avdecc::controller::Controller::DefaultedObserver
 - [Executor name can be provided when creating a Controller](https://github.com/L-Acoustics/avdecc/issues/132)
+- Renamed la::avdecc::controller::Controller::loadEntityModelFile to la::avdecc::controller::Controller::cacheEntityModelFile
 
 ### Removed
 - Direct access to ClockSource descriptors from the ClockDomain. Will still be enumerated correctly when using the model visitor

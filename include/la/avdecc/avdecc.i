@@ -263,6 +263,10 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Delegate)
 %ignore la::avdecc::entity::controller::Delegate::Delegate(Delegate&&); // Ignore move constructor
 %ignore la::avdecc::entity::controller::Delegate::operator=; // Ignore copy operator
 
+DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::DefaultedDelegate)
+%ignore la::avdecc::entity::controller::DefaultedDelegate::DefaultedDelegate(DefaultedDelegate&&); // Ignore move constructor
+%ignore la::avdecc::entity::controller::DefaultedDelegate::operator=; // Ignore copy operator
+
 DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Interface)
 %ignore la::avdecc::entity::controller::Interface::Interface(Interface&&); // Ignore move constructor
 %ignore la::avdecc::entity::controller::Interface::operator=; // Ignore copy operator

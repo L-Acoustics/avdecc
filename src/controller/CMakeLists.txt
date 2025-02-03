@@ -29,6 +29,7 @@ set (PUBLIC_HEADER_FILES
 	${CU_ROOT_DIR}/include/la/avdecc/controller/avdeccController.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntity.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityModel.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/virtualEntityBuilder.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/exports.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/logItems.hpp
 )
@@ -44,6 +45,7 @@ set (HEADER_FILES_COMMON
 	treeModelAccessStrategy.hpp
 	treeModelAccessTraverseStrategy.hpp
 	treeModelAccessCacheStrategy.hpp
+	virtualEntityModelVisitor.hpp
 )
 
 set (SOURCE_FILES_COMMON
@@ -55,6 +57,7 @@ set (SOURCE_FILES_COMMON
 	avdeccControllerProxy.cpp
 	avdeccControlledEntityImpl.cpp
 	entityModelChecksum.cpp
+	virtualEntityModelVisitor.cpp
 )
 
 # 64 bits visual studio requires /bigobj to be used for this file (apperently there are too many symbols in the file), but let's set the flag for 32 bits as well

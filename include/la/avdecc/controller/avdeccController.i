@@ -78,6 +78,12 @@ DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, MilanInfo, OptMilanInfo)
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::EntityModelVisitor)
+%ignore la::avdecc::entity::controller::EntityModelVisitor::EntityModelVisitor(EntityModelVisitor&&); // Ignore move constructor
+%ignore la::avdecc::entity::controller::EntityModelVisitor::operator=; // Ignore copy operator
+
+DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::DefaultedEntityModelVisitor)
+%ignore la::avdecc::entity::controller::DefaultedEntityModelVisitor::DefaultedEntityModelVisitor(DefaultedEntityModelVisitor&&); // Ignore move constructor
+%ignore la::avdecc::entity::controller::DefaultedEntityModelVisitor::operator=; // Ignore copy operator
 
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(MediaClockChain)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE()
@@ -116,7 +122,6 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Entity)
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
 // Define templates
-// WARNING: Requires https://github.com/swig/swig/issues/2625 to be fixed (or a modified version of the std_map.i file)
 %template(AudioClusterNodeMap) std::map<la::avdecc::entity::model::ClusterIndex, la::avdecc::controller::model::AudioClusterNode>;
 %template(AudioMapNodeMap) std::map<la::avdecc::entity::model::MapIndex, la::avdecc::controller::model::AudioMapNode>;
 %template(ControlNodeMap) std::map<la::avdecc::entity::model::ControlIndex, la::avdecc::controller::model::ControlNode>;
@@ -235,16 +240,47 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller::ControlledEntity, Compatibili
 
 
 ////////////////////////////////////////
-// VIRTUAL CONTROLLED ENTITY INTERFACE
+// VIRTUAL CONTROLLED ENTITY BUILDER
 ////////////////////////////////////////
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
-DEFINE_INTERFACE_CLASS(la::avdecc::controller::VirtualControlledEntityInterface)
+DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::VirtualEntityBuilder)
+%ignore la::avdecc::entity::controller::VirtualEntityBuilder::VirtualEntityBuilder(VirtualEntityBuilder&&); // Ignore move constructor
+%ignore la::avdecc::entity::controller::VirtualEntityBuilder::operator=; // Ignore copy operator
+
+DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::DefaultedVirtualEntityBuilder)
+%ignore la::avdecc::entity::controller::DefaultedVirtualEntityBuilder::DefaultedVirtualEntityBuilder(DefaultedVirtualEntityBuilder&&); // Ignore move constructor
+%ignore la::avdecc::entity::controller::DefaultedVirtualEntityBuilder::operator=; // Ignore copy operator
 
 // Include c++ declaration file
-%include "la/avdecc/controller/internals/avdeccVirtualControlledEntityInterface.hpp"
+%include "la/avdecc/controller/internals/virtualEntityBuilder.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
+
+
+////////////////////////////////////////
+// VIRTUAL CONTROLLED ENTITY INTERFACE
+////////////////////////////////////////
+// Define this as an interface so we can inherit from it in the target language
+DEFINE_INTERFACE_CLASS(la::avdecc::controller::VirtualControlledEntityInterface)
+
+// Redefine the class using defaulted methods instead of including the c++ declaration file
+// It causes too many issues otherwise (see https://github.com/swig/swig/issues/3100)
+namespace la::avdecc::controller
+{
+class VirtualControlledEntityInterface
+{
+public:
+	virtual ~VirtualControlledEntityInterface() noexcept = default;
+	virtual void setEntityCounters(UniqueIdentifier const targetEntityID, entity::model::EntityCounters const& counters) noexcept {}
+	virtual void setAvbInterfaceCounters(UniqueIdentifier const targetEntityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceCounters const& counters) noexcept {}
+	virtual void setClockDomainCounters(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockDomainCounters const& counters) noexcept {}
+	virtual void setStreamInputCounters(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInputCounters const& counters) noexcept {}
+	virtual void setStreamOutputCounters(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamOutputCounters const& counters) noexcept {}
+private:
+	VirtualControlledEntityInterface() = default; // Prevent swig from generating a default constructor, the real class is abstract
+};
+} // namespace la::avdecc::controller
 
 
 ////////////////////////////////////////
@@ -295,6 +331,7 @@ public:
 %ignore la::avdecc::controller::Controller::create; // Ignore it, will be wrapped (because std::unique_ptr doesn't support custom deleters - Ticket #2411)
 
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::Controller::Observer)
+DEFINE_OBSERVER_CLASS(la::avdecc::controller::Controller::DefaultedObserver)
 
 #if SUPPORT_EXCLUSIVE_ACCESS
 %nspace la::avdecc::controller::Controller::ExclusiveAccessToken;
