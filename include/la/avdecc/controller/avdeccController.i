@@ -261,14 +261,26 @@ DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::DefaultedVirtualEntityBuild
 ////////////////////////////////////////
 // VIRTUAL CONTROLLED ENTITY INTERFACE
 ////////////////////////////////////////
-// Bind structs and classes
-%rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
-
+// Define this as an interface so we can inherit from it in the target language
 DEFINE_INTERFACE_CLASS(la::avdecc::controller::VirtualControlledEntityInterface)
 
-// Include c++ declaration file
-%include "la/avdecc/controller/internals/avdeccVirtualControlledEntityInterface.hpp"
-%rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
+// Redefine the class using defaulted methods instead of including the c++ declaration file
+// It causes too many issues otherwise (see https://github.com/swig/swig/issues/3100)
+namespace la::avdecc::controller
+{
+class VirtualControlledEntityInterface
+{
+public:
+	virtual ~VirtualControlledEntityInterface() noexcept = default;
+	virtual void setEntityCounters(UniqueIdentifier const targetEntityID, entity::model::EntityCounters const& counters) noexcept {}
+	virtual void setAvbInterfaceCounters(UniqueIdentifier const targetEntityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceCounters const& counters) noexcept {}
+	virtual void setClockDomainCounters(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockDomainCounters const& counters) noexcept {}
+	virtual void setStreamInputCounters(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInputCounters const& counters) noexcept {}
+	virtual void setStreamOutputCounters(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamOutputCounters const& counters) noexcept {}
+private:
+	VirtualControlledEntityInterface() = default; // Prevent swig from generating a default constructor, the real class is abstract
+};
+} // namespace la::avdecc::controller
 
 
 ////////////////////////////////////////
