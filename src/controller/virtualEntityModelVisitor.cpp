@@ -187,6 +187,125 @@ VirtualEntityModelVisitor::VirtualEntityModelVisitor(ControlledEntityImpl* const
 	}
 }
 
+void VirtualEntityModelVisitor::validate() noexcept
+{
+	try
+	{
+		auto const activeConfigurationIndex = _controlledEntity->getCurrentConfigurationIndex();
+
+		// Check active configuration
+		{
+			// Process all configurations and check if 'isActiveConfiguration' is true for exactly one configuration (and check the index is the same than _controlledEntity->getCurrentConfigurationIndex())
+			auto activeConfigurationFound = false;
+
+			auto const* const entityNode = _controlledEntity->getEntityNode(TreeModelAccessStrategy::NotFoundBehavior::Throw);
+			for (auto const& [confIndex, confNode] : entityNode->configurations)
+			{
+				// No active configuration found yet
+				if (!activeConfigurationFound)
+				{
+					// Found an active configuration
+					if (confNode.dynamicModel.isActiveConfiguration)
+					{
+						activeConfigurationFound = true;
+						if (confIndex != activeConfigurationIndex)
+						{
+							_isError = true;
+							_errorMessage = std::string{ "configuration[" } + std::to_string(confIndex) + "].dynamicModel.isActiveConfiguration set to true but entity.dynamicModel.currentConfiguration is " + std::to_string(activeConfigurationIndex);
+							return;
+						}
+					}
+				}
+				else
+				{
+					// Another active configuration found
+					if (confNode.dynamicModel.isActiveConfiguration)
+					{
+						_isError = true;
+						_errorMessage = "Multiple configuration.dynamicModel.isActiveConfiguration set to true";
+						return;
+					}
+				}
+			}
+			// No active configuration found
+			if (!activeConfigurationFound)
+			{
+				_isError = true;
+				_errorMessage = "No configuration.dynamicModel.isActiveConfiguration set to true";
+				return;
+			}
+		}
+
+		// Check AudioUnitNodeDynamicModel.currentSamplingRate for the active configuration
+		{
+			auto const* const configurationNode = _controlledEntity->getConfigurationNode(activeConfigurationIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
+			for (auto const& [audioUnitIndex, audioUnitNode] : configurationNode->audioUnits)
+			{
+				// Check currentSamplingRate is set to one of the supported sampling rates
+				auto const& supportedSamplingRates = audioUnitNode.staticModel.samplingRates;
+				auto const& currentSamplingRate = audioUnitNode.dynamicModel.currentSamplingRate;
+				if (std::find(supportedSamplingRates.begin(), supportedSamplingRates.end(), currentSamplingRate) == supportedSamplingRates.end())
+				{
+					_isError = true;
+					_errorMessage = "AudioUnitNode[" + std::to_string(audioUnitIndex) + "].dynamicModel.currentSamplingRate is not in the supported sampling rates: " + std::to_string(currentSamplingRate);
+					return;
+				}
+			}
+		}
+
+		// Check StreamNodeDynamicModel.streamFormat for the active configuration
+		{
+			auto const* const configurationNode = _controlledEntity->getConfigurationNode(activeConfigurationIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
+			for (auto const& [streamIndex, streamNode] : configurationNode->streamInputs)
+			{
+				// Check streamFormat is set to one of the supported stream formats
+				auto const& supportedStreamFormats = streamNode.staticModel.formats;
+				auto const& streamFormat = streamNode.dynamicModel.streamFormat;
+				if (std::find(supportedStreamFormats.begin(), supportedStreamFormats.end(), streamFormat) == supportedStreamFormats.end())
+				{
+					_isError = true;
+					_errorMessage = "StreamInputNode[" + std::to_string(streamIndex) + "].dynamicModel.streamFormat is not in the supported stream formats: " + std::to_string(streamFormat);
+					return;
+				}
+			}
+			for (auto const& [streamIndex, streamNode] : configurationNode->streamOutputs)
+			{
+				// Check streamFormat is set to one of the supported stream formats
+				auto const& supportedStreamFormats = streamNode.staticModel.formats;
+				auto const& streamFormat = streamNode.dynamicModel.streamFormat;
+				if (std::find(supportedStreamFormats.begin(), supportedStreamFormats.end(), streamFormat) == supportedStreamFormats.end())
+				{
+					_isError = true;
+					_errorMessage = "StreamOutputNode[" + std::to_string(streamIndex) + "].dynamicModel.streamFormat is not in the supported stream formats: " + std::to_string(streamFormat);
+					return;
+				}
+			}
+		}
+
+		// Check ClockDomainNodeDynamicModel.clockSourceIndex for the active configuration
+		{
+			auto const* const configurationNode = _controlledEntity->getConfigurationNode(activeConfigurationIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
+			for (auto const& [clockDomainIndex, clockDomainNode] : configurationNode->clockDomains)
+			{
+				// Check clockSourceIndex is set to one of the supported clock sources
+				auto const& supportedClockSources = clockDomainNode.staticModel.clockSources;
+				auto const& clockSourceIndex = clockDomainNode.dynamicModel.clockSourceIndex;
+				if (std::find(supportedClockSources.begin(), supportedClockSources.end(), clockSourceIndex) == supportedClockSources.end())
+				{
+					_isError = true;
+					_errorMessage = "ClockDomainNode[" + std::to_string(clockDomainIndex) + "].dynamicModel.clockSourceIndex is not in the supported clock sources: " + std::to_string(clockSourceIndex);
+					return;
+				}
+			}
+		}
+	}
+	catch (ControlledEntity::Exception const& e)
+	{
+		_isError = true;
+		_errorMessage = std::string{ "Exception: " } + std::string{ e.what() };
+	}
+}
+
 bool VirtualEntityModelVisitor::isError() const noexcept
 {
 	return _isError;

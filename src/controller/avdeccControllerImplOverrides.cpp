@@ -3200,6 +3200,9 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 			auto aemVisitor = VirtualEntityModelVisitor{ controlledEntity.get(), builder };
 			controlledEntity->accept(&aemVisitor, true);
 
+			// Validate the dynamic build
+			aemVisitor.validate();
+
 			if (aemVisitor.isError())
 			{
 				return { avdecc::jsonSerializer::DeserializationError::MissingInformation, aemVisitor.getErrorMessage() };

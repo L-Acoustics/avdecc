@@ -40,6 +40,7 @@ class VirtualEntityModelVisitor : public model::EntityModelVisitor
 {
 public:
 	explicit VirtualEntityModelVisitor(ControlledEntityImpl* const controlledEntity, model::VirtualEntityBuilder* const visitor) noexcept;
+	void validate() noexcept;
 	bool isError() const noexcept;
 	std::string getErrorMessage() const noexcept;
 
