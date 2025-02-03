@@ -541,51 +541,137 @@ TEST_F(Controller_F, VirtualEntityLoadUTF8)
 	//ASSERT_NE(std::future_status::timeout, status);
 }
 
+namespace
+{
+class Builder : public la::avdecc::controller::model::DefaultedVirtualEntityBuilder
+{
+public:
+	Builder(la::avdecc::controller::ControlledEntity::CompatibilityFlags const flags) noexcept
+		: _compatibilityFlags{ flags }
+	{
+	}
+
+	virtual void build(la::avdecc::entity::model::EntityTree const& entityTree, la::avdecc::entity::Entity::CommonInformation& commonInformation, la::avdecc::entity::Entity::InterfacesInformation& intfcInformation) noexcept override
+	{
+		auto const countInputStreams = [](la::avdecc::entity::model::EntityTree const& entityTree)
+		{
+			// Very crude and shouldn't be considered a good example
+			auto count = size_t{ 0u };
+			if (entityTree.configurationTrees.empty())
+			{
+				return count;
+			}
+			return entityTree.configurationTrees.begin()->second.streamInputModels.size();
+		};
+		commonInformation.entityID = la::avdecc::UniqueIdentifier{ 0x0102030405060708 };
+		//commonInformation.entityModelID = la::avdecc::UniqueIdentifier{ 0x1122334455667788 };
+		commonInformation.entityCapabilities = la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported };
+		//commonInformation.talkerStreamSources = 0u;
+		//commonInformation.talkerCapabilities = {};
+		commonInformation.listenerStreamSinks = static_cast<decltype(commonInformation.listenerStreamSinks)>(countInputStreams(entityTree));
+		commonInformation.listenerCapabilities = la::avdecc::entity::ListenerCapabilities{ la::avdecc::entity::ListenerCapability::Implemented };
+		//commonInformation.controllerCapabilities = {};
+		commonInformation.identifyControlIndex = la::avdecc::entity::model::ControlIndex{ 0u };
+		//commonInformation.associationID = std::nullopt;
+
+		auto const interfaceInfo = la::avdecc::entity::Entity::InterfaceInformation{ la::networkInterface::MacAddress{ 0x06, 0x05, 0x04, 0x03, 0x02, 0x01 }, 31u, 0u, std::nullopt, std::nullopt };
+		intfcInformation[la::avdecc::entity::Entity::GlobalAvbInterfaceIndex] = interfaceInfo;
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& compatibilityFlags) noexcept override
+	{
+		for (auto const f : _compatibilityFlags)
+		{
+			compatibilityFlags.set(f);
+		}
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::EntityNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::EntityNodeDynamicModel& dynamicModel) noexcept override
+	{
+		dynamicModel.entityName = la::avdecc::entity::model::AvdeccFixedString{ "Test entity" };
+		dynamicModel.currentConfiguration = ActiveConfigurationIndex;
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ConfigurationIndex const descriptorIndex, la::avdecc::entity::model::ConfigurationNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::ConfigurationNodeDynamicModel& dynamicModel) noexcept override
+	{
+		// Set active configuration
+		if (descriptorIndex == ActiveConfigurationIndex)
+		{
+			dynamicModel.isActiveConfiguration = true;
+		}
+		_isConfigurationActive = dynamicModel.isActiveConfiguration;
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AudioUnitIndex const /*descriptorIndex*/, la::avdecc::entity::model::AudioUnitNodeStaticModel const& staticModel, la::avdecc::entity::model::AudioUnitNodeDynamicModel& dynamicModel) noexcept override
+	{
+		// Only process active configuration
+		if (_isConfigurationActive)
+		{
+			// Choose the first sampling rate
+			dynamicModel.currentSamplingRate = staticModel.samplingRates.empty() ? la::avdecc::entity::model::SamplingRate{} : *staticModel.samplingRates.begin();
+		}
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*descriptorIndex*/, la::avdecc::entity::model::StreamNodeStaticModel const& staticModel, la::avdecc::entity::model::StreamInputNodeDynamicModel& dynamicModel) noexcept override
+	{
+		// Only process active configuration
+		if (_isConfigurationActive)
+		{
+			// Choose the first stream format
+			dynamicModel.streamFormat = staticModel.formats.empty() ? la::avdecc::entity::model::StreamFormat{} : *staticModel.formats.begin();
+		}
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*descriptorIndex*/, la::avdecc::entity::model::StreamNodeStaticModel const& staticModel, la::avdecc::entity::model::StreamOutputNodeDynamicModel& dynamicModel) noexcept override
+	{
+		// Only process active configuration
+		if (_isConfigurationActive)
+		{
+			// Choose the first stream format
+			dynamicModel.streamFormat = staticModel.formats.empty() ? la::avdecc::entity::model::StreamFormat{} : *staticModel.formats.begin();
+		}
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ControlIndex const /*descriptorIndex*/, la::avdecc::entity::model::DescriptorType const /*attachedTo*/, la::avdecc::entity::model::ControlNodeStaticModel const& staticModel, la::avdecc::entity::model::ControlNodeDynamicModel& dynamicModel) noexcept override
+	{
+		// Only process active configuration
+		if (_isConfigurationActive)
+		{
+			// Identify control
+			if (staticModel.controlType == la::avdecc::UniqueIdentifier{ la::avdecc::utils::to_integral(la::avdecc::entity::model::StandardControlType::Identify) })
+			{
+				auto values = la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{};
+				values.addValue({ std::uint8_t{ 0x00 } });
+				dynamicModel.values = la::avdecc::entity::model::ControlValues{ values };
+			}
+		}
+	}
+
+private:
+	static auto constexpr ActiveConfigurationIndex = la::avdecc::entity::model::ConfigurationIndex{ 0u };
+	bool _isConfigurationActive{ false };
+	la::avdecc::controller::ControlledEntity::CompatibilityFlags _compatibilityFlags{};
+};
+} // namespace
+
 TEST_F(Controller_F, VirtualEntityFromEntityModelFile)
 {
-	class Builder : public la::avdecc::controller::model::DefaultedVirtualEntityBuilder
-	{
-	public:
-		Builder() noexcept = default;
-
-		virtual void build(la::avdecc::entity::model::EntityTree const& entityTree, la::avdecc::entity::Entity::CommonInformation& commonInformation, la::avdecc::entity::Entity::InterfacesInformation& intfcInformation) noexcept override
-		{
-			auto const countInputStreams = [](la::avdecc::entity::model::EntityTree const& entityTree)
-			{
-				// Very crude and shouldn't be considered a good example
-				auto count = size_t{ 0u };
-				if (entityTree.configurationTrees.empty())
-				{
-					return count;
-				}
-				return entityTree.configurationTrees.begin()->second.streamInputModels.size();
-			};
-			commonInformation.entityID = la::avdecc::UniqueIdentifier{ 0x0102030405060708 };
-			//commonInformation.entityModelID = la::avdecc::UniqueIdentifier{ 0x1122334455667788 };
-			commonInformation.entityCapabilities = la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported };
-			//commonInformation.talkerStreamSources = 0u;
-			//commonInformation.talkerCapabilities = {};
-			commonInformation.listenerStreamSinks = static_cast<decltype(commonInformation.listenerStreamSinks)>(countInputStreams(entityTree));
-			commonInformation.listenerCapabilities = la::avdecc::entity::ListenerCapabilities{ la::avdecc::entity::ListenerCapability::Implemented };
-			//commonInformation.controllerCapabilities = {};
-			commonInformation.identifyControlIndex = la::avdecc::entity::model::ControlIndex{ 0u };
-			//commonInformation.associationID = std::nullopt;
-
-			auto const interfaceInfo = la::avdecc::entity::Entity::InterfaceInformation{ la::networkInterface::MacAddress{ 0x06, 0x05, 0x04, 0x03, 0x02, 0x01 }, 31u, 0u, std::nullopt, std::nullopt };
-			intfcInformation[la::avdecc::entity::Entity::GlobalAvbInterfaceIndex] = interfaceInfo;
-		}
-		virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::EntityNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::EntityNodeDynamicModel& dynamicModel) noexcept override
-		{
-			dynamicModel.entityName = la::avdecc::entity::model::AvdeccFixedString{ "Test entity" };
-		}
-	};
-
-	auto builder = Builder{};
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x0102030405060708 };
+	auto const compatibilityFlags = la::avdecc::controller::ControlledEntity::CompatibilityFlags{ la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221, la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan };
+	auto builder = Builder{ compatibilityFlags };
 	auto& controller = getController();
 	auto const [error, message] = controller.createVirtualEntityFromEntityModelFile("data/SimpleEntityModel.json", &builder, false);
 	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
 	EXPECT_STREQ("", message.c_str());
-	// TODO: Check the controlled entity more thoroughly (entityID, entityModelID, ...)
+
+	// Validate entity
+	auto const entity = controller.getControlledEntityGuard(EntityID);
+	ASSERT_TRUE(!!entity);
+
+	// Check EntityID
+	EXPECT_EQ(EntityID, entity->getEntity().getEntityID());
+
+	// Check compatibility flags
+	EXPECT_EQ(compatibilityFlags, entity->getCompatibilityFlags());
+
+	// Serialize the virtual entity
+	{
+		auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDiagnostics /*, la::avdecc::entity::model::jsonSerializer::Flag::BinaryFormat*/ };
+		controller.serializeControlledEntityAsJson(EntityID, "OutputVirtualEntity.json", flags, "Discovery Example");
+	}
 }
 
 /*
