@@ -298,6 +298,22 @@ void VirtualEntityModelVisitor::validate() noexcept
 				}
 			}
 		}
+
+		// Check AvbInterfaceNodeDynamicModel.macAddress for the active configuration
+		{
+			auto const* const configurationNode = _controlledEntity->getConfigurationNode(activeConfigurationIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
+			for (auto const& [avbInterfaceIndex, avbInterfaceNode] : configurationNode->avbInterfaces)
+			{
+				// Check macAddress is set to a valid MAC address
+				auto const& macAddress = avbInterfaceNode.dynamicModel.macAddress;
+				if (!la::networkInterface::NetworkInterfaceHelper::isMacAddressValid(macAddress))
+				{
+					_isError = true;
+					_errorMessage = "AvbInterfaceNode[" + std::to_string(avbInterfaceIndex) + "].dynamicModel.macAddress is not a valid MAC address: " + la::networkInterface::NetworkInterfaceHelper::macAddressToString(macAddress);
+					return;
+				}
+			}
+		}
 	}
 	catch (ControlledEntity::Exception const& e)
 	{

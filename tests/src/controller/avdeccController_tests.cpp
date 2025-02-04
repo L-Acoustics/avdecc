@@ -625,6 +625,15 @@ public:
 			dynamicModel.streamFormat = staticModel.formats.empty() ? la::avdecc::entity::model::StreamFormat{} : *staticModel.formats.begin();
 		}
 	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AvbInterfaceIndex const /*descriptorIndex*/, la::avdecc::entity::model::AvbInterfaceNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::AvbInterfaceNodeDynamicModel& dynamicModel) noexcept override
+	{
+		// Only process active configuration
+		if (_isConfigurationActive)
+		{
+			// Set the macAddress
+			dynamicModel.macAddress = la::networkInterface::MacAddress{ 0x06, 0x05, 0x04, 0x03, 0x02, 0x01 };
+		}
+	}
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ControlIndex const /*descriptorIndex*/, la::avdecc::entity::model::DescriptorType const /*attachedTo*/, la::avdecc::entity::model::ControlNodeStaticModel const& staticModel, la::avdecc::entity::model::ControlNodeDynamicModel& dynamicModel) noexcept override
 	{
 		// Only process active configuration
@@ -654,7 +663,7 @@ TEST_F(Controller_F, VirtualEntityFromEntityModelFile)
 	auto builder = Builder{ compatibilityFlags };
 	auto& controller = getController();
 	auto const [error, message] = controller.createVirtualEntityFromEntityModelFile("data/SimpleEntityModel.json", &builder, false);
-	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
 	EXPECT_STREQ("", message.c_str());
 
 	// Validate entity
