@@ -50,6 +50,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - _Media Clock Chain_ not recomputed when a connection changes without disconnecting first
 - [Crash when trying to access unknown localized string](https://github.com/L-Acoustics/avdecc/issues/153)
 - Locales from all configurations are loaded (if defined) for virtual entities
+- Checksum of the AEM of a ControlledEntity was incorrectly using some fields that are not part of the AEM (in AVB_INTERFACE descriptor). Introduced checksum v3
 
 ## [3.4.1] - 2023-01-11
 ### Fixed

@@ -553,24 +553,34 @@ void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/,
 
 void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::AvbInterfaceNode const& node) noexcept
 {
-	if (_checksumVersion >= 1)
+	if (_checksumVersion >= 3)
 	{
 		serializeNode(parent);
 		serializeNode(node);
 		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
 		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.macAddress;
 		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.interfaceFlags;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockIdentity;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.priority1;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockClass;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.offsetScaledLogVariance;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockAccuracy;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.priority2;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.domainNumber;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.logSyncInterval;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.logAnnounceInterval;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.logPDelayInterval;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.portNumber;
+	}
+	else if (_checksumVersion >= 1)
+	{
+		serializeNode(parent);
+		serializeNode(node);
+		// Checksum v1 and v2 incorrectly used some fields that should have been dynamic, like macAddress (since moved to the dynamicModel)
+		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
+		static_cast<Sha256Serializer&>(*_serializer) << node.dynamicModel.macAddress;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.interfaceFlags;
+		static_cast<Sha256Serializer&>(*_serializer) << node.dynamicModel.clockIdentity;
+		static_cast<Sha256Serializer&>(*_serializer) << node.dynamicModel.priority1;
+		static_cast<Sha256Serializer&>(*_serializer) << node.dynamicModel.clockClass;
+		static_cast<Sha256Serializer&>(*_serializer) << node.dynamicModel.offsetScaledLogVariance;
+		static_cast<Sha256Serializer&>(*_serializer) << node.dynamicModel.clockAccuracy;
+		static_cast<Sha256Serializer&>(*_serializer) << node.dynamicModel.priority2;
+		static_cast<Sha256Serializer&>(*_serializer) << node.dynamicModel.domainNumber;
+		static_cast<Sha256Serializer&>(*_serializer) << node.dynamicModel.logSyncInterval;
+		static_cast<Sha256Serializer&>(*_serializer) << node.dynamicModel.logAnnounceInterval;
+		static_cast<Sha256Serializer&>(*_serializer) << node.dynamicModel.logPDelayInterval;
 		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.portNumber;
 	}
 }
