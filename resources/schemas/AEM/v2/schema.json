@@ -3,7 +3,7 @@
 	"title": "AEM Schema",
 	"type": "object",
 	"description": "JSON validation schema for ATDECC Entity Model files",
-	"schema_version": "2025.01.17",
+	"schema_version": "2025.02.04",
 	"properties": {
 		"_dump_source (informative)": {
 			"type": "string",
@@ -1110,9 +1110,6 @@
 						}
 					]
 				},
-				"mac_address": {
-					"$ref": "#/$commonDefinitions/macAddress"
-				},
 				"flags": {
 					"anyOf": [
 						{
@@ -1126,54 +1123,13 @@
 						}
 					]
 				},
-				"clock_identity": {
-					"$ref": "#/$commonDefinitions/uniqueIdentifier"
-				},
-				"priority1": {
-					"$ref": "#/$commonDefinitions/uint8"
-				},
-				"clock_class": {
-					"$ref": "#/$commonDefinitions/uint8"
-				},
-				"offset_scaled_log_variance": {
-					"$ref": "#/$commonDefinitions/uint16"
-				},
-				"clock_accuracy": {
-					"$ref": "#/$commonDefinitions/uint8"
-				},
-				"priority2": {
-					"$ref": "#/$commonDefinitions/uint8"
-				},
-				"domain_number": {
-					"$ref": "#/$commonDefinitions/uint8"
-				},
-				"log_sync_interval": {
-					"$ref": "#/$commonDefinitions/uint8"
-				},
-				"log_announce_interval": {
-					"$ref": "#/$commonDefinitions/uint8"
-				},
-				"log_pdelay_interval": {
-					"$ref": "#/$commonDefinitions/uint8"
-				},
 				"port_number": {
 					"$ref": "#/$commonDefinitions/uint16"
 				}
 			},
 			"required": [
 				"localized_description",
-				"mac_address",
 				"flags",
-				"clock_identity",
-				"priority1",
-				"clock_class",
-				"offset_scaled_log_variance",
-				"clock_accuracy",
-				"priority2",
-				"domain_number",
-				"log_sync_interval",
-				"log_announce_interval",
-				"log_pdelay_interval",
 				"port_number"
 			]
 		},
