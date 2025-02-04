@@ -242,7 +242,7 @@ bool ControlledEntityImpl::isEntityModelValidForCaching() const noexcept
 		return false;
 	}
 
-	return isEntityModelComplete(_entityNode, static_cast<std::uint16_t>(_entityNode.configurations.size()));
+	return std::get<0>(isEntityModelComplete(_entityNode, static_cast<std::uint16_t>(_entityNode.configurations.size())));
 }
 
 bool ControlledEntityImpl::isIdentifying() const noexcept
@@ -1623,9 +1623,10 @@ bool ControlledEntityImpl::setCachedEntityNode(model::EntityNode&& cachedNode, e
 	if (forAllConfiguration)
 	{
 		// Check if Cached Model is valid for ALL configurations
-		if (!isEntityModelComplete(cachedNode, descriptor.configurationsCount))
+		auto const [isComplete, configurationIndex] = isEntityModelComplete(cachedNode, descriptor.configurationsCount);
+		if (!isComplete)
 		{
-			LOG_CONTROLLER_WARN(_entity.getEntityID(), "Cached EntityModel does not provide model for configuration {}, not using cached AEM", descriptor.currentConfiguration);
+			LOG_CONTROLLER_WARN(_entity.getEntityID(), "Cached EntityModel does not provide model for configuration {}, not using cached AEM", configurationIndex);
 			return false;
 		}
 	}
@@ -4183,11 +4184,11 @@ void ControlledEntityImpl::switchToCachedTreeModelAccessStrategy() noexcept
 	}
 }
 
-bool ControlledEntityImpl::isEntityModelComplete(model::EntityNode const& entityNode, std::uint16_t const configurationsCount) const noexcept
+std::tuple<bool, entity::model::ConfigurationIndex> ControlledEntityImpl::isEntityModelComplete(model::EntityNode const& entityNode, std::uint16_t const configurationsCount) const noexcept
 {
 	if (configurationsCount != entityNode.configurations.size())
 	{
-		return false;
+		return { false, entity::model::ConfigurationIndex{ 0u } };
 	}
 
 	// Check if Cached Model is valid for ALL configurations
@@ -4195,10 +4196,10 @@ bool ControlledEntityImpl::isEntityModelComplete(model::EntityNode const& entity
 	{
 		if (!EntityModelCache::isModelValidForConfiguration(configNode))
 		{
-			return false;
+			return { false, configIndex };
 		}
 	}
-	return true;
+	return { true, entity::model::getInvalidDescriptorIndex() };
 }
 
 } // namespace controller
