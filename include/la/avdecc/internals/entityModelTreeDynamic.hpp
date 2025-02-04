@@ -81,6 +81,17 @@ struct JackNodeDynamicModel
 struct AvbInterfaceNodeDynamicModel
 {
 	AvdeccFixedString objectName{};
+	networkInterface::MacAddress macAddress{};
+	UniqueIdentifier clockIdentity{};
+	std::uint8_t priority1{ 0xff };
+	std::uint8_t clockClass{ 0xff };
+	std::uint16_t offsetScaledLogVariance{ 0x0000 };
+	std::uint8_t clockAccuracy{ 0xff };
+	std::uint8_t priority2{ 0xff };
+	std::uint8_t domainNumber{ 0u };
+	std::uint8_t logSyncInterval{ 0u };
+	std::uint8_t logAnnounceInterval{ 0u };
+	std::uint8_t logPDelayInterval{ 0u };
 	UniqueIdentifier gptpGrandmasterID{};
 	std::uint8_t gptpDomainNumber{ 0u };
 	std::optional<AvbInterfaceInfo> avbInterfaceInfo{ std::nullopt };

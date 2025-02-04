@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [Executor name can be provided when creating an EndStation](https://github.com/L-Acoustics/avdecc/issues/132)
 - *entity::model::validateControlValues* now returns an enum value as well as an error message
 - Mechanism to refresh an entity (same for Configuration change) totally revamped to be more consistent
+- Moved some fields from AVB_INTERFACE.staticModel to AVB_INTERFACE.dynamicModel (fields that should not be part of the static model because they are not considered for entity_model_id)
 
 ### Fixed
 - Crash when unpacking vendor specific control values

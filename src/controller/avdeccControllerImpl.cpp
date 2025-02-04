@@ -1398,7 +1398,7 @@ void ControllerImpl::updateGptpInformation(ControlledEntityImpl& controlledEntit
 				for (auto& [interfaceIndex, avbInterfaceNode] : configurationNode->avbInterfaces)
 				{
 					// Match with the passed AvbInterfaceIndex, or with macAddress if passed AvbInterfaceIndex is the GlobalAvbInterfaceIndex
-					if (interfaceIndex == avbInterfaceIndex || (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == avbInterfaceNode.staticModel.macAddress))
+					if (interfaceIndex == avbInterfaceIndex || (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == avbInterfaceNode.dynamicModel.macAddress))
 					{
 						// Alter InterfaceInfo with new gPTP info
 						if (avbInterfaceNode.dynamicModel.gptpGrandmasterID != gptpGrandmasterID || avbInterfaceNode.dynamicModel.gptpDomainNumber != gptpDomainNumber)
@@ -1455,10 +1455,10 @@ void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entit
 	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
 	if (currentConfigurationIndexOpt)
 	{
-		auto const* const avbInterfaceStaticModel = controlledEntity.getModelAccessStrategy().getAvbInterfaceNodeStaticModel(*currentConfigurationIndexOpt, avbInterfaceIndex, notFoundBehavior);
-		if (avbInterfaceStaticModel)
+		auto const* const avbInterfaceDynamicModel = controlledEntity.getModelAccessStrategy().getAvbInterfaceNodeDynamicModel(*currentConfigurationIndexOpt, avbInterfaceIndex, notFoundBehavior);
+		if (avbInterfaceDynamicModel)
 		{
-			updateGptpInformation(controlledEntity, avbInterfaceIndex, avbInterfaceStaticModel->macAddress, info.gptpGrandmasterID, info.gptpDomainNumber, notFoundBehavior);
+			updateGptpInformation(controlledEntity, avbInterfaceIndex, avbInterfaceDynamicModel->macAddress, info.gptpGrandmasterID, info.gptpDomainNumber, notFoundBehavior);
 		}
 	}
 }

@@ -1898,8 +1898,17 @@ void ControlledEntityImpl::setAvbInterfaceDescriptor(entity::model::AvbInterface
 	{
 		auto& m = node->staticModel;
 		m.localizedDescription = descriptor.localizedDescription;
-		m.macAddress = descriptor.macAddress;
 		m.interfaceFlags = descriptor.interfaceFlags;
+		m.portNumber = descriptor.portNumber;
+	}
+
+	// Copy dynamic model
+	{
+		auto& m = node->dynamicModel;
+		// Changeable fields through commands
+		m.objectName = descriptor.objectName;
+		// Not changeable fields but still dynamic
+		m.macAddress = descriptor.macAddress;
 		m.clockIdentity = descriptor.clockIdentity;
 		m.priority1 = descriptor.priority1;
 		m.clockClass = descriptor.clockClass;
@@ -1910,14 +1919,6 @@ void ControlledEntityImpl::setAvbInterfaceDescriptor(entity::model::AvbInterface
 		m.logSyncInterval = descriptor.logSyncInterval;
 		m.logAnnounceInterval = descriptor.logAnnounceInterval;
 		m.logPDelayInterval = descriptor.logPDelayInterval;
-		m.portNumber = descriptor.portNumber;
-	}
-
-	// Copy dynamic model
-	{
-		auto& m = node->dynamicModel;
-		// Changeable fields through commands
-		m.objectName = descriptor.objectName;
 	}
 }
 

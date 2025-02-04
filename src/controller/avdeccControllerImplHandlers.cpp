@@ -2121,10 +2121,10 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 
 				// Special case for gPTP info, we always want to have valid gPTP information in the AvbInterfaceDescriptor model (updated when an ADP is received, or GET_AVB_INFO unsolicited)
 				// So we have to retrieve the matching ADP information to force an update of the cached model
-				auto const* const avbInterfaceStaticModel = entity.getModelAccessStrategy().getAvbInterfaceNodeStaticModel(configurationIndex, avbInterfaceIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-				if (avbInterfaceStaticModel)
+				auto const* const avbInterfaceDynamicModel = entity.getModelAccessStrategy().getAvbInterfaceNodeDynamicModel(configurationIndex, avbInterfaceIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (avbInterfaceDynamicModel)
 				{
-					auto const& macAddress = avbInterfaceStaticModel->macAddress;
+					auto const& macAddress = avbInterfaceDynamicModel->macAddress;
 					auto& e = controlledEntity->getEntity();
 					auto const caps = e.getEntityCapabilities();
 					if (caps.test(entity::EntityCapability::GptpSupported))
