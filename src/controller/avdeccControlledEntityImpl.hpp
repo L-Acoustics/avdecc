@@ -164,7 +164,7 @@ public:
 		OutputStreamFormat, // STREAM_OUTPUT.current_format -> GET_STREAM_FORMAT (7.4.10)
 		InputJackName, // JACK_INPUT.object_name -> GET_NAME (7.4.18)
 		OutputJackName, // JACK_OUTPUT.object_name -> GET_NAME (7.4.18)
-		AvbInterfaceName, // AVB_INTERFACE.object_name -> GET_NAME (7.4.18)
+		AvbInterfaceDescriptor, // AVB_INTERFACE -> GET_DESCRIPTOR // Special case due to dynamic values that can only be retrieved from the descriptor
 		ClockSourceName, // CLOCK_SOURCE.object_name -> GET_NAME (7.4.18)
 		MemoryObjectName, // MEMORY_OBJECT.object_name -> GET_NAME (7.4.18)
 		MemoryObjectLength, // MEMORY_OBJECT.length -> GET_MEMORY_OBJECT_LENGTH (7.4.73)

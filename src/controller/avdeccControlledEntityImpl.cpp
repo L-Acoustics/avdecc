@@ -2858,8 +2858,8 @@ std::string ControlledEntityImpl::descriptorDynamicInfoTypeToString(DescriptorDy
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (JACK_INPUT)";
 		case DescriptorDynamicInfoType::OutputJackName:
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (JACK_OUTPUT)";
-		case DescriptorDynamicInfoType::AvbInterfaceName:
-			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (AVB_INTERFACE)";
+		/*case DescriptorDynamicInfoType::AvbInterfaceName: // Never used, we always have to query the whole descriptor
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (AVB_INTERFACE)";*/
 		case DescriptorDynamicInfoType::ClockSourceName:
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (CLOCK_SOURCE)";
 		case DescriptorDynamicInfoType::MemoryObjectName:

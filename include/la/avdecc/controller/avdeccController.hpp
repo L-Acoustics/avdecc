@@ -213,7 +213,6 @@ public:
 		OutputStreamFormat,
 		InputJackName,
 		OutputJackName,
-		AvbInterfaceName,
 		ClockSourceName,
 		MemoryObjectName,
 		MemoryObjectLength,

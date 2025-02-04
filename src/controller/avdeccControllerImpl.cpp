@@ -2294,7 +2294,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readAvbInterfaceDescriptor (ConfigurationIndex={}, AvbInterfaceIndex={})", configurationIndex, descriptorIndex);
-				controller->readAvbInterfaceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+				controller->readAvbInterfaceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, ControlledEntityImpl::EnumerationStep::GetStaticModel));
 			};
 			break;
 		case entity::model::DescriptorType::ClockSource:
@@ -2654,11 +2654,11 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 				controller->getJackOutputName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onOutputJackNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
-		case ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName:
+		case ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceDescriptor:
 			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
 			{
-				LOG_CONTROLLER_TRACE(entityID, "getAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={})", configurationIndex, descriptorIndex);
-				controller->getAvbInterfaceName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+				LOG_CONTROLLER_TRACE(entityID, "readAvbInterfaceDescriptor (ConfigurationIndex={}, AvbInterfaceIndex={})", configurationIndex, descriptorIndex);
+				controller->readAvbInterfaceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName:
@@ -3261,22 +3261,11 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::AvbInterfaceNode const& node) noexcept override
 			{
+				// AVB_INTERFACE descriptor contains 'dynamic' fields (not part of the static model) that cannot be retrieved through a simple command, we have to query the whole descriptor
 				auto const configurationIndex = parent->descriptorIndex;
 				auto const avbInterfaceIndex = node.descriptorIndex;
 
-				// Only for active configuration
-				if (configurationIndex == _currentConfigurationIndex)
-				{
-					// Get AvbInterfaceName
-					if (_usePackedDynamicInfo)
-					{
-						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::AvbInterface, avbInterfaceIndex, std::uint16_t{ 0u } } });
-					}
-					else
-					{
-						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, avbInterfaceIndex);
-					}
-				}
+				_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceDescriptor, avbInterfaceIndex);
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::ClockSourceNode const& node) noexcept override
 			{
@@ -6157,9 +6146,6 @@ bool ControllerImpl::fetchCorrespondingDescriptor(ControlledEntityImpl* const en
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName:
 			descriptorType = entity::model::DescriptorType::JackOutput;
-			break;
-		case ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName:
-			descriptorType = entity::model::DescriptorType::AvbInterface;
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName:
 			descriptorType = entity::model::DescriptorType::ClockSource;
