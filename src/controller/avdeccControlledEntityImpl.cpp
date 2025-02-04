@@ -242,7 +242,7 @@ bool ControlledEntityImpl::isEntityModelValidForCaching() const noexcept
 		return false;
 	}
 
-	return isEntityModelComplete(_entityNode, static_cast<std::uint16_t>(_entityNode.configurations.size()));
+	return std::get<0>(isEntityModelComplete(_entityNode, static_cast<std::uint16_t>(_entityNode.configurations.size())));
 }
 
 bool ControlledEntityImpl::isIdentifying() const noexcept
@@ -1623,9 +1623,10 @@ bool ControlledEntityImpl::setCachedEntityNode(model::EntityNode&& cachedNode, e
 	if (forAllConfiguration)
 	{
 		// Check if Cached Model is valid for ALL configurations
-		if (!isEntityModelComplete(cachedNode, descriptor.configurationsCount))
+		auto const [isComplete, configurationIndex] = isEntityModelComplete(cachedNode, descriptor.configurationsCount);
+		if (!isComplete)
 		{
-			LOG_CONTROLLER_WARN(_entity.getEntityID(), "Cached EntityModel does not provide model for configuration {}, not using cached AEM", descriptor.currentConfiguration);
+			LOG_CONTROLLER_WARN(_entity.getEntityID(), "Cached EntityModel does not provide model for configuration {}, not using cached AEM", configurationIndex);
 			return false;
 		}
 	}
@@ -1898,8 +1899,17 @@ void ControlledEntityImpl::setAvbInterfaceDescriptor(entity::model::AvbInterface
 	{
 		auto& m = node->staticModel;
 		m.localizedDescription = descriptor.localizedDescription;
-		m.macAddress = descriptor.macAddress;
 		m.interfaceFlags = descriptor.interfaceFlags;
+		m.portNumber = descriptor.portNumber;
+	}
+
+	// Copy dynamic model
+	{
+		auto& m = node->dynamicModel;
+		// Changeable fields through commands
+		m.objectName = descriptor.objectName;
+		// Not changeable fields but still dynamic
+		m.macAddress = descriptor.macAddress;
 		m.clockIdentity = descriptor.clockIdentity;
 		m.priority1 = descriptor.priority1;
 		m.clockClass = descriptor.clockClass;
@@ -1910,14 +1920,6 @@ void ControlledEntityImpl::setAvbInterfaceDescriptor(entity::model::AvbInterface
 		m.logSyncInterval = descriptor.logSyncInterval;
 		m.logAnnounceInterval = descriptor.logAnnounceInterval;
 		m.logPDelayInterval = descriptor.logPDelayInterval;
-		m.portNumber = descriptor.portNumber;
-	}
-
-	// Copy dynamic model
-	{
-		auto& m = node->dynamicModel;
-		// Changeable fields through commands
-		m.objectName = descriptor.objectName;
 	}
 }
 
@@ -2857,8 +2859,8 @@ std::string ControlledEntityImpl::descriptorDynamicInfoTypeToString(DescriptorDy
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (JACK_INPUT)";
 		case DescriptorDynamicInfoType::OutputJackName:
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (JACK_OUTPUT)";
-		case DescriptorDynamicInfoType::AvbInterfaceName:
-			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (AVB_INTERFACE)";
+		/*case DescriptorDynamicInfoType::AvbInterfaceName: // Never used, we always have to query the whole descriptor
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (AVB_INTERFACE)";*/
 		case DescriptorDynamicInfoType::ClockSourceName:
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (CLOCK_SOURCE)";
 		case DescriptorDynamicInfoType::MemoryObjectName:
@@ -4182,11 +4184,11 @@ void ControlledEntityImpl::switchToCachedTreeModelAccessStrategy() noexcept
 	}
 }
 
-bool ControlledEntityImpl::isEntityModelComplete(model::EntityNode const& entityNode, std::uint16_t const configurationsCount) const noexcept
+std::tuple<bool, entity::model::ConfigurationIndex> ControlledEntityImpl::isEntityModelComplete(model::EntityNode const& entityNode, std::uint16_t const configurationsCount) const noexcept
 {
 	if (configurationsCount != entityNode.configurations.size())
 	{
-		return false;
+		return { false, entity::model::ConfigurationIndex{ 0u } };
 	}
 
 	// Check if Cached Model is valid for ALL configurations
@@ -4194,10 +4196,10 @@ bool ControlledEntityImpl::isEntityModelComplete(model::EntityNode const& entity
 	{
 		if (!EntityModelCache::isModelValidForConfiguration(configNode))
 		{
-			return false;
+			return { false, configIndex };
 		}
 	}
-	return true;
+	return { true, entity::model::getInvalidDescriptorIndex() };
 }
 
 } // namespace controller

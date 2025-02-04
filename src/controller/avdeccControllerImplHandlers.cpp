@@ -1197,7 +1197,7 @@ void ControllerImpl::onJackOutputDescriptorResult(entity::controller::Interface 
 	}
 }
 
-void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const interfaceIndex, entity::model::AvbInterfaceDescriptor const& descriptor) noexcept
+void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const interfaceIndex, entity::model::AvbInterfaceDescriptor const& descriptor, ControlledEntityImpl::EnumerationStep const step) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAvbInterfaceDescriptorResult (ConfigurationIndex={} InterfaceIndex={}): {}", configurationIndex, interfaceIndex, entity::ControllerEntity::statusToString(status));
 
@@ -1206,29 +1206,69 @@ void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interfac
 
 	if (controlledEntity)
 	{
-		if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::AvbInterface, interfaceIndex))
+		auto const processSuccessHandler = [&descriptor, configurationIndex, interfaceIndex, &controlledEntity]()
 		{
-			if (!!status)
+			controlledEntity->setAvbInterfaceDescriptor(descriptor, configurationIndex, interfaceIndex);
+		};
+		switch (step)
+		{
+			case ControlledEntityImpl::EnumerationStep::GetStaticModel:
 			{
-				controlledEntity->setAvbInterfaceDescriptor(descriptor, configurationIndex, interfaceIndex);
-			}
-			else
-			{
-				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AvbInterface, interfaceIndex))
+				if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::AvbInterface, interfaceIndex))
 				{
-					controlledEntity->setGetFatalEnumerationError();
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceDescriptor);
-					return;
+					if (!!status)
+					{
+						processSuccessHandler();
+					}
+					else
+					{
+						if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AvbInterface, interfaceIndex))
+						{
+							controlledEntity->setGetFatalEnumerationError();
+							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceDescriptor);
+							return;
+						}
+					}
+					// Got all expected descriptors
+					if (controlledEntity->gotAllExpectedDescriptors())
+					{
+						// Clear this enumeration step and check for next one
+						controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
+						checkEnumerationSteps(controlledEntity.get());
+					}
 				}
+				break;
 			}
-
-			// Got all expected descriptors
-			if (controlledEntity->gotAllExpectedDescriptors())
+			case ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo:
 			{
-				// Clear this enumeration step and check for next one
-				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
-				checkEnumerationSteps(controlledEntity.get());
+				if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceDescriptor, interfaceIndex))
+				{
+					if (!!status)
+					{
+						processSuccessHandler();
+					}
+					else
+					{
+						if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceDescriptor, interfaceIndex, false))
+						{
+							controlledEntity->setGetFatalEnumerationError();
+							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceDescriptor);
+							return;
+						}
+					}
+					// Got all expected descriptor dynamic information
+					if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+					{
+						// Clear this enumeration step and check for next one
+						controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+						checkEnumerationSteps(controlledEntity.get());
+					}
+				}
+				break;
 			}
+			default:
+				AVDECC_ASSERT(false, "Invalid EnumerationStep");
+				break;
 		}
 	}
 }
@@ -2121,10 +2161,10 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 
 				// Special case for gPTP info, we always want to have valid gPTP information in the AvbInterfaceDescriptor model (updated when an ADP is received, or GET_AVB_INFO unsolicited)
 				// So we have to retrieve the matching ADP information to force an update of the cached model
-				auto const* const avbInterfaceStaticModel = entity.getModelAccessStrategy().getAvbInterfaceNodeStaticModel(configurationIndex, avbInterfaceIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-				if (avbInterfaceStaticModel)
+				auto const* const avbInterfaceDynamicModel = entity.getModelAccessStrategy().getAvbInterfaceNodeDynamicModel(configurationIndex, avbInterfaceIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (avbInterfaceDynamicModel)
 				{
-					auto const& macAddress = avbInterfaceStaticModel->macAddress;
+					auto const& macAddress = avbInterfaceDynamicModel->macAddress;
 					auto& e = controlledEntity->getEntity();
 					auto const caps = e.getEntityCapabilities();
 					if (caps.test(entity::EntityCapability::GptpSupported))
@@ -2740,42 +2780,6 @@ void ControllerImpl::onOutputJackNameResult(entity::controller::Interface const*
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::OutputJackName);
-					return;
-				}
-			}
-
-			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
-			{
-				// Clear this enumeration step and check for next one
-				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
-				checkEnumerationSteps(controlledEntity.get());
-			}
-		}
-	}
-}
-
-void ControllerImpl::onAvbInterfaceNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& avbInterfaceName) noexcept
-{
-	LOG_CONTROLLER_TRACE(entityID, "onAvbInterfaceNameResult (ConfigurationIndex={} AvbInterfaceIndex={}): {}", configurationIndex, avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
-
-	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto controlledEntity = getControlledEntityImplGuard(entityID);
-
-	if (controlledEntity)
-	{
-		if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, avbInterfaceIndex))
-		{
-			if (!!status)
-			{
-				updateAvbInterfaceName(*controlledEntity, configurationIndex, avbInterfaceIndex, avbInterfaceName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-			}
-			else
-			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, avbInterfaceIndex, false))
-				{
-					controlledEntity->setGetFatalEnumerationError();
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceName);
 					return;
 				}
 			}

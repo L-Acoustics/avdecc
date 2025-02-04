@@ -1398,7 +1398,7 @@ void ControllerImpl::updateGptpInformation(ControlledEntityImpl& controlledEntit
 				for (auto& [interfaceIndex, avbInterfaceNode] : configurationNode->avbInterfaces)
 				{
 					// Match with the passed AvbInterfaceIndex, or with macAddress if passed AvbInterfaceIndex is the GlobalAvbInterfaceIndex
-					if (interfaceIndex == avbInterfaceIndex || (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == avbInterfaceNode.staticModel.macAddress))
+					if (interfaceIndex == avbInterfaceIndex || (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == avbInterfaceNode.dynamicModel.macAddress))
 					{
 						// Alter InterfaceInfo with new gPTP info
 						if (avbInterfaceNode.dynamicModel.gptpGrandmasterID != gptpGrandmasterID || avbInterfaceNode.dynamicModel.gptpDomainNumber != gptpDomainNumber)
@@ -1455,10 +1455,10 @@ void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entit
 	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
 	if (currentConfigurationIndexOpt)
 	{
-		auto const* const avbInterfaceStaticModel = controlledEntity.getModelAccessStrategy().getAvbInterfaceNodeStaticModel(*currentConfigurationIndexOpt, avbInterfaceIndex, notFoundBehavior);
-		if (avbInterfaceStaticModel)
+		auto const* const avbInterfaceDynamicModel = controlledEntity.getModelAccessStrategy().getAvbInterfaceNodeDynamicModel(*currentConfigurationIndexOpt, avbInterfaceIndex, notFoundBehavior);
+		if (avbInterfaceDynamicModel)
 		{
-			updateGptpInformation(controlledEntity, avbInterfaceIndex, avbInterfaceStaticModel->macAddress, info.gptpGrandmasterID, info.gptpDomainNumber, notFoundBehavior);
+			updateGptpInformation(controlledEntity, avbInterfaceIndex, avbInterfaceDynamicModel->macAddress, info.gptpGrandmasterID, info.gptpDomainNumber, notFoundBehavior);
 		}
 	}
 }
@@ -2294,7 +2294,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readAvbInterfaceDescriptor (ConfigurationIndex={}, AvbInterfaceIndex={})", configurationIndex, descriptorIndex);
-				controller->readAvbInterfaceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+				controller->readAvbInterfaceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, ControlledEntityImpl::EnumerationStep::GetStaticModel));
 			};
 			break;
 		case entity::model::DescriptorType::ClockSource:
@@ -2654,11 +2654,11 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 				controller->getJackOutputName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onOutputJackNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
-		case ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName:
+		case ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceDescriptor:
 			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
 			{
-				LOG_CONTROLLER_TRACE(entityID, "getAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={})", configurationIndex, descriptorIndex);
-				controller->getAvbInterfaceName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+				LOG_CONTROLLER_TRACE(entityID, "readAvbInterfaceDescriptor (ConfigurationIndex={}, AvbInterfaceIndex={})", configurationIndex, descriptorIndex);
+				controller->readAvbInterfaceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName:
@@ -3261,22 +3261,11 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::AvbInterfaceNode const& node) noexcept override
 			{
+				// AVB_INTERFACE descriptor contains 'dynamic' fields (not part of the static model) that cannot be retrieved through a simple command, we have to query the whole descriptor
 				auto const configurationIndex = parent->descriptorIndex;
 				auto const avbInterfaceIndex = node.descriptorIndex;
 
-				// Only for active configuration
-				if (configurationIndex == _currentConfigurationIndex)
-				{
-					// Get AvbInterfaceName
-					if (_usePackedDynamicInfo)
-					{
-						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::AvbInterface, avbInterfaceIndex, std::uint16_t{ 0u } } });
-					}
-					else
-					{
-						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, avbInterfaceIndex);
-					}
-				}
+				_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceDescriptor, avbInterfaceIndex);
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::ClockSourceNode const& node) noexcept override
 			{
@@ -6158,9 +6147,6 @@ bool ControllerImpl::fetchCorrespondingDescriptor(ControlledEntityImpl* const en
 		case ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName:
 			descriptorType = entity::model::DescriptorType::JackOutput;
 			break;
-		case ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName:
-			descriptorType = entity::model::DescriptorType::AvbInterface;
-			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName:
 			descriptorType = entity::model::DescriptorType::ClockSource;
 			break;
@@ -6651,7 +6637,7 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 		auto const dumpVersion = object.at(jsonSerializer::keyName::ControlledEntity_DumpVersion).get<decltype(jsonSerializer::keyValue::ControlledEntity_DumpVersion)>();
 		if (dumpVersion != jsonSerializer::keyValue::ControlledEntity_DumpVersion)
 		{
-			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::UnsupportedDumpVersion, std::string("Unsupported dump version: ") + std::to_string(dumpVersion) };
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::IncompatibleDumpVersion, std::string("Incompatible dump version: ") + std::to_string(dumpVersion) };
 		}
 
 		auto commonInfo = entity::Entity::CommonInformation{};
@@ -6770,7 +6756,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vecto
 		auto const dumpVersion = object.at(jsonSerializer::keyName::Controller_DumpVersion).get<decltype(jsonSerializer::keyValue::Controller_DumpVersion)>();
 		if (dumpVersion != jsonSerializer::keyValue::Controller_DumpVersion)
 		{
-			return { avdecc::jsonSerializer::DeserializationError::UnsupportedDumpVersion, std::string("Unsupported dump version: ") + std::to_string(dumpVersion), {} };
+			return { avdecc::jsonSerializer::DeserializationError::IncompatibleDumpVersion, std::string("Incompatible dump version: ") + std::to_string(dumpVersion), {} };
 		}
 
 		// Get entities

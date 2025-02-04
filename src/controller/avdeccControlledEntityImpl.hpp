@@ -39,6 +39,7 @@
 #include <mutex>
 #include <utility>
 #include <thread>
+#include <tuple>
 #include <optional>
 
 namespace la
@@ -164,7 +165,7 @@ public:
 		OutputStreamFormat, // STREAM_OUTPUT.current_format -> GET_STREAM_FORMAT (7.4.10)
 		InputJackName, // JACK_INPUT.object_name -> GET_NAME (7.4.18)
 		OutputJackName, // JACK_OUTPUT.object_name -> GET_NAME (7.4.18)
-		AvbInterfaceName, // AVB_INTERFACE.object_name -> GET_NAME (7.4.18)
+		AvbInterfaceDescriptor, // AVB_INTERFACE -> GET_DESCRIPTOR // Special case due to dynamic values that can only be retrieved from the descriptor
 		ClockSourceName, // CLOCK_SOURCE.object_name -> GET_NAME (7.4.18)
 		MemoryObjectName, // MEMORY_OBJECT.object_name -> GET_NAME (7.4.18)
 		MemoryObjectLength, // MEMORY_OBJECT.length -> GET_MEMORY_OBJECT_LENGTH (7.4.73)
@@ -469,7 +470,7 @@ protected:
 private:
 	// Private methods
 	void switchToCachedTreeModelAccessStrategy() noexcept;
-	bool isEntityModelComplete(model::EntityNode const& entityNode, std::uint16_t const configurationsCount) const noexcept;
+	std::tuple<bool, entity::model::ConfigurationIndex> isEntityModelComplete(model::EntityNode const& entityNode, std::uint16_t const configurationsCount) const noexcept;
 	void buildVirtualNodes(model::ConfigurationNode& configNode) noexcept;
 	void warnOrFixPortMapping(entity::model::AudioMapping const& sourceMapping, entity::model::AudioMapping& destinationMapping) const noexcept;
 	void addOrFixStreamPortInputMapping(entity::model::AudioMappings& mappings, entity::model::AudioMapping const& mapping) const noexcept;

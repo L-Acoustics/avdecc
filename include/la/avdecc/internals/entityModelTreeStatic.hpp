@@ -110,18 +110,7 @@ struct JackNodeStaticModel
 struct AvbInterfaceNodeStaticModel
 {
 	LocalizedStringReference localizedDescription{};
-	networkInterface::MacAddress macAddress{};
 	entity::AvbInterfaceFlags interfaceFlags{};
-	UniqueIdentifier clockIdentity{};
-	std::uint8_t priority1{ 0xff };
-	std::uint8_t clockClass{ 0xff };
-	std::uint16_t offsetScaledLogVariance{ 0x0000 };
-	std::uint8_t clockAccuracy{ 0xff };
-	std::uint8_t priority2{ 0xff };
-	std::uint8_t domainNumber{ 0u };
-	std::uint8_t logSyncInterval{ 0u };
-	std::uint8_t logAnnounceInterval{ 0u };
-	std::uint8_t logPDelayInterval{ 0u };
 	std::uint16_t portNumber{ 0x0000 };
 };
 

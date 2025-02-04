@@ -932,20 +932,20 @@ constexpr auto JackNode_Dynamic_ObjectName = "object_name";
 
 /* AvbInterfaceNode */
 constexpr auto AvbInterfaceNode_Static_LocalizedDescription = "localized_description";
-constexpr auto AvbInterfaceNode_Static_MacAddress = "mac_address";
 constexpr auto AvbInterfaceNode_Static_Flags = "flags";
-constexpr auto AvbInterfaceNode_Static_ClockIdentity = "clock_identity";
-constexpr auto AvbInterfaceNode_Static_Priority1 = "priority1";
-constexpr auto AvbInterfaceNode_Static_ClockClass = "clock_class";
-constexpr auto AvbInterfaceNode_Static_OffsetScaledLogVariance = "offset_scaled_log_variance";
-constexpr auto AvbInterfaceNode_Static_ClockAccuracy = "clock_accuracy";
-constexpr auto AvbInterfaceNode_Static_Priority2 = "priority2";
-constexpr auto AvbInterfaceNode_Static_DomainNumber = "domain_number";
-constexpr auto AvbInterfaceNode_Static_LogSyncInterval = "log_sync_interval";
-constexpr auto AvbInterfaceNode_Static_LogAnnounceInterval = "log_announce_interval";
-constexpr auto AvbInterfaceNode_Static_LogPdelayInterval = "log_pdelay_interval";
 constexpr auto AvbInterfaceNode_Static_PortNumber = "port_number";
 constexpr auto AvbInterfaceNode_Dynamic_ObjectName = "object_name";
+constexpr auto AvbInterfaceNode_Dynamic_MacAddress = "mac_address";
+constexpr auto AvbInterfaceNode_Dynamic_ClockIdentity = "clock_identity";
+constexpr auto AvbInterfaceNode_Dynamic_Priority1 = "priority1";
+constexpr auto AvbInterfaceNode_Dynamic_ClockClass = "clock_class";
+constexpr auto AvbInterfaceNode_Dynamic_OffsetScaledLogVariance = "offset_scaled_log_variance";
+constexpr auto AvbInterfaceNode_Dynamic_ClockAccuracy = "clock_accuracy";
+constexpr auto AvbInterfaceNode_Dynamic_Priority2 = "priority2";
+constexpr auto AvbInterfaceNode_Dynamic_DomainNumber = "domain_number";
+constexpr auto AvbInterfaceNode_Dynamic_LogSyncInterval = "log_sync_interval";
+constexpr auto AvbInterfaceNode_Dynamic_LogAnnounceInterval = "log_announce_interval";
+constexpr auto AvbInterfaceNode_Dynamic_LogPdelayInterval = "log_pdelay_interval";
 constexpr auto AvbInterfaceNode_Dynamic_GptpGrandmasterID = "gptp_grandmaster_id";
 constexpr auto AvbInterfaceNode_Dynamic_GptpDomainNumber = "gptp_domain_number";
 constexpr auto AvbInterfaceNode_Dynamic_AvbInterfaceInfo = "avb_interface_info";
@@ -1834,35 +1834,13 @@ inline void from_json(json const& j, JackNodeDynamicModel& d)
 inline void to_json(json& j, AvbInterfaceNodeStaticModel const& s)
 {
 	j[keyName::AvbInterfaceNode_Static_LocalizedDescription] = s.localizedDescription;
-	j[keyName::AvbInterfaceNode_Static_MacAddress] = networkInterface::NetworkInterfaceHelper::macAddressToString(s.macAddress, true);
 	j[keyName::AvbInterfaceNode_Static_Flags] = s.interfaceFlags;
-	j[keyName::AvbInterfaceNode_Static_ClockIdentity] = s.clockIdentity;
-	j[keyName::AvbInterfaceNode_Static_Priority1] = s.priority1;
-	j[keyName::AvbInterfaceNode_Static_ClockClass] = s.clockClass;
-	j[keyName::AvbInterfaceNode_Static_OffsetScaledLogVariance] = s.offsetScaledLogVariance;
-	j[keyName::AvbInterfaceNode_Static_ClockAccuracy] = s.clockAccuracy;
-	j[keyName::AvbInterfaceNode_Static_Priority2] = s.priority2;
-	j[keyName::AvbInterfaceNode_Static_DomainNumber] = s.domainNumber;
-	j[keyName::AvbInterfaceNode_Static_LogSyncInterval] = s.logSyncInterval;
-	j[keyName::AvbInterfaceNode_Static_LogAnnounceInterval] = s.logAnnounceInterval;
-	j[keyName::AvbInterfaceNode_Static_LogPdelayInterval] = s.logPDelayInterval;
 	j[keyName::AvbInterfaceNode_Static_PortNumber] = s.portNumber;
 }
 inline void from_json(json const& j, AvbInterfaceNodeStaticModel& s)
 {
 	get_optional_value(j, keyName::AvbInterfaceNode_Static_LocalizedDescription, s.localizedDescription);
-	s.macAddress = networkInterface::NetworkInterfaceHelper::stringToMacAddress(j.at(keyName::AvbInterfaceNode_Static_MacAddress).get<std::string>());
 	j.at(keyName::AvbInterfaceNode_Static_Flags).get_to(s.interfaceFlags);
-	j.at(keyName::AvbInterfaceNode_Static_ClockIdentity).get_to(s.clockIdentity);
-	j.at(keyName::AvbInterfaceNode_Static_Priority1).get_to(s.priority1);
-	j.at(keyName::AvbInterfaceNode_Static_ClockClass).get_to(s.clockClass);
-	j.at(keyName::AvbInterfaceNode_Static_OffsetScaledLogVariance).get_to(s.offsetScaledLogVariance);
-	j.at(keyName::AvbInterfaceNode_Static_ClockAccuracy).get_to(s.clockAccuracy);
-	j.at(keyName::AvbInterfaceNode_Static_Priority2).get_to(s.priority2);
-	j.at(keyName::AvbInterfaceNode_Static_DomainNumber).get_to(s.domainNumber);
-	j.at(keyName::AvbInterfaceNode_Static_LogSyncInterval).get_to(s.logSyncInterval);
-	j.at(keyName::AvbInterfaceNode_Static_LogAnnounceInterval).get_to(s.logAnnounceInterval);
-	j.at(keyName::AvbInterfaceNode_Static_LogPdelayInterval).get_to(s.logPDelayInterval);
 	j.at(keyName::AvbInterfaceNode_Static_PortNumber).get_to(s.portNumber);
 }
 
@@ -1870,6 +1848,17 @@ inline void from_json(json const& j, AvbInterfaceNodeStaticModel& s)
 inline void to_json(json& j, AvbInterfaceNodeDynamicModel const& d)
 {
 	j[keyName::AvbInterfaceNode_Dynamic_ObjectName] = d.objectName;
+	j[keyName::AvbInterfaceNode_Dynamic_MacAddress] = networkInterface::NetworkInterfaceHelper::macAddressToString(d.macAddress, true);
+	j[keyName::AvbInterfaceNode_Dynamic_ClockIdentity] = d.clockIdentity;
+	j[keyName::AvbInterfaceNode_Dynamic_Priority1] = d.priority1;
+	j[keyName::AvbInterfaceNode_Dynamic_ClockClass] = d.clockClass;
+	j[keyName::AvbInterfaceNode_Dynamic_OffsetScaledLogVariance] = d.offsetScaledLogVariance;
+	j[keyName::AvbInterfaceNode_Dynamic_ClockAccuracy] = d.clockAccuracy;
+	j[keyName::AvbInterfaceNode_Dynamic_Priority2] = d.priority2;
+	j[keyName::AvbInterfaceNode_Dynamic_DomainNumber] = d.domainNumber;
+	j[keyName::AvbInterfaceNode_Dynamic_LogSyncInterval] = d.logSyncInterval;
+	j[keyName::AvbInterfaceNode_Dynamic_LogAnnounceInterval] = d.logAnnounceInterval;
+	j[keyName::AvbInterfaceNode_Dynamic_LogPdelayInterval] = d.logPDelayInterval;
 	j[keyName::AvbInterfaceNode_Dynamic_GptpGrandmasterID] = d.gptpGrandmasterID;
 	j[keyName::AvbInterfaceNode_Dynamic_GptpDomainNumber] = d.gptpDomainNumber;
 	j[keyName::AvbInterfaceNode_Dynamic_AvbInterfaceInfo] = d.avbInterfaceInfo;
@@ -1879,6 +1868,20 @@ inline void to_json(json& j, AvbInterfaceNodeDynamicModel const& d)
 inline void from_json(json const& j, AvbInterfaceNodeDynamicModel& d)
 {
 	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_ObjectName, d.objectName);
+
+	d.macAddress = networkInterface::NetworkInterfaceHelper::stringToMacAddress(j.at(keyName::AvbInterfaceNode_Dynamic_MacAddress).get<std::string>());
+	j.at(keyName::AvbInterfaceNode_Dynamic_ClockIdentity).get_to(d.clockIdentity);
+	j.at(keyName::AvbInterfaceNode_Dynamic_Priority1).get_to(d.priority1);
+	j.at(keyName::AvbInterfaceNode_Dynamic_ClockClass).get_to(d.clockClass);
+	j.at(keyName::AvbInterfaceNode_Dynamic_OffsetScaledLogVariance).get_to(d.offsetScaledLogVariance);
+	j.at(keyName::AvbInterfaceNode_Dynamic_ClockAccuracy).get_to(d.clockAccuracy);
+	j.at(keyName::AvbInterfaceNode_Dynamic_Priority2).get_to(d.priority2);
+	j.at(keyName::AvbInterfaceNode_Dynamic_DomainNumber).get_to(d.domainNumber);
+	j.at(keyName::AvbInterfaceNode_Dynamic_LogSyncInterval).get_to(d.logSyncInterval);
+	j.at(keyName::AvbInterfaceNode_Dynamic_LogAnnounceInterval).get_to(d.logAnnounceInterval);
+	j.at(keyName::AvbInterfaceNode_Dynamic_LogPdelayInterval).get_to(d.logPDelayInterval);
+
+
 	j.at(keyName::AvbInterfaceNode_Dynamic_GptpGrandmasterID).get_to(d.gptpGrandmasterID);
 	j.at(keyName::AvbInterfaceNode_Dynamic_GptpDomainNumber).get_to(d.gptpDomainNumber);
 	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_AvbInterfaceInfo, d.avbInterfaceInfo);

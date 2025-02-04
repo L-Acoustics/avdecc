@@ -59,7 +59,7 @@ enum class DeserializationError
 	NoError = 0,
 	AccessDenied = 1, /**< File access denied. */
 	FileReadError = 2, /**< Error reading file. */
-	UnsupportedDumpVersion = 3, /**< json dump version not supported. */
+	IncompatibleDumpVersion = 3, /**< json dump version not compatible with this version of the library. */
 	ParseError = 4, /**< Error during json parsing. */
 	MissingKey = 5, /**< A mandatory Key is missing from the json model. */
 	InvalidKey = 6, /**< Key couldn't be converted from json to field's expected data type. */
