@@ -129,7 +129,7 @@ namespace keyValue
 constexpr auto Controller_DumpVersion = std::uint32_t{ 1 };
 
 /* ControlledEntity nodes */
-constexpr auto ControlledEntity_DumpVersion = std::uint32_t{ 1 };
+constexpr auto ControlledEntity_DumpVersion = std::uint32_t{ 2 };
 
 } // namespace keyValue
 } // namespace jsonSerializer

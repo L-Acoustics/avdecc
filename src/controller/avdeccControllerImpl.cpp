@@ -6651,7 +6651,7 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 		auto const dumpVersion = object.at(jsonSerializer::keyName::ControlledEntity_DumpVersion).get<decltype(jsonSerializer::keyValue::ControlledEntity_DumpVersion)>();
 		if (dumpVersion != jsonSerializer::keyValue::ControlledEntity_DumpVersion)
 		{
-			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::UnsupportedDumpVersion, std::string("Unsupported dump version: ") + std::to_string(dumpVersion) };
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::IncompatibleDumpVersion, std::string("Incompatible dump version: ") + std::to_string(dumpVersion) };
 		}
 
 		auto commonInfo = entity::Entity::CommonInformation{};
@@ -6770,7 +6770,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vecto
 		auto const dumpVersion = object.at(jsonSerializer::keyName::Controller_DumpVersion).get<decltype(jsonSerializer::keyValue::Controller_DumpVersion)>();
 		if (dumpVersion != jsonSerializer::keyValue::Controller_DumpVersion)
 		{
-			return { avdecc::jsonSerializer::DeserializationError::UnsupportedDumpVersion, std::string("Unsupported dump version: ") + std::to_string(dumpVersion), {} };
+			return { avdecc::jsonSerializer::DeserializationError::IncompatibleDumpVersion, std::string("Incompatible dump version: ") + std::to_string(dumpVersion), {} };
 		}
 
 		// Get entities
