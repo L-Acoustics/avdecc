@@ -521,7 +521,7 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller, CompileOptions, CompileOption
 namespace la.avdecc.controller
 {
 	// la::avdecc::controller::ControlledEntity::Exception
-	class ControlledEntityException : global::System.ApplicationException
+	public class ControlledEntityException : global::System.ApplicationException
 	{
 		public enum Type
 		{
@@ -546,7 +546,7 @@ namespace la.avdecc.controller
 	}
 
 	// la::avdecc::controller::Controller::Exception
-	class ControllerException : global::System.ApplicationException
+	public class ControllerException : global::System.ApplicationException
 	{
 		public enum Error
 		{
