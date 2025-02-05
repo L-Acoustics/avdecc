@@ -34,8 +34,6 @@
 %apply unsigned long long { size_t };
 %apply const unsigned long long & { const size_t & };
 #endif
-// Define basic types
-#define SWIG_STD_OPTIONAL_DEFAULT_TYPES
 
 
 %include <stdint.i>
@@ -378,6 +376,8 @@ DEFINE_TYPED_PROTOCOL_CLASS(AcmpStatus, AcmpStatusTypedDefine, std::uint8_t)
 
 // Define optionals
 //optional_arithmetic(la::avdecc::entity::model::DescriptorIndex, OptDescriptorIndex) // Currently we cannot define both OptUInt16 and OptDescriptorIndex (or they mix up). We'll define each Descriptor type once we use a TypedDefine
+%optional_arithmetic(std::uint8_t, OptUInt8)
+%optional_arithmetic(std::uint32_t, OptUInt32)
 %optional_arithmetic(la::avdecc::entity::model::ProbingStatus, OptProbingStatus)
 %optional(la::avdecc::entity::model::AvdeccFixedString)
 %optional(la::avdecc::entity::StreamInfoFlagsEx)

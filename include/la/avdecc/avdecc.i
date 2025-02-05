@@ -32,8 +32,6 @@
 %apply unsigned long long { size_t };
 %apply const unsigned long long & { const size_t & };
 #endif
-// Define basic types
-#define SWIG_STD_OPTIONAL_DEFAULT_TYPES
 // Ignore warning %extend defined for an undeclared class 'name'.
 #pragma SWIG nowarn=303
 
@@ -123,6 +121,7 @@ enum class ThreadPriority
 %unique_ptr(la::avdecc::Executor) // Define unique_ptr for Executor
 // TODO: Would be nice to have the handler in the same namespace as the class (ie. be able to pass a namespace to std_function)
 %std_function(Handler_Empty, void);
+%optional_string()
 
 %nspace la::avdecc::ExecutorWithDispatchQueue;
 %rename("%s") la::avdecc::ExecutorWithDispatchQueue; // Unignore class
@@ -627,6 +626,9 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::protocol::ProtocolInterface, SupportedPro
 %enddef
 
 // Define optionals
+%optional_arithmetic(std::uint16_t, OptUInt16)
+%optional_arithmetic(std::uint64_t, OptUInt64)
+%optional_arithmetic(bool, OptBool)
 %optional(la::avdecc::entity::model::StreamDynamicInfo)
 %optional(la::avdecc::entity::model::AvbInterfaceInfo)
 %optional(la::avdecc::entity::model::AsPath)
