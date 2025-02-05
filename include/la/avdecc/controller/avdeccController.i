@@ -32,8 +32,6 @@
 %apply unsigned long long { size_t };
 %apply const unsigned long long & { const size_t & };
 #endif
-// Define basic types
-#define SWIG_STD_OPTIONAL_DEFAULT_TYPES
 // Ignore warning %extend defined for an undeclared class 'name'.
 #pragma SWIG nowarn=303
 
