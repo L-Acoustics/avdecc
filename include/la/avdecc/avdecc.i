@@ -887,7 +887,7 @@ public:
 namespace la.avdecc
 {
 	// la::avdecc::Exception
-	class Exception : global::System.ApplicationException
+	public class Exception : global::System.ApplicationException
 	{
 		public Exception(string message)
 			: base(message)
@@ -896,7 +896,7 @@ namespace la.avdecc
 	}
 
 	// la::avdecc::EndStation::Exception
-	class EndStationException : global::System.ApplicationException
+	public class EndStationException : global::System.ApplicationException
 	{
 		public enum Error
 		{
@@ -926,7 +926,7 @@ namespace la.avdecc
 	namespace protocol
 	{
 		// la::avdecc::protocol::ProtocolInterface::Exception
-		class ProtocolInterfaceException : global::System.ApplicationException
+		public class ProtocolInterfaceException : global::System.ApplicationException
 		{
 			public enum Error
 			{
