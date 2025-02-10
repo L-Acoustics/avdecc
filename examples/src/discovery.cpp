@@ -81,6 +81,7 @@ public:
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::EntityNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::EntityNodeDynamicModel& dynamicModel) noexcept override
 	{
 		dynamicModel.entityName = la::avdecc::entity::model::AvdeccFixedString{ "Test entity" };
+		dynamicModel.currentConfiguration = ActiveConfigurationIndex;
 	}
 	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& compatibilityFlags) noexcept override
 	{
@@ -223,7 +224,7 @@ Discovery::Discovery(la::avdecc::protocol::ProtocolInterface::Type const protoco
 	auto const [error, message] = _controller->createVirtualEntityFromEntityModelFile("SimpleEntityModel.json", &builder, false);
 	if (error != la::avdecc::jsonSerializer::DeserializationError::NoError)
 	{
-		outputText("Error creating virtual entity: " + std::to_string(static_cast<std::underlying_type_t<decltype(error)>>(error)) + "\n");
+		outputText("Error creating virtual entity: " + message + "\n");
 	}
 	else
 	{
