@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - GET_SYSTEM_UNIQUE_ID
   - SET_MEDIA_CLOCK_REFERENCE_INFO
   - GET_MEDIA_CLOCK_REFERENCE_INFO
+- [EntityModel dumps reference the json schema directly from github](https://github.com/L-Acoustics/avdecc/issues/164)
 
 ### Changed
 - Complete controller entity model refactoring to support descriptors at non-configuration level
