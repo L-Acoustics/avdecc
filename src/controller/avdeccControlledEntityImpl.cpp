@@ -2866,10 +2866,10 @@ std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const 
 			return protocol::AemCommandType::AcquireEntity;
 		case DynamicInfoType::LockedState:
 			return protocol::AemCommandType::LockEntity;
-		case DynamicInfoType::InputStreamAudioMappings:
-			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_INPUT)";
-		case DynamicInfoType::OutputStreamAudioMappings:
-			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_OUTPUT)";
+		case DynamicInfoType::InputStreamPortAudioMappings:
+			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_PORT_INPUT)";
+		case DynamicInfoType::OutputStreamPortAudioMappings:
+			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_PORT_OUTPUT)";
 		case DynamicInfoType::InputStreamState:
 			return protocol::AcmpMessageType::GetRxStateCommand;
 		case DynamicInfoType::OutputStreamState:

@@ -2018,7 +2018,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::controller::Inte
 
 	if (controlledEntity)
 	{
-		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex, mapIndex))
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamPortAudioMappings, streamPortIndex, mapIndex))
 		{
 			if (!!status)
 			{
@@ -2038,13 +2038,13 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::controller::Inte
 				controlledEntity->addStreamPortInputAudioMappings(streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 				if (!isComplete)
 				{
-					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex, mapIndex + 1);
+					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamPortAudioMappings, streamPortIndex, mapIndex + 1);
 					return;
 				}
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex, mapIndex, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamPortAudioMappings, streamPortIndex, mapIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamInputAudioMap);
@@ -2081,7 +2081,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::controller::Int
 
 	if (controlledEntity)
 	{
-		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex, mapIndex))
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamPortAudioMappings, streamPortIndex, mapIndex))
 		{
 			if (!!status)
 			{
@@ -2101,13 +2101,13 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::controller::Int
 				controlledEntity->addStreamPortOutputAudioMappings(streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 				if (!isComplete)
 				{
-					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex, mapIndex + 1);
+					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamPortAudioMappings, streamPortIndex, mapIndex + 1);
 					return;
 				}
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex, mapIndex, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamPortAudioMappings, streamPortIndex, mapIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamOutputAudioMap);

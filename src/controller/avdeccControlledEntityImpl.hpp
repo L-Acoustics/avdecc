@@ -137,8 +137,8 @@ public:
 	{
 		AcquiredState, // acquireEntity(ReleasedFlag)
 		LockedState, // lockEntity(ReleasedFlag)
-		InputStreamAudioMappings, // getStreamPortInputAudioMap (GET_AUDIO_MAP)
-		OutputStreamAudioMappings, // getStreamPortOutputAudioMap (GET_AUDIO_MAP)
+		InputStreamPortAudioMappings, // getStreamPortInputAudioMap (GET_AUDIO_MAP)
+		OutputStreamPortAudioMappings, // getStreamPortOutputAudioMap (GET_AUDIO_MAP)
 		InputStreamState, // getListenerStreamState (GET_RX_STATE)
 		OutputStreamState, // getTalkerStreamState (GET_TX_STATE)
 		OutputStreamConnection, // getTalkerStreamConnection (GET_TX_CONNECTION)
