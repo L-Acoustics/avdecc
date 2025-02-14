@@ -32,6 +32,9 @@
 #include "exports.hpp"
 
 #include <optional>
+#include <type_traits>
+#include <vector>
+#include <string>
 #include <tuple>
 #include <array>
 #if !defined(__GNUC__) || __GNUC__ >= 10 /* <version> is not present in earier versions of gcc (not sure which version exactly, using 10 here) */
