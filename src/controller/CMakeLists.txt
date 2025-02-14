@@ -1,6 +1,6 @@
 # avdecc controller
 
-cu_setup_project(la_avdecc_controller ${LA_AVDECC_CONTROLLER_VERSION} "AVDECC Controller Library")
+cu_setup_project(la_avdecc_controller ${LA_AVDECC_CONTROLLER_VERSION} "AVDECC Controller Library" MARKETING_VERSION_DIGITS ${MARKETING_VERSION_DIGITS} MARKETING_VERSION_POSTFIX ${MARKETING_VERSION_POSTFIX} MARKETING_VERSION ${MARKETING_VERSION})
 
 # Configure file based on CMakeLists.txt
 configure_file(
