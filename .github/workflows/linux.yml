@@ -1,0 +1,62 @@
+name: linux
+
+on:
+  push:
+    branches: [ main ]
+
+  pull_request: # Run on pull request event targeting following branches
+    branches:
+      - dev
+      - main
+
+  workflow_dispatch:
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: release
+
+jobs:
+  build:
+    # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
+    # You can convert this to a matrix build if you need cross-platform coverage.
+    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Prepare APT
+      shell: bash
+      run: |
+        sudo apt-get update 
+        sudo apt-get install -y software-properties-common lsb-release
+        sudo apt-get install -y ca-certificates gpg wget
+
+    - name: Add Kitware ppa
+      shell: bash
+      run: |
+        wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+        echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | sudo tee /etc/apt/sources.list.d/kitware.list >/dev/null
+        sudo apt-get update
+        test -f /usr/share/doc/kitware-archive-keyring/copyright || rm /usr/share/keyrings/kitware-archive-keyring.gpg
+        sudo apt-get install -y kitware-archive-keyring
+
+    - name: Install required libraries
+      shell: bash
+      run: |
+        sudo apt-get install -y cmake libpcap-dev git build-essential libncurses-dev
+          
+    - name: Init repository
+      run: git submodule update --init --recursive
+
+    - name: Configure CMake
+      run: ./gen_cmake.sh -o _build -${{env.BUILD_TYPE}}
+
+    - name: Build
+      # Build your program with the given configuration
+      run: cmake --build _build
+
+    - name: Test
+      if: false #Disable test job
+      working-directory: ${{github.workspace}}/_build/tests/src
+      run: ./Tests --gtest_filter=-MANUAL*

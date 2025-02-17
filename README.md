@@ -1,6 +1,6 @@
 # LA AVDECC
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/14038.svg)](https://scan.coverity.com/projects/l-acoustics-avdecc)
-
+[![Linux](https://github.com/L-Acoustics/avdecc/actions/workflows/linux.yml/badge.svg)](https://github.com/L-Acoustics/avdecc/actions/workflows/linux.yml)
 Copyright (C) 2016-2024, L-Acoustics and its contributors
 
 ## What is LA_avdecc
