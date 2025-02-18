@@ -64,8 +64,10 @@ public:
 		None = 0u, /**< No protocol interface (not a valid protocol interface type, should only be used to initialize variables). */
 		PCap = 1u << 0, /**< Packet Capture protocol interface. */
 		MacOSNative = 1u << 1, /**< macOS native API protocol interface - Only usable on macOS. */
-		Proxy = 1u << 2, /**< IEEE Std 1722.1 Proxy protocol interface. */
+		Proxy = 1u << 2, /**< IEEE Std 1722.1 Proxy protocol interface (Network Mode). */
 		Virtual = 1u << 3, /**< Virtual protocol interface. */
+		Serial = 1u << 4, /**< Serial port protocol interface. */
+		Local = 1u << 5, /**< Local domain socket protocol interface. */
 	};
 
 	/** Possible Error status returned (or thrown) by a ProtocolInterface */
