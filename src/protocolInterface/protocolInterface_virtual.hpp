@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -38,12 +38,13 @@ public:
 	/**
 	* @brief Factory method to create a ProtocolInterfaceVirtual.
 	* @details Factory method to create a ProtocolInterfaceVirtual as a raw pointer.
-	* @param[in] networkInterfaceName The name of the virtual interface to use.
+	* @param[in] networkInterfaceID The ID of the virtual interface to use.
 	* @param[in] macAddress The MAC address associated with the network interface. Cannot be all 0.
+	* @param[in] executorName The name of the executor to use to dispatch incoming messages.
 	* @return A new ProtocolInterfaceVirtual as a raw pointer
 	* @note Throws Exception if #interfaceName is invalid or inaccessible.
 	*/
-	static ProtocolInterfaceVirtual* createRawProtocolInterfaceVirtual(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress);
+	static ProtocolInterfaceVirtual* createRawProtocolInterfaceVirtual(std::string const& networkInterfaceID, networkInterface::MacAddress const& macAddress, std::string const& executorName);
 
 	/** Returns true if this ProtocolInterface is supported (runtime check) */
 	static bool isSupported() noexcept;
@@ -61,7 +62,7 @@ public:
 	ProtocolInterfaceVirtual& operator=(ProtocolInterfaceVirtual&&) = delete;
 
 protected:
-	ProtocolInterfaceVirtual(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress);
+	ProtocolInterfaceVirtual(std::string const& networkInterfaceID, networkInterface::MacAddress const& macAddress, std::string const& executorName);
 };
 
 } // namespace protocol

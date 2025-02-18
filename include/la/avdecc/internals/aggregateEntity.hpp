@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -80,6 +80,8 @@ public:
 	using LocalEntity::discoverRemoteEntities;
 	/** Requests a targetted remote entity discovery. */
 	using LocalEntity::discoverRemoteEntity;
+	/** Forgets the specified remote entity. */
+	using LocalEntity::forgetRemoteEntity;
 	/** Sets automatic discovery delay. 0 (default) for no automatic discovery. */
 	using LocalEntity::setAutomaticDiscoveryDelay;
 

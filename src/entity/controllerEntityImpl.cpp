@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -227,6 +227,21 @@ void ControllerEntityImpl::readClockDomainDescriptor(UniqueIdentifier const targ
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).readClockDomainDescriptor(targetEntityID, configurationIndex, clockDomainIndex, handler);
 }
 
+void ControllerEntityImpl::readTimingDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::TimingIndex const timingIndex, TimingDescriptorHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).readTimingDescriptor(targetEntityID, configurationIndex, timingIndex, handler);
+}
+
+void ControllerEntityImpl::readPtpInstanceDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::PtpInstanceIndex const ptpInstanceIndex, PtpInstanceDescriptorHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).readPtpInstanceDescriptor(targetEntityID, configurationIndex, ptpInstanceIndex, handler);
+}
+
+void ControllerEntityImpl::readPtpPortDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::PtpPortIndex const ptpPortIndex, PtpPortDescriptorHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).readPtpPortDescriptor(targetEntityID, configurationIndex, ptpPortIndex, handler);
+}
+
 void ControllerEntityImpl::setConfiguration(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, SetConfigurationHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setConfiguration(targetEntityID, configurationIndex, handler);
@@ -367,6 +382,26 @@ void ControllerEntityImpl::getStreamOutputName(UniqueIdentifier const targetEnti
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getStreamOutputName(targetEntityID, configurationIndex, streamIndex, handler);
 }
 
+void ControllerEntityImpl::setJackInputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, model::AvdeccFixedString const& jackInputName, SetJackInputNameHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setJackInputName(targetEntityID, configurationIndex, jackIndex, jackInputName, handler);
+}
+
+void ControllerEntityImpl::getJackInputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, GetJackInputNameHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getJackInputName(targetEntityID, configurationIndex, jackIndex, handler);
+}
+
+void ControllerEntityImpl::setJackOutputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, model::AvdeccFixedString const& jackOutputName, SetJackOutputNameHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setJackOutputName(targetEntityID, configurationIndex, jackIndex, jackOutputName, handler);
+}
+
+void ControllerEntityImpl::getJackOutputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, GetJackOutputNameHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getJackOutputName(targetEntityID, configurationIndex, jackIndex, handler);
+}
+
 void ControllerEntityImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvbInterfaceIndex const avbInterfaceIndex, model::AvdeccFixedString const& avbInterfaceName, SetAvbInterfaceNameHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setAvbInterfaceName(targetEntityID, configurationIndex, avbInterfaceIndex, avbInterfaceName, handler);
@@ -425,6 +460,36 @@ void ControllerEntityImpl::setClockDomainName(UniqueIdentifier const targetEntit
 void ControllerEntityImpl::getClockDomainName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockDomainIndex const clockDomainIndex, GetClockDomainNameHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, handler);
+}
+
+void ControllerEntityImpl::setTimingName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::TimingIndex const timingIndex, model::AvdeccFixedString const& timingName, SetTimingNameHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setTimingName(targetEntityID, configurationIndex, timingIndex, timingName, handler);
+}
+
+void ControllerEntityImpl::getTimingName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::TimingIndex const timingIndex, GetTimingNameHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getTimingName(targetEntityID, configurationIndex, timingIndex, handler);
+}
+
+void ControllerEntityImpl::setPtpInstanceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::PtpInstanceIndex const ptpInstanceIndex, model::AvdeccFixedString const& ptpInstanceName, SetPtpInstanceNameHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setPtpInstanceName(targetEntityID, configurationIndex, ptpInstanceIndex, ptpInstanceName, handler);
+}
+
+void ControllerEntityImpl::getPtpInstanceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::PtpInstanceIndex const ptpInstanceIndex, GetPtpInstanceNameHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getPtpInstanceName(targetEntityID, configurationIndex, ptpInstanceIndex, handler);
+}
+
+void ControllerEntityImpl::setPtpPortName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::PtpPortIndex const ptpPortIndex, model::AvdeccFixedString const& ptpPortName, SetPtpPortNameHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setPtpPortName(targetEntityID, configurationIndex, ptpPortIndex, ptpPortName, handler);
+}
+
+void ControllerEntityImpl::getPtpPortName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::PtpPortIndex const ptpPortIndex, GetPtpPortNameHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getPtpPortName(targetEntityID, configurationIndex, ptpPortIndex, handler);
 }
 
 void ControllerEntityImpl::setAssociation(UniqueIdentifier const targetEntityID, UniqueIdentifier const associationID, SetAssociationHandler const& handler) const noexcept
@@ -570,6 +635,21 @@ void ControllerEntityImpl::setMemoryObjectLength(UniqueIdentifier const targetEn
 void ControllerEntityImpl::getMemoryObjectLength(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, GetMemoryObjectLengthHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMemoryObjectLength(targetEntityID, configurationIndex, memoryObjectIndex, handler);
+}
+
+void ControllerEntityImpl::getDynamicInfo(UniqueIdentifier const targetEntityID, controller::DynamicInfoParameters const& parameters, GetDynamicInfoHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getDynamicInfo(targetEntityID, parameters, handler);
+}
+
+void ControllerEntityImpl::setMaxTransitTime(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, SetMaxTransitTimeHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setMaxTransitTime(targetEntityID, streamIndex, maxTransitTime, handler);
+}
+
+void ControllerEntityImpl::getMaxTransitTime(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetMaxTransitTimeHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMaxTransitTime(targetEntityID, streamIndex, handler);
 }
 
 /* Enumeration and Control Protocol (AECP) AA */

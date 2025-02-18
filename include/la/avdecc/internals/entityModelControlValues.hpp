@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -32,6 +32,10 @@
 #include "exports.hpp"
 
 #include <optional>
+#include <type_traits>
+#include <vector>
+#include <string>
+#include <tuple>
 #include <array>
 #if !defined(__GNUC__) || __GNUC__ >= 10 /* <version> is not present in earier versions of gcc (not sure which version exactly, using 10 here) */
 #	include <version>
@@ -51,7 +55,7 @@ namespace entity
 {
 namespace model
 {
-/** Linear Values - Clause 7.3.5.2.1 */
+/** Linear Values - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 struct LA_AVDECC_TYPE_INFO_EXPORT LinearValueStatic
 {
@@ -148,7 +152,48 @@ private:
 	Values _values{};
 };
 
-/** Array Values - Clause 7.3.5.2.3 */
+/** Selector Value - IEEE1722.1-2013 Clause 7.3.5.2.2 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType> || std::is_same_v<SizeType, LocalizedStringReference>>>
+struct LA_AVDECC_TYPE_INFO_EXPORT SelectorValueStatic
+{
+	using control_value_details_traits = ControlValues::control_value_details_traits<SelectorValueStatic<SizeType>>;
+
+	std::uint16_t countValues() const noexcept
+	{
+		return 1; // There is actually just one value in SELECTOR type, but multiple options
+	}
+
+	// Comparison operator
+	CONSTEXPR_COMPARISON friend bool operator==(SelectorValueStatic const& lhs, SelectorValueStatic const& rhs) noexcept
+	{
+		return lhs.defaultValue == rhs.defaultValue && lhs.unit == rhs.unit && lhs.options == rhs.options;
+	}
+
+	SizeType defaultValue{ 0 };
+	ControlValueUnit unit{ 0 };
+	std::vector<SizeType> options{};
+};
+
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType> || std::is_same_v<SizeType, LocalizedStringReference>>>
+struct LA_AVDECC_TYPE_INFO_EXPORT SelectorValueDynamic
+{
+	using control_value_details_traits = ControlValues::control_value_details_traits<SelectorValueDynamic<SizeType>>;
+
+	std::uint16_t countValues() const noexcept
+	{
+		return 1;
+	}
+
+	// Comparison operator
+	CONSTEXPR_COMPARISON friend bool operator==(SelectorValueDynamic const& lhs, SelectorValueDynamic const& rhs) noexcept
+	{
+		return lhs.currentValue == rhs.currentValue;
+	}
+
+	SizeType currentValue{}; // The actual default value should be the one from SelectorValueStatic
+};
+
+/** Array Values - IEEE1722.1-2013 Clause 7.3.5.2.3 */
 template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 struct LA_AVDECC_TYPE_INFO_EXPORT ArrayValueStatic
 {
@@ -192,7 +237,7 @@ struct LA_AVDECC_TYPE_INFO_EXPORT ArrayValueDynamic
 	std::vector<SizeType> currentValues{}; // The actual default value should be the one from ArrayValueStatic
 };
 
-/** UTF-8 String Value - Clause 7.3.5.2.4 */
+/** UTF-8 String Value - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueStatic
 {
 	static constexpr size_t MaxLength = 406;
@@ -227,8 +272,26 @@ struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueDynamic
 	Values currentValue{};
 };
 
+enum class ControlValuesValidationResult
+{
+	Valid,
+	NoStaticValues, /**< static values not initialized */
+	WrongStaticValuesType, /**< static values of incorrect type (ie. dynamic) */
+	NoDynamicValues, /**< dynamic values not initialized */
+	WrongDynamicValuesType, /**< dynamic values of incorrect type (ie. static) */
+	StaticDynamicTypeMismatch, /**< Type mismatch between static and dynamic values */
+	StaticDynamicCountMismatch, /**< Count mismatch between static and dynamic values */
+	CurrentValueBelowMinimum, /**< 'currentValue' is below 'minimum' */
+	CurrentValueAboveMaximum, /**< 'currentValue' is above 'maximum' */
+	CurrentValueNotMultipleOfStep, /**< 'currentValue' is not a multiple of 'step' */
+	CurrentValueNotInOptions, /**< 'currentValue' is not in 'options' */
+	CurrentValueNotNullTerminated, /**< 'currentValue' is not null terminated */
+	InvalidPackedValues = 98, /**< Packed values are invalid */
+	NotSupported = 99, /**< Validation not supported for this ControlValueType */
+};
+
 LA_AVDECC_API std::optional<ControlValues> LA_AVDECC_CALL_CONVENTION unpackDynamicControlValues(MemoryBuffer const& packedControlValues, ControlValueType::Type const valueType, std::uint16_t const numberOfValues) noexcept;
-LA_AVDECC_API std::optional<std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(ControlValues const& staticValues, ControlValues const& dynamicValues) noexcept;
+LA_AVDECC_API std::tuple<ControlValuesValidationResult, std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(ControlValues const& staticValues, ControlValues const& dynamicValues) noexcept;
 
 } // namespace model
 } // namespace entity

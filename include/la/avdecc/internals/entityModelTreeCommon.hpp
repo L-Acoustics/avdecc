@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -124,6 +124,7 @@ using RedundantStreams = std::set<StreamIndex>;
 using SamplingRates = std::set<SamplingRate>;
 using AvdeccFixedStrings = std::array<AvdeccFixedString, 7>;
 using ClockSources = std::vector<ClockSourceIndex>;
+using PtpInstances = std::vector<PtpInstanceIndex>;
 using DescriptorCounts = std::unordered_map<DescriptorType, std::uint16_t, utils::EnumClassHash>;
 
 } // namespace model

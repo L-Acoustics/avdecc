@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -83,7 +83,7 @@ void LA_AVDECC_CALL_CONVENTION AaAecpdu::deserialize(DeserializationBuffer& buff
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 
-	// Check is there are less advertised data than the required minimum
+	// Check if there are less advertised data than the required minimum
 	auto constexpr minCDL = HeaderLength + Aecpdu::HeaderLength;
 	if (_controlDataLength < minCDL)
 	{

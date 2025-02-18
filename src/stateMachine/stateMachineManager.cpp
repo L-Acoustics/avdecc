@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -368,7 +368,7 @@ void Manager::processAdpdu(Adpdu const& adpdu) noexcept
 void Manager::processAecpdu(Aecpdu const& aecpdu) noexcept
 {
 	auto const messageType = aecpdu.getMessageType();
-	auto const isResponse = (messageType.getValue() % 2) == 1; // Odd numbers are responses (see Clause 9.2.1.1.5)
+	auto const isResponse = (messageType.getValue() % 2) == 1; // Odd numbers are responses (see IEEE1722.1-2013 Clause 9.2.1.1.5)
 
 	// If the message is a RESPONSE
 	if (isResponse)
@@ -395,7 +395,7 @@ void Manager::processAecpdu(Aecpdu const& aecpdu) noexcept
 void Manager::processAcmpdu(Acmpdu const& acmpdu) noexcept
 {
 	auto const messageType = acmpdu.getMessageType().getValue();
-	auto const isResponse = (messageType % 2) == 1; // Odd numbers are responses (see Clause 8.2.1.5)
+	auto const isResponse = (messageType % 2) == 1; // Odd numbers are responses (see IEEE1722.1-2013 Clause 8.2.1.5)
 
 	// Lock
 	auto const lg = std::lock_guard{ *this };
@@ -542,6 +542,11 @@ ProtocolInterface::Error Manager::setAutomaticDiscoveryDelay(std::chrono::millis
 void Manager::discoverMessageSent() noexcept
 {
 	_discoveryStateMachine.discoverMessageSent();
+}
+
+ProtocolInterface::Error Manager::forgetRemoteEntity(UniqueIdentifier const entityID) noexcept
+{
+	return _discoveryStateMachine.forgetRemoteEntity(entityID);
 }
 
 /* ************************************************************ */

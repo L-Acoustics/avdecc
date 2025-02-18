@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -26,7 +26,9 @@
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
 #include <la/avdecc/internals/entityModelControlValues.hpp>
-#include <la/avdecc/internals/jsonTypes.hpp>
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+#	include <la/avdecc/internals/jsonTypes.hpp>
+#endif // ENABLE_AVDECC_FEATURE_JSON
 
 // Internal API
 #include "protocol/protocolAemPayloads.hpp"
@@ -473,6 +475,53 @@ TEST(AemPayloads, OperationStatusResponse)
 	}
 }
 
+TEST(AemPayloads, GetDynamicInfo)
+{
+	try
+	{
+		auto dynamicInfos = la::avdecc::protocol::aemPayload::DynamicInfos{};
+		{
+			// Serialize a GET_NAME command
+			auto const cmdSer = la::avdecc::protocol::aemPayload::serializeGetNameCommand(la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex{ 0u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ConfigurationIndex{ 0u });
+			dynamicInfos.emplace_back(la::avdecc::protocol::AemAecpStatus::Success, la::avdecc::protocol::AemCommandType::GetName, la::avdecc::MemoryBuffer{ cmdSer.data(), cmdSer.usedBytes() });
+		}
+		auto const ser = la::avdecc::protocol::aemPayload::serializeGetDynamicInfoCommand(dynamicInfos);
+		auto const dynamicInfosRet = la::avdecc::protocol::aemPayload::deserializeGetDynamicInfoCommand({ ser.data(), ser.usedBytes() });
+		ASSERT_TRUE(!dynamicInfosRet.empty());
+		ASSERT_EQ(dynamicInfos.size(), dynamicInfosRet.size());
+
+		auto pos = 0u;
+		for (auto const& [status, cmd, buffer] : dynamicInfosRet)
+		{
+			EXPECT_EQ(dynamicInfos[pos++].buffer(), buffer);
+		}
+	}
+	catch (...)
+	{
+		EXPECT_FALSE(true) << "Should not have thrown";
+	}
+}
+
+TEST(AemPayloads, SetMaxTransitTimeCommand)
+{
+	EXPECT_NO_THROW(auto const ser = la::avdecc::protocol::aemPayload::serializeSetMaxTransitTimeCommand(la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::StreamIndex(0), std::uint64_t(0)); EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemSetMaxTransitTimeCommandPayloadSize, ser.size()); la::avdecc::protocol::aemPayload::deserializeSetMaxTransitTimeCommand({ ser.data(), ser.usedBytes() });) << "Serialization/deserialization should not throw anything";
+}
+
+TEST(AemPayloads, SetMaxTransitTimeResponse)
+{
+	EXPECT_NO_THROW(auto const ser = la::avdecc::protocol::aemPayload::serializeSetMaxTransitTimeResponse(la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::StreamIndex(0), std::uint64_t(0)); EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemSetMaxTransitTimeResponsePayloadSize, ser.size()); la::avdecc::protocol::aemPayload::deserializeSetMaxTransitTimeResponse(la::avdecc::entity::LocalEntity::AemCommandStatus::Success, { ser.data(), ser.usedBytes() });) << "Serialization/deserialization should not throw anything";
+}
+
+TEST(AemPayloads, GetMaxTransitTimeCommand)
+{
+	EXPECT_NO_THROW(auto const ser = la::avdecc::protocol::aemPayload::serializeGetMaxTransitTimeCommand(la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::StreamIndex(0)); EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemGetMaxTransitTimeCommandPayloadSize, ser.size()); la::avdecc::protocol::aemPayload::deserializeGetMaxTransitTimeCommand({ ser.data(), ser.usedBytes() });) << "Serialization/deserialization should not throw anything";
+}
+
+TEST(AemPayloads, GetMaxTransitTimeResponse)
+{
+	EXPECT_NO_THROW(auto const ser = la::avdecc::protocol::aemPayload::serializeGetMaxTransitTimeResponse(la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::StreamIndex(0), std::uint64_t(0)); EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemGetMaxTransitTimeResponsePayloadSize, ser.size()); la::avdecc::protocol::aemPayload::deserializeGetMaxTransitTimeResponse(la::avdecc::entity::LocalEntity::AemCommandStatus::Success, { ser.data(), ser.usedBytes() });) << "Serialization/deserialization should not throw anything";
+}
+
 TEST(AemPayloads, SendPayloadMaximumSize)
 {
 	la::avdecc::entity::model::AudioMappings mappings{};
@@ -567,6 +616,7 @@ static inline std::tuple<la::avdecc::entity::model::ControlNodeStaticModel, la::
 	return { s, d };
 }
 
+#	ifdef ENABLE_AVDECC_FEATURE_JSON
 TEST(AemPayloads, DeserializeReadControlDescriptorResponse_LinearUInt8)
 {
 	auto ser = la::avdecc::Serializer<la::avdecc::protocol::AemAecpdu::MaximumPayloadBufferLength>{};
@@ -586,7 +636,7 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_LinearUInt8)
 	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
 	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
 	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
-	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+	ASSERT_EQ(la::avdecc::entity::model::ControlValuesValidationResult::Valid, std::get<0>(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic)));
 
 	try
 	{
@@ -625,7 +675,7 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_ArrayInt8)
 	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
 	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
 	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
-	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+	ASSERT_EQ(la::avdecc::entity::model::ControlValuesValidationResult::Valid, std::get<0>(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic)));
 
 	try
 	{
@@ -664,7 +714,7 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_ArrayUInt32)
 	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
 	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
 	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
-	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+	ASSERT_EQ(la::avdecc::entity::model::ControlValuesValidationResult::Valid, std::get<0>(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic)));
 
 	try
 	{
@@ -684,6 +734,7 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_ArrayUInt32)
 	}
 }
 
+#		pragma message("TODO: Test each possible value returned by validateControlValues. Need an easy way to create ControlValues")
 TEST(AemPayloads, DeserializeReadControlDescriptorResponse_Utf8)
 {
 	auto ser = la::avdecc::Serializer<la::avdecc::protocol::AemAecpdu::MaximumPayloadBufferLength>{};
@@ -703,7 +754,7 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_Utf8)
 	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
 	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
 	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
-	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+	ASSERT_EQ(la::avdecc::entity::model::ControlValuesValidationResult::Valid, std::get<0>(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic)));
 
 	try
 	{
@@ -722,5 +773,6 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_Utf8)
 		ASSERT_TRUE(false) << "Should not throw";
 	}
 }
+#	endif // ENABLE_AVDECC_FEATURE_JSON
 
 #endif // _WIN32 || __APPLE__

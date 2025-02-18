@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -420,18 +420,26 @@ inline void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 
 inline void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterface& pi)
 {
-	class Delegate : public la::avdecc::entity::controller::Delegate
+	class Delegate : public la::avdecc::entity::controller::DefaultedDelegate
 	{
 	public:
 		Delegate() = default;
 		virtual ~Delegate() override = default;
 
+		la::avdecc::UniqueIdentifier getFoundEntity() const noexcept
+		{
+			return _foundEntity;
+		}
+
 	private:
-		virtual void onEntityOnline(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override
+		virtual void onEntityOnline(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::Entity const& /*entity*/) noexcept override
 		{
 			outputText("Found an entity (either local or remote)\n");
+			_foundEntity = entityID;
 		}
 		virtual void onEntityOffline(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept override {}
+
+		la::avdecc::UniqueIdentifier _foundEntity{};
 	};
 	auto delegate = Delegate{};
 
@@ -454,13 +462,136 @@ inline void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterf
 		std::this_thread::sleep_for(std::chrono::seconds(5));
 	}
 
+	auto const foundEntity = delegate.getFoundEntity();
+	if (!foundEntity)
+	{
+		outputText("No entity found\n");
+		return;
+	}
+
+	outputText("Sending commands to " + la::avdecc::utils::toHexString(foundEntity) + "\n");
+
 	// Send an Acquire command
 	{
 		auto commandResultPromise = std::promise<void>{};
-		entity->acquireEntity(s_TargetEntityID, false, la::avdecc::entity::model::DescriptorType::Entity, 0u,
+		entity->acquireEntity(foundEntity, false, la::avdecc::entity::model::DescriptorType::Entity, 0u,
 			[&commandResultPromise](la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const /*owningEntity*/, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/)
 			{
 				outputText("Got Acquire Entity response with status: " + std::to_string(la::avdecc::utils::to_integral(status)) + "\n");
+				commandResultPromise.set_value();
+			});
+
+		// Wait for the command result
+		auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(20));
+		if (status == std::future_status::timeout)
+		{
+			outputText("AEM AECP command timed out\n");
+		}
+	}
+
+	// Get Max Transit Time
+	{
+		auto commandResultPromise = std::promise<void>{};
+		entity->getMaxTransitTime(foundEntity, la::avdecc::entity::model::StreamIndex{ 0u },
+			[&commandResultPromise](la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const /*streamIndex*/, std::chrono::nanoseconds const& maxTransitTime)
+			{
+				outputText("Got GetMaxTransitTime response with status: " + std::to_string(la::avdecc::utils::to_integral(status)) + ": " + std::to_string(maxTransitTime.count()) + "\n");
+				commandResultPromise.set_value();
+			});
+
+		// Wait for the command result
+		auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(20));
+		if (status == std::future_status::timeout)
+		{
+			outputText("AEM AECP command timed out\n");
+		}
+	}
+
+	// Set Max Transit Time
+	{
+		auto commandResultPromise = std::promise<void>{};
+		entity->setMaxTransitTime(foundEntity, la::avdecc::entity::model::StreamIndex{ 0u }, std::chrono::nanoseconds(1000000),
+			[&commandResultPromise](la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const /*streamIndex*/, std::chrono::nanoseconds const& maxTransitTime)
+			{
+				outputText("Got SetMaxTransitTime response with status: " + std::to_string(la::avdecc::utils::to_integral(status)) + ": " + std::to_string(maxTransitTime.count()) + "\n");
+				commandResultPromise.set_value();
+			});
+
+		// Wait for the command result
+		auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(20));
+		if (status == std::future_status::timeout)
+		{
+			outputText("AEM AECP command timed out\n");
+		}
+	}
+
+	// Send Get Dynamic Info
+	{
+		auto commandResultPromise = std::promise<void>{};
+		auto dynInfos = la::avdecc::entity::controller::DynamicInfoParameters{};
+		dynInfos.emplace_back(la::avdecc::entity::controller::DynamicInfoParameter{ la::avdecc::entity::LocalEntity::AemCommandStatus::Success, la::avdecc::protocol::AemCommandType::GetConfiguration, {} });
+		dynInfos.emplace_back(la::avdecc::entity::controller::DynamicInfoParameter{ la::avdecc::entity::LocalEntity::AemCommandStatus::Success, la::avdecc::protocol::AemCommandType::GetName, { la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex{ 0u }, std::uint16_t{ 0u } } });
+		dynInfos.emplace_back(la::avdecc::entity::controller::DynamicInfoParameter{ la::avdecc::entity::LocalEntity::AemCommandStatus::Success, la::avdecc::protocol::AemCommandType::GetName, { la::avdecc::entity::model::ConfigurationIndex{ 1u }, la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex{ 0u }, std::uint16_t{ 0u } } });
+		dynInfos.emplace_back(la::avdecc::entity::controller::DynamicInfoParameter{ la::avdecc::entity::LocalEntity::AemCommandStatus::Success, la::avdecc::protocol::AemCommandType::GetStreamFormat, { la::avdecc::entity::model::DescriptorType::StreamInput, la::avdecc::entity::model::DescriptorIndex{ 0u } } });
+		dynInfos.emplace_back(la::avdecc::entity::controller::DynamicInfoParameter{ la::avdecc::entity::LocalEntity::AemCommandStatus::Success, la::avdecc::protocol::AemCommandType::GetStreamInfo, { la::avdecc::entity::model::DescriptorType::StreamInput, la::avdecc::entity::model::DescriptorIndex{ 0u } } });
+		//dynInfos.emplace_back(la::avdecc::entity::controller::DynamicInfoParameter{ la::avdecc::entity::LocalEntity::AemCommandStatus::Success, la::avdecc::protocol::AemCommandType::GetAssociationID, {} });
+		dynInfos.emplace_back(la::avdecc::entity::controller::DynamicInfoParameter{ la::avdecc::entity::LocalEntity::AemCommandStatus::Success, la::avdecc::protocol::AemCommandType::GetSamplingRate, { la::avdecc::entity::model::DescriptorType::AudioUnit, la::avdecc::entity::model::DescriptorIndex{ 0u } } });
+		dynInfos.emplace_back(la::avdecc::entity::controller::DynamicInfoParameter{ la::avdecc::entity::LocalEntity::AemCommandStatus::Success, la::avdecc::protocol::AemCommandType::GetClockSource, { la::avdecc::entity::model::ClockDomainIndex{ 0u } } });
+		dynInfos.emplace_back(la::avdecc::entity::controller::DynamicInfoParameter{ la::avdecc::entity::LocalEntity::AemCommandStatus::Success, la::avdecc::protocol::AemCommandType::GetCounters, { la::avdecc::entity::model::DescriptorType::StreamInput, la::avdecc::entity::model::DescriptorIndex{ 0u } } });
+		dynInfos.emplace_back(la::avdecc::entity::controller::DynamicInfoParameter{ la::avdecc::entity::LocalEntity::AemCommandStatus::Success, la::avdecc::protocol::AemCommandType::GetMemoryObjectLength, { la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::MemoryObjectIndex{ 0u } } });
+		entity->getDynamicInfo(foundEntity, dynInfos,
+			[&commandResultPromise](la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::controller::DynamicInfoParameters const& parameters)
+			{
+				outputText("Got GET_DYNAMIC_INFO response with status: " + std::to_string(la::avdecc::utils::to_integral(status)) + "\n");
+				if (status == la::avdecc::entity::LocalEntity::AemCommandStatus::Success)
+				{
+					for (auto const& [st, commandType, arguments] : parameters)
+					{
+						outputText(" - Command " + static_cast<std::string>(commandType) + ": " + la::avdecc::entity::LocalEntity::statusToString(st) + "\n");
+						if (st == la::avdecc::entity::LocalEntity::AemCommandStatus::Success)
+						{
+							if (commandType == la::avdecc::protocol::AemCommandType::GetConfiguration)
+							{
+								outputText("   - Current Configuration Index: " + std::to_string(std::any_cast<la::avdecc::entity::model::ConfigurationIndex>(arguments.at(0))) + "\n");
+							}
+							else if (commandType == la::avdecc::protocol::AemCommandType::GetName)
+							{
+								outputText("   - Configuration Name: " + std::any_cast<la::avdecc::entity::model::AvdeccFixedString>(arguments.at(4)).str() + "\n");
+							}
+							else if (commandType == la::avdecc::protocol::AemCommandType::GetStreamFormat)
+							{
+								outputText("   - Stream Format: " + la::avdecc::utils::toHexString(std::any_cast<la::avdecc::entity::model::StreamFormat>(arguments.at(2)).getValue()) + "\n");
+							}
+							else if (commandType == la::avdecc::protocol::AemCommandType::GetStreamInfo)
+							{
+								auto const& streamInfo = std::any_cast<la::avdecc::entity::model::StreamInfo>(arguments.at(2));
+								outputText("   - Stream Info - Format: " + la::avdecc::utils::toHexString(streamInfo.streamFormat.getValue()) + "\n");
+							}
+							else if (commandType == la::avdecc::protocol::AemCommandType::GetAssociationID)
+							{
+								outputText("   - Stream Info - Format: " + la::avdecc::utils::toHexString(std::any_cast<la::avdecc::UniqueIdentifier>(arguments.at(0)).getValue()) + "\n");
+							}
+							else if (commandType == la::avdecc::protocol::AemCommandType::GetSamplingRate)
+							{
+								outputText("   - Sampling Rate: " + std::to_string(std::any_cast<la::avdecc::entity::model::SamplingRate>(arguments.at(2)).getValue()) + "\n");
+							}
+							else if (commandType == la::avdecc::protocol::AemCommandType::GetClockSource)
+							{
+								outputText("   - ClockSourceIndex: " + std::to_string(std::any_cast<la::avdecc::entity::model::ClockSourceIndex>(arguments.at(1))) + "\n");
+							}
+							else if (commandType == la::avdecc::protocol::AemCommandType::GetCounters)
+							{
+								auto validFlags = la::avdecc::entity::StreamInputCounterValidFlags{};
+								validFlags.assign(std::any_cast<la::avdecc::entity::model::DescriptorCounterValidFlag>(arguments.at(2)));
+								outputText("   - Counters: " + std::to_string(validFlags.size()) + "\n");
+							}
+							else if (commandType == la::avdecc::protocol::AemCommandType::GetMemoryObjectLength)
+							{
+								outputText("   - MemoryObjectLength: " + std::to_string(std::any_cast<std::uint64_t>(arguments.at(2))) + "\n");
+							}
+						}
+					}
+				}
 				commandResultPromise.set_value();
 			});
 
@@ -475,6 +606,8 @@ inline void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterf
 
 inline int doJob()
 {
+	static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
+
 	auto const protocolInterfaceType = chooseProtocolInterfaceType(la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes{ la::avdecc::protocol::ProtocolInterface::Type::PCap, la::avdecc::protocol::ProtocolInterface::Type::MacOSNative });
 	auto intfc = chooseNetworkInterface();
 
@@ -486,13 +619,13 @@ inline int doJob()
 	try
 	{
 		// Create an executor for ProtocolInterface
-		auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+		auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
 
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "':\n");
 
 		// We need to create/destroy the protocol interface for each test, as the protocol interface will not trigger events for already discovered entities
 		{
-			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id);
+			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id, DefaultExecutorName);
 
 			// Test sending raw messages
 			sendRawMessages(*pi);
@@ -501,7 +634,7 @@ inline int doJob()
 		}
 
 		{
-			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id);
+			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id, DefaultExecutorName);
 
 			// Test receiving raw messages
 			receiveAecpdu(*pi);
@@ -510,14 +643,14 @@ inline int doJob()
 		}
 
 		{
-			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id);
+			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id, DefaultExecutorName);
 
 			// Test sending controller type messages (commands)
 			sendControllerCommands(*pi);
 		}
 
 		{
-			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id);
+			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id, DefaultExecutorName);
 
 			// Test sending high level controller commands
 			sendControllerHighLevelCommands(*pi);

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include "treeModelAccessStrategy.hpp"
+
 #include <la/avdecc/internals/entityModelTree.hpp>
 
 #include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"
@@ -37,6 +39,8 @@
 #include <mutex>
 #include <utility>
 #include <thread>
+#include <tuple>
+#include <optional>
 
 namespace la
 {
@@ -114,10 +118,11 @@ public:
 	enum class EnumerationStep : std::uint16_t
 	{
 		GetMilanInfo = 1u << 0,
-		RegisterUnsol = 1u << 1,
-		GetStaticModel = 1u << 2,
-		GetDescriptorDynamicInfo = 1u << 3, /** DescriptorDynamicInfoType */
-		GetDynamicInfo = 1u << 4, /** DynamicInfoType */
+		CheckDynamicInfoSupported = 1u << 1,
+		RegisterUnsol = 1u << 2,
+		GetStaticModel = 1u << 3,
+		GetDescriptorDynamicInfo = 1u << 4, /** DescriptorDynamicInfoType */
+		GetDynamicInfo = 1u << 5, /** DynamicInfoType */
 	};
 	using EnumerationSteps = utils::EnumBitfield<EnumerationStep>;
 
@@ -158,7 +163,9 @@ public:
 		InputStreamFormat, // STREAM_INPUT.current_format -> GET_STREAM_FORMAT (7.4.10)
 		OutputStreamName, // STREAM_OUTPUT.object_name -> GET_NAME (7.4.18)
 		OutputStreamFormat, // STREAM_OUTPUT.current_format -> GET_STREAM_FORMAT (7.4.10)
-		AvbInterfaceName, // AVB_INTERFACE.object_name -> GET_NAME (7.4.18)
+		InputJackName, // JACK_INPUT.object_name -> GET_NAME (7.4.18)
+		OutputJackName, // JACK_OUTPUT.object_name -> GET_NAME (7.4.18)
+		AvbInterfaceDescriptor, // AVB_INTERFACE -> GET_DESCRIPTOR // Special case due to dynamic values that can only be retrieved from the descriptor
 		ClockSourceName, // CLOCK_SOURCE.object_name -> GET_NAME (7.4.18)
 		MemoryObjectName, // MEMORY_OBJECT.object_name -> GET_NAME (7.4.18)
 		MemoryObjectLength, // MEMORY_OBJECT.length -> GET_MEMORY_OBJECT_LENGTH (7.4.73)
@@ -167,6 +174,9 @@ public:
 		ControlValues, // CONTROL.value_details -> GET_CONTROL (7.4.26)
 		ClockDomainName, // CLOCK_DOMAIN.object_name -> GET_NAME (7.4.18)
 		ClockDomainSourceIndex, // CLOCK_DOMAIN.clock_source_index -> GET_CLOCK_SOURCE (7.4.24)
+		TimingName, // TIMING.object_name -> GET_NAME (7.4.18)
+		PtpInstanceName, // PTP_INSTANCE.object_name -> GET_NAME (7.4.18)
+		PtpPortName, // PTP_PORT.object_name -> GET_NAME (7.4.18)
 	};
 
 	using MilanInfoKey = std::underlying_type_t<MilanInfoType>;
@@ -186,7 +196,9 @@ public:
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept override;
 	virtual bool isMilanRedundant() const noexcept override;
 	virtual bool gotFatalEnumerationError() const noexcept override;
+	virtual bool isGetDynamicInfoSupported() const noexcept override;
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept override;
+	virtual bool areUnsolicitedNotificationsSupported() const noexcept override;
 	virtual bool isAcquired() const noexcept override;
 	virtual bool isAcquireCommandInProgress() const noexcept override;
 	virtual bool isAcquiredByOther() const noexcept override;
@@ -212,13 +224,15 @@ public:
 	virtual model::EntityNode const& getEntityNode() const override;
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const override;
 	virtual model::ConfigurationNode const& getCurrentConfigurationNode() const override;
+	virtual model::AudioUnitNode const& getAudioUnitNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex) const override;
 	virtual model::StreamInputNode const& getStreamInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
 	virtual model::StreamOutputNode const& getStreamOutputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	virtual model::RedundantStreamNode const& getRedundantStreamInputNode(entity::model::ConfigurationIndex const configurationIndex, model::VirtualIndex const redundantStreamIndex) const override;
 	virtual model::RedundantStreamNode const& getRedundantStreamOutputNode(entity::model::ConfigurationIndex const configurationIndex, model::VirtualIndex const redundantStreamIndex) const override;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
-	virtual model::AudioUnitNode const& getAudioUnitNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex) const override;
+	virtual model::JackInputNode const& getJackInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex) const override;
+	virtual model::JackOutputNode const& getJackOutputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex) const override;
 	virtual model::AvbInterfaceNode const& getAvbInterfaceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex) const override;
 	virtual model::ClockSourceNode const& getClockSourceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex) const override;
 	virtual model::StreamPortNode const& getStreamPortInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const override;
@@ -227,8 +241,11 @@ public:
 	//virtual model::AudioMapNode const& getAudioMapNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) const override;
 	virtual model::ControlNode const& getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) const override;
 	virtual model::ClockDomainNode const& getClockDomainNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const override;
+	virtual model::TimingNode const& getTimingNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex) const override;
+	virtual model::PtpInstanceNode const& getPtpInstanceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex) const override;
+	virtual model::PtpPortNode const& getPtpPortNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex) const override;
 
-	virtual entity::model::LocaleNodeStaticModel const* findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& locale) const override; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
+	virtual model::LocaleNode const* findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& locale) const override; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::LocalizedStringReference const& stringReference) const noexcept override;
 	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const& stringReference) const noexcept override; // Get localized string or empty string if not found // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 
@@ -260,139 +277,50 @@ public:
 	// Diagnostics
 	virtual Diagnostics const& getDiagnostics() const noexcept override;
 
-	// Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist
-	entity::model::EntityTree const& getEntityTree() const;
-	entity::model::ConfigurationTree const& getConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const;
+	TreeModelAccessStrategy& getModelAccessStrategy() noexcept;
 
-	// Const NodeModel getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist, Exception::InvalidDescriptorIndex if descriptorIndex is invalid
-	entity::model::EntityNodeStaticModel const& getEntityNodeStaticModel() const;
-	entity::model::EntityNodeDynamicModel const& getEntityNodeDynamicModel() const;
-	entity::model::ConfigurationNodeStaticModel const& getConfigurationNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex) const;
-	entity::model::ConfigurationNodeDynamicModel const& getConfigurationNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex) const;
-	template<typename FieldPointer, typename DescriptorIndexType>
-	auto const& getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationTree::*Field) const
+	// Non-const Node getters. Behavior in case of error is dictated by the passed NotFoundBehavior
+	model::EntityNode* getEntityNode(TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	std::optional<entity::model::ConfigurationIndex> getCurrentConfigurationIndex(TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	model::ConfigurationNode* getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	model::ConfigurationNode* getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	entity::model::EntityCounters* getEntityCounters(TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	entity::model::AvbInterfaceCounters* getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	entity::model::ClockDomainCounters* getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	entity::model::StreamInputCounters* getStreamInputCounters(entity::model::StreamIndex const streamIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	entity::model::StreamOutputCounters* getStreamOutputCounters(entity::model::StreamIndex const streamIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+
+	// Setters of the DescriptorDynamic info
+	void setEntityName(entity::model::AvdeccFixedString const& name, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	void setEntityGroupName(entity::model::AvdeccFixedString const& name, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	void setCurrentConfiguration(entity::model::ConfigurationIndex const configurationIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	void setConfigurationName(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	template<typename TreeModelAccessPointer, typename DescriptorIndexType>
+	void setObjectName(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, TreeModelAccessPointer TreeModelAccessStrategy::*Pointer, entity::model::AvdeccFixedString const& name, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 	{
-		auto const& configTree = getConfigurationTree(configurationIndex);
-
-		auto const it = (configTree.*Field).find(index);
-		if (it == (configTree.*Field).end())
-			throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid index");
-
-		return it->second.staticModel;
-	}
-	template<typename FieldPointer, typename DescriptorIndexType>
-	auto const& getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationTree::*Field) const
-	{
-		auto const& configTree = getConfigurationTree(configurationIndex);
-
-		auto const it = (configTree.*Field).find(index);
-		if (it == (configTree.*Field).end())
-			throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid index");
-
-		return it->second.dynamicModel;
-	}
-
-	// Tree validators, to check if a specific part exists yet without throwing
-	bool hasConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const noexcept;
-	template<typename FieldPointer, typename DescriptorIndexType>
-	bool hasTreeModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationTree::*Field) const noexcept
-	{
-		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
-
-		if (gotFatalEnumerationError() || !_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+		auto* const dynamicModel = ((*_treeModelAccess).*Pointer)(configurationIndex, index, notFoundBehavior);
+		if (dynamicModel)
 		{
-			return false;
+			dynamicModel->objectName = name;
 		}
-
-		if (auto const configIt = _entityTree.configurationTrees.find(configurationIndex); configIt != _entityTree.configurationTrees.end())
-		{
-			auto const& configTree = configIt->second;
-			return (configTree.*Field).find(index) != (configTree.*Field).end();
-		}
-
-		return false;
 	}
-
-	// Non-const Node getters
-	model::ConfigurationNode& getCurrentConfigurationNode();
-
-	// Non-const Tree getters
-	entity::model::EntityTree& getEntityTree() noexcept;
-	entity::model::ConfigurationTree& getConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) noexcept;
-	entity::model::ConfigurationIndex getCurrentConfigurationIndex() noexcept;
-
-	// Non-const NodeModel getters
-	entity::model::EntityNodeStaticModel& getEntityNodeStaticModel() noexcept;
-	entity::model::EntityNodeDynamicModel& getEntityNodeDynamicModel() noexcept;
-	entity::model::ConfigurationNodeStaticModel& getConfigurationNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex) noexcept;
-	entity::model::ConfigurationNodeDynamicModel& getConfigurationNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex) noexcept;
-	template<typename FieldPointer, typename DescriptorIndexType>
-	auto& getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationTree::*Field) noexcept
-	{
-		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
-
-		auto& configTree = getConfigurationTree(configurationIndex);
-		return (configTree.*Field)[index].staticModel;
-	}
-	template<typename FieldPointer, typename DescriptorIndexType>
-	auto& getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationTree::*Field) noexcept
-	{
-		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
-
-		auto& configTree = getConfigurationTree(configurationIndex);
-		return (configTree.*Field)[index].dynamicModel;
-	}
-	template<typename FieldPointer>
-	auto& getModels(entity::model::ConfigurationIndex const configurationIndex, FieldPointer entity::model::ConfigurationTree::*Field) noexcept
-	{
-		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
-
-		auto& entityTree = getEntityTree();
-		auto configIt = entityTree.configurationTrees.find(configurationIndex);
-		if (configIt != entityTree.configurationTrees.end())
-		{
-			auto& configTree = configIt->second;
-			return configTree.*Field;
-		}
-
-		// We return a reference, so we have to create a static empty model in case we don't have one so we can return a reference to it
-		static auto s_Empty = FieldPointer{};
-		return s_Empty;
-	}
-	entity::model::EntityCounters& getEntityCounters() noexcept;
-	entity::model::AvbInterfaceCounters& getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept;
-	entity::model::ClockDomainCounters& getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
-	entity::model::StreamInputCounters& getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept;
-	entity::model::StreamOutputCounters& getStreamOutputCounters(entity::model::StreamIndex const streamIndex) noexcept;
-
-	// Setters of the DescriptorDynamic info, default constructing if not existing
-	void setEntityName(entity::model::AvdeccFixedString const& name) noexcept;
-	void setEntityGroupName(entity::model::AvdeccFixedString const& name) noexcept;
-	void setCurrentConfiguration(entity::model::ConfigurationIndex const configurationIndex) noexcept;
-	void setConfigurationName(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name) noexcept;
-	template<typename FieldPointer, typename DescriptorIndexType>
-	void setObjectName(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationTree::*Field, entity::model::AvdeccFixedString const& name) noexcept
-	{
-		auto& dynamicModel = getNodeDynamicModel(configurationIndex, index, Field);
-		dynamicModel.objectName = name;
-	}
-	void setSamplingRate(entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) noexcept;
-	entity::model::StreamInputConnectionInfo setStreamInputConnectionInformation(entity::model::StreamIndex const streamIndex, entity::model::StreamInputConnectionInfo const& info) noexcept;
-	void clearStreamOutputConnections(entity::model::StreamIndex const streamIndex) noexcept;
-	bool addStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept; // Returns true if effectively added
-	bool delStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept; // Returns true if effectively removed
-	entity::model::AvbInterfaceInfo setAvbInterfaceInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceInfo const& info) noexcept; // Returns previous AvbInterfaceInfo
-	entity::model::AsPath setAsPath(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) noexcept; // Returns previous AsPath
-	void setSelectedLocaleStringsIndexesRange(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex, entity::model::StringsIndex const countIndexes) noexcept;
-	void clearStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) noexcept;
-	void addStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept;
-	void removeStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept;
-	void clearStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) noexcept;
-	void addStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept;
-	void removeStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept;
-	void setClockSource(entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex) noexcept;
-	void setControlValues(entity::model::ControlIndex const controlIndex, entity::model::ControlValues const& controlValues) noexcept;
-	void setMemoryObjectLength(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept;
+	void setSamplingRate(entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	entity::model::StreamInputConnectionInfo setStreamInputConnectionInformation(entity::model::StreamIndex const streamIndex, entity::model::StreamInputConnectionInfo const& info, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	void clearStreamOutputConnections(entity::model::StreamIndex const streamIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	bool addStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior); // Returns true if effectively added
+	bool delStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior); // Returns true if effectively removed
+	entity::model::AvbInterfaceInfo setAvbInterfaceInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceInfo const& info, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior); // Returns previous AvbInterfaceInfo
+	entity::model::AsPath setAsPath(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior); // Returns previous AsPath
+	void setSelectedLocaleStringsIndexesRange(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex, entity::model::StringsIndex const countIndexes, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	void clearStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	void addStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	void removeStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	void clearStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	void addStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	void removeStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	void setClockSource(entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	void setControlValues(entity::model::ControlIndex const controlIndex, entity::model::ControlValues const& controlValues, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	void setMemoryObjectLength(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
 
 	// Setters of the global state
 	void setEntity(entity::Entity const& entity) noexcept;
@@ -416,13 +344,14 @@ public:
 	void setDiagnostics(Diagnostics const& diags) noexcept;
 
 	// Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
-	void setEntityTree(entity::model::EntityTree const& entityTree) noexcept;
-	bool setCachedEntityTree(entity::model::EntityTree const& cachedTree, entity::model::EntityDescriptor const& descriptor, bool const forAllConfiguration) noexcept; // Returns true if the cached EntityTree is accepted (and set) for this entity
+	bool setCachedEntityNode(model::EntityNode&& cachedNode, entity::model::EntityDescriptor const& descriptor, bool const forAllConfiguration) noexcept; // Returns true if the cached EntityNode is accepted (and set) for this entity
 	void setEntityDescriptor(entity::model::EntityDescriptor const& descriptor) noexcept;
 	void setConfigurationDescriptor(entity::model::ConfigurationDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex) noexcept;
 	void setAudioUnitDescriptor(entity::model::AudioUnitDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex) noexcept;
 	void setStreamInputDescriptor(entity::model::StreamDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) noexcept;
 	void setStreamOutputDescriptor(entity::model::StreamDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) noexcept;
+	void setJackInputDescriptor(entity::model::JackDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex) noexcept;
+	void setJackOutputDescriptor(entity::model::JackDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex) noexcept;
 	void setAvbInterfaceDescriptor(entity::model::AvbInterfaceDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const interfaceIndex) noexcept;
 	void setClockSourceDescriptor(entity::model::ClockSourceDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockIndex) noexcept;
 	void setMemoryObjectDescriptor(entity::model::MemoryObjectDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex) noexcept;
@@ -435,6 +364,9 @@ public:
 	void setAudioMapDescriptor(entity::model::AudioMapDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) noexcept;
 	void setControlDescriptor(entity::model::ControlDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) noexcept;
 	void setClockDomainDescriptor(entity::model::ClockDomainDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
+	void setTimingDescriptor(entity::model::TimingDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex) noexcept;
+	void setPtpInstanceDescriptor(entity::model::PtpInstanceDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex) noexcept;
+	void setPtpPortDescriptor(entity::model::PtpPortDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex) noexcept;
 
 	// Setters of statistics
 	std::uint64_t incrementAecpRetryCounter() noexcept;
@@ -445,6 +377,19 @@ public:
 	std::uint64_t incrementAemAecpUnsolicitedLossCounter() noexcept;
 	void setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept;
 	void setEndEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& endTime) noexcept;
+
+	// Expected CheckDynamicInfoSupported query methods
+	bool checkAndClearExpectedCheckDynamicInfoSupported() noexcept;
+	void setCheckDynamicInfoSupportedExpected() noexcept;
+	bool gotExpectedCheckDynamicInfoSupported() const noexcept;
+	std::pair<bool, std::chrono::milliseconds> getCheckDynamicInfoSupportedRetryTimer() noexcept;
+
+	// Expected GetDynamicInfo query methods
+	bool checkAndClearExpectedGetDynamicInfo(std::uint16_t const packetID) noexcept;
+	void setGetDynamicInfoExpected(std::uint16_t const packetID) noexcept;
+	void clearAllExpectedGetDynamicInfo() noexcept;
+	bool gotAllExpectedGetDynamicInfo() const noexcept;
+	std::pair<bool, std::chrono::milliseconds> getGetDynamicInfoRetryTimer() noexcept;
 
 	// Expected RegisterUnsol query methods
 	bool checkAndClearExpectedRegisterUnsol() noexcept;
@@ -489,21 +434,28 @@ public:
 	void setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept;
 	void setMilanRedundant(bool const isMilanRedundant) noexcept;
 	void setGetFatalEnumerationError() noexcept;
+	void setGetDynamicInfoSupported(bool const isSupported) noexcept;
 	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
+	void setUnsolicitedNotificationsSupported(bool const isSupported) noexcept;
 	bool wasAdvertised() const noexcept;
 	void setAdvertised(bool const wasAdvertised) noexcept;
+	std::optional<entity::model::StreamIndex> getRedundantStreamInputIndex(entity::model::StreamIndex const streamIndex) const noexcept; // Returns the other index of a Redundant Stream Pair for a given Stream Index (std::nullopt if not part of a Redundant Stream Pair)
+	std::optional<entity::model::StreamIndex> getRedundantStreamOutputIndex(entity::model::StreamIndex const streamIndex) const noexcept; // Returns the other index of a Redundant Stream Pair for a given Stream Index (std::nullopt if not part of a Redundant Stream Pair)
 	bool isRedundantPrimaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Primary Stream (false for Secondary and non-redundant streams)
 	bool isRedundantPrimaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Primary Stream (false for Secondary and non-redundant streams)
 	bool isRedundantSecondaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	bool isRedundantSecondaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	Diagnostics& getDiagnostics() noexcept;
 	bool hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
+	entity::model::EntityTree const& getEntityModelTree() const noexcept;
+	void buildEntityModelGraph(entity::model::EntityTree const& entityTree) noexcept;
 
 	// Static methods
 	static std::string dynamicInfoTypeToString(DynamicInfoType const dynamicInfoType) noexcept;
 	static std::string descriptorDynamicInfoTypeToString(DescriptorDynamicInfoType const descriptorDynamicInfoType) noexcept;
 
 	// Controller restricted methods
+	void onEntityModelEnumerated() noexcept; // To be called when the entity model has been fully retrieved
 	void onEntityFullyLoaded() noexcept; // To be called when the entity has been fully loaded and is ready to be shared
 
 	// Compiler auto-generated methods
@@ -513,43 +465,17 @@ public:
 	ControlledEntityImpl& operator=(ControlledEntityImpl&&) = delete;
 
 protected:
-	using RedundantStreamCategory = std::unordered_set<entity::model::StreamIndex>;
-
-	template<class NodeType, typename = std::enable_if_t<std::is_base_of<model::Node, NodeType>::value>>
-	static constexpr size_t getHashCode(NodeType const* const node) noexcept
-	{
-		return typeid(decltype(node)).hash_code();
-	}
-	template<class NodeType, typename = std::enable_if_t<std::is_base_of<model::Node, NodeType>::value>>
-	static constexpr size_t getHashCode() noexcept
-	{
-		return typeid(NodeType const*).hash_code();
-	}
-
-	template<class NodeType, typename = std::enable_if_t<std::is_base_of<model::VirtualNode, NodeType>::value>>
-	static void initNode(NodeType& node, entity::model::DescriptorType const descriptorType) noexcept
-	{
-		node.descriptorType = descriptorType;
-	}
-
-	template<class NodeType, typename = std::enable_if_t<std::is_base_of<model::EntityModelNode, NodeType>::value>>
-	static void initNode(NodeType& node, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
-	{
-		node.descriptorType = descriptorType;
-		node.descriptorIndex = descriptorIndex;
-	}
-
-	template<class NodeType, typename = std::enable_if_t<std::is_base_of<model::VirtualNode, NodeType>::value>>
-	static void initNode(NodeType& node, entity::model::DescriptorType const descriptorType, model::VirtualIndex const virtualIndex) noexcept
-	{
-		node.descriptorType = descriptorType;
-		node.virtualIndex = virtualIndex;
-	}
+	using RedundantStreamCategory = std::unordered_map<entity::model::StreamIndex, entity::model::StreamIndex>;
 
 private:
 	// Private methods
-	void buildEntityModelGraph() noexcept;
-	bool isEntityModelComplete(entity::model::EntityTree const& entityTree, std::uint16_t const configurationsCount) const noexcept;
+	void switchToCachedTreeModelAccessStrategy() noexcept;
+	std::tuple<bool, entity::model::ConfigurationIndex> isEntityModelComplete(model::EntityNode const& entityNode, std::uint16_t const configurationsCount) const noexcept;
+	void buildVirtualNodes(model::ConfigurationNode& configNode) noexcept;
+	void warnOrFixPortMapping(entity::model::AudioMapping const& sourceMapping, entity::model::AudioMapping& destinationMapping) const noexcept;
+	void addOrFixStreamPortInputMapping(entity::model::AudioMappings& mappings, entity::model::AudioMapping const& mapping) const noexcept;
+	void fixStreamPortInputMappings(std::map<entity::model::StreamPortIndex, model::StreamPortInputNode>& streamPorts) noexcept;
+	void fixStreamPortMappings(model::ConfigurationNode& configNode) noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	void buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -559,6 +485,8 @@ private:
 	bool const _isVirtual{ false };
 	bool _ignoreCachedEntityModel{ false };
 	std::optional<entity::model::ControlIndex> _identifyControlIndex{ std::nullopt };
+	std::uint16_t _checkDynamicInfoSupportedRetryCount{ 0u };
+	std::uint16_t _queryGetDynamicInfoRetryCount{ 0u };
 	std::uint16_t _registerUnsolRetryCount{ 0u };
 	std::uint16_t _queryMilanInfoRetryCount{ 0u };
 	std::uint16_t _queryDescriptorRetryCount{ 0u };
@@ -568,9 +496,13 @@ private:
 	CompatibilityFlags _compatibilityFlags{ CompatibilityFlag::IEEE17221 }; // Entity is IEEE1722.1 compatible by default
 	bool _isMilanRedundant{ false }; // Current configuration has at least one redundant stream
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
+	bool _isGetDynamicInfoSupported{ false }; // Is the GET_DYNAMIC_INFO command supported
 	bool _isSubscribedToUnsolicitedNotifications{ false }; // Are we subscribed to unsolicited notifications
+	bool _areUnsolicitedNotificationsSupported{ false }; // Are unsolicited notifications supported
 	bool _advertised{ false }; // Has the entity been advertised to the observers
+	bool _expectedCheckDynamicInfoSupported{ false };
 	bool _expectedRegisterUnsol{ false };
+	std::unordered_set<std::uint16_t> _expectedGetDynamicInfo{};
 	std::unordered_set<MilanInfoKey> _expectedMilanInfo{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorKey>> _expectedDescriptors{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DynamicInfoKey>> _expectedDynamicInfo{};
@@ -586,9 +518,15 @@ private:
 	// Entity variables
 	entity::Entity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model
-	entity::model::EntityTree _entityTree{}; // Tree of the model as represented by the AVDECC protocol
+	//entity::model::EntityTree _entityTree{}; // Tree of the model as represented by the AVDECC protocol
 	model::EntityNode _entityNode{}; // Model as represented by the ControlledEntity (tree of references to the model::EntityStaticTree and model::EntityDynamicTree)
+	// Entity Model Tree Access Strategy
+	friend class TreeModelAccessTraverseStrategy;
+	friend class TreeModelAccessCacheStrategy;
+	bool _hasSwitchedToCachedTreeModelAccessStrategy{ false };
+	TreeModelAccessStrategy::UniquePointer _treeModelAccess{ nullptr };
 	// Cached Information
+	mutable std::optional<entity::model::EntityTree> _entityTree{};
 	RedundantStreamCategory _redundantPrimaryStreamInputs{}; // Cached indexes of all Redundant Primary Streams (a non-redundant stream won't be listed here)
 	RedundantStreamCategory _redundantPrimaryStreamOutputs{}; // Cached indexes of all Redundant Primary Streams (a non-redundant stream won't be listed here)
 	RedundantStreamCategory _redundantSecondaryStreamInputs{}; // Cached indexes of all Redundant Secondary Streams

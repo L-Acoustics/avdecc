@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -49,7 +49,7 @@ static constexpr std::uint8_t AvtpSubType_Maap{ 0x7e };
 static constexpr std::uint8_t AvtpSubType_Experimental{ 0x7f };
 extern LA_AVDECC_API std::uint16_t const AaAecpMaxSingleTlvMemoryDataLength; /* Maximum individual TLV memory_data length in commands */
 
-/** ADP Message Type - Clause 6.2.1.5 */
+/** ADP Message Type - IEEE1722.1-2013 Clause 6.2.1.5 */
 class AdpMessageType : public utils::TypedDefine<AdpMessageType, std::uint8_t>
 {
 public:
@@ -62,7 +62,7 @@ public:
 	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** AECP Message Type - Clause 9.2.1.1.5 */
+/** AECP Message Type - IEEE1722.1-2013 Clause 9.2.1.1.5 */
 class AecpMessageType : public utils::TypedDefine<AecpMessageType, std::uint8_t>
 {
 public:
@@ -84,7 +84,7 @@ public:
 	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** AECP Status - Clause 9.2.1.1.6 */
+/** AECP Status - IEEE1722.1-2013 Clause 9.2.1.1.6 */
 class AecpStatus : public utils::TypedDefine<AecpStatus, std::uint8_t>
 {
 public:
@@ -92,12 +92,14 @@ public:
 
 	static LA_AVDECC_API AecpStatus const Success;
 	static LA_AVDECC_API AecpStatus const NotImplemented;
+
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** AECP SequenceID - Clause 9.2.1.1.10 */
+/** AECP SequenceID - IEEE1722.1-2013 Clause 9.2.1.1.10 */
 using AecpSequenceID = std::uint16_t;
 
-/** AEM AECP Status - Clause 7.4 */
+/** AEM AECP Status - IEEE1722.1-2013 Clause 7.4 */
 class AemAecpStatus : public AecpStatus
 {
 public:
@@ -115,9 +117,11 @@ public:
 	static LA_AVDECC_API AemAecpStatus const EntityMisbehaving;
 	static LA_AVDECC_API AemAecpStatus const NotSupported;
 	static LA_AVDECC_API AemAecpStatus const StreamIsRunning;
+
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** AEM Command Type - Clause 7.4 */
+/** AEM Command Type - IEEE1722.1-2013 Clause 7.4 */
 class AemCommandType : public utils::TypedDefine<AemCommandType, std::uint16_t>
 {
 public:
@@ -198,6 +202,9 @@ public:
 	static LA_AVDECC_API AemCommandType const GetMemoryObjectLength;
 	static LA_AVDECC_API AemCommandType const SetStreamBackup;
 	static LA_AVDECC_API AemCommandType const GetStreamBackup;
+	static LA_AVDECC_API AemCommandType const GetDynamicInfo;
+	static LA_AVDECC_API AemCommandType const SetMaxTransitTime;
+	static LA_AVDECC_API AemCommandType const GetMaxTransitTime;
 	static LA_AVDECC_API AemCommandType const Expansion;
 
 	static LA_AVDECC_API AemCommandType const InvalidCommandType;
@@ -205,7 +212,7 @@ public:
 	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** AEM Acquire Entity Flags - Clause 7.4.1.1 */
+/** AEM Acquire Entity Flags - IEEE1722.1-2013 Clause 7.4.1.1 */
 class AemAcquireEntityFlags : public utils::TypedDefine<AemAcquireEntityFlags, std::uint32_t>
 {
 public:
@@ -214,9 +221,11 @@ public:
 	static LA_AVDECC_API AemAcquireEntityFlags const None;
 	static LA_AVDECC_API AemAcquireEntityFlags const Persistent;
 	static LA_AVDECC_API AemAcquireEntityFlags const Release;
+
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** AEM Lock Entity Flags - Clause 7.4.2.1 */
+/** AEM Lock Entity Flags - IEEE1722.1-2013 Clause 7.4.2.1 */
 class AemLockEntityFlags : public utils::TypedDefine<AemLockEntityFlags, std::uint32_t>
 {
 public:
@@ -224,9 +233,11 @@ public:
 
 	static LA_AVDECC_API AemLockEntityFlags const None;
 	static LA_AVDECC_API AemLockEntityFlags const Unlock;
+
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** Address Access Mode - Clause 9.2.1.3.3 */
+/** Address Access Mode - IEEE1722.1-2013 Clause 9.2.1.3.3 */
 class AaMode : public utils::TypedDefine<AaMode, std::uint8_t>
 {
 public:
@@ -239,7 +250,7 @@ public:
 	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** Address Access AECP Status - Clause 9.2.1.3.4 */
+/** Address Access AECP Status - IEEE1722.1-2013 Clause 9.2.1.3.4 */
 class AaAecpStatus : public AecpStatus
 {
 public:
@@ -251,16 +262,20 @@ public:
 	static LA_AVDECC_API AaAecpStatus const TlvInvalid;
 	static LA_AVDECC_API AaAecpStatus const DataInvalid;
 	static LA_AVDECC_API AaAecpStatus const Unsupported;
+
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** Milan Vendor Unique AECP Status - (Using base AECP clause) */
+/** Milan Vendor Unique AECP Status - Milan-2019 Clause 7.2.3 */
 class MvuAecpStatus : public AecpStatus
 {
 public:
 	using AecpStatus::AecpStatus;
+
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** Milan Vendor Unique Command Type - Milan Clause 7.2.2.3 */
+/** Milan Vendor Unique Command Type - Milan-2019 Clause 7.2.2.3 */
 class MvuCommandType : public utils::TypedDefine<MvuCommandType, std::uint16_t>
 {
 public:
@@ -273,7 +288,7 @@ public:
 	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** ACMP Message Type - Clause 8.2.1.5 */
+/** ACMP Message Type - IEEE1722.1-2013 Clause 8.2.1.5 */
 class AcmpMessageType : public utils::TypedDefine<AcmpMessageType, std::uint8_t>
 {
 public:
@@ -297,7 +312,7 @@ public:
 	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** ACMP Status - Clause 8.2.1.6 */
+/** ACMP Status - IEEE1722.1-2013 Clause 8.2.1.6 */
 class AcmpStatus : public utils::TypedDefine<AcmpStatus, std::uint8_t>
 {
 public:
@@ -328,10 +343,10 @@ public:
 	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION fromString(std::string const& stringValue); // Throws std::invalid_argument if value does not exist
 };
 
-/** ACMP UniqueID - Clause 8.2.1.12 and 8.2.1.13 */
+/** ACMP UniqueID - IEEE1722.1-2013 Clause 8.2.1.12 and 8.2.1.13 */
 using AcmpUniqueID = std::uint16_t;
 
-/** ACMP SequenceID - Clause 8.2.1.16 */
+/** ACMP SequenceID - IEEE1722.1-2013 Clause 8.2.1.16 */
 using AcmpSequenceID = std::uint16_t;
 
 } // namespace protocol

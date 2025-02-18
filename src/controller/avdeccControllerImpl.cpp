@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -38,6 +38,7 @@
 #endif // ENABLE_AVDECC_FEATURE_JSON
 #include <la/avdecc/internals/streamFormatInfo.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
+#include <la/avdecc/internals/protocolAemPayloadSizes.hpp>
 #include <la/avdecc/internals/protocolInterface.hpp>
 #include <la/avdecc/executor.hpp>
 
@@ -45,10 +46,7 @@
 #include <unordered_set>
 #include <map>
 #include <utility>
-
-// According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
-// This means that we should always replace the previously stored StreamInfo data with the last one received
-#define REPLACE_STREAM_INFO
+#include <set>
 
 namespace la
 {
@@ -122,7 +120,7 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 
 			if (shouldUpdate)
 			{
-				updateGptpInformation(controlledEntity, avbInterfaceIndex, information.macAddress, *information.gptpGrandmasterID, *information.gptpDomainNumber);
+				updateGptpInformation(controlledEntity, avbInterfaceIndex, information.macAddress, *information.gptpGrandmasterID, *information.gptpDomainNumber, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 		}
 	}
@@ -135,12 +133,12 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 	if (caps.test(entity::EntityCapability::AssociationIDValid))
 	{
 		// Set the new AssociationID and notify if it changed
-		updateAssociationID(controlledEntity, associationID);
+		updateAssociationID(controlledEntity, associationID, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 	}
 	else
 	{
 		// At least check if the AssociationID was set to something and print a warning
-		if (associationID.has_value())
+		if (associationID)
 		{
 			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity previously declared a VALID AssociationID, but it's not defined anymore in ADP");
 		}
@@ -178,6 +176,22 @@ void ControllerImpl::addCompatibilityFlag(ControllerImpl const* const controller
 			{
 				newFlags.set(ControlledEntity::CompatibilityFlag::IEEE17221); // A Milan device is also an IEEE1722.1 compatible device
 				newFlags.set(flag);
+				// If device was already with IEEE warning, also add MilanWarning flag
+				if (newFlags.test(ControlledEntity::CompatibilityFlag::IEEE17221Warning))
+				{
+					newFlags.set(ControlledEntity::CompatibilityFlag::MilanWarning);
+				}
+			}
+			break;
+		case ControlledEntity::CompatibilityFlag::IEEE17221Warning:
+			if (AVDECC_ASSERT_WITH_RET(newFlags.test(ControlledEntity::CompatibilityFlag::IEEE17221), "Adding IEEE17221Warning flag for a non IEEE17221 device"))
+			{
+				newFlags.set(flag);
+				// If device was Milan compliant, also add MilanWarning flag
+				if (newFlags.test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					newFlags.set(ControlledEntity::CompatibilityFlag::MilanWarning);
+				}
 			}
 			break;
 		case ControlledEntity::CompatibilityFlag::MilanWarning:
@@ -239,6 +253,9 @@ void ControllerImpl::removeCompatibilityFlag(ControllerImpl const* const control
 				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity not fully Milan compliant");
 				newFlags.reset(flag);
 			}
+			break;
+		case ControlledEntity::CompatibilityFlag::IEEE17221Warning:
+			AVDECC_ASSERT(false, "Should not be possible to remove the IEEE17221Warning flag");
 			break;
 		case ControlledEntity::CompatibilityFlag::MilanWarning:
 			AVDECC_ASSERT(false, "Should not be possible to remove the MilanWarning flag");
@@ -325,55 +342,176 @@ void ControllerImpl::updateLockedState(ControlledEntityImpl& controlledEntity, m
 	}
 }
 
-void ControllerImpl::updateConfiguration(entity::controller::Interface const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex) const noexcept
+void ControllerImpl::updateConfiguration(entity::controller::Interface const* const /*controller*/, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	controlledEntity.setCurrentConfiguration(configurationIndex);
+	if (controlledEntity.isVirtual())
+	{
+		// FIXME: Move 'canChangeVirtualEntityConfiguration' to a real public method
+		auto const canChangeVirtualEntityConfiguration = [](ControlledEntityImpl const& controlledEntity, entity::model::ConfigurationIndex const /*configurationIndex*/) noexcept
+		{
+			// Check if this is a virtual entity
+			if (!controlledEntity.isVirtual())
+			{
+				return false;
+			}
+			// Check if the model is valid for the new configuration (ask the AemCache)
+			try
+			{
+				auto const& currentConfigNode = controlledEntity.getCurrentConfigurationNode();
+				return EntityModelCache::isModelValidForConfiguration(currentConfigNode);
+			}
+			catch (ControlledEntity::Exception const&)
+			{
+				return false;
+			}
+		};
+		// For a virtual entity, make sure a change of configuration is possible
+		if (canChangeVirtualEntityConfiguration(controlledEntity, configurationIndex))
+		{
+			// Changing the configuration on a Virtual entity is tricky: A different configuration is like a different entity, some part of the model is only valid for the current configuration (like connections) so we need to make sure we update all related entities accordingly. We'll do that by temporarily removing the entity (declare it offline)
+			auto* self = const_cast<ControllerImpl*>(this);
 
-	// Right now, simulate the entity going offline then online again - TODO: Handle multiple configurations, see https://github.com/L-Acoustics/avdecc/issues/3
-	auto const e = static_cast<entity::Entity>(controlledEntity.getEntity()); // Make a copy of the Entity object since it will be destroyed during onEntityOffline (use static_cast to prevent warning with 'auto' not being a reference)
-	auto const entityID = e.getEntityID();
-	auto* self = const_cast<ControllerImpl*>(this);
-	self->onEntityOffline(controller, entityID);
-	self->onEntityOnline(controller, entityID, e);
+			auto const entityID = controlledEntity.getEntity().getEntityID();
+
+			// Deregister the ControlledEntity
+			auto sharedControlledEntity = self->deregisterVirtualControlledEntity(entityID);
+
+			// Change the current configuration
+			controlledEntity.setCurrentConfiguration(configurationIndex, notFoundBehavior);
+
+			// Re-register entity
+			self->registerVirtualControlledEntity(std::move(sharedControlledEntity));
+		}
+		else
+		{
+			// Otherwise remote the entity and log an error
+			auto const entityID = controlledEntity.getEntity().getEntityID();
+			// Shouldn't have been called if the configuration was not valid, log an error and remove the entity
+			LOG_CONTROLLER_ERROR(entityID, "Requested Virtual entity configuration is not valid (call canChangeVirtualEntityConfiguration() before trying to change the configuration of a Virtual entity), removing entity");
+			forgetRemoteEntity(entityID);
+		}
+	}
+	else
+	{
+		// For real entities, simulate going offline then online again (to properly update the model)
+		auto const entityID = controlledEntity.getEntity().getEntityID();
+		forgetRemoteEntity(entityID);
+		discoverRemoteEntity(entityID);
+		// We don't need to change the current configuration, the entity will be re-enumarated
+	}
 }
 
-void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const noexcept
+void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
-
-	if (streamDynamicModel.streamFormat != streamFormat)
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (!currentConfigurationIndexOpt)
 	{
-		streamDynamicModel.streamFormat = streamFormat;
+		return;
+	}
 
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
+	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamInputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+	if (streamDynamicModel)
+	{
+		if (streamDynamicModel->streamFormat != streamFormat)
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputFormatChanged, this, &controlledEntity, streamIndex, streamFormat);
+			streamDynamicModel->streamFormat = streamFormat;
+
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputFormatChanged, this, &controlledEntity, streamIndex, streamFormat);
+			}
 		}
 	}
 }
 
-void ControllerImpl::updateStreamOutputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const noexcept
+void ControllerImpl::updateStreamOutputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
-
-	if (streamDynamicModel.streamFormat != streamFormat)
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (!currentConfigurationIndexOpt)
 	{
-		streamDynamicModel.streamFormat = streamFormat;
+		return;
+	}
 
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
+	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+	if (streamDynamicModel)
+	{
+		if (streamDynamicModel->streamFormat != streamFormat)
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputFormatChanged, this, &controlledEntity, streamIndex, streamFormat);
+			streamDynamicModel->streamFormat = streamFormat;
+
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputFormatChanged, this, &controlledEntity, streamIndex, streamFormat);
+			}
 		}
 	}
 }
 
-void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const streamFormatRequired, bool const milanExtendedRequired) const noexcept
+static void updateStreamDynamicInfoData(entity::model::StreamNodeDynamicModel* const streamDynamicModel, entity::model::StreamInfo const& info, std::function<void(std::uint32_t const msrpAccumulatedLatency)> const& msrpAccumulatedLatencyChangedHandler, std::function<void(entity::model::StreamDynamicInfo const& streamDynamicInfo)> const& dynamicInfoUpdatedHandler) noexcept
+{
+	// Make a copy (or create if first time), we'll move it back later
+	auto dynamicInfo = streamDynamicModel->streamDynamicInfo ? *streamDynamicModel->streamDynamicInfo : decltype(streamDynamicModel->streamDynamicInfo)::value_type{};
+
+	// Update each field
+	dynamicInfo.isClassB = info.streamInfoFlags.test(entity::StreamInfoFlag::ClassB);
+	dynamicInfo.hasSavedState = info.streamInfoFlags.test(entity::StreamInfoFlag::SavedState);
+	dynamicInfo.doesSupportEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::SupportsEncrypted);
+	dynamicInfo.arePdusEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::EncryptedPdu);
+	dynamicInfo.hasTalkerFailed = info.streamInfoFlags.test(entity::StreamInfoFlag::TalkerFailed);
+	dynamicInfo._streamInfoFlags = info.streamInfoFlags;
+
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamIDValid))
+	{
+		dynamicInfo.streamID = info.streamID;
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpAccLatValid))
+	{
+		dynamicInfo.msrpAccumulatedLatency = info.msrpAccumulatedLatency;
+
+		// Call msrpAccumulatedLatencyChangedHandler handler
+		utils::invokeProtectedHandler(msrpAccumulatedLatencyChangedHandler, *dynamicInfo.msrpAccumulatedLatency);
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamDestMacValid))
+	{
+		dynamicInfo.streamDestMac = info.streamDestMac;
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpFailureValid))
+	{
+		dynamicInfo.msrpFailureCode = info.msrpFailureCode;
+		dynamicInfo.msrpFailureBridgeID = info.msrpFailureBridgeID;
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamVlanIDValid))
+	{
+		dynamicInfo.streamVlanID = info.streamVlanID;
+	}
+	// Milan additions - Only replace if we have the extended info in the payload (otherwise we'll keep the previous value)
+	if (info.streamInfoFlagsEx)
+	{
+		dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
+	}
+	if (info.probingStatus)
+	{
+		dynamicInfo.probingStatus = info.probingStatus;
+	}
+	if (info.acmpStatus)
+	{
+		dynamicInfo.acmpStatus = info.acmpStatus;
+	}
+
+	// Move the data back
+	streamDynamicModel->streamDynamicInfo = std::move(dynamicInfo);
+
+	// Call dynamicInfoUpdatedHandler handler
+	utils::invokeProtectedHandler(dynamicInfoUpdatedHandler, *streamDynamicModel->streamDynamicInfo);
+}
+
+void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const streamFormatRequired, bool const milanExtendedRequired, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
@@ -415,191 +553,191 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 	// Update each individual part of StreamInfo
 	if (hasStreamFormat)
 	{
-		updateStreamInputFormat(controlledEntity, streamIndex, info.streamFormat);
+		updateStreamInputFormat(controlledEntity, streamIndex, info.streamFormat, notFoundBehavior);
 	}
-	updateStreamInputRunningStatus(controlledEntity, streamIndex, !info.streamInfoFlags.test(entity::StreamInfoFlag::StreamingWait));
+	updateStreamInputRunningStatus(controlledEntity, streamIndex, !info.streamInfoFlags.test(entity::StreamInfoFlag::StreamingWait), notFoundBehavior);
 
-#ifdef REPLACE_STREAM_INFO
-	// Create a new StreamDynamicInfo
-	auto dynamicInfo = entity::model::StreamDynamicInfo{};
-
-	// Update each field
-	dynamicInfo.isClassB = info.streamInfoFlags.test(entity::StreamInfoFlag::ClassB);
-	dynamicInfo.hasSavedState = info.streamInfoFlags.test(entity::StreamInfoFlag::SavedState);
-	dynamicInfo.doesSupportEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::SupportsEncrypted);
-	dynamicInfo.arePdusEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::EncryptedPdu);
-	dynamicInfo.hasTalkerFailed = info.streamInfoFlags.test(entity::StreamInfoFlag::TalkerFailed);
-	dynamicInfo._streamInfoFlags = info.streamInfoFlags;
-
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamIDValid))
+#if 0
+	// According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
+	// This means that we should always replace the previously stored StreamInfo data with the last one received
 	{
-		dynamicInfo.streamID = info.streamID;
-	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpAccLatValid))
-	{
-		dynamicInfo.msrpAccumulatedLatency = info.msrpAccumulatedLatency;
+		// Create a new StreamDynamicInfo
+		auto dynamicInfo = entity::model::StreamDynamicInfo{};
 
-		// Check for Diagnostics - Latency Error
+		// Update each field
+		dynamicInfo.isClassB = info.streamInfoFlags.test(entity::StreamInfoFlag::ClassB);
+		dynamicInfo.hasSavedState = info.streamInfoFlags.test(entity::StreamInfoFlag::SavedState);
+		dynamicInfo.doesSupportEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::SupportsEncrypted);
+		dynamicInfo.arePdusEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::EncryptedPdu);
+		dynamicInfo.hasTalkerFailed = info.streamInfoFlags.test(entity::StreamInfoFlag::TalkerFailed);
+		dynamicInfo._streamInfoFlags = info.streamInfoFlags;
+
+		if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamIDValid))
 		{
-			// Only if the entity has been advertised, onPreAdvertiseEntity will take care of the non-advertised ones later
-			if (controlledEntity.wasAdvertised())
+			dynamicInfo.streamID = info.streamID;
+		}
+		if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpAccLatValid))
+		{
+			dynamicInfo.msrpAccumulatedLatency = info.msrpAccumulatedLatency;
+
+			// Check for Diagnostics - Latency Error
 			{
-				auto isOverLatency = false;
-
-				// Only if Latency is greater than 0
-				if (info.msrpAccumulatedLatency > 0)
+				// Only if the entity has been advertised, onPreAdvertiseEntity will take care of the non-advertised ones later
+				if (controlledEntity.wasAdvertised())
 				{
-					auto const& sink = controlledEntity.getSinkConnectionInformation(streamIndex);
+					auto isOverLatency = false;
 
-					// If the Stream is Connected, search for the Talker we are connected to
-					if (sink.state == entity::model::StreamInputConnectionInfo::State::Connected)
+					// Only if Latency is greater than 0
+					if (info.msrpAccumulatedLatency > 0)
 					{
-						// Take a "scoped locked" shared copy of the ControlledEntity
-						auto talkerEntity = getControlledEntityImplGuard(sink.talkerStream.entityID, true);
+						auto const& sink = controlledEntity.getSinkConnectionInformation(streamIndex);
 
-						if (talkerEntity)
+						// If the Stream is Connected, search for the Talker we are connected to
+						if (sink.state == entity::model::StreamInputConnectionInfo::State::Connected)
 						{
-							auto const& talker = *talkerEntity;
+							// Take a "scoped locked" shared copy of the ControlledEntity
+							auto talkerEntity = getControlledEntityImplGuard(sink.talkerStream.entityID, true);
 
-							// Only process advertised entities, onPreAdvertiseEntity will take care of the non-advertised ones later
-							if (talker.wasAdvertised())
+							if (talkerEntity)
 							{
-								try
+								auto const& talker = *talkerEntity;
+
+								// Only process advertised entities, onPreAdvertiseEntity will take care of the non-advertised ones later
+								if (talker.wasAdvertised())
 								{
-									auto const& talkerStreamOutputNode = talker.getStreamOutputNode(talker.getCurrentConfigurationIndex(), sink.talkerStream.streamIndex);
-									if (talkerStreamOutputNode.dynamicModel && talkerStreamOutputNode.dynamicModel->streamDynamicInfo)
+									try
 									{
-										isOverLatency = info.msrpAccumulatedLatency > (*talkerStreamOutputNode.dynamicModel->streamDynamicInfo).msrpAccumulatedLatency;
+										auto const& talkerStreamOutputNode = talker.getStreamOutputNode(talker.getCurrentConfigurationIndex(), sink.talkerStream.streamIndex);
+										if (talkerStreamOutputNode.dynamicModel.streamDynamicInfo)
+										{
+											isOverLatency = info.msrpAccumulatedLatency > (*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency;
+										}
 									}
-								}
-								catch (ControlledEntity::Exception const&)
-								{
-									// Ignore Exception
+									catch (ControlledEntity::Exception const&)
+									{
+										// Ignore Exception
+									}
 								}
 							}
 						}
 					}
-				}
 
-				updateStreamInputLatency(controlledEntity, streamIndex, isOverLatency);
+					updateStreamInputLatency(controlledEntity, streamIndex, isOverLatency);
+				}
+			}
+		}
+		if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamDestMacValid))
+		{
+			dynamicInfo.streamDestMac = info.streamDestMac;
+		}
+		if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpFailureValid))
+		{
+			dynamicInfo.msrpFailureCode = info.msrpFailureCode;
+			dynamicInfo.msrpFailureBridgeID = info.msrpFailureBridgeID;
+		}
+		if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamVlanIDValid))
+		{
+			dynamicInfo.streamVlanID = info.streamVlanID;
+		}
+		// Milan additions
+		dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
+		dynamicInfo.probingStatus = info.probingStatus;
+		dynamicInfo.acmpStatus = info.acmpStatus;
+
+		// Update StreamDynamicInfo
+		auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+		if (currentConfigurationIndexOpt)
+		{
+			auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamInputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+			if (streamDynamicModel)
+			{
+				streamDynamicModel->streamDynamicInfo = std::move(dynamicInfo);
+
+				// Entity was advertised to the user, notify observers
+				if (controlledEntity.wasAdvertised())
+				{
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel->streamDynamicInfo);
+				}
 			}
 		}
 	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamDestMacValid))
-	{
-		dynamicInfo.streamDestMac = info.streamDestMac;
-	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpFailureValid))
-	{
-		dynamicInfo.msrpFailureCode = info.msrpFailureCode;
-		dynamicInfo.msrpFailureBridgeID = info.msrpFailureBridgeID;
-	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamVlanIDValid))
-	{
-		dynamicInfo.streamVlanID = info.streamVlanID;
-	}
-	// Milan additions
-	dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
-	dynamicInfo.probingStatus = info.probingStatus;
-	dynamicInfo.acmpStatus = info.acmpStatus;
-
-	// Update StreamDynamicInfo
-	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
-	streamDynamicModel.streamDynamicInfo = std::move(dynamicInfo);
-
-	// Entity was advertised to the user, notify observers
-	if (controlledEntity.wasAdvertised())
-	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel.streamDynamicInfo);
-	}
 #else
-	// Get a copy of previous StreamDynamicInfo
-	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
-	auto dynamicInfo = streamDynamicModel.streamDynamicInfo ? *streamDynamicModel.streamDynamicInfo : entity::model::StreamDynamicInfo{};
-	auto changed = false;
+	// According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
+	// This means that we should always replace the previously stored StreamInfo data with the last one received
+	// Unfortunately it proves very difficult to do so for some devices (like when receiving a SET_STREAM_INFO with only one field set, it must generate a GET_STREAM_INFO with all fields set)
+	// So we'll retrieve the current StreamDynamicInfo and update it with the new data
 
-	// Update each field checking for a change
-	auto const updateFieldFromFlag = [&changed, flags = info.streamInfoFlags](auto& field, auto const flag)
+	// Retrieve StreamDynamicInfo
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		auto const newValue = flags.test(flag);
-		if (field != newValue)
+		auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamInputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+		if (streamDynamicModel)
 		{
-			field = newValue;
-			changed = true;
-		}
-	};
-	auto const updateFieldFromValue = [&changed](auto& field, auto const newValue)
-	{
-		if (field != newValue)
-		{
-			field = newValue;
-			changed = true;
-		}
-	};
-	auto const updateOptionalFieldFromValue = [&changed](auto& field, auto const newValue)
-	{
-		if (field != newValue)
-		{
-			field = newValue;
-			changed = true;
-		}
-	};
-	updateFieldFromFlag(dynamicInfo.isClassB, entity::StreamInfoFlag::ClassB);
-	updateFieldFromFlag(dynamicInfo.hasSavedState, entity::StreamInfoFlag::SavedState);
-	updateFieldFromFlag(dynamicInfo.doesSupportEncrypted, entity::StreamInfoFlag::SupportsEncrypted);
-	updateFieldFromFlag(dynamicInfo.arePdusEncrypted, entity::StreamInfoFlag::EncryptedPdu);
-	updateFieldFromFlag(dynamicInfo.hasTalkerFailed, entity::StreamInfoFlag::TalkerFailed);
-	updateFieldFromValue(dynamicInfo._streamInfoFlags, info.streamInfoFlags);
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamIDValid))
-	{
-		updateFieldFromValue(dynamicInfo.streamID, info.streamID);
-	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpAccLatValid))
-	{
-		updateFieldFromValue(dynamicInfo.msrpAccumulatedLatency, info.msrpAccumulatedLatency);
-	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamDestMacValid))
-	{
-		updateFieldFromValue(dynamicInfo.streamDestMac, info.streamDestMac);
-	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpFailureValid))
-	{
-		updateFieldFromValue(dynamicInfo.msrpFailureCode, info.msrpFailureCode);
-		updateFieldFromValue(dynamicInfo.msrpFailureBridgeID, info.msrpFailureBridgeID);
-	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamVlanIDValid))
-	{
-		updateFieldFromValue(dynamicInfo.streamVlanID, info.streamVlanID);
-	}
-	// Milan additions
-	if (info.streamInfoFlagsEx)
-	{
-		updateOptionalFieldFromValue(dynamicInfo.streamInfoFlagsEx, *info.streamInfoFlagsEx);
-	}
-	if (info.probingStatus)
-	{
-		updateOptionalFieldFromValue(dynamicInfo.probingStatus, *info.probingStatus);
-	}
-	if (info.acmpStatus)
-	{
-		updateOptionalFieldFromValue(dynamicInfo.acmpStatus, *info.acmpStatus);
-	}
+			updateStreamDynamicInfoData(streamDynamicModel, info,
+				[this, &controlledEntity, streamIndex](std::uint32_t const msrpAccumulatedLatency)
+				{
+					// Check for Diagnostics - Latency Error
+					{
+						// Only if the entity has been advertised, onPreAdvertiseEntity will take care of the non-advertised ones later
+						if (controlledEntity.wasAdvertised())
+						{
+							auto isOverLatency = false;
 
-	if (changed)
-	{
-		// Update StreamDynamicInfo
-		streamDynamicModel.streamDynamicInfo = std::move(dynamicInfo);
+							// Only if Latency is greater than 0
+							if (msrpAccumulatedLatency > 0)
+							{
+								auto const& sink = controlledEntity.getSinkConnectionInformation(streamIndex);
 
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel.streamDynamicInfo);
+								// If the Stream is Connected, search for the Talker we are connected to
+								if (sink.state == entity::model::StreamInputConnectionInfo::State::Connected)
+								{
+									// Take a "scoped locked" shared copy of the ControlledEntity // Only process advertised entities, onPreAdvertiseEntity will take care of the non-advertised ones later
+									auto talkerEntity = getControlledEntityImplGuard(sink.talkerStream.entityID, true);
+
+									if (talkerEntity)
+									{
+										auto const& talker = *talkerEntity;
+
+										try
+										{
+											auto const& talkerStreamOutputNode = talker.getStreamOutputNode(talker.getCurrentConfigurationIndex(), sink.talkerStream.streamIndex);
+											// If we have StreamDynamicInfo data
+											if (talkerStreamOutputNode.dynamicModel.streamDynamicInfo)
+											{
+												// If we have a msrpAccumulatedLatency value
+												if ((*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
+												{
+													isOverLatency = msrpAccumulatedLatency > *(*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency;
+												}
+											}
+										}
+										catch (ControlledEntity::Exception const&)
+										{
+											// Ignore Exception
+										}
+									}
+								}
+							}
+
+							updateStreamInputLatency(controlledEntity, streamIndex, isOverLatency);
+						}
+					}
+				},
+				[this, &controlledEntity, streamIndex](entity::model::StreamDynamicInfo const& streamDynamicInfo)
+				{
+					// Entity was advertised to the user, notify observers
+					if (controlledEntity.wasAdvertised())
+					{
+						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputDynamicInfoChanged, this, &controlledEntity, streamIndex, streamDynamicInfo);
+					}
+				});
 		}
 	}
 #endif
 }
 
-void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const streamFormatRequired, bool const milanExtendedRequired) const noexcept
+void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const streamFormatRequired, bool const milanExtendedRequired, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
@@ -641,175 +779,154 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 	// Update each individual part of StreamInfo
 	if (hasStreamFormat)
 	{
-		updateStreamOutputFormat(controlledEntity, streamIndex, info.streamFormat);
+		updateStreamOutputFormat(controlledEntity, streamIndex, info.streamFormat, notFoundBehavior);
 	}
-	updateStreamOutputRunningStatus(controlledEntity, streamIndex, !info.streamInfoFlags.test(entity::StreamInfoFlag::StreamingWait));
+	updateStreamOutputRunningStatus(controlledEntity, streamIndex, !info.streamInfoFlags.test(entity::StreamInfoFlag::StreamingWait), notFoundBehavior);
 
-#ifdef REPLACE_STREAM_INFO
-	// Create a new StreamDynamicInfo
-	auto dynamicInfo = entity::model::StreamDynamicInfo{};
+#if 0
+	// According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
+	// This means that we should always replace the previously stored StreamInfo data with the last one received
+	{
+		// Create a new StreamDynamicInfo
+		auto dynamicInfo = entity::model::StreamDynamicInfo{};
 
-	// Update each field
-	dynamicInfo.isClassB = info.streamInfoFlags.test(entity::StreamInfoFlag::ClassB);
-	dynamicInfo.hasSavedState = info.streamInfoFlags.test(entity::StreamInfoFlag::SavedState);
-	dynamicInfo.doesSupportEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::SupportsEncrypted);
-	dynamicInfo.arePdusEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::EncryptedPdu);
-	dynamicInfo.hasTalkerFailed = info.streamInfoFlags.test(entity::StreamInfoFlag::TalkerFailed);
-	dynamicInfo._streamInfoFlags = info.streamInfoFlags;
+		// Update each field
+		dynamicInfo.isClassB = info.streamInfoFlags.test(entity::StreamInfoFlag::ClassB);
+		dynamicInfo.hasSavedState = info.streamInfoFlags.test(entity::StreamInfoFlag::SavedState);
+		dynamicInfo.doesSupportEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::SupportsEncrypted);
+		dynamicInfo.arePdusEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::EncryptedPdu);
+		dynamicInfo.hasTalkerFailed = info.streamInfoFlags.test(entity::StreamInfoFlag::TalkerFailed);
+		dynamicInfo._streamInfoFlags = info.streamInfoFlags;
 
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamIDValid))
-	{
-		dynamicInfo.streamID = info.streamID;
-	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpAccLatValid))
-	{
-		dynamicInfo.msrpAccumulatedLatency = info.msrpAccumulatedLatency;
-	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamDestMacValid))
-	{
-		dynamicInfo.streamDestMac = info.streamDestMac;
-	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpFailureValid))
-	{
-		dynamicInfo.msrpFailureCode = info.msrpFailureCode;
-		dynamicInfo.msrpFailureBridgeID = info.msrpFailureBridgeID;
-	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamVlanIDValid))
-	{
-		dynamicInfo.streamVlanID = info.streamVlanID;
-	}
-	// Milan additions
-	dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
-	dynamicInfo.probingStatus = info.probingStatus;
-	dynamicInfo.acmpStatus = info.acmpStatus;
+		if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamIDValid))
+		{
+			dynamicInfo.streamID = info.streamID;
+		}
+		if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpAccLatValid))
+		{
+			dynamicInfo.msrpAccumulatedLatency = info.msrpAccumulatedLatency;
 
-	// Update StreamDynamicInfo
-	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
-	streamDynamicModel.streamDynamicInfo = std::move(dynamicInfo);
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onMaxTransitTimeChanged, this, &controlledEntity, streamIndex, std::chrono::nanoseconds{ info.msrpAccumulatedLatency });
+			}
+		}
+		if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamDestMacValid))
+		{
+			dynamicInfo.streamDestMac = info.streamDestMac;
+		}
+		if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpFailureValid))
+		{
+			dynamicInfo.msrpFailureCode = info.msrpFailureCode;
+			dynamicInfo.msrpFailureBridgeID = info.msrpFailureBridgeID;
+		}
+		if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamVlanIDValid))
+		{
+			dynamicInfo.streamVlanID = info.streamVlanID;
+		}
+		// Milan additions
+		dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
+		dynamicInfo.probingStatus = info.probingStatus;
+		dynamicInfo.acmpStatus = info.acmpStatus;
 
-	// Entity was advertised to the user, notify observers
-	if (controlledEntity.wasAdvertised())
-	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel.streamDynamicInfo);
+		// Update StreamDynamicInfo
+		auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+		if (currentConfigurationIndexOpt)
+		{
+			auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+			if (streamDynamicModel)
+			{
+				streamDynamicModel->streamDynamicInfo = std::move(dynamicInfo);
+
+				// Entity was advertised to the user, notify observers
+				if (controlledEntity.wasAdvertised())
+				{
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel->streamDynamicInfo);
+				}
+			}
+		}
 	}
 #else
-	// Get a copy of previous StreamDynamicInfo
-	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
-	auto dynamicInfo = streamDynamicModel.streamDynamicInfo ? *streamDynamicModel.streamDynamicInfo : entity::model::StreamDynamicInfo{};
-	auto changed = false;
+	// According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
+	// This means that we should always replace the previously stored StreamInfo data with the last one received
+	// Unfortunately it proves very difficult to do so for some devices (like when receiving a SET_STREAM_INFO with only one field set, it must generate a GET_STREAM_INFO with all fields set)
+	// So we'll retrieve the current StreamDynamicInfo and update it with the new data
 
-	// Update each field checking for a change
-	auto const updateFieldFromFlag = [&changed, flags = info.streamInfoFlags](auto& field, auto const flag)
+	// Retrieve StreamDynamicInfo
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		auto const newValue = flags.test(flag);
-		if (field != newValue)
+		auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+		if (streamDynamicModel)
 		{
-			field = newValue;
-			changed = true;
-		}
-	};
-	auto const updateFieldFromValue = [&changed](auto& field, auto const newValue)
-	{
-		if (field != newValue)
-		{
-			field = newValue;
-			changed = true;
-		}
-	};
-	auto const updateOptionalFieldFromValue = [&changed](auto& field, auto const newValue)
-	{
-		if (field != newValue)
-		{
-			field = newValue;
-			changed = true;
-		}
-	};
-	updateFieldFromFlag(dynamicInfo.isClassB, entity::StreamInfoFlag::ClassB);
-	updateFieldFromFlag(dynamicInfo.hasSavedState, entity::StreamInfoFlag::SavedState);
-	updateFieldFromFlag(dynamicInfo.doesSupportEncrypted, entity::StreamInfoFlag::SupportsEncrypted);
-	updateFieldFromFlag(dynamicInfo.arePdusEncrypted, entity::StreamInfoFlag::EncryptedPdu);
-	updateFieldFromFlag(dynamicInfo.hasTalkerFailed, entity::StreamInfoFlag::TalkerFailed);
-	updateFieldFromValue(dynamicInfo._streamInfoFlags, info.streamInfoFlags);
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamIDValid))
-	{
-		updateFieldFromValue(dynamicInfo.streamID, info.streamID);
-	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpAccLatValid))
-	{
-		updateFieldFromValue(dynamicInfo.msrpAccumulatedLatency, info.msrpAccumulatedLatency);
-	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamDestMacValid))
-	{
-		updateFieldFromValue(dynamicInfo.streamDestMac, info.streamDestMac);
-	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpFailureValid))
-	{
-		updateFieldFromValue(dynamicInfo.msrpFailureCode, info.msrpFailureCode);
-		updateFieldFromValue(dynamicInfo.msrpFailureBridgeID, info.msrpFailureBridgeID);
-	}
-	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamVlanIDValid))
-	{
-		updateFieldFromValue(dynamicInfo.streamVlanID, info.streamVlanID);
-	}
-	// Milan additions
-	if (info.streamInfoFlagsEx)
-	{
-		updateOptionalFieldFromValue(dynamicInfo.streamInfoFlagsEx, *info.streamInfoFlagsEx);
-	}
-	if (info.probingStatus)
-	{
-		updateOptionalFieldFromValue(dynamicInfo.probingStatus, *info.probingStatus);
-	}
-	if (info.acmpStatus)
-	{
-		updateOptionalFieldFromValue(dynamicInfo.acmpStatus, *info.acmpStatus);
-	}
-
-	if (changed)
-	{
-		// Update StreamDynamicInfo
-		streamDynamicModel.streamDynamicInfo = std::move(dynamicInfo);
-
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel.streamDynamicInfo);
+			updateStreamDynamicInfoData(streamDynamicModel, info,
+				[this, &controlledEntity, streamIndex](std::uint32_t const msrpAccumulatedLatency)
+				{
+					// Entity was advertised to the user, notify observers
+					if (controlledEntity.wasAdvertised())
+					{
+						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onMaxTransitTimeChanged, this, &controlledEntity, streamIndex, std::chrono::nanoseconds{ msrpAccumulatedLatency });
+					}
+				},
+				[this, &controlledEntity, streamIndex](entity::model::StreamDynamicInfo const& streamDynamicInfo)
+				{
+					// Entity was advertised to the user, notify observers
+					if (controlledEntity.wasAdvertised())
+					{
+						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputDynamicInfoChanged, this, &controlledEntity, streamIndex, streamDynamicInfo);
+					}
+				});
 		}
 	}
 #endif
 }
 
-void ControllerImpl::updateEntityName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityName) const noexcept
+void ControllerImpl::updateEntityName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setEntityName(entityName);
-
-	// Entity was advertised to the user, notify observers
-	if (controlledEntity.wasAdvertised())
+	auto* const dynamicModel = controlledEntity.getModelAccessStrategy().getEntityNodeDynamicModel(notFoundBehavior);
+	if (dynamicModel)
 	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityNameChanged, this, &controlledEntity, entityName);
+		if (dynamicModel->entityName != entityName)
+		{
+			dynamicModel->entityName = entityName;
+
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityNameChanged, this, &controlledEntity, entityName);
+			}
+		}
 	}
 }
 
-void ControllerImpl::updateEntityGroupName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityGroupName) const noexcept
+void ControllerImpl::updateEntityGroupName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityGroupName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setEntityGroupName(entityGroupName);
-
-	// Entity was advertised to the user, notify observers
-	if (controlledEntity.wasAdvertised())
+	auto* const dynamicModel = controlledEntity.getModelAccessStrategy().getEntityNodeDynamicModel(notFoundBehavior);
+	if (dynamicModel)
 	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityGroupNameChanged, this, &controlledEntity, entityGroupName);
+		if (dynamicModel->groupName != entityGroupName)
+		{
+			dynamicModel->groupName = entityGroupName;
+
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityGroupNameChanged, this, &controlledEntity, entityGroupName);
+			}
+		}
 	}
 }
 
-void ControllerImpl::updateConfigurationName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) const noexcept
+void ControllerImpl::updateConfigurationName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setConfigurationName(configurationIndex, configurationName);
+	controlledEntity.setConfigurationName(configurationIndex, configurationName, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -818,11 +935,11 @@ void ControllerImpl::updateConfigurationName(ControlledEntityImpl& controlledEnt
 	}
 }
 
-void ControllerImpl::updateAudioUnitName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AvdeccFixedString const& audioUnitName) const noexcept
+void ControllerImpl::updateAudioUnitName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AvdeccFixedString const& audioUnitName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, audioUnitIndex, &entity::model::ConfigurationTree::audioUnitModels, audioUnitName);
+	controlledEntity.setObjectName(configurationIndex, audioUnitIndex, &TreeModelAccessStrategy::getAudioUnitNodeDynamicModel, audioUnitName, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -831,11 +948,11 @@ void ControllerImpl::updateAudioUnitName(ControlledEntityImpl& controlledEntity,
 	}
 }
 
-void ControllerImpl::updateStreamInputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamInputName) const noexcept
+void ControllerImpl::updateStreamInputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamInputName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamInputModels, streamInputName);
+	controlledEntity.setObjectName(configurationIndex, streamIndex, &TreeModelAccessStrategy::getStreamInputNodeDynamicModel, streamInputName, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -844,11 +961,11 @@ void ControllerImpl::updateStreamInputName(ControlledEntityImpl& controlledEntit
 	}
 }
 
-void ControllerImpl::updateStreamOutputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamOutputName) const noexcept
+void ControllerImpl::updateStreamOutputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamOutputName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamOutputModels, streamOutputName);
+	controlledEntity.setObjectName(configurationIndex, streamIndex, &TreeModelAccessStrategy::getStreamOutputNodeDynamicModel, streamOutputName, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -857,11 +974,37 @@ void ControllerImpl::updateStreamOutputName(ControlledEntityImpl& controlledEnti
 	}
 }
 
-void ControllerImpl::updateAvbInterfaceName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& avbInterfaceName) const noexcept
+void ControllerImpl::updateJackInputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& jackInputName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels, avbInterfaceName);
+	controlledEntity.setObjectName(configurationIndex, jackIndex, &TreeModelAccessStrategy::getJackInputNodeDynamicModel, jackInputName, notFoundBehavior);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onJackInputNameChanged, this, &controlledEntity, configurationIndex, jackIndex, jackInputName);
+	}
+}
+
+void ControllerImpl::updateJackOutputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& jackOutputName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	controlledEntity.setObjectName(configurationIndex, jackIndex, &TreeModelAccessStrategy::getJackOutputNodeDynamicModel, jackOutputName, notFoundBehavior);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onJackOutputNameChanged, this, &controlledEntity, configurationIndex, jackIndex, jackOutputName);
+	}
+}
+
+void ControllerImpl::updateAvbInterfaceName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& avbInterfaceName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	controlledEntity.setObjectName(configurationIndex, avbInterfaceIndex, &TreeModelAccessStrategy::getAvbInterfaceNodeDynamicModel, avbInterfaceName, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -870,11 +1013,11 @@ void ControllerImpl::updateAvbInterfaceName(ControlledEntityImpl& controlledEnti
 	}
 }
 
-void ControllerImpl::updateClockSourceName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& clockSourceName) const noexcept
+void ControllerImpl::updateClockSourceName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& clockSourceName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, clockSourceIndex, &entity::model::ConfigurationTree::clockSourceModels, clockSourceName);
+	controlledEntity.setObjectName(configurationIndex, clockSourceIndex, &TreeModelAccessStrategy::getClockSourceNodeDynamicModel, clockSourceName, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -883,11 +1026,11 @@ void ControllerImpl::updateClockSourceName(ControlledEntityImpl& controlledEntit
 	}
 }
 
-void ControllerImpl::updateMemoryObjectName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::AvdeccFixedString const& memoryObjectName) const noexcept
+void ControllerImpl::updateMemoryObjectName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::AvdeccFixedString const& memoryObjectName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, memoryObjectIndex, &entity::model::ConfigurationTree::memoryObjectModels, memoryObjectName);
+	controlledEntity.setObjectName(configurationIndex, memoryObjectIndex, &TreeModelAccessStrategy::getMemoryObjectNodeDynamicModel, memoryObjectName, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -896,11 +1039,11 @@ void ControllerImpl::updateMemoryObjectName(ControlledEntityImpl& controlledEnti
 	}
 }
 
-void ControllerImpl::updateAudioClusterName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& audioClusterName) const noexcept
+void ControllerImpl::updateAudioClusterName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& audioClusterName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, audioClusterIndex, &entity::model::ConfigurationTree::audioClusterModels, audioClusterName);
+	controlledEntity.setObjectName(configurationIndex, audioClusterIndex, &TreeModelAccessStrategy::getAudioClusterNodeDynamicModel, audioClusterName, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -909,11 +1052,11 @@ void ControllerImpl::updateAudioClusterName(ControlledEntityImpl& controlledEnti
 	}
 }
 
-void ControllerImpl::updateControlName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex, entity::model::AvdeccFixedString const& controlName) const noexcept
+void ControllerImpl::updateControlName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex, entity::model::AvdeccFixedString const& controlName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, controlIndex, &entity::model::ConfigurationTree::controlModels, controlName);
+	controlledEntity.setObjectName(configurationIndex, controlIndex, &TreeModelAccessStrategy::getControlNodeDynamicModel, controlName, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -922,11 +1065,11 @@ void ControllerImpl::updateControlName(ControlledEntityImpl& controlledEntity, e
 	}
 }
 
-void ControllerImpl::updateClockDomainName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& clockDomainName) const noexcept
+void ControllerImpl::updateClockDomainName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& clockDomainName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, clockDomainIndex, &entity::model::ConfigurationTree::clockDomainModels, clockDomainName);
+	controlledEntity.setObjectName(configurationIndex, clockDomainIndex, &TreeModelAccessStrategy::getClockDomainNodeDynamicModel, clockDomainName, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -935,7 +1078,46 @@ void ControllerImpl::updateClockDomainName(ControlledEntityImpl& controlledEntit
 	}
 }
 
-void ControllerImpl::updateAssociationID(ControlledEntityImpl& controlledEntity, std::optional<UniqueIdentifier> const associationID) const noexcept
+void ControllerImpl::updateTimingName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex, entity::model::AvdeccFixedString const& timingName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	controlledEntity.setObjectName(configurationIndex, timingIndex, &TreeModelAccessStrategy::getTimingNodeDynamicModel, timingName, notFoundBehavior);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onTimingNameChanged, this, &controlledEntity, configurationIndex, timingIndex, timingName);
+	}
+}
+
+void ControllerImpl::updatePtpInstanceName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex, entity::model::AvdeccFixedString const& ptpInstanceName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	controlledEntity.setObjectName(configurationIndex, ptpInstanceIndex, &TreeModelAccessStrategy::getPtpInstanceNodeDynamicModel, ptpInstanceName, notFoundBehavior);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onPtpInstanceNameChanged, this, &controlledEntity, configurationIndex, ptpInstanceIndex, ptpInstanceName);
+	}
+}
+
+void ControllerImpl::updatePtpPortName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex, entity::model::AvdeccFixedString const& ptpPortName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	controlledEntity.setObjectName(configurationIndex, ptpPortIndex, &TreeModelAccessStrategy::getPtpPortNodeDynamicModel, ptpPortName, notFoundBehavior);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onPtpPortNameChanged, this, &controlledEntity, configurationIndex, ptpPortIndex, ptpPortName);
+	}
+}
+
+void ControllerImpl::updateAssociationID(ControlledEntityImpl& controlledEntity, std::optional<UniqueIdentifier> const associationID, TreeModelAccessStrategy::NotFoundBehavior const /*notFoundBehavior*/) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
@@ -964,11 +1146,11 @@ void ControllerImpl::updateAssociationID(ControlledEntityImpl& controlledEntity,
 	}
 }
 
-void ControllerImpl::updateAudioUnitSamplingRate(ControlledEntityImpl& controlledEntity, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) const noexcept
+void ControllerImpl::updateAudioUnitSamplingRate(ControlledEntityImpl& controlledEntity, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setSamplingRate(audioUnitIndex, samplingRate);
+	controlledEntity.setSamplingRate(audioUnitIndex, samplingRate, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -977,14 +1159,14 @@ void ControllerImpl::updateAudioUnitSamplingRate(ControlledEntityImpl& controlle
 	}
 }
 
-void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex) const noexcept
+void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	auto const& e = controlledEntity.getEntity();
 	auto const entityID = e.getEntityID();
 
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setClockSource(clockDomainIndex, clockSourceIndex);
+	controlledEntity.setClockSource(clockDomainIndex, clockSourceIndex, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -1001,10 +1183,10 @@ void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, e
 		{
 			if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
 			{
-				try
+				auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (configNode != nullptr)
 				{
-					auto& configNode = entity->getCurrentConfigurationNode();
-					for (auto& clockDomainKV : configNode.clockDomains)
+					for (auto& clockDomainKV : configNode->clockDomains)
 					{
 						auto& clockDomainNode = clockDomainKV.second;
 						// Check if the chain has a node on that clock source changed entity
@@ -1026,171 +1208,217 @@ void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, e
 						}
 					}
 				}
-				catch (...)
-				{
-					AVDECC_ASSERT(false, "Unexpected exception");
-				}
 			}
 		}
 	}
 }
 
-bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity, entity::model::ControlIndex const controlIndex, MemoryBuffer const& packedControlValues) const noexcept
+bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity, entity::model::ControlIndex const controlIndex, MemoryBuffer const& packedControlValues, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto const& controlStaticModel = controlledEntity.getNodeStaticModel(controlledEntity.getCurrentConfigurationIndex(), controlIndex, &entity::model::ConfigurationTree::controlModels);
-	auto const controlValueType = controlStaticModel.controlValueType.getType();
-	auto const controlValueSize = controlStaticModel.values.size();
-	auto const controlValuesOpt = entity::model::unpackDynamicControlValues(packedControlValues, controlValueType, controlValueSize);
-
-	if (controlValuesOpt)
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (!currentConfigurationIndexOpt)
 	{
-		auto const& controlValues = *controlValuesOpt;
+		return false;
+	}
 
-		// Validate ControlValues
-		if (!validateControlValues(controlledEntity.getEntity().getEntityID(), controlIndex, controlStaticModel.values, controlValues))
+	auto const* const controlStaticModel = controlledEntity.getModelAccessStrategy().getControlNodeStaticModel(*currentConfigurationIndexOpt, controlIndex, notFoundBehavior);
+	if (controlStaticModel)
+	{
+		auto const controlValueType = controlStaticModel->controlValueType.getType();
+		auto const numberOfValues = controlStaticModel->numberOfValues;
+		auto const controlValuesOpt = entity::model::unpackDynamicControlValues(packedControlValues, controlValueType, numberOfValues);
+		auto const controlType = controlStaticModel->controlType;
+
+		if (controlValuesOpt)
 		{
-			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
-		}
-		controlledEntity.setControlValues(controlIndex, controlValues);
+			auto const& controlValues = *controlValuesOpt;
 
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onControlValuesChanged, this, &controlledEntity, controlIndex, controlValues);
-
-			// Check for Identify Control
-			if (entity::model::StandardControlType::Identify == controlStaticModel.controlType.getValue() && controlValueType == entity::model::ControlValueType::Type::ControlLinearUInt8 && controlValueSize == 1)
+			// Validate ControlValues
+			auto const validationResult = validateControlValues(controlledEntity.getEntity().getEntityID(), controlIndex, controlType, controlValueType, controlStaticModel->values, controlValues);
+			auto isOutOfBounds = false;
+			switch (validationResult)
 			{
-				auto const identifyOpt = getIdentifyControlValue(controlValues);
-				if (identifyOpt)
+				case DynamicControlValuesValidationResult::InvalidValues:
+					// Flag the entity as "Not fully IEEE1722.1 compliant"
+					removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					break;
+				case DynamicControlValuesValidationResult::CurrentValueOutOfRange:
+					isOutOfBounds = true;
+					break;
+				default:
+					break;
+			}
+			updateControlCurrentValueOutOfBounds(this, controlledEntity, controlIndex, isOutOfBounds);
+			controlledEntity.setControlValues(controlIndex, controlValues, notFoundBehavior);
+
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onControlValuesChanged, this, &controlledEntity, controlIndex, controlValues);
+
+				// Check for Identify Control
+				if (entity::model::StandardControlType::Identify == controlType.getValue() && controlValueType == entity::model::ControlValueType::Type::ControlLinearUInt8 && numberOfValues == 1)
 				{
-					// Notify
-					if (*identifyOpt)
+					auto const identifyOpt = getIdentifyControlValue(controlValues);
+					if (identifyOpt)
 					{
-						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onIdentificationStarted, this, &controlledEntity);
-					}
-					else
-					{
-						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onIdentificationStopped, this, &controlledEntity);
+						// Notify
+						if (*identifyOpt)
+						{
+							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onIdentificationStarted, this, &controlledEntity);
+						}
+						else
+						{
+							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onIdentificationStopped, this, &controlledEntity);
+						}
 					}
 				}
 			}
-		}
 
-		return true;
+			return true;
+		}
 	}
 	return false;
 }
 
-void ControllerImpl::updateStreamInputRunningStatus(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isRunning) const noexcept
+void ControllerImpl::updateStreamInputRunningStatus(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isRunning, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
-
-	// Never initialized or changed
-	if (!streamDynamicModel.isStreamRunning || *streamDynamicModel.isStreamRunning != isRunning)
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (!currentConfigurationIndexOpt)
 	{
-		streamDynamicModel.isStreamRunning = isRunning;
+		return;
+	}
 
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
+	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamInputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+	if (streamDynamicModel)
+	{
+		// Never initialized or changed
+		if (!streamDynamicModel->isStreamRunning || *streamDynamicModel->isStreamRunning != isRunning)
 		{
-			// Running status changed, notify observers
-			if (isRunning)
+			streamDynamicModel->isStreamRunning = isRunning;
+
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
 			{
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputStarted, this, &controlledEntity, streamIndex);
-			}
-			else
-			{
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputStopped, this, &controlledEntity, streamIndex);
+				// Running status changed, notify observers
+				if (isRunning)
+				{
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputStarted, this, &controlledEntity, streamIndex);
+				}
+				else
+				{
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputStopped, this, &controlledEntity, streamIndex);
+				}
 			}
 		}
 	}
 }
 
-void ControllerImpl::updateStreamOutputRunningStatus(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isRunning) const noexcept
+void ControllerImpl::updateStreamOutputRunningStatus(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isRunning, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
-
-	// Never initialized or changed
-	if (!streamDynamicModel.isStreamRunning || *streamDynamicModel.isStreamRunning != isRunning)
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (!currentConfigurationIndexOpt)
 	{
-		streamDynamicModel.isStreamRunning = isRunning;
+		return;
+	}
 
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
+	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+	if (streamDynamicModel)
+	{
+		// Never initialized or changed
+		if (!streamDynamicModel->isStreamRunning || *streamDynamicModel->isStreamRunning != isRunning)
 		{
-			// Running status changed, notify observers
-			if (isRunning)
+			streamDynamicModel->isStreamRunning = isRunning;
+
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
 			{
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputStarted, this, &controlledEntity, streamIndex);
-			}
-			else
-			{
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputStopped, this, &controlledEntity, streamIndex);
+				// Running status changed, notify observers
+				if (isRunning)
+				{
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputStarted, this, &controlledEntity, streamIndex);
+				}
+				else
+				{
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputStopped, this, &controlledEntity, streamIndex);
+				}
 			}
 		}
 	}
 }
 
-void ControllerImpl::updateGptpInformation(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, networkInterface::MacAddress const& macAddress, UniqueIdentifier const& gptpGrandmasterID, std::uint8_t const gptpDomainNumber) const noexcept
+void ControllerImpl::updateGptpInformation(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, networkInterface::MacAddress const& macAddress, UniqueIdentifier const& gptpGrandmasterID, std::uint8_t const gptpDomainNumber, TreeModelAccessStrategy::NotFoundBehavior const /*notFoundBehavior*/) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto infoChanged = false;
 
-	// First update gPTP Info in ADP structures
-	auto& entity = controlledEntity.getEntity();
-	auto const caps = entity.getEntityCapabilities();
-	auto const currentConfigurationIndex = controlledEntity.getCurrentConfigurationIndex();
-	if (caps.test(entity::EntityCapability::GptpSupported))
+	try
 	{
-		// Search which InterfaceInformation matches this AvbInterfaceIndex (searching by Index, or by MacAddress in case the Index was not specified in ADP)
-		for (auto& [interfaceIndex, interfaceInfo] : entity.getInterfacesInformation())
+		// First update gPTP Info in ADP structures
+		auto& entity = controlledEntity.getEntity();
+		auto const caps = entity.getEntityCapabilities();
+		if (caps.test(entity::EntityCapability::GptpSupported))
 		{
-			// Do we even have gPTP info on this InterfaceInfo
-			if (interfaceInfo.gptpGrandmasterID)
+			// Search which InterfaceInformation matches this AvbInterfaceIndex (searching by Index, or by MacAddress in case the Index was not specified in ADP)
+			for (auto& [interfaceIndex, interfaceInfo] : entity.getInterfacesInformation())
 			{
-				// Match with the passed AvbInterfaceIndex, or with macAddress if this ADP is the GlobalAvbInterfaceIndex
-				if (interfaceIndex == avbInterfaceIndex || (interfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == interfaceInfo.macAddress))
+				// Do we even have gPTP info on this InterfaceInfo
+				if (interfaceInfo.gptpGrandmasterID)
 				{
-					// Alter InterfaceInfo with new gPTP info
-					if (*interfaceInfo.gptpGrandmasterID != gptpGrandmasterID || *interfaceInfo.gptpDomainNumber != gptpDomainNumber)
+					// Match with the passed AvbInterfaceIndex, or with macAddress if this ADP is the GlobalAvbInterfaceIndex
+					if (interfaceIndex == avbInterfaceIndex || (interfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == interfaceInfo.macAddress))
 					{
-						interfaceInfo.gptpGrandmasterID = gptpGrandmasterID;
-						interfaceInfo.gptpDomainNumber = gptpDomainNumber;
-						infoChanged |= true;
+						// Alter InterfaceInfo with new gPTP info
+						if (*interfaceInfo.gptpGrandmasterID != gptpGrandmasterID || *interfaceInfo.gptpDomainNumber != gptpDomainNumber)
+						{
+							interfaceInfo.gptpGrandmasterID = gptpGrandmasterID;
+							interfaceInfo.gptpDomainNumber = gptpDomainNumber;
+							infoChanged |= true;
+						}
 					}
 				}
 			}
 		}
-	}
 
-	// Then update gPTP Info in existing AvbDescriptors (don't create if not created yet)
-	auto& avbDescriptorModels = controlledEntity.getModels(currentConfigurationIndex, &entity::model::ConfigurationTree::avbInterfaceModels);
-	for (auto& [interfaceIndex, avbInterfaceModel] : avbDescriptorModels)
-	{
-		// Match with the passed AvbInterfaceIndex, or with macAddress if passed AvbInterfaceIndex is the GlobalAvbInterfaceIndex
-		if (interfaceIndex == avbInterfaceIndex || (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == avbInterfaceModel.staticModel.macAddress))
+		// If AEM is supported
+		auto const isAemSupported = entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
+		if (isAemSupported && controlledEntity.hasAnyConfiguration())
 		{
-			// Alter InterfaceInfo with new gPTP info
-			if (avbInterfaceModel.dynamicModel.gptpGrandmasterID != gptpGrandmasterID || avbInterfaceModel.dynamicModel.gptpDomainNumber != gptpDomainNumber)
+			// Then update gPTP Info in existing AvbDescriptors (don't create if not created yet)
+			auto* const configurationNode = controlledEntity.getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			if (configurationNode != nullptr)
 			{
-				avbInterfaceModel.dynamicModel.gptpGrandmasterID = gptpGrandmasterID;
-				avbInterfaceModel.dynamicModel.gptpDomainNumber = gptpDomainNumber;
-				infoChanged |= true;
+				for (auto& [interfaceIndex, avbInterfaceNode] : configurationNode->avbInterfaces)
+				{
+					// Match with the passed AvbInterfaceIndex, or with macAddress if passed AvbInterfaceIndex is the GlobalAvbInterfaceIndex
+					if (interfaceIndex == avbInterfaceIndex || (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == avbInterfaceNode.dynamicModel.macAddress))
+					{
+						// Alter InterfaceInfo with new gPTP info
+						if (avbInterfaceNode.dynamicModel.gptpGrandmasterID != gptpGrandmasterID || avbInterfaceNode.dynamicModel.gptpDomainNumber != gptpDomainNumber)
+						{
+							avbInterfaceNode.dynamicModel.gptpGrandmasterID = gptpGrandmasterID;
+							avbInterfaceNode.dynamicModel.gptpDomainNumber = gptpDomainNumber;
+							infoChanged |= true;
+						}
+					}
+				}
 			}
 		}
-	}
 
-	// Check for Diagnostics - Redundancy Warning
-	checkRedundancyWarningDiagnostics(this, controlledEntity);
+		// Check for Diagnostics - Redundancy Warning
+		checkRedundancyWarningDiagnostics(this, controlledEntity);
+	}
+	catch (ControlledEntity::Exception const&)
+	{
+		AVDECC_ASSERT(false, "Unexpected exception");
+	}
 
 	// Only do checks if entity was advertised to the user (we already changed the values anyway)
 	if (controlledEntity.wasAdvertised())
@@ -1203,7 +1431,7 @@ void ControllerImpl::updateGptpInformation(ControlledEntityImpl& controlledEntit
 	}
 }
 
-void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) const noexcept
+void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
@@ -1211,7 +1439,7 @@ void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entit
 	auto const avbInterfaceInfo = entity::model::AvbInterfaceInfo{ info.propagationDelay, info.flags, info.mappings };
 
 	// Update AvbInterfaceInfo
-	auto const previousInfo = controlledEntity.setAvbInterfaceInfo(avbInterfaceIndex, avbInterfaceInfo);
+	auto const previousInfo = controlledEntity.setAvbInterfaceInfo(avbInterfaceIndex, avbInterfaceInfo, notFoundBehavior);
 
 	// Only do checks if entity was advertised to the user (we already changed the values anyway)
 	if (controlledEntity.wasAdvertised())
@@ -1224,15 +1452,22 @@ void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entit
 	}
 
 	// Update gPTP info
-	auto const& macAddress = controlledEntity.getNodeStaticModel(controlledEntity.getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels).macAddress;
-	updateGptpInformation(controlledEntity, avbInterfaceIndex, macAddress, info.gptpGrandmasterID, info.gptpDomainNumber);
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
+	{
+		auto const* const avbInterfaceDynamicModel = controlledEntity.getModelAccessStrategy().getAvbInterfaceNodeDynamicModel(*currentConfigurationIndexOpt, avbInterfaceIndex, notFoundBehavior);
+		if (avbInterfaceDynamicModel)
+		{
+			updateGptpInformation(controlledEntity, avbInterfaceIndex, avbInterfaceDynamicModel->macAddress, info.gptpGrandmasterID, info.gptpDomainNumber, notFoundBehavior);
+		}
+	}
 }
 
-void ControllerImpl::updateAsPath(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) const noexcept
+void ControllerImpl::updateAsPath(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto const previousPath = controlledEntity.setAsPath(avbInterfaceIndex, asPath);
+	auto const previousPath = controlledEntity.setAsPath(avbInterfaceIndex, asPath, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -1260,170 +1495,192 @@ void ControllerImpl::updateAvbInterfaceLinkStatus(ControllerImpl const* const co
 	}
 }
 
-void ControllerImpl::updateEntityCounters(ControlledEntityImpl& controlledEntity, entity::EntityCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept
+void ControllerImpl::updateEntityCounters(ControlledEntityImpl& controlledEntity, entity::EntityCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Get previous counters
-	auto& entityCounters = controlledEntity.getEntityCounters();
-
-	// Update (or set) counters
-	for (auto counter : validCounters)
+	auto* const entityCounters = controlledEntity.getEntityCounters(notFoundBehavior);
+	if (entityCounters)
 	{
-		entityCounters[counter] = counters[validCounters.getPosition(counter)];
-	}
+		// Update (or set) counters
+		for (auto counter : validCounters)
+		{
+			(*entityCounters)[counter] = counters[validCounters.getPosition(counter)];
+		}
 
-	// Entity was advertised to the user, notify observers
-	if (controlledEntity.wasAdvertised())
-	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityCountersChanged, this, &controlledEntity, entityCounters);
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityCountersChanged, this, &controlledEntity, *entityCounters);
+		}
 	}
 }
 
-void ControllerImpl::updateAvbInterfaceCounters(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept
+void ControllerImpl::updateAvbInterfaceCounters(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Get previous counters
-	auto& avbInterfaceCounters = controlledEntity.getAvbInterfaceCounters(avbInterfaceIndex);
-
-	// Update (or set) counters
-	for (auto counter : validCounters)
+	auto* const avbInterfaceCounters = controlledEntity.getAvbInterfaceCounters(avbInterfaceIndex, notFoundBehavior);
+	if (avbInterfaceCounters)
 	{
-		avbInterfaceCounters[counter] = counters[validCounters.getPosition(counter)];
-	}
-
-	// Check for link status update
-	checkAvbInterfaceLinkStatus(this, controlledEntity, avbInterfaceIndex, avbInterfaceCounters);
-
-	// If Milan device, validate counters values
-	if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
-	{
-		// LinkDown should either be equal to LinkUp or be one more (Milan Clause 6.6.3)
-		// We are safe to get those counters, check for their presence during first enumeration has already been done
-		auto const upValue = counters[validCounters.getPosition(entity::AvbInterfaceCounterValidFlag::LinkUp)];
-		auto const downValue = counters[validCounters.getPosition(entity::AvbInterfaceCounterValidFlag::LinkDown)];
-		if (upValue != downValue && upValue != (downValue + 1))
+		// Update (or set) counters
+		for (auto counter : validCounters)
 		{
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid LINK_UP / LINK_DOWN counters value on AVB_INTERFACE:{} ({} / {})", avbInterfaceIndex, upValue, downValue);
-			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+			(*avbInterfaceCounters)[counter] = counters[validCounters.getPosition(counter)];
+		}
+
+		// Check for link status update
+		checkAvbInterfaceLinkStatus(this, controlledEntity, avbInterfaceIndex, *avbInterfaceCounters);
+
+		// If Milan device, validate counters values
+		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+		{
+			// LinkDown should either be equal to LinkUp or be one more (Milan-2019 Clause 6.6.3)
+			// We are safe to get those counters, check for their presence during first enumeration has already been done
+			auto const upValue = counters[validCounters.getPosition(entity::AvbInterfaceCounterValidFlag::LinkUp)];
+			auto const downValue = counters[validCounters.getPosition(entity::AvbInterfaceCounterValidFlag::LinkDown)];
+			if (upValue != downValue && upValue != (downValue + 1))
+			{
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid LINK_UP / LINK_DOWN counters value on AVB_INTERFACE:{} ({} / {})", avbInterfaceIndex, upValue, downValue);
+				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+			}
+		}
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAvbInterfaceCountersChanged, this, &controlledEntity, avbInterfaceIndex, *avbInterfaceCounters);
+		}
+	}
+}
+
+void ControllerImpl::updateClockDomainCounters(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::ClockDomainCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	// Get previous counters
+	auto* const clockDomainCounters = controlledEntity.getClockDomainCounters(clockDomainIndex, notFoundBehavior);
+	if (clockDomainCounters)
+	{
+		// Update (or set) counters
+		for (auto counter : validCounters)
+		{
+			(*clockDomainCounters)[counter] = counters[validCounters.getPosition(counter)];
+		}
+
+		// If Milan device, validate counters values
+		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+		{
+			// Unlocked should either be equal to Locked or be one more (Milan-2019 Clause 6.11.2)
+			// We are safe to get those counters, check for their presence during first enumeration has already been done
+			auto const lockedValue = (*clockDomainCounters)[entity::ClockDomainCounterValidFlag::Locked];
+			auto const unlockedValue = (*clockDomainCounters)[entity::ClockDomainCounterValidFlag::Unlocked];
+			if (lockedValue != unlockedValue && lockedValue != (unlockedValue + 1))
+			{
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid LOCKED / UNLOCKED counters value on CLOCK_DOMAIN:{} ({} / {})", clockDomainIndex, lockedValue, unlockedValue);
+				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+			}
+		}
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onClockDomainCountersChanged, this, &controlledEntity, clockDomainIndex, *clockDomainCounters);
+		}
+	}
+}
+
+void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::StreamInputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	// Get previous counters
+	auto* const streamCounters = controlledEntity.getStreamInputCounters(streamIndex, notFoundBehavior);
+	if (streamCounters)
+	{
+		// Update (or set) counters
+		for (auto counter : validCounters)
+		{
+			(*streamCounters)[counter] = counters[validCounters.getPosition(counter)];
+		}
+
+		// If Milan device, validate counters values
+		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+		{
+			// MediaUnlocked should either be equal to MediaLocked or be one more (Milan-2019 Clause 6.8.10)
+			// We are safe to get those counters, check for their presence during first enumeration has already been done
+			auto const lockedValue = (*streamCounters)[entity::StreamInputCounterValidFlag::MediaLocked];
+			auto const unlockedValue = (*streamCounters)[entity::StreamInputCounterValidFlag::MediaUnlocked];
+			if (lockedValue != unlockedValue && lockedValue != (unlockedValue + 1))
+			{
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid MEDIA_LOCKED / MEDIA_UNLOCKED counters value on STREAM_INPUT:{} ({} / {})", streamIndex, lockedValue, unlockedValue);
+				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+			}
+		}
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputCountersChanged, this, &controlledEntity, streamIndex, *streamCounters);
+		}
+	}
+}
+
+void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::StreamOutputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	// Get previous counters
+	auto* const streamCounters = controlledEntity.getStreamOutputCounters(streamIndex, notFoundBehavior);
+	if (streamCounters)
+	{
+		// Update (or set) counters
+		for (auto counter : validCounters)
+		{
+			(*streamCounters)[counter] = counters[validCounters.getPosition(counter)];
+		}
+
+		// If Milan device, validate counters values
+		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+		{
+			// StreamStop should either be equal to StreamStart or be one more (Milan-2019 Clause 6.7.7)
+			// We are safe to get those counters, check for their presence during first enumeration has already been done
+			auto const startValue = (*streamCounters)[entity::StreamOutputCounterValidFlag::StreamStart];
+			auto const stopValue = (*streamCounters)[entity::StreamOutputCounterValidFlag::StreamStop];
+			if (startValue != stopValue && startValue != (stopValue + 1))
+			{
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT:{} ({} / {})", streamIndex, startValue, stopValue);
+				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+			}
+		}
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputCountersChanged, this, &controlledEntity, streamIndex, *streamCounters);
+		}
+	}
+}
+
+void ControllerImpl::updateMemoryObjectLength(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	auto* const memoryObjectNode = controlledEntity.getModelAccessStrategy().getMemoryObjectNode(configurationIndex, memoryObjectIndex, notFoundBehavior);
+	if (memoryObjectNode)
+	{
+		// Validate some fields
+		if (length > memoryObjectNode->staticModel.maximumLength)
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid MemoryObject.length value (greater than MemoryObject.maximumLength value): {} > {}", length, memoryObjectNode->staticModel.maximumLength);
+			ControllerImpl::removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			controlledEntity.setIgnoreCachedEntityModel();
 		}
 	}
 
-	// Entity was advertised to the user, notify observers
-	if (controlledEntity.wasAdvertised())
-	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAvbInterfaceCountersChanged, this, &controlledEntity, avbInterfaceIndex, avbInterfaceCounters);
-	}
-}
-
-void ControllerImpl::updateClockDomainCounters(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::ClockDomainCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept
-{
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
-
-	// Get previous counters
-	auto& clockDomainCounters = controlledEntity.getClockDomainCounters(clockDomainIndex);
-
-	// Update (or set) counters
-	for (auto counter : validCounters)
-	{
-		clockDomainCounters[counter] = counters[validCounters.getPosition(counter)];
-	}
-
-	// If Milan device, validate counters values
-	if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
-	{
-		// Unlocked should either be equal to Locked or be one more (Milan Clause 6.11.2)
-		// We are safe to get those counters, check for their presence during first enumeration has already been done
-		auto const lockedValue = clockDomainCounters[entity::ClockDomainCounterValidFlag::Locked];
-		auto const unlockedValue = clockDomainCounters[entity::ClockDomainCounterValidFlag::Unlocked];
-		if (lockedValue != unlockedValue && lockedValue != (unlockedValue + 1))
-		{
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid LOCKED / UNLOCKED counters value on CLOCK_DOMAIN:{} ({} / {})", clockDomainIndex, lockedValue, unlockedValue);
-			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
-		}
-	}
-
-	// Entity was advertised to the user, notify observers
-	if (controlledEntity.wasAdvertised())
-	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onClockDomainCountersChanged, this, &controlledEntity, clockDomainIndex, clockDomainCounters);
-	}
-}
-
-void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::StreamInputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept
-{
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
-
-	// Get previous counters
-	auto& streamCounters = controlledEntity.getStreamInputCounters(streamIndex);
-
-	// Update (or set) counters
-	for (auto counter : validCounters)
-	{
-		streamCounters[counter] = counters[validCounters.getPosition(counter)];
-	}
-
-	// If Milan device, validate counters values
-	if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
-	{
-		// MediaUnlocked should either be equal to MediaLocked or be one more (Milan Clause 6.8.10)
-		// We are safe to get those counters, check for their presence during first enumeration has already been done
-		auto const lockedValue = streamCounters[entity::StreamInputCounterValidFlag::MediaLocked];
-		auto const unlockedValue = streamCounters[entity::StreamInputCounterValidFlag::MediaUnlocked];
-		if (lockedValue != unlockedValue && lockedValue != (unlockedValue + 1))
-		{
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid MEDIA_LOCKED / MEDIA_UNLOCKED counters value on STREAM_INPUT:{} ({} / {})", streamIndex, lockedValue, unlockedValue);
-			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
-		}
-	}
-
-	// Entity was advertised to the user, notify observers
-	if (controlledEntity.wasAdvertised())
-	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputCountersChanged, this, &controlledEntity, streamIndex, streamCounters);
-	}
-}
-
-void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::StreamOutputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept
-{
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
-
-	// Get previous counters
-	auto& streamCounters = controlledEntity.getStreamOutputCounters(streamIndex);
-
-	// Update (or set) counters
-	for (auto counter : validCounters)
-	{
-		streamCounters[counter] = counters[validCounters.getPosition(counter)];
-	}
-
-	// If Milan device, validate counters values
-	if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
-	{
-		// StreamStop should either be equal to StreamStart or be one more (Milan Clause 6.7.7)
-		// We are safe to get those counters, check for their presence during first enumeration has already been done
-		auto const startValue = streamCounters[entity::StreamOutputCounterValidFlag::StreamStart];
-		auto const stopValue = streamCounters[entity::StreamOutputCounterValidFlag::StreamStop];
-		if (startValue != stopValue && startValue != (stopValue + 1))
-		{
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT:{} ({} / {})", streamIndex, startValue, stopValue);
-			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
-		}
-	}
-
-	// Entity was advertised to the user, notify observers
-	if (controlledEntity.wasAdvertised())
-	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputCountersChanged, this, &controlledEntity, streamIndex, streamCounters);
-	}
-}
-
-void ControllerImpl::updateMemoryObjectLength(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) const noexcept
-{
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
-
-	controlledEntity.setMemoryObjectLength(configurationIndex, memoryObjectIndex, length);
+	controlledEntity.setMemoryObjectLength(configurationIndex, memoryObjectIndex, length, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -1432,11 +1689,11 @@ void ControllerImpl::updateMemoryObjectLength(ControlledEntityImpl& controlledEn
 	}
 }
 
-void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const noexcept
+void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.addStreamPortInputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortInput>(controlledEntity, streamPortIndex, mappings));
+	controlledEntity.addStreamPortInputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortInput>(controlledEntity, streamPortIndex, mappings), notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -1445,11 +1702,11 @@ void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImp
 	}
 }
 
-void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const noexcept
+void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.removeStreamPortInputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortInput>(controlledEntity, streamPortIndex, mappings));
+	controlledEntity.removeStreamPortInputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortInput>(controlledEntity, streamPortIndex, mappings), notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -1458,11 +1715,11 @@ void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityI
 	}
 }
 
-void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const noexcept
+void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.addStreamPortOutputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortOutput>(controlledEntity, streamPortIndex, mappings));
+	controlledEntity.addStreamPortOutputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortOutput>(controlledEntity, streamPortIndex, mappings), notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -1471,11 +1728,11 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityIm
 	}
 }
 
-void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const noexcept
+void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.removeStreamPortOutputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortOutput>(controlledEntity, streamPortIndex, mappings));
+	controlledEntity.removeStreamPortOutputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortOutput>(controlledEntity, streamPortIndex, mappings), notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -1484,14 +1741,14 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntity
 	}
 }
 
-void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete) const noexcept
+void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete, TreeModelAccessStrategy::NotFoundBehavior const /*notFoundBehavior*/) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
 	{
-		if (percentComplete == 0) /* Clause 7.4.55.2 */
+		if (percentComplete == 0) /* IEEE1722.1-2013 Clause 7.4.55.2 */
 		{
 			// Failure
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onOperationCompleted, this, &controlledEntity, descriptorType, descriptorIndex, operationID, true);
@@ -1519,6 +1776,48 @@ void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntit
 	}
 }
 
+void ControllerImpl::updateMaxTransitTime(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (!currentConfigurationIndexOpt)
+	{
+		return;
+	}
+
+	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+	if (streamDynamicModel)
+	{
+		// Create streamDynamicInfo if not already created
+		if (!streamDynamicModel->streamDynamicInfo.has_value())
+		{
+			streamDynamicModel->streamDynamicInfo = entity::model::StreamDynamicInfo{};
+			// Should probably not happen if the entity has been advertised
+			if (controlledEntity.wasAdvertised())
+			{
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Received SET_MAX_TRANSIT_TIME update");
+			}
+		}
+
+		// Update maxTransitTime
+		auto& streamDynamicInfo = *streamDynamicModel->streamDynamicInfo;
+		auto const msrpAccumulatedLatency = static_cast<decltype(streamDynamicInfo.msrpAccumulatedLatency)::value_type>(maxTransitTime.count());
+
+		// No value yet or changed
+		if (!streamDynamicInfo.msrpAccumulatedLatency.has_value() || *streamDynamicInfo.msrpAccumulatedLatency != msrpAccumulatedLatency)
+		{
+			streamDynamicInfo.msrpAccumulatedLatency = msrpAccumulatedLatency;
+
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onMaxTransitTimeChanged, this, &controlledEntity, streamIndex, maxTransitTime);
+			}
+		}
+	}
+}
+
 void ControllerImpl::updateRedundancyWarning(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, bool const isWarning) noexcept
 {
 	auto& diags = controlledEntity.getDiagnostics();
@@ -1531,6 +1830,34 @@ void ControllerImpl::updateRedundancyWarning(ControllerImpl const* const control
 	{
 		AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 		controller->notifyObserversMethod<Controller::Observer>(&Controller::Observer::onDiagnosticsChanged, controller, &controlledEntity, diags);
+	}
+}
+
+void ControllerImpl::updateControlCurrentValueOutOfBounds(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ControlIndex const controlIndex, bool const isOutOfBounds) noexcept
+{
+	auto& diags = controlledEntity.getDiagnostics();
+	auto const previouslyInError = diags.controlCurrentValueOutOfBounds.count(controlIndex) > 0;
+
+	// State changed
+	if (isOutOfBounds != previouslyInError)
+	{
+		// Was not in the list and now needs to be
+		if (isOutOfBounds)
+		{
+			diags.controlCurrentValueOutOfBounds.insert(controlIndex);
+		}
+		// Was in the list and now needs to be removed
+		else
+		{
+			diags.controlCurrentValueOutOfBounds.erase(controlIndex);
+		}
+
+		// Entity was advertised to the user, notify observers
+		if (controller && controlledEntity.wasAdvertised())
+		{
+			AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+			controller->notifyObserversMethod<Controller::Observer>(&Controller::Observer::onDiagnosticsChanged, controller, &controlledEntity, diags);
+		}
 	}
 }
 
@@ -1617,7 +1944,6 @@ void ControllerImpl::checkAvbInterfaceLinkStatus(ControllerImpl const* const con
 void ControllerImpl::checkRedundancyWarningDiagnostics(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity) noexcept
 {
 	auto& entity = controlledEntity.getEntity();
-	auto const currentConfigurationIndex = controlledEntity.getCurrentConfigurationIndex();
 	auto isWarning = false;
 
 	// Only for a Milan redundant device
@@ -1626,16 +1952,15 @@ void ControllerImpl::checkRedundancyWarningDiagnostics(ControllerImpl const* con
 		// Check if AVB_INTERFACE_0 and AVB_INTERFACE_1 have the same gPTP
 		try
 		{
-			auto const& avbInterfaceNode0 = controlledEntity.getAvbInterfaceNode(currentConfigurationIndex, entity::model::AvbInterfaceIndex{ 0u });
-			auto const& avbInterfaceNode1 = controlledEntity.getAvbInterfaceNode(currentConfigurationIndex, entity::model::AvbInterfaceIndex{ 1u });
-			if (avbInterfaceNode0.dynamicModel && avbInterfaceNode1.dynamicModel)
-			{
-				isWarning = avbInterfaceNode0.dynamicModel->gptpGrandmasterID == avbInterfaceNode1.dynamicModel->gptpGrandmasterID;
-			}
+			auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(TreeModelAccessStrategy::NotFoundBehavior::Throw);
+			auto const& avbInterfaceNode0 = controlledEntity.getAvbInterfaceNode(*currentConfigurationIndexOpt, entity::model::AvbInterfaceIndex{ 0u });
+			auto const& avbInterfaceNode1 = controlledEntity.getAvbInterfaceNode(*currentConfigurationIndexOpt, entity::model::AvbInterfaceIndex{ 1u });
+			isWarning = avbInterfaceNode0.dynamicModel.gptpGrandmasterID == avbInterfaceNode1.dynamicModel.gptpGrandmasterID;
 		}
 		catch (ControlledEntity::Exception const&)
 		{
 			LOG_CONTROLLER_WARN(entity.getEntityID(), "Entity is declared Milan Redundant but does not have AVB_INTERFACE_0 and AVB_INTERFACE_1");
+			addCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::MilanWarning);
 		}
 	}
 
@@ -1831,7 +2156,7 @@ void ControllerImpl::addDelayedQuery(std::chrono::milliseconds const delay, Uniq
 
 void ControllerImpl::chooseLocale(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, std::string const& preferedLocale, std::function<void(entity::model::StringsIndex const stringsIndex)> const& missingStringsHandler) noexcept
 {
-	entity::model::LocaleNodeStaticModel const* localeNode{ nullptr };
+	model::LocaleNode const* localeNode{ nullptr };
 	try
 	{
 		localeNode = entity->findLocaleNode(configurationIndex, preferedLocale);
@@ -1842,18 +2167,18 @@ void ControllerImpl::chooseLocale(ControlledEntityImpl* const entity, entity::mo
 		}
 		if (localeNode != nullptr)
 		{
-			auto const& configTree = entity->getConfigurationTree(configurationIndex);
+			//auto const& configNode = entity->getConfigurationNode(configurationIndex);
+			auto const& localeStaticModel = localeNode->staticModel;
 
-			entity->setSelectedLocaleStringsIndexesRange(configurationIndex, localeNode->baseStringDescriptorIndex, localeNode->numberOfStringDescriptors);
-			for (auto index = entity::model::StringsIndex(0); index < localeNode->numberOfStringDescriptors; ++index)
+			entity->setSelectedLocaleStringsIndexesRange(configurationIndex, localeStaticModel.baseStringDescriptorIndex, localeStaticModel.numberOfStringDescriptors, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			for (auto index = entity::model::StringsIndex(0); index < localeStaticModel.numberOfStringDescriptors; ++index)
 			{
 				// Check if we already have the Strings descriptor
-				auto const stringsIndex = static_cast<decltype(index)>(localeNode->baseStringDescriptorIndex + index);
-				auto const stringsModelIt = configTree.stringsModels.find(stringsIndex);
-				if (stringsModelIt != configTree.stringsModels.end())
+				auto const stringsIndex = static_cast<decltype(index)>(localeStaticModel.baseStringDescriptorIndex + index);
+				if (auto const stringsNodeIt = localeNode->strings.find(stringsIndex); stringsNodeIt != localeNode->strings.end())
 				{
 					// Already in cache, no need to query (just have to copy strings to Configuration for quick access)
-					auto const& stringsStaticModel = stringsModelIt->second.staticModel;
+					auto const& stringsStaticModel = stringsNodeIt->second.staticModel;
 					entity->setLocalizedStrings(configurationIndex, index, stringsStaticModel.strings);
 				}
 				else
@@ -1951,11 +2276,25 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 				controller->readStreamOutputDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onStreamOutputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
+		case entity::model::DescriptorType::JackInput:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readJackInputDescriptor (ConfigurationIndex={} JackIndex={})", configurationIndex, descriptorIndex);
+				controller->readJackInputDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onJackInputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::JackOutput:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readJackOutputDescriptor (ConfigurationIndex={} JackIndex={})", configurationIndex, descriptorIndex);
+				controller->readJackOutputDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onJackOutputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
 		case entity::model::DescriptorType::AvbInterface:
 			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readAvbInterfaceDescriptor (ConfigurationIndex={}, AvbInterfaceIndex={})", configurationIndex, descriptorIndex);
-				controller->readAvbInterfaceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+				controller->readAvbInterfaceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, ControlledEntityImpl::EnumerationStep::GetStaticModel));
 			};
 			break;
 		case entity::model::DescriptorType::ClockSource:
@@ -2026,6 +2365,27 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readClockDomainDescriptor (ConfigurationIndex={}, ClockDomainIndex={})", configurationIndex, descriptorIndex);
 				controller->readClockDomainDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onClockDomainDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::Timing:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readTimingDescriptor (ConfigurationIndex={}, TimingIndex={})", configurationIndex, descriptorIndex);
+				controller->readTimingDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onTimingDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::PtpInstance:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readPtpInstanceDescriptor (ConfigurationIndex={}, PtpInstanceIndex={})", configurationIndex, descriptorIndex);
+				controller->readPtpInstanceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onPtpInstanceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::PtpPort:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readPtpPortDescriptor (ConfigurationIndex={}, PtpPortIndex={})", configurationIndex, descriptorIndex);
+				controller->readPtpPortDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onPtpPortDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		default:
@@ -2280,11 +2640,25 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 				controller->getStreamOutputFormat(entityID, descriptorIndex, std::bind(&ControllerImpl::onOutputStreamFormatResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 			};
 			break;
-		case ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName:
+		case ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName:
 			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
 			{
-				LOG_CONTROLLER_TRACE(entityID, "getAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={})", configurationIndex, descriptorIndex);
-				controller->getAvbInterfaceName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+				LOG_CONTROLLER_TRACE(entityID, "getJackInputName (ConfigurationIndex={} JackIndex={})", configurationIndex, descriptorIndex);
+				controller->getJackInputName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onInputJackNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getJackOutputName (ConfigurationIndex={} JackIndex={})", configurationIndex, descriptorIndex);
+				controller->getJackOutputName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onOutputJackNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceDescriptor:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readAvbInterfaceDescriptor (ConfigurationIndex={}, AvbInterfaceIndex={})", configurationIndex, descriptorIndex);
+				controller->readAvbInterfaceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName:
@@ -2343,10 +2717,59 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 				controller->getClockSource(entityID, descriptorIndex, std::bind(&ControllerImpl::onClockDomainSourceIndexResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 			};
 			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::TimingName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getTimingName (ConfigurationIndex={} TimingIndex={})", configurationIndex, descriptorIndex);
+				controller->getTimingName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onTimingNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::PtpInstanceName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getPtpInstanceName (ConfigurationIndex={} PtpInstanceIndex={})", configurationIndex, descriptorIndex);
+				controller->getPtpInstanceName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onPtpInstanceNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::PtpPortName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getPtpPortName (ConfigurationIndex={} PtpPortIndex={})", configurationIndex, descriptorIndex);
+				controller->getPtpPortName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onPtpPortNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
 		default:
 			AVDECC_ASSERT(false, "Unhandled DescriptorDynamicInfoType");
 			break;
 	}
+
+	// Not delayed, call now
+	if (delayQuery == std::chrono::milliseconds{ 0 })
+	{
+		if (queryFunc)
+		{
+			queryFunc(_controller);
+		}
+	}
+	else
+	{
+		addDelayedQuery(delayQuery, entityID, std::move(queryFunc));
+	}
+}
+
+void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity::controller::DynamicInfoParameters const& dynamicInfoParameters, std::uint16_t const packetID, ControlledEntityImpl::EnumerationStep const step, std::chrono::milliseconds const delayQuery) noexcept
+{
+	// Immediately set as expected
+	entity->setGetDynamicInfoExpected(packetID);
+
+	auto const entityID = entity->getEntity().getEntityID();
+	std::function<void(entity::ControllerEntity*)> queryFunc{};
+
+	queryFunc = [this, entityID, dynamicInfoParameters, packetID, step](entity::ControllerEntity* const controller) noexcept
+	{
+		LOG_CONTROLLER_TRACE(entityID, "getDynamicInfo (PacketID={} Step={})", packetID, avdecc::utils::to_integral(step));
+		controller->getDynamicInfo(entityID, dynamicInfoParameters, std::bind(&ControllerImpl::onGetDynamicInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, dynamicInfoParameters, packetID, step));
+	};
 
 	// Not delayed, call now
 	if (delayQuery == std::chrono::milliseconds{ 0 })
@@ -2382,6 +2805,30 @@ void ControllerImpl::getMilanInfo(ControlledEntityImpl* const entity) noexcept
 	}
 }
 
+void ControllerImpl::checkDynamicInfoSupported(ControlledEntityImpl* const entity) noexcept
+{
+	//auto const caps = entity->getEntity().getEntityCapabilities();
+	auto const entityID = entity->getEntity().getEntityID();
+
+#if 0
+	// TODO: No need to check if Milan version is X.Y.Z, it must be supported
+	if (...)
+	{
+		// Clear this enumeration step and check for next one
+		entity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::CheckDynamicInfoSupported);
+		checkEnumerationSteps(entity);
+		return;
+	}
+#endif
+
+	// Immediately set as expected
+	entity->setCheckDynamicInfoSupportedExpected();
+
+	// Query an empty getDynamicInfo to check if it is supported
+	LOG_CONTROLLER_TRACE(entityID, "empty getDynamicInfo ()");
+	_controller->getDynamicInfo(entityID, {}, std::bind(&ControllerImpl::onEmptyGetDynamicInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+}
+
 void ControllerImpl::registerUnsol(ControlledEntityImpl* const entity) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
@@ -2411,114 +2858,182 @@ void ControllerImpl::getStaticModel(ControlledEntityImpl* const entity) noexcept
 
 void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 {
-	auto const caps = entity->getEntity().getEntityCapabilities();
-	// Check if AEM is supported by this entity and it has at least one configuration
-	if (caps.test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
+	class DynamicInfoVisitor : public model::EntityModelVisitor
 	{
-		auto const configurationIndex = entity->getCurrentConfigurationIndex();
-		auto const& configTree = entity->getConfigurationTree(configurationIndex);
-
-		// Get AcquiredState / LockedState (global entity information not related to current configuration)
+	public:
+		explicit DynamicInfoVisitor(ControllerImpl* const controller, ControlledEntityImpl* const entity) noexcept
+			: _controller{ controller }
+			, _entity{ entity }
+			, _usePackedDynamicInfo{ _entity->isGetDynamicInfoSupported() }
 		{
-			// Milan devices don't implement AcquireEntity, no need to query its state
-			if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+		}
+
+		entity::controller::DynamicInfoParameters const& getDynamicInfoParameters() const noexcept
+		{
+			return _dynamicInfoParameters;
+		}
+
+		// Deleted compiler auto-generated methods
+		DynamicInfoVisitor(DynamicInfoVisitor const&) = delete;
+		DynamicInfoVisitor(DynamicInfoVisitor&&) = delete;
+		DynamicInfoVisitor& operator=(DynamicInfoVisitor const&) = delete;
+		DynamicInfoVisitor& operator=(DynamicInfoVisitor&&) = delete;
+
+	private:
+		// model::EntityModelVisitor overrides
+		virtual void visit(ControlledEntity const* const /*entity*/, model::EntityNode const& /*node*/) noexcept override
+		{
+			// Get AcquiredState / LockedState (global entity information not related to current configuration)
 			{
-				entity->setAcquireState(model::AcquireState::NotSupported);
+				// Milan devices don't implement AcquireEntity, no need to query its state
+				if (_entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					_entity->setAcquireState(model::AcquireState::NotSupported);
+				}
+				else
+				{
+					_controller->queryInformation(_entity, 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u);
+				}
+				_controller->queryInformation(_entity, 0u, ControlledEntityImpl::DynamicInfoType::LockedState, 0u);
+			}
+
+			// Entity Counters
+			if (_usePackedDynamicInfo)
+			{
+				_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetCounters, { entity::model::DescriptorType::Entity, entity::model::DescriptorIndex{ 0u } } });
 			}
 			else
 			{
-				queryInformation(entity, 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u);
+				_controller->queryInformation(_entity, 0u, ControlledEntityImpl::DynamicInfoType::GetEntityCounters, 0u);
 			}
-			queryInformation(entity, 0u, ControlledEntityImpl::DynamicInfoType::LockedState, 0u);
 		}
-
-		// Entity Counters
-		queryInformation(entity, 0u, ControlledEntityImpl::DynamicInfoType::GetEntityCounters, 0u);
-
-		// Get StreamInfo/Counters and RX_STATE for each StreamInput descriptors
+		virtual void visit(ControlledEntity const* const /*entity*/, model::EntityNode const* const /*parent*/, model::ConfigurationNode const& node) noexcept override
 		{
-			auto const count = configTree.streamInputModels.size();
-			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
-			{
-				// StreamInfo
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, index);
-
-				// Counters
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters, index);
-
-				// RX_STATE
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, index);
-			}
+			_currentConfigurationIndex = node.descriptorIndex;
 		}
-
-		// Get StreamInfo and TX_STATE for each StreamOutput descriptors
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::AudioUnitNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::StreamInputNode const& node) noexcept override
 		{
-			auto const count = configTree.streamOutputModels.size();
-			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
+			// StreamInfo
+			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, node.descriptorIndex);
+
+			// Counters
+			if (_usePackedDynamicInfo)
 			{
-				// StreamInfo
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, index);
-
-				// Counters
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters, index);
-
-				// TX_STATE
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, index);
+				_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetCounters, { entity::model::DescriptorType::StreamInput, node.descriptorIndex } });
 			}
-		}
+			else
+			{
+				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters, node.descriptorIndex);
+			}
 
-		// Get AvbInfo/Counters for each AvbInterface descriptors
+			// RX_STATE
+			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, node.descriptorIndex);
+		}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::StreamOutputNode const& node) noexcept override
 		{
-			auto const count = configTree.avbInterfaceModels.size();
-			for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
-			{
-				// AvbInfo
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, index);
-				// AsPath
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAsPath, index);
-				// Counters
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, index);
-			}
-		}
+			// StreamInfo
+			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, node.descriptorIndex);
 
-		// Get Counters for each ClockDomain descriptors
-		{
-			auto const count = configTree.clockDomainModels.size();
-			for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
+			// Counters
+			if (_usePackedDynamicInfo)
 			{
-				// Counters
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, index);
+				_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetCounters, { entity::model::DescriptorType::StreamOutput, node.descriptorIndex } });
 			}
-		}
+			else
+			{
+				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters, node.descriptorIndex);
+			}
 
-		// Get AudioMappings for each StreamPortInput descriptors
+			// TX_STATE
+			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, node.descriptorIndex);
+		}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::JackInputNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::JackOutputNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::JackNode const* const /*parent*/, model::ControlNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::AvbInterfaceNode const& node) noexcept override
 		{
-			auto const count = configTree.streamPortInputModels.size();
-			for (auto index = entity::model::StreamPortIndex(0); index < count; ++index)
+			// AvbInfo
+			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, node.descriptorIndex);
+			// AsPath
+			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetAsPath, node.descriptorIndex);
+			// Counters
+			if (_usePackedDynamicInfo)
 			{
-				auto const& staticModel = entity->getNodeStaticModel(configurationIndex, index, &entity::model::ConfigurationTree::streamPortInputModels);
-				if (staticModel.numberOfMaps == 0)
-				{
-					// TODO: Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
-					queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, index);
-				}
+				_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetCounters, { entity::model::DescriptorType::AvbInterface, node.descriptorIndex } });
+			}
+			else
+			{
+				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, node.descriptorIndex);
 			}
 		}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::ClockSourceNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::MemoryObjectNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::LocaleNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::LocaleNode const* const /*parent*/, model::StringsNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::AudioUnitNode const* const /*parent*/, model::StreamPortInputNode const& node) noexcept override
+		{
+			if (node.staticModel.numberOfMaps == 0)
+			{
+				// AudioMappings
+				// TODO: IEEE1722.1-2013 Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
+				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, node.descriptorIndex);
+			}
+		}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::AudioUnitNode const* const /*parent*/, model::StreamPortOutputNode const& node) noexcept override
+		{
+			if (node.staticModel.numberOfMaps == 0)
+			{
+				// AudioMappings
+				// TODO: IEEE1722.1-2013 Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
+				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, node.descriptorIndex);
+			}
+		}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandGrandParent*/, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const /*parent*/, model::AudioClusterNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandGrandParent*/, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const /*parent*/, model::AudioMapNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandGrandParent*/, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const /*parent*/, model::ControlNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::AudioUnitNode const* const /*parent*/, model::ControlNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::ControlNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::ClockDomainNode const& node) noexcept override
+		{
+			// Counters
+			if (_usePackedDynamicInfo)
+			{
+				_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetCounters, { entity::model::DescriptorType::ClockDomain, node.descriptorIndex } });
+			}
+			else
+			{
+				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, node.descriptorIndex);
+			}
+		}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::ClockDomainNode const* const /*parent*/, model::ClockSourceNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::TimingNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::TimingNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& /*node*/) noexcept override {}
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::RedundantStreamInputNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::RedundantStreamOutputNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::RedundantStreamNode const* const /*parent*/, model::StreamInputNode const& /*node*/) noexcept override {}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::RedundantStreamNode const* const /*parent*/, model::StreamOutputNode const& /*node*/) noexcept override {}
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
-		// Get AudioMappings for each StreamPortOutput descriptors
-		{
-			auto const count = configTree.streamPortOutputModels.size();
-			for (auto index = entity::model::StreamPortIndex(0); index < count; ++index)
-			{
-				auto const& staticModel = entity->getNodeStaticModel(configurationIndex, index, &entity::model::ConfigurationTree::streamPortOutputModels);
-				if (staticModel.numberOfMaps == 0)
-				{
-					// TODO: Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
-					queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, index);
-				}
-			}
-		}
-	}
+		// Private members
+		ControllerImpl* _controller{ nullptr };
+		ControlledEntityImpl* _entity{ nullptr };
+		entity::model::ConfigurationIndex _currentConfigurationIndex{ entity::model::getInvalidDescriptorIndex() };
+		bool _usePackedDynamicInfo{ false };
+		entity::controller::DynamicInfoParameters _dynamicInfoParameters{};
+	};
+
+	// Visit all known descriptor and get associated dynamic information
+	auto visitor = DynamicInfoVisitor{ this, entity };
+	entity->accept(&visitor, false);
+	// Flush all packed dynamic info queries
+	flushPackedDynamicInfoQueries(entity, visitor.getDynamicInfoParameters(), ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 
 	// Got all expected dynamic information
 	if (entity->gotAllExpectedDynamicInfo())
@@ -2535,127 +3050,485 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 	// Check if AEM is supported by this entity
 	if (caps.test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
 	{
-		auto const& entityTree = entity->getEntityTree();
-		auto const currentConfigurationIndex = entity->getCurrentConfigurationIndex();
-
-		// Get DynamicModel for each Configuration descriptors
-		for (auto configurationIndex = entity::model::ConfigurationIndex(0u); configurationIndex < entityTree.configurationTrees.size(); ++configurationIndex)
+		class DynamicInfoModelVisitor : public model::EntityModelVisitor
 		{
-			auto const& configTree = entity->getConfigurationTree(configurationIndex);
-			auto& configDynamicModel = entity->getConfigurationNodeDynamicModel(configurationIndex);
-
-			// We can set the currentConfiguration value right now, we know it
-			configDynamicModel.isActiveConfiguration = configurationIndex == currentConfigurationIndex;
-
-			// Get ConfigurationName
-			queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName, 0u);
-
-			// And only for the current configuration, get DynamicModel for sub-descriptors
-			if (configDynamicModel.isActiveConfiguration)
+		public:
+			DynamicInfoModelVisitor(ControllerImpl* const controller, ControlledEntityImpl* const entity) noexcept
+				: _controller{ controller }
+				, _entity{ entity }
+				, _usePackedDynamicInfo{ _entity->isGetDynamicInfoSupported() }
 			{
-				// Choose a locale
-				chooseLocale(entity, configurationIndex, _preferedLocale,
-					[this, entity, configurationIndex](entity::model::StringsIndex const stringsIndex)
-					{
-						// Strings not in cache, we need to query the device
-						queryInformation(entity, configurationIndex, entity::model::DescriptorType::Strings, stringsIndex);
-					});
+			}
 
-				// Get DynamicModel for each AudioUnit descriptors
+			entity::controller::DynamicInfoParameters const& getDynamicInfoParameters() const noexcept
+			{
+				return _dynamicInfoParameters;
+			}
+
+			// Deleted compiler auto-generated methods
+			DynamicInfoModelVisitor(DynamicInfoModelVisitor const&) = delete;
+			DynamicInfoModelVisitor(DynamicInfoModelVisitor&&) = delete;
+			DynamicInfoModelVisitor& operator=(DynamicInfoModelVisitor const&) = delete;
+			DynamicInfoModelVisitor& operator=(DynamicInfoModelVisitor&&) = delete;
+
+		private:
+			// Private methods
+			void getControlNodeDynamicInformation(la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ControlIndex const controlIndex) noexcept
+			{
+				// Get ControlName
+				if (_usePackedDynamicInfo)
 				{
-					auto const count = configTree.audioUnitModels.size();
-					for (auto index = entity::model::AudioUnitIndex(0); index < count; ++index)
-					{
-						// Get AudioUnitName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, index);
-						// Get AudioUnitSamplingRate
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, index);
-					}
+					_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::Control, controlIndex, std::uint16_t{ 0u } } });
 				}
-				// Get DynamicModel for each StreamInput descriptors
+				else
 				{
-					auto const count = configTree.streamInputModels.size();
-					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
-					{
-						// Get InputStreamName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, index);
-						// Get InputStreamFormat
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, index);
-					}
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlName, controlIndex);
 				}
-				// Get DynamicModel for each StreamOutput descriptors
+				// Get ControlValues
+				_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlValues, controlIndex);
+			}
+			// model::EntityModelVisitor overrides
+			virtual void visit(ControlledEntity const* const /*entity*/, model::EntityNode const& node) noexcept override
+			{
+				// Store the current configuration index
+				_currentConfigurationIndex = node.dynamicModel.currentConfiguration;
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::EntityNode const* const /*parent*/, model::ConfigurationNode const& node) noexcept override
+			{
+				auto const configurationIndex = node.descriptorIndex;
+
+				// Get configuration dynamic model
+				auto* const configDynamicModel = _entity->getModelAccessStrategy().getConfigurationNodeDynamicModel(configurationIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (configDynamicModel)
 				{
-					auto const count = configTree.streamOutputModels.size();
-					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
+					// We can set the currentConfiguration value right now, we know it
+					configDynamicModel->isActiveConfiguration = configurationIndex == _currentConfigurationIndex;
+
+					// Get ConfigurationName
+					if (_usePackedDynamicInfo)
 					{
-						// Get OutputStreamName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, index);
-						// Get OutputStreamFormat
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, index);
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { entity::model::ConfigurationIndex{ 0u }, entity::model::DescriptorType::Configuration, configurationIndex, std::uint16_t{ 0u } } }); // CAUTION: configurationIndex should be set to 0 for CONFIGURATION_DESCRIPTOR, the index for the requested configuration name is actually passed as the descriptorIndex field
 					}
-				}
-				// Get DynamicModel for each AvbInterface descriptors
-				{
-					auto const count = configTree.avbInterfaceModels.size();
-					for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
+					else
 					{
-						// Get AvbInterfaceName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, index);
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName, 0u);
 					}
-				}
-				// Get DynamicModel for each ClockSource descriptors
-				{
-					auto const count = configTree.clockSourceModels.size();
-					for (auto index = entity::model::ClockSourceIndex(0); index < count; ++index)
+
+					if (configDynamicModel->isActiveConfiguration)
 					{
-						// Get ClockSourceName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, index);
-					}
-				}
-				// Get DynamicModel for each MemoryObject descriptors
-				{
-					auto const count = configTree.memoryObjectModels.size();
-					for (auto index = entity::model::MemoryObjectIndex(0); index < count; ++index)
-					{
-						// Get MemoryObjectName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, index);
-						// Get MemoryObjectLength
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, index);
-					}
-				}
-				// Get DynamicModel for each AudioCluster descriptors
-				{
-					auto const count = configTree.audioClusterModels.size();
-					for (auto index = entity::model::ClusterIndex(0); index < count; ++index)
-					{
-						// Get AudioClusterName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, index);
-					}
-				}
-				// Get DynamicModel for each Control descriptors
-				{
-					auto const count = configTree.controlModels.size();
-					for (auto index = entity::model::ControlIndex(0); index < count; ++index)
-					{
-						// Get ControlName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlName, index);
-						// Get ControlValues
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlValues, index);
-					}
-				}
-				// Get DynamicModel for each ClockDomain descriptors
-				{
-					auto const count = configTree.clockDomainModels.size();
-					for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
-					{
-						// Get ClockDomainName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, index);
-						// Get ClockDomainSourceIndex
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, index);
+						// Choose a locale
+						chooseLocale(_entity, configurationIndex, _controller->_preferedLocale,
+							[this, configurationIndex](entity::model::StringsIndex const stringsIndex)
+							{
+								// Strings not in cache, we need to query the device
+								_controller->queryInformation(_entity, configurationIndex, entity::model::DescriptorType::Strings, stringsIndex);
+							});
 					}
 				}
 			}
-		}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::AudioUnitNode const& node) noexcept override
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const audioUnitIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get AudioUnitName
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::AudioUnit, audioUnitIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, audioUnitIndex);
+					}
+					// Get AudioUnitSamplingRate
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetSamplingRate, { entity::model::DescriptorType::AudioUnit, audioUnitIndex } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, audioUnitIndex);
+					}
+				}
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::StreamInputNode const& node) noexcept override
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const streamIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get InputStreamName
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::StreamInput, streamIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, streamIndex);
+					}
+					// Get InputStreamFormat
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetStreamFormat, { entity::model::DescriptorType::StreamInput, streamIndex } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, streamIndex);
+					}
+				}
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::StreamOutputNode const& node) noexcept override
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const streamIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get OutputStreamName
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::StreamOutput, streamIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, streamIndex);
+					}
+					// Get OutputStreamFormat
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetStreamFormat, { entity::model::DescriptorType::StreamOutput, streamIndex } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, streamIndex);
+					}
+				}
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::JackInputNode const& node) noexcept override
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const jackIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get InputJackName
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::JackInput, jackIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName, jackIndex);
+					}
+				}
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::JackOutputNode const& node) noexcept override
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const jackIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get OutputJackName
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::JackOutput, jackIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName, jackIndex);
+					}
+				}
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::JackNode const* const /*parent*/, model::ControlNode const& node) noexcept override
+			{
+				auto const configurationIndex = grandParent->descriptorIndex;
+				auto const controlIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					getControlNodeDynamicInformation(configurationIndex, controlIndex);
+				}
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::AvbInterfaceNode const& node) noexcept override
+			{
+				// AVB_INTERFACE descriptor contains 'dynamic' fields (not part of the static model) that cannot be retrieved through a simple command, we have to query the whole descriptor
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const avbInterfaceIndex = node.descriptorIndex;
+
+				_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceDescriptor, avbInterfaceIndex);
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::ClockSourceNode const& node) noexcept override
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const clockSourceIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get ClockSourceName
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::ClockSource, clockSourceIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, clockSourceIndex);
+					}
+				}
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::MemoryObjectNode const& node) noexcept override
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const memoryObjectIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get MemoryObjectName
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::MemoryObject, memoryObjectIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, memoryObjectIndex);
+					}
+					// Get MemoryObjectLength
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetMemoryObjectLength, { configurationIndex, memoryObjectIndex } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, memoryObjectIndex);
+					}
+				}
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::LocaleNode const& /*node*/) noexcept override
+			{
+				// Nothing to get
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::LocaleNode const* const /*parent*/, model::StringsNode const& /*node*/) noexcept override
+			{
+				// Nothing to get
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::AudioUnitNode const* const /*parent*/, model::StreamPortInputNode const& /*node*/) noexcept override
+			{
+				// Nothing to get
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::AudioUnitNode const* const /*parent*/, model::StreamPortOutputNode const& /*node*/) noexcept override
+			{
+				// Nothing to get
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandGrandParent, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const /*parent*/, model::AudioClusterNode const& node) noexcept override
+			{
+				auto const configurationIndex = grandGrandParent->descriptorIndex;
+				auto const clusterIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get AudioClusterName
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::AudioCluster, clusterIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, clusterIndex);
+					}
+				}
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandGrandParent*/, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const /*parent*/, model::AudioMapNode const& /*node*/) noexcept override
+			{
+				// Nothing to get
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandGrandParent, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const /*parent*/, model::ControlNode const& node) noexcept override
+			{
+				auto const configurationIndex = grandGrandParent->descriptorIndex;
+				auto const controlIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					getControlNodeDynamicInformation(configurationIndex, controlIndex);
+				}
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::AudioUnitNode const* const /*parent*/, model::ControlNode const& node) noexcept override
+			{
+				auto const configurationIndex = grandParent->descriptorIndex;
+				auto const controlIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					getControlNodeDynamicInformation(configurationIndex, controlIndex);
+				}
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::ControlNode const& node) noexcept override
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const controlIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					getControlNodeDynamicInformation(configurationIndex, controlIndex);
+				}
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::ClockDomainNode const& node) noexcept override
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const clockDomainIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get ClockDomainName
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::ClockDomain, clockDomainIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, clockDomainIndex);
+					}
+					// Get ClockDomainSourceIndex
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetClockSource, { clockDomainIndex } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, clockDomainIndex);
+					}
+				}
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::ClockDomainNode const* const /*parent*/, model::ClockSourceNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::TimingNode const& node) noexcept override
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const timingIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get TimingName
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::Timing, timingIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::TimingName, timingIndex);
+					}
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::PtpInstanceNode const& node) noexcept override
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const ptpInstanceIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get PtpInstanceName
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::PtpInstance, ptpInstanceIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpInstanceName, ptpInstanceIndex);
+					}
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::TimingNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept override
+			{
+				auto const configurationIndex = grandParent->descriptorIndex;
+				auto const controlIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					getControlNodeDynamicInformation(configurationIndex, controlIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& node) noexcept override
+			{
+				auto const configurationIndex = grandParent->descriptorIndex;
+				auto const ptpPortIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get PtpPortName
+					if (_usePackedDynamicInfo)
+					{
+						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::PtpPort, ptpPortIndex, std::uint16_t{ 0u } } });
+					}
+					else
+					{
+						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpPortName, ptpPortIndex);
+					}
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::RedundantStreamInputNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::RedundantStreamOutputNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::RedundantStreamNode const* const /*parent*/, model::StreamInputNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
+			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::RedundantStreamNode const* const /*parent*/, model::StreamOutputNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
+			ControllerImpl* _controller{ nullptr };
+			ControlledEntityImpl* _entity{ nullptr };
+			entity::model::ConfigurationIndex _currentConfigurationIndex{ entity::model::getInvalidDescriptorIndex() };
+			bool _usePackedDynamicInfo{ false };
+			entity::controller::DynamicInfoParameters _dynamicInfoParameters{};
+		};
+
+		// Visit the model, and retrieve dynamic info
+		auto visitor = DynamicInfoModelVisitor{ this, entity };
+		entity->accept(&visitor, true);
+		// Flush all packed dynamic info queries
+		flushPackedDynamicInfoQueries(entity, visitor.getDynamicInfoParameters(), ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 	}
 
 	// Get all expected descriptor dynamic information
@@ -2667,6 +3540,366 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 	}
 }
 
+void ControllerImpl::flushPackedDynamicInfoQueries(ControlledEntityImpl* const entity, entity::controller::DynamicInfoParameters const& dynamicInfoParameters, ControlledEntityImpl::EnumerationStep const step) noexcept
+{
+	if (dynamicInfoParameters.empty())
+	{
+		return;
+	}
+
+	auto const sendQuery = [this, entity, step](auto const& params, auto const& packetID)
+	{
+		// Send the query
+		queryInformation(entity, params, packetID, step);
+	};
+	static auto s_ResponseSizes = std::unordered_map<protocol::AemCommandType, size_t, protocol::AemCommandType::Hash>{
+		{ protocol::AemCommandType::GetConfiguration, protocol::aemPayload::AecpAemGetConfigurationResponsePayloadSize }, // GetConfiguration
+		{ protocol::AemCommandType::GetStreamFormat, protocol::aemPayload::AecpAemGetStreamFormatResponsePayloadSize }, // GetStreamFormat
+		// GetVideoFormat
+		// GetSensorFormat
+		// { protocol::AemCommandType::GetStreamInfo, protocol::aemPayload::AecpAemGetStreamInfoResponsePayloadSize }, // GetStreamInfo // DO NOT USE, too many different payload sizes (1722.1-2013, 1722.1-2021, Milan-2019)
+		{ protocol::AemCommandType::GetName, protocol::aemPayload::AecpAemGetNameResponsePayloadSize }, // GetName
+		{ protocol::AemCommandType::GetAssociationID, protocol::aemPayload::AecpAemGetAssociationIDResponsePayloadSize }, // GetAssociationID
+		{ protocol::AemCommandType::GetSamplingRate, protocol::aemPayload::AecpAemGetSamplingRateResponsePayloadSize }, // GetSamplingRate
+		{ protocol::AemCommandType::GetClockSource, protocol::aemPayload::AecpAemGetClockSourceResponsePayloadSize }, // GetClockSource
+		// GetSignalSelector
+		{ protocol::AemCommandType::GetCounters, protocol::aemPayload::AecpAemGetCountersResponsePayloadSize }, // GetCounters
+		{ protocol::AemCommandType::GetMemoryObjectLength, protocol::aemPayload::AecpAemGetMemoryObjectLengthResponsePayloadSize }, // GetMemoryObjectLength
+		// GetStreamBackup
+	};
+
+	auto packetID = std::uint16_t{ 0u };
+	auto currentPos = 0u;
+	auto const paramsCount = dynamicInfoParameters.size();
+
+#pragma message("TODO: Optimize this code by trying to pack as much as possible in a single query (searching for another smaller command if one doesn't fit)")
+	// Build DynamicInfoParameters structs (packing as much as possible), until we sent all the queries
+	auto params = decltype(dynamicInfoParameters){};
+	auto currentSize = size_t{ 0u };
+	while (currentPos < paramsCount)
+	{
+		auto const& param = dynamicInfoParameters.at(currentPos);
+
+		// Get response size for the command
+		if (auto const& it = s_ResponseSizes.find(param.commandType); it != s_ResponseSizes.end())
+		{
+			auto const responseSize = static_cast<size_t>(it->second + protocol::aemPayload::AecpAemGetDynamicInfoStructureHeaderSize);
+			// Check if we can add this command to the current query (not exceeding the maximum payload size)
+			if ((currentSize + responseSize) <= protocol::AemAecpdu::MaximumPayloadLength_17221)
+			{
+				// Add this command to the current query
+				params.emplace_back(param);
+				currentSize += responseSize;
+			}
+			else
+			{
+				// Send the current query
+				sendQuery(params, packetID);
+
+				// Start a new query
+				params.clear();
+				params.emplace_back(param);
+				currentSize = responseSize;
+				++packetID;
+			}
+		}
+		else
+		{
+			AVDECC_ASSERT(false, "Unhandled AemCommandType");
+		}
+
+		// Next
+		++currentPos;
+	}
+
+	// Send the last query
+	if (!params.empty())
+	{
+		sendQuery(params, packetID);
+	}
+}
+
+class CreateCachedModelVisitor : public model::EntityModelVisitor
+{
+public:
+	model::EntityNode&& getModel() noexcept
+	{
+		return std::move(_model);
+	}
+
+private:
+	// model::EntityModelVisitor overrides
+	virtual void visit(ControlledEntity const* const /*entity*/, model::EntityNode const& node) noexcept override
+	{
+		// Create a new EntityNode
+		auto entityNode = model::EntityNode{};
+		// Copy all static information
+		entityNode.staticModel = node.staticModel;
+		// Move to the model
+		_model = std::move(entityNode);
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::EntityNode const* const /*parent*/, model::ConfigurationNode const& node) noexcept override
+	{
+		// Create a new ConfigurationNode
+		auto configurationNode = model::ConfigurationNode{ node.descriptorIndex };
+		// Copy all static information
+		configurationNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration = &(_model.configurations.emplace(node.descriptorIndex, std::move(configurationNode)).first->second);
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::AudioUnitNode const& node) noexcept override
+	{
+		// Create a new AudioUnitNode
+		auto audioUnitNode = model::AudioUnitNode{ node.descriptorIndex };
+		// Copy all static information
+		audioUnitNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentAudioUnit = &(_currentConfiguration->audioUnits.emplace(node.descriptorIndex, std::move(audioUnitNode)).first->second);
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::StreamInputNode const& node) noexcept override
+	{
+		// Create a new StreamInputNode
+		auto streamInputNode = model::StreamInputNode{ node.descriptorIndex };
+		// Copy all static information
+		streamInputNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->streamInputs.emplace(node.descriptorIndex, std::move(streamInputNode));
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::StreamOutputNode const& node) noexcept override
+	{
+		// Create a new StreamOutputNode
+		auto streamOutputNode = model::StreamOutputNode{ node.descriptorIndex };
+		// Copy all static information
+		streamOutputNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->streamOutputs.emplace(node.descriptorIndex, std::move(streamOutputNode));
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::JackInputNode const& node) noexcept override
+	{
+		// Create a new JackInputNode
+		auto jackInputNode = model::JackInputNode{ node.descriptorIndex };
+		// Copy all static information
+		jackInputNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentJack = &(_currentConfiguration->jackInputs.emplace(node.descriptorIndex, std::move(jackInputNode)).first->second);
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::JackOutputNode const& node) noexcept override
+	{
+		// Create a new JackOutputNode
+		auto jackOutputNode = model::JackOutputNode{ node.descriptorIndex };
+		// Copy all static information
+		jackOutputNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentJack = &(_currentConfiguration->jackOutputs.emplace(node.descriptorIndex, std::move(jackOutputNode)).first->second);
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::JackNode const* const /*parent*/, model::ControlNode const& node) noexcept override
+	{
+		// Create a new ControlNode
+		auto controlNode = model::ControlNode{ node.descriptorIndex };
+		// Copy all static information
+		controlNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentJack->controls.emplace(node.descriptorIndex, std::move(controlNode));
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::AvbInterfaceNode const& node) noexcept override
+	{
+		// Create a new AvbInterfaceNode
+		auto avbInterfaceNode = model::AvbInterfaceNode{ node.descriptorIndex };
+		// Copy all static information
+		avbInterfaceNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->avbInterfaces.emplace(node.descriptorIndex, std::move(avbInterfaceNode));
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::ClockSourceNode const& node) noexcept override
+	{
+		// Create a new ClockSourceNode
+		auto clockSourceNode = model::ClockSourceNode{ node.descriptorIndex };
+		// Copy all static information
+		clockSourceNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->clockSources.emplace(node.descriptorIndex, std::move(clockSourceNode));
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::MemoryObjectNode const& node) noexcept override
+	{
+		// Create a new MemoryObjectNode
+		auto memoryObjectNode = model::MemoryObjectNode{ node.descriptorIndex };
+		// Copy all static information
+		memoryObjectNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->memoryObjects.emplace(node.descriptorIndex, std::move(memoryObjectNode));
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::LocaleNode const& node) noexcept override
+	{
+		// Create a new LocaleNode
+		auto localeNode = model::LocaleNode{ node.descriptorIndex };
+		// Copy all static information
+		localeNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentLocale = &(_currentConfiguration->locales.emplace(node.descriptorIndex, std::move(localeNode)).first->second);
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::LocaleNode const* const /*parent*/, model::StringsNode const& node) noexcept override
+	{
+		// Create a new StringsNode
+		auto stringsNode = model::StringsNode{ node.descriptorIndex };
+		// Copy all static information
+		stringsNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentLocale->strings.emplace(node.descriptorIndex, std::move(stringsNode));
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::AudioUnitNode const* const /*parent*/, model::StreamPortInputNode const& node) noexcept override
+	{
+		// Create a new StreamPortInputNode
+		auto streamPortInputNode = model::StreamPortInputNode{ node.descriptorIndex };
+		// Copy all static information
+		streamPortInputNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentStreamPort = &(_currentAudioUnit->streamPortInputs.emplace(node.descriptorIndex, std::move(streamPortInputNode)).first->second);
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::AudioUnitNode const* const /*parent*/, model::StreamPortOutputNode const& node) noexcept override
+	{
+		// Create a new StreamPortOutputNode
+		auto streamPortOutputNode = model::StreamPortOutputNode{ node.descriptorIndex };
+		// Copy all static information
+		streamPortOutputNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentStreamPort = &(_currentAudioUnit->streamPortOutputs.emplace(node.descriptorIndex, std::move(streamPortOutputNode)).first->second);
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandGrandParent*/, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const /*parent*/, model::AudioClusterNode const& node) noexcept override
+	{
+		// Create a new AudioClusterNode
+		auto audioClusterNode = model::AudioClusterNode{ node.descriptorIndex };
+		// Copy all static information
+		audioClusterNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentStreamPort->audioClusters.emplace(node.descriptorIndex, std::move(audioClusterNode));
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandGrandParent*/, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const /*parent*/, model::AudioMapNode const& node) noexcept override
+	{
+		// Create a new AudioMapNode
+		auto audioMapNode = model::AudioMapNode{ node.descriptorIndex };
+		// Copy all static information
+		audioMapNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentStreamPort->audioMaps.emplace(node.descriptorIndex, std::move(audioMapNode));
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandGrandParent*/, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const /*parent*/, model::ControlNode const& node) noexcept override
+	{
+		// Create a new ControlNode
+		auto controlNode = model::ControlNode{ node.descriptorIndex };
+		// Copy all static information
+		controlNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentStreamPort->controls.emplace(node.descriptorIndex, std::move(controlNode));
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::AudioUnitNode const* const /*parent*/, model::ControlNode const& node) noexcept override
+	{
+		// Create a new ControlNode
+		auto controlNode = model::ControlNode{ node.descriptorIndex };
+		// Copy all static information
+		controlNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentAudioUnit->controls.emplace(node.descriptorIndex, std::move(controlNode));
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::ControlNode const& node) noexcept override
+	{
+		// Create a new ControlNode
+		auto controlNode = model::ControlNode{ node.descriptorIndex };
+		// Copy all static information
+		controlNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->controls.emplace(node.descriptorIndex, std::move(controlNode));
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::ClockDomainNode const& node) noexcept override
+	{
+		// Create a new ClockDomainNode
+		auto clockDomainNode = model::ClockDomainNode{ node.descriptorIndex };
+		// Copy all static information
+		clockDomainNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->clockDomains.emplace(node.descriptorIndex, std::move(clockDomainNode));
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::ClockDomainNode const* const /*parent*/, model::ClockSourceNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::TimingNode const& node) noexcept override
+	{
+		// Create a new TimingNode
+		auto timingNode = model::TimingNode{ node.descriptorIndex };
+		// Copy all static information
+		timingNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->timings.emplace(node.descriptorIndex, std::move(timingNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& node) noexcept override
+	{
+		// Create a new PtpInstanceNode
+		auto ptpInstanceNode = model::PtpInstanceNode{ node.descriptorIndex };
+		// Copy all static information
+		ptpInstanceNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentPtpInstance = &(_currentConfiguration->ptpInstances.emplace(node.descriptorIndex, std::move(ptpInstanceNode)).first->second);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::TimingNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		// Create a new ControlNode
+		auto controlNode = model::ControlNode{ node.descriptorIndex };
+		// Copy all static information
+		controlNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentPtpInstance->controls.emplace(node.descriptorIndex, std::move(controlNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& node) noexcept override
+	{
+		// Create a new PtpPortNode
+		auto ptpPortNode = model::PtpPortNode{ node.descriptorIndex };
+		// Copy all static information
+		ptpPortNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentPtpInstance->ptpPorts.emplace(node.descriptorIndex, std::move(ptpPortNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::RedundantStreamInputNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::RedundantStreamOutputNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::RedundantStreamNode const* const /*parent*/, model::StreamInputNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
+	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::RedundantStreamNode const* const /*parent*/, model::StreamOutputNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
+	// Private members
+	model::EntityNode _model{};
+	model::ConfigurationNode* _currentConfiguration{ nullptr };
+	model::JackNode* _currentJack{ nullptr };
+	model::LocaleNode* _currentLocale{ nullptr };
+	model::AudioUnitNode* _currentAudioUnit{ nullptr };
+	model::StreamPortNode* _currentStreamPort{ nullptr };
+	model::PtpInstanceNode* _currentPtpInstance{ nullptr };
+};
+
+
 void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const controlledEntity) noexcept
 {
 	auto& entity = *controlledEntity;
@@ -2676,6 +3909,12 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const controlle
 	if (steps.test(ControlledEntityImpl::EnumerationStep::GetMilanInfo))
 	{
 		getMilanInfo(controlledEntity);
+		return;
+	}
+	// Then check if dynamic information is supported
+	if (steps.test(ControlledEntityImpl::EnumerationStep::CheckDynamicInfoSupported))
+	{
+		checkDynamicInfoSupported(controlledEntity);
 		return;
 	}
 	// Then register to unsolicited notifications
@@ -2690,7 +3929,9 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const controlle
 		getStaticModel(controlledEntity);
 		return;
 	}
-	// Then get descriptors dynamic information, it AEM is cached
+	// Notify the entity model has been fully enumerated
+	entity.onEntityModelEnumerated();
+	// Then get descriptors dynamic information (if AEM was cached)
 	if (steps.test(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo))
 	{
 		getDescriptorDynamicInfo(controlledEntity);
@@ -2733,8 +3974,12 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const controlle
 			{
 				if (EntityModelCache::isValidEntityModelID(entityModelID))
 				{
-					// Store EntityModel in the cache for later use
-					entityModelCache.cacheEntityTree(entityModelID, entity.getEntityTree());
+					// Create a copy of the static part of EntityModel
+					auto visitor = CreateCachedModelVisitor{};
+					controlledEntity->accept(&visitor);
+
+					// Store EntityModel in the cache for later usevisitor
+					entityModelCache.cacheEntityModel(entityModelID, visitor.getModel());
 					LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Cached model for EntityModelID {}", utils::toHexString(entityModelID, true, false));
 				}
 				else
@@ -2784,30 +4029,30 @@ entity::model::AudioMappings ControllerImpl::validateMappings(ControlledEntityIm
 
 bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEntity, model::ControlNode const& identifyControlNode) noexcept
 {
-	AVDECC_ASSERT(entity::model::StandardControlType::Identify == identifyControlNode.staticModel->controlType.getValue(), "validateIdentifyControl should only be called on an IDENTIFY Control Descriptor Type");
+	AVDECC_ASSERT(entity::model::StandardControlType::Identify == identifyControlNode.staticModel.controlType.getValue(), "validateIdentifyControl should only be called on an IDENTIFY Control Descriptor Type");
 	auto const& e = controlledEntity.getEntity();
 	auto const entityID = e.getEntityID();
 	auto const controlIndex = identifyControlNode.descriptorIndex;
 
 	try
 	{
-		auto const controlValueType = identifyControlNode.staticModel->controlValueType.getType();
+		auto const controlValueType = identifyControlNode.staticModel.controlValueType.getType();
 		if (controlValueType == entity::model::ControlValueType::Type::ControlLinearUInt8)
 		{
-			auto const staticValues = identifyControlNode.staticModel->values.getValues<entity::model::LinearValues<entity::model::LinearValueStatic<std::uint8_t>>>();
+			auto const staticValues = identifyControlNode.staticModel.values.getValues<entity::model::LinearValues<entity::model::LinearValueStatic<std::uint8_t>>>();
 			if (staticValues.countValues() == 1)
 			{
 				auto const& staticValue = staticValues.getValues()[0];
 				if (staticValue.minimum == 0 && staticValue.maximum == 255 && staticValue.step == 255 && staticValue.unit.getMultiplier() == 0 && staticValue.unit.getUnit() == entity::model::ControlValueUnit::Unit::Unitless)
 				{
-					auto const dynamicValues = identifyControlNode.dynamicModel->values.getValues<entity::model::LinearValues<entity::model::LinearValueDynamic<std::uint8_t>>>();
+					auto const dynamicValues = identifyControlNode.dynamicModel.values.getValues<entity::model::LinearValues<entity::model::LinearValueDynamic<std::uint8_t>>>();
 					if (dynamicValues.countValues() == 1)
 					{
 						auto const& dynamicValue = dynamicValues.getValues()[0];
 						if (dynamicValue.currentValue == 0 || dynamicValue.currentValue == 255)
 						{
 							// Warning only checks
-							if (identifyControlNode.staticModel->signalType != entity::model::DescriptorType::Invalid || identifyControlNode.staticModel->signalIndex != 0)
+							if (identifyControlNode.staticModel.signalType != entity::model::DescriptorType::Invalid || identifyControlNode.staticModel.signalIndex != 0)
 							{
 								LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: SignalType should be set to INVALID and SignalIndex to 0", controlIndex);
 								// Flag the entity as "Not fully IEEE1722.1 compliant"
@@ -2868,151 +4113,268 @@ bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEnt
 	return false;
 }
 
-bool ControllerImpl::validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept
+ControllerImpl::DynamicControlValuesValidationResult ControllerImpl::validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, UniqueIdentifier const& controlType, entity::model::ControlValueType::Type const controlValueType, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept
 {
 	if (!staticValues)
 	{
-		LOG_CONTROLLER_WARN(entityID, "StaticValues for ControlDescriptor at Index {} are not initialized", controlIndex);
-		return false;
+		// Returning true here because uninitialized values may be due to a type unknown to the library
+		LOG_CONTROLLER_WARN(entityID, "StaticValues (type {}) for ControlDescriptor at Index {} are not initialized (probably unhandled type)", entity::model::controlValueTypeToString(controlValueType), controlIndex);
+		return DynamicControlValuesValidationResult::Valid;
 	}
 
 	if (staticValues.areDynamicValues())
 	{
 		LOG_CONTROLLER_WARN(entityID, "StaticValues for ControlDescriptor at Index {} are dynamic instead of static", controlIndex);
-		return false;
+		return DynamicControlValuesValidationResult::InvalidValues;
 	}
 
 	if (!dynamicValues)
 	{
-		LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are not initialized", controlIndex);
-		return false;
+		// Returning true here because uninitialized values may be due to a type unknown to the library
+		LOG_CONTROLLER_WARN(entityID, "DynamicValues (type {}) for ControlDescriptor at Index {} are not initialized (probably unhandled type)", entity::model::controlValueTypeToString(controlValueType), controlIndex);
+		return DynamicControlValuesValidationResult::InvalidValues;
 	}
 
 	if (!dynamicValues.areDynamicValues())
 	{
 		LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are static instead of dynamic", controlIndex);
-		return false;
+		return DynamicControlValuesValidationResult::InvalidValues;
 	}
 
-	auto const resultOpt = entity::model::validateControlValues(staticValues, dynamicValues);
+	auto const [result, errMessage] = entity::model::validateControlValues(staticValues, dynamicValues);
 
 	// No error during validation
-	if (!resultOpt)
+	if (result == entity::model::ControlValuesValidationResult::Valid)
 	{
-		return true;
+		return DynamicControlValuesValidationResult::Valid;
 	}
 
-	auto const& errMessage = *resultOpt;
+	// Checking for special (allowed) cases that are only warnings
+	switch (result)
+	{
+		case entity::model::ControlValuesValidationResult::CurrentValueBelowMinimum:
+		case entity::model::ControlValuesValidationResult::CurrentValueAboveMaximum:
+		{
+			switch (controlType.getValue())
+			{
+				case utils::to_integral(entity::model::StandardControlType::PowerStatus):
+				case utils::to_integral(entity::model::StandardControlType::FanStatus):
+				case utils::to_integral(entity::model::StandardControlType::Temperature):
+					LOG_CONTROLLER_DEBUG(entityID, "Warning for DynamicValues for ControlDescriptor at Index {}: {}", controlIndex, errMessage);
+					return DynamicControlValuesValidationResult::CurrentValueOutOfRange;
+				default:
+					// Also return CurrentValueOutOfRange for non-standard controls
+					if (controlType.getVendorID() != entity::model::StandardControlTypeVendorID)
+					{
+						LOG_CONTROLLER_DEBUG(entityID, "Warning for DynamicValues for Non-Standard ControlDescriptor at Index {}: {}", controlIndex, errMessage);
+						return DynamicControlValuesValidationResult::CurrentValueOutOfRange;
+					}
+					break;
+			}
+		}
+		default:
+			break;
+	}
 
-	LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are not a valid: {}", controlIndex, errMessage);
-	return false;
+	LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are not valid: {}", controlIndex, errMessage);
+	return DynamicControlValuesValidationResult::InvalidValues;
 }
 
 void ControllerImpl::validateControlDescriptors(ControlledEntityImpl& controlledEntity) noexcept
 {
+	class ControlDescriptorValidationVisitor : public model::DefaultedEntityModelVisitor
+	{
+	public:
+		ControlDescriptorValidationVisitor(ControlledEntityImpl& controlledEntity) noexcept
+			: _controlledEntity{ controlledEntity }
+			, _entity{ _controlledEntity.getEntity() }
+			, _entityID{ _entity.getEntityID() }
+		{
+			if (_entity.getEntityCapabilities().test(entity::EntityCapability::AemIdentifyControlIndexValid))
+			{
+				_adpIdentifyControlIndex = _entity.getIdentifyControlIndex();
+				if (!_adpIdentifyControlIndex)
+				{
+					LOG_CONTROLLER_WARN(_entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: CONTROL index not defined in ADP");
+					// Flag the entity as "Not fully IEEE1722.1 compliant"
+					removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+				}
+			}
+		}
+
+		void validate() const noexcept
+		{
+			// Check we found a valid Identify Control at either Configuration or Jack level, if ADP contains a valid Identify Control Index
+			if (_adpIdentifyControlIndex && !_foundADPIdentifyControlIndex)
+			{
+				LOG_CONTROLLER_WARN(_entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: No valid CONTROL at index {}", *_adpIdentifyControlIndex);
+				// Flag the entity as "Not fully IEEE1722.1 compliant"
+				removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			}
+		}
+
+		std::optional<entity::model::ControlIndex> getIdentifyControlIndex() const noexcept
+		{
+			// If ADP contains a valid Identify Control Index, use it
+			if (_foundADPIdentifyControlIndex)
+			{
+				return _adpIdentifyControlIndex;
+			}
+			if (!_controlIndices.empty())
+			{
+				// Right now, return the first Identify Control found
+				return *_controlIndices.begin();
+			}
+			return std::nullopt;
+		}
+
+		// Deleted compiler auto-generated methods
+		ControlDescriptorValidationVisitor(ControlDescriptorValidationVisitor const&) = delete;
+		ControlDescriptorValidationVisitor(ControlDescriptorValidationVisitor&&) = delete;
+		ControlDescriptorValidationVisitor& operator=(ControlDescriptorValidationVisitor const&) = delete;
+		ControlDescriptorValidationVisitor& operator=(ControlDescriptorValidationVisitor&&) = delete;
+
+	private:
+		static bool isIdentifyControl(model::ControlNode const& node) noexcept
+		{
+			return entity::model::StandardControlType::Identify == node.staticModel.controlType.getValue();
+		}
+
+		// Validate this is the Identify Control advertised by ADP and it is valid. Returns true if this is an Identify Control (valid or not), false otherwise
+		[[nodiscard]] bool validateAdpIdentifyControl(model::ControlNode const& node) noexcept
+		{
+			auto const controlIndex = node.descriptorIndex;
+
+			if (_adpIdentifyControlIndex && *_adpIdentifyControlIndex == controlIndex)
+			{
+				if (isIdentifyControl(node))
+				{
+					if (validateIdentifyControl(_controlledEntity, node))
+					{
+						_foundADPIdentifyControlIndex = true;
+						_controlIndices.insert(controlIndex);
+					}
+					// Note: No need to remove compatibility flag or log a warning in else statement, the validateIdentifyControl method already did it
+					return true;
+				}
+				else
+				{
+					LOG_CONTROLLER_WARN(_entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: ControlType should be IDENTIFY but is {}", entity::model::controlTypeToString(node.staticModel.controlType));
+					// Flag the entity as "Not fully IEEE1722.1 compliant"
+					removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+				}
+			}
+			return false;
+		}
+
+		void validateControl(model::ControlNode const& node, bool const checkIdentifyControl = true, bool const identifyAllowed = false) noexcept
+		{
+			auto const controlIndex = node.descriptorIndex;
+
+			// Check if we have an Identify Control (not already checked)
+			if (checkIdentifyControl && isIdentifyControl(node))
+			{
+				if (validateIdentifyControl(_controlledEntity, node))
+				{
+					if (identifyAllowed)
+					{
+						_controlIndices.insert(controlIndex);
+					}
+					else
+					{
+						LOG_CONTROLLER_WARN(_entityID, "ControlDescriptor at Index {} is a valid Identify Control but it's neither at CONFIGURATION nor JACK level", controlIndex);
+						// Flag the entity as "Not fully IEEE1722.1 compliant"
+						removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					}
+				}
+				// Note: No need to remove compatibility flag or log a warning in else statement, the validateIdentifyControl method already did it
+			}
+
+			// Validate ControlType
+			auto const controlType = node.staticModel.controlType;
+			if (!controlType.isValid())
+			{
+				LOG_CONTROLLER_WARN(_entityID, "control_type for CONTROL descriptor at index {} is not a valid EUI-64: {}", controlIndex, utils::toHexString(controlType));
+				// Flag the entity as "Not fully IEEE1722.1 compliant"
+				removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			}
+
+			// Validate ControlValues
+			auto const validationResult = validateControlValues(_entityID, controlIndex, controlType, node.staticModel.controlValueType.getType(), node.staticModel.values, node.dynamicModel.values);
+			auto isOutOfBounds = false;
+			switch (validationResult)
+			{
+				case DynamicControlValuesValidationResult::InvalidValues:
+					// Flag the entity as "Not fully IEEE1722.1 compliant"
+					removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					break;
+				case DynamicControlValuesValidationResult::CurrentValueOutOfRange:
+					isOutOfBounds = true;
+					break;
+				default:
+					break;
+			}
+			updateControlCurrentValueOutOfBounds(nullptr, _controlledEntity, controlIndex, isOutOfBounds);
+		}
+
+		// model::DefaultedEntityModelVisitor overrides
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::JackNode const* const /*parent*/, model::ControlNode const& node) noexcept override
+		{
+			// Jack level, we need to validate ADP Identify Control Index if present and this index
+			auto const isIdentifyControl = validateAdpIdentifyControl(node);
+
+			// Validate the Control
+			validateControl(node, !isIdentifyControl, true);
+		}
+
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandGrandParent*/, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const /*parent*/, model::ControlNode const& node) noexcept override
+		{
+			// Validate the Control
+			validateControl(node);
+		}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::AudioUnitNode const* const /*parent*/, model::ControlNode const& node) noexcept override
+		{
+			// Validate the Control
+			validateControl(node);
+		}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::ControlNode const& node) noexcept override
+		{
+			// Configuration level, we need to validate ADP Identify Control Index if present and this index
+			auto const isIdentifyControl = validateAdpIdentifyControl(node);
+
+			// Validate the Control
+			validateControl(node, !isIdentifyControl, true);
+		}
+
+		ControlledEntityImpl& _controlledEntity;
+		entity::Entity& _entity;
+		UniqueIdentifier _entityID{};
+		std::optional<entity::model::ControlIndex> _adpIdentifyControlIndex{ std::nullopt };
+		std::set<entity::model::ControlIndex> _controlIndices{};
+		bool _foundADPIdentifyControlIndex{ false };
+	};
+
 	auto const& e = controlledEntity.getEntity();
-	auto const entityID = e.getEntityID();
 	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
 
 	// If AEM is supported
 	if (isAemSupported && controlledEntity.hasAnyConfiguration())
 	{
-		// Validate Identify Control Descriptor
-		auto identifyControlIndex = std::optional<entity::model::ControlIndex>{ std::nullopt };
-		try
+		// Use a visitor to:
+		//  1/ Find an Identify Control Descriptor: must exist at Configuration or Jack level, if advertised in ADP. Otherwise just store the ControlIndex
+		//  2/ Validate all Control Descriptors
+		auto visitor = ControlDescriptorValidationVisitor{ controlledEntity };
+
+		// Run the visitor on the entity model
+		controlledEntity.accept(&visitor);
+
+		// Validate post-visitor checks
+		visitor.validate();
+
+		// If we found a valid Identify Control Descriptor, store it in the entity
+		if (auto const identifyControlIndex = visitor.getIdentifyControlIndex(); identifyControlIndex)
 		{
-#pragma message("TODO: When JackDecriptors will be implemented, search for Identify in Jacks as well")
-			auto const& configurationNode = controlledEntity.getCurrentConfigurationNode();
-			if (e.getEntityCapabilities().test(entity::EntityCapability::AemIdentifyControlIndexValid))
-			{
-				auto const indexOpt = e.getIdentifyControlIndex();
-				if (indexOpt)
-				{
-					auto const identifyIndex = *indexOpt;
-					if (auto const nodeIt = configurationNode.controls.find(identifyIndex); nodeIt != configurationNode.controls.end())
-					{
-						auto const& identifyControlNode = nodeIt->second;
-						auto const controlType = identifyControlNode.staticModel->controlType;
-						if (entity::model::StandardControlType::Identify == controlType.getValue())
-						{
-							if (validateIdentifyControl(controlledEntity, identifyControlNode))
-							{
-								identifyControlIndex = indexOpt;
-							}
-							// Note: No need to remove compatibility flag or log a warning, the validateIdentifyControl method will do it
-						}
-						else
-						{
-							LOG_CONTROLLER_WARN(entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: ControlType should be IDENTIFY but is {}", entity::model::controlTypeToString(controlType));
-							// Flag the entity as "Not fully IEEE1722.1 compliant"
-							removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
-						}
-					}
-					else
-					{
-						LOG_CONTROLLER_WARN(entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: No such CONTROL at index {}", identifyIndex);
-						// Flag the entity as "Not fully IEEE1722.1 compliant"
-						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
-					}
-				}
-				else
-				{
-					LOG_CONTROLLER_WARN(entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: CONTROL index not defined in ADP");
-					// Flag the entity as "Not fully IEEE1722.1 compliant"
-					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
-				}
-			}
-
-			// Validate Controls while searching for a valid Identify Control Descriptor
-			for (auto const& [controlIndex, controlNode] : configurationNode.controls)
-			{
-				auto const controlType = controlNode.staticModel->controlType;
-
-				// No ControlIndex in ADP (or not valid)
-				if (!identifyControlIndex)
-				{
-					if (entity::model::StandardControlType::Identify == controlType.getValue())
-					{
-						if (validateIdentifyControl(controlledEntity, controlNode))
-						{
-							identifyControlIndex = controlIndex;
-							break;
-						}
-					}
-				}
-
-				// Validate ControlType
-				if (!controlType.isValid())
-				{
-					LOG_CONTROLLER_WARN(entityID, "control_type for CONTROL descriptor at index {} is not a valid EUI-64: {}", controlIndex, utils::toHexString(controlType));
-					// Flag the entity as "Not fully IEEE1722.1 compliant"
-					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
-				}
-
-				// Validate ControlValues
-				if (!validateControlValues(entityID, controlIndex, controlNode.staticModel->values, controlNode.dynamicModel->values))
-				{
-					// Flag the entity as "Not fully IEEE1722.1 compliant"
-					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
-				}
-			}
-
-			// Found a valid Identify ControlIndex
-			if (identifyControlIndex)
-			{
-				// Register the Identify Control Index
-				controlledEntity.setIdentifyControlIndex(*identifyControlIndex);
-			}
-		}
-		catch (ControlledEntity::Exception const&)
-		{
-			LOG_CONTROLLER_WARN(entityID, "Invalid current CONFIGURATION descriptor");
-			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
-		}
-		catch (...)
-		{
-			AVDECC_ASSERT(false, "Unhandled exception");
+			controlledEntity.setIdentifyControlIndex(*identifyControlIndex);
 		}
 	}
 }
@@ -3070,13 +4432,42 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 	// If AEM is supported
 	if (isAemSupported)
 	{
-		// [IEEE1722.1 Clause 7.2.1] A device is required to have at least one Configuration Descriptor
+		// IEEE1722.1-2013 Clause 7.2.1 - A device is required to have at least one Configuration Descriptor
 		if (!controlledEntity.hasAnyConfiguration())
 		{
-			LOG_CONTROLLER_WARN(entityID, "[IEEE1722.1 Clause 7.2.1] A device is required to have at least one Configuration Descriptor");
+			LOG_CONTROLLER_WARN(entityID, "[IEEE1722.1-2013 Clause 7.2.1] A device is required to have at least one Configuration Descriptor");
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
 			removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			return;
+		}
+
+		// IEEE1722.1-2021 Clause 7.2.2 - The descriptor_counts field is the counts of the top level descriptors.
+		try
+		{
+			static auto const s_TopLevelDescriptors = std::set<entity::model::DescriptorType>{ entity::model::DescriptorType::AudioUnit, entity::model::DescriptorType::VideoUnit, entity::model::DescriptorType::SensorUnit, entity::model::DescriptorType::StreamInput, entity::model::DescriptorType::StreamOutput, entity::model::DescriptorType::JackInput, entity::model::DescriptorType::JackOutput, entity::model::DescriptorType::AvbInterface, entity::model::DescriptorType::ClockSource, entity::model::DescriptorType::Control, entity::model::DescriptorType::SignalSelector, entity::model::DescriptorType::Mixer, entity::model::DescriptorType::Matrix, entity::model::DescriptorType::Locale, entity::model::DescriptorType::MatrixSignal, entity::model::DescriptorType::MemoryObject,
+				entity::model::DescriptorType::SignalSplitter, entity::model::DescriptorType::SignalCombiner, entity::model::DescriptorType::SignalDemultiplexer, entity::model::DescriptorType::SignalMultiplexer, entity::model::DescriptorType::SignalTranscoder, entity::model::DescriptorType::ClockDomain, entity::model::DescriptorType::ControlBlock, entity::model::DescriptorType::Timing, entity::model::DescriptorType::PtpInstance };
+			auto const& currentConfigurationNode = controlledEntity.getCurrentConfigurationNode();
+			for (auto const [descriptorType, count] : currentConfigurationNode.staticModel.descriptorCounts)
+			{
+				// If a declared 'count' is not in the list of top level descriptors, flag the entity as "Not fully IEEE1722.1 compliant"
+				if (s_TopLevelDescriptors.count(descriptorType) == 0)
+				{
+					// First check if this is an unknown descriptor (to this version of the library), so we don't print a warning for something we don't know
+					if (utils::to_integral(descriptorType) > utils::to_integral(entity::model::DescriptorType::LAST_VALID_DESCRIPTOR))
+					{
+						LOG_CONTROLLER_DEBUG(entityID, "Unknown DescriptorType {} found in descriptor_counts field", utils::toHexString(utils::to_integral(descriptorType)));
+						continue;
+					}
+					LOG_CONTROLLER_WARN(entityID, "[IEEE1722.1-2021 Clause 7.2.2] The descriptor_counts field is the counts of the top level descriptors: DescriptorType {} is not a top level descriptor", entity::model::descriptorTypeToString(descriptorType));
+					addCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221Warning);
+					return;
+				}
+			}
+		}
+		catch (ControlledEntity::Exception const&)
+		{
+			LOG_CONTROLLER_DEBUG(entityID, "Couldn't find any current configuration although at least one was declared");
+			// Ignore
 		}
 
 		// Check IEEE1722.1 aemxml/json requirements
@@ -3084,7 +4475,7 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 		try
 		{
 			// Try to serialize the entity model and check for errors
-			entity::model::jsonSerializer::createJsonObject(controlledEntity.getEntityTree(), entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel, entity::model::jsonSerializer::Flag::ProcessDynamicModel });
+			entity::model::jsonSerializer::createJsonObject(controlledEntity.getEntityModelTree(), entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel, entity::model::jsonSerializer::Flag::ProcessDynamicModel });
 		}
 		catch (json::exception const&)
 		{
@@ -3094,7 +4485,7 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 		{
 			if (e.getError() == avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex)
 			{
-				LOG_CONTROLLER_WARN(entityID, "[IEEE1722.1 Clause 7.2] Invalid Descriptor Numbering: {}", e.what());
+				LOG_CONTROLLER_WARN(entityID, "[IEEE1722.1-2013 Clause 7.2] Invalid Descriptor Numbering: {}", e.what());
 				// Flag the entity as "Not fully IEEE1722.1 compliant"
 				removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			}
@@ -3118,7 +4509,7 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 				{
 					auto streamHasAaf = false;
 					auto streamHasCrf = false;
-					for (auto const& format : streamNode.staticModel->formats)
+					for (auto const& format : streamNode.staticModel.formats)
 					{
 						auto const f = entity::model::StreamFormatInfo::create(format);
 						switch (f->getType())
@@ -3135,10 +4526,10 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 								break;
 						}
 					}
-					// [Milan Clause 6.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa
+					// [Milan-2019 Clause 6.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa
 					if (streamHasAaf && streamHasCrf)
 					{
-						LOG_CONTROLLER_WARN(entityID, "[Milan Clause 6.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa");
+						LOG_CONTROLLER_WARN(entityID, "[Milan-2019 Clause 6.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa");
 						// Remove "Milan compatibility"
 						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 					}
@@ -3154,7 +4545,7 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 				{
 					if (!streamNode.isRedundant)
 					{
-						if (streamNode.staticModel->clockDomainIndex == domainIndex)
+						if (streamNode.staticModel.clockDomainIndex == domainIndex)
 						{
 							if (capableStreams.count(streamIndex) > 0)
 							{
@@ -3167,12 +4558,15 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 				for (auto const& [virtualIndex, redundantStreamNode] : redundantStreams)
 				{
 					// Take the first (not necessarily the primary) stream
-					auto const& [streamIndex, streamNode] = *redundantStreamNode.redundantStreams.begin();
-					if (streamNode->staticModel->clockDomainIndex == domainIndex)
+					auto const streamIndex = *redundantStreamNode.redundantStreams.begin();
+					if (auto const streamIt = streams.find(streamIndex); streamIt != streams.end())
 					{
-						if (capableStreams.count(streamIndex) > 0)
+						if (streamIt->second.staticModel.clockDomainIndex == domainIndex)
 						{
-							++countStreams;
+							if (capableStreams.count(streamIndex) > 0)
+							{
+								++countStreams;
+							}
 						}
 					}
 				}
@@ -3207,10 +4601,10 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 				}
 
 				// Validate AAF requirements
-				// [Milan Formats] A PAAD-AE shall have at least one Configuration that contains at least one Stream which advertises support for a Base format is its list of supported formats
+				// [Milan Formats] A PAAD-AE shall have at least one Configuration that contains at least one Stream which advertises support for a Base format in its list of supported formats
 				if (!isAafMediaListener && !isAafMediaTalker)
 				{
-					LOG_CONTROLLER_WARN(entityID, "[Milan Formats] A PAAD-AE shall have at least one Configuration that contains at least one Stream which advertises support for a Base format is its list of //supported formats");
+					LOG_CONTROLLER_WARN(entityID, "[Milan Formats] A PAAD-AE shall have at least one Configuration that contains at least one Stream which advertises support for a Base format in its list of supported formats");
 					// Remove "Milan compatibility"
 					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 				}
@@ -3225,17 +4619,17 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 					{
 						if (aafInputStreamsForDomain >= 2)
 						{
-							// [Milan Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input
+							// [Milan-2019 Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input
 							if (crfInputStreamsForDomain == 0u)
 							{
-								LOG_CONTROLLER_WARN(entityID, "[Milan Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input");
+								LOG_CONTROLLER_WARN(entityID, "[Milan-2019 Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input");
 								// Remove "Milan compatibility"
 								removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 							}
-							// [Milan Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output
+							// [Milan-2019 Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output
 							if (crfOutputStreamsForDomain == 0u)
 							{
-								LOG_CONTROLLER_WARN(entityID, "[Milan Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output");
+								LOG_CONTROLLER_WARN(entityID, "[Milan-2019 Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output");
 								// Remove "Milan compatibility"
 								removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 							}
@@ -3243,14 +4637,14 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 					}
 					if (isAafMediaTalker)
 					{
-						// [Milan Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input
+						// [Milan-2019 Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input
 						if (crfInputStreamsForDomain == 0u)
 						{
-							LOG_CONTROLLER_WARN(entityID, "[Milan Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input");
+							LOG_CONTROLLER_WARN(entityID, "[Milan-2019 Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input");
 							// Remove "Milan compatibility"
 							removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 						}
-						// [Milan Clause 7.2.3] For each supported clock domain, an AAF Media Talker capable of synchronizing to an external clock source (not an AVB stream) shall implement a CRF Media Clock Output
+						// [Milan-2019 Clause 7.2.3] For each supported clock domain, an AAF Media Talker capable of synchronizing to an external clock source (not an AVB stream) shall implement a CRF Media Clock Output
 						// TODO
 					}
 				}
@@ -3289,12 +4683,19 @@ void ControllerImpl::validateEntity(ControlledEntityImpl& controlledEntity) noex
 	// If AEM is supported
 	if (isAemSupported && controlledEntity.hasAnyConfiguration())
 	{
-		for (auto const& [avbInterfaceIndex, avbInterfaceNode] : controlledEntity.getCurrentConfigurationNode().avbInterfaces)
+		try
 		{
-			if (avbInterfaceNode.dynamicModel && avbInterfaceNode.dynamicModel->counters)
+			for (auto const& [avbInterfaceIndex, avbInterfaceNode] : controlledEntity.getCurrentConfigurationNode().avbInterfaces)
 			{
-				checkAvbInterfaceLinkStatus(nullptr, controlledEntity, avbInterfaceIndex, *avbInterfaceNode.dynamicModel->counters);
+				if (avbInterfaceNode.dynamicModel.counters)
+				{
+					checkAvbInterfaceLinkStatus(nullptr, controlledEntity, avbInterfaceIndex, *avbInterfaceNode.dynamicModel.counters);
+				}
 			}
+		}
+		catch (...)
+		{
+			AVDECC_ASSERT(false, "Should not throw");
 		}
 	}
 
@@ -3352,38 +4753,26 @@ void ControllerImpl::computeAndUpdateMediaClockChain(ControlledEntityImpl& contr
 					AVDECC_ASSERT(currentClockDomainIndex != entity::model::getInvalidDescriptorIndex() || currentStreamOutput, "currentClockDomainIndex and currentStreamOutput cannot both be invalid");
 #if 0
 					if (currentStreamOutput)
-#else // Better optimized version preventing retrieval of the StreamOutputNode during the first ieration of the loop if both continueFromEntityDomainIndex and continueFromStreamOutputIndex are defined
+#else // Better optimized version preventing retrieval of the StreamOutputNode during the first iteration of the loop if both continueFromEntityDomainIndex and continueFromStreamOutputIndex are defined
 					if (currentClockDomainIndex == entity::model::getInvalidDescriptorIndex() || (currentStreamOutput && currentClockDomainIndex != entity::model::getInvalidDescriptorIndex() && currentEntityID != continueFromEntityID))
 #endif
 					{
 						// Find stream output
 						auto const& soNode = currentEntity.getStreamOutputNode(currentConfigIndex, *currentStreamOutput);
-						if (soNode.staticModel == nullptr)
-						{
-							throw ControlledEntity::Exception(ControlledEntity::Exception::Type::NotSupported, "Invalid StreamOutput index");
-						}
-						currentClockDomainIndex = soNode.staticModel->clockDomainIndex;
+						currentClockDomainIndex = soNode.staticModel.clockDomainIndex;
 					}
 					node.clockDomainIndex = currentClockDomainIndex;
 
 					// Get the clock domain node
 					auto const& cdNode = currentEntity.getClockDomainNode(currentConfigIndex, currentClockDomainIndex);
-					if (cdNode.dynamicModel == nullptr)
-					{
-						throw ControlledEntity::Exception(ControlledEntity::Exception::Type::NotSupported, "ClockDomain DynamicModel not available");
-					}
-					auto const currentCSIndex = cdNode.dynamicModel->clockSourceIndex;
+					auto const currentCSIndex = cdNode.dynamicModel.clockSourceIndex;
 					node.clockSourceIndex = currentCSIndex;
 
 					// Get the active clock source node for this clock domain
 					auto const& csNode = currentEntity.getClockSourceNode(currentConfigIndex, currentCSIndex);
-					if (csNode.staticModel == nullptr)
-					{
-						throw ControlledEntity::Exception(ControlledEntity::Exception::Type::NotSupported, "ClockSource StaticModel not available");
-					}
 
 					// Follow the clock source used by this domain
-					switch (csNode.staticModel->clockSourceType)
+					switch (csNode.staticModel.clockSourceType)
 					{
 						case entity::model::ClockSourceType::Internal:
 							node.type = model::MediaClockChainNode::Type::Internal;
@@ -3398,21 +4787,17 @@ void ControllerImpl::computeAndUpdateMediaClockChain(ControlledEntityImpl& contr
 							node.type = model::MediaClockChainNode::Type::StreamInput;
 
 							// Validate location type
-							if (csNode.staticModel->clockSourceLocationType != entity::model::DescriptorType::StreamInput)
+							if (csNode.staticModel.clockSourceLocationType != entity::model::DescriptorType::StreamInput)
 							{
 								throw ControlledEntity::Exception(ControlledEntity::Exception::Type::NotSupported, "Invalid ClockSource location");
 							}
 
 							// Find stream input
-							auto const& siNode = currentEntity.getStreamInputNode(currentConfigIndex, csNode.staticModel->clockSourceLocationIndex);
-							if (siNode.dynamicModel == nullptr)
-							{
-								throw ControlledEntity::Exception(ControlledEntity::Exception::Type::NotSupported, "StreamInput DynamicModel not available");
-							}
-							node.streamInputIndex = csNode.staticModel->clockSourceLocationIndex;
+							auto const& siNode = currentEntity.getStreamInputNode(currentConfigIndex, csNode.staticModel.clockSourceLocationIndex);
+							node.streamInputIndex = csNode.staticModel.clockSourceLocationIndex;
 
 							// Get connection info
-							auto const& connInfo = siNode.dynamicModel->connectionInfo;
+							auto const& connInfo = siNode.dynamicModel.connectionInfo;
 
 							// Stop searching if stream is not connected
 							if (connInfo.state != entity::model::StreamInputConnectionInfo::State::Connected)
@@ -3507,33 +4892,32 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 							// Check each of this Listener's Input Streams
 							for (auto const& [streamIndex, streamInputNode] : configurationNode.streamInputs)
 							{
-								if (streamInputNode.dynamicModel)
+								// If the Stream is Connected
+								if (streamInputNode.dynamicModel.connectionInfo.state == entity::model::StreamInputConnectionInfo::State::Connected)
 								{
-									// If the Stream is Connected
-									if (streamInputNode.dynamicModel->connectionInfo.state == entity::model::StreamInputConnectionInfo::State::Connected)
+									// Check against all the Talker's Output Streams
+									for (auto const& [streamOutputIndex, streamOutputNode] : talkerConfigurationNode.streamOutputs)
 									{
-										// Check against all the Talker's Output Streams
-										for (auto const& [streamOutputIndex, streamOutputNode] : talkerConfigurationNode.streamOutputs)
+										auto const talkerIdentification = entity::model::StreamIdentification{ entityID, streamOutputIndex };
+
+										// Connected to our talker
+										if (streamInputNode.dynamicModel.connectionInfo.talkerStream == talkerIdentification)
 										{
-											auto const talkerIdentification = entity::model::StreamIdentification{ entityID, streamOutputIndex };
-
-											// Connected to our talker
-											if (streamInputNode.dynamicModel->connectionInfo.talkerStream == talkerIdentification)
+											// We want to build an accurate list of connections, based on the known listeners (already advertised only, the other ones will update once ready to advertise themselves)
 											{
-												// We want to build an accurate list of connections, based on the known listeners (already advertised only, the other ones will update once ready to advertise themselves)
-												{
-													// Add this listener to our list of connected entities
-													controlledEntity.addStreamOutputConnection(streamOutputIndex, { listenerEntityID, streamIndex });
-													// Do not trigger onStreamOutputConnectionsChanged notification, we are just about to advertise the entity
-												}
+												// Add this listener to our list of connected entities
+												controlledEntity.addStreamOutputConnection(streamOutputIndex, { listenerEntityID, streamIndex }, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+												// Do not trigger onStreamOutputConnectionsChanged notification, we are just about to advertise the entity
+											}
 
-												// Check for Latency Error (if the Listener was advertised before this Talker, it couldn't check Talker's PresentationTime, so do it now)
-												if (streamOutputNode.dynamicModel && streamOutputNode.dynamicModel->streamDynamicInfo && streamInputNode.dynamicModel->streamDynamicInfo)
+											// Check for Latency Error (if the Listener was advertised before this Talker, it couldn't check Talker's PresentationTime, so do it now)
+											// If we have StreamDynamicInfo data
+											if (streamOutputNode.dynamicModel.streamDynamicInfo && streamInputNode.dynamicModel.streamDynamicInfo)
+											{
+												// If we have a msrpAccumulatedLatency value
+												if ((*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency && (*streamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
 												{
-													if ((*streamInputNode.dynamicModel->streamDynamicInfo).msrpAccumulatedLatency > (*streamOutputNode.dynamicModel->streamDynamicInfo).msrpAccumulatedLatency)
-													{
-														updateStreamInputLatency(listenerEntity, streamIndex, true);
-													}
+													updateStreamInputLatency(listenerEntity, streamIndex, *(*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency > *(*streamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency);
 												}
 											}
 										}
@@ -3568,47 +4952,46 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 				{
 					auto isOverLatency = false;
 
-					if (streamInputNode.dynamicModel)
+					// If the Stream is Connected, search for the Talker we are connected to
+					if (streamInputNode.dynamicModel.connectionInfo.state == entity::model::StreamInputConnectionInfo::State::Connected)
 					{
-						// If the Stream is Connected, search for the Talker we are connected to
-						if (streamInputNode.dynamicModel->connectionInfo.state == entity::model::StreamInputConnectionInfo::State::Connected)
+						auto const talkerEntityID = streamInputNode.dynamicModel.connectionInfo.talkerStream.entityID;
+
+						if (auto const entityIt = _controlledEntities.find(talkerEntityID); entityIt != _controlledEntities.end())
 						{
-							auto const talkerEntityID = streamInputNode.dynamicModel->connectionInfo.talkerStream.entityID;
+							auto& talkerEntity = *(entityIt->second);
 
-							if (auto const entityIt = _controlledEntities.find(talkerEntityID); entityIt != _controlledEntities.end())
+							// Don't process self, not yet advertised entities, nor different virtual/physical kind
+							if (talkerEntityID == entityID || !talkerEntity.wasAdvertised() || isVirtualEntity != talkerEntity.isVirtual())
 							{
-								auto& talkerEntity = *(entityIt->second);
+								continue;
+							}
 
-								// Don't process self, not yet advertised entities, nor different virtual/physical kind
-								if (talkerEntityID == entityID || !talkerEntity.wasAdvertised() || isVirtualEntity != talkerEntity.isVirtual())
+							auto const talkerStreamIndex = streamInputNode.dynamicModel.connectionInfo.talkerStream.streamIndex;
+
+							// We want to inform the talker we are connected to (already advertised only, the other ones will update once ready to advertise themselves)
+							{
+								talkerEntity.addStreamOutputConnection(talkerStreamIndex, { entityID, streamIndex }, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+								notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputConnectionsChanged, this, &talkerEntity, talkerStreamIndex, talkerEntity.getStreamOutputConnections(talkerStreamIndex));
+							}
+
+							// Check for Latency Error (if the TalkerEntity was not advertised when this listener was enumerating, it couldn't check Talker's PresentationTime, so do it now)
+							try
+							{
+								auto const& talkerStreamOutputNode = talkerEntity.getStreamOutputNode(talkerEntity.getCurrentConfigurationIndex(), talkerStreamIndex);
+								// If we have StreamDynamicInfo data
+								if (talkerStreamOutputNode.dynamicModel.streamDynamicInfo && streamInputNode.dynamicModel.streamDynamicInfo)
 								{
-									continue;
-								}
-
-								auto const talkerStreamIndex = streamInputNode.dynamicModel->connectionInfo.talkerStream.streamIndex;
-
-								// We want to inform the talker we are connected to (already advertised only, the other ones will update once ready to advertise themselves)
-								{
-									talkerEntity.addStreamOutputConnection(talkerStreamIndex, { entityID, streamIndex });
-									notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputConnectionsChanged, this, &talkerEntity, talkerStreamIndex, talkerEntity.getStreamOutputConnections(talkerStreamIndex));
-								}
-
-								// Check for Latency Error (if the TalkerEntity was not advertised when this listener was enumerating, it couldn't check Talker's PresentationTime, so do it now)
-								try
-								{
-									auto const& talkerStreamOutputNode = talkerEntity.getStreamOutputNode(talkerEntity.getCurrentConfigurationIndex(), talkerStreamIndex);
-									if (talkerStreamOutputNode.dynamicModel && talkerStreamOutputNode.dynamicModel->streamDynamicInfo && streamInputNode.dynamicModel->streamDynamicInfo)
+									// If we have a msrpAccumulatedLatency value
+									if ((*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency && (*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
 									{
-										if ((*streamInputNode.dynamicModel->streamDynamicInfo).msrpAccumulatedLatency > (*talkerStreamOutputNode.dynamicModel->streamDynamicInfo).msrpAccumulatedLatency)
-										{
-											isOverLatency = true;
-										}
+										isOverLatency = *(*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency > *(*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency;
 									}
 								}
-								catch (ControlledEntity::Exception const&)
-								{
-									// Ignore Exception
-								}
+							}
+							catch (ControlledEntity::Exception const&)
+							{
+								// Ignore Exception
 							}
 						}
 					}
@@ -3625,17 +5008,16 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 
 		// Compute Media Clock Chain and update all entities for which the chain ends on this newly added entity
 		{
-			try
+			// Process the newly added entity and update media clock if needed
 			{
-				auto& configNode = controlledEntity.getCurrentConfigurationNode();
-				for (auto& [clockDomainIndex, clockDomainNode] : configNode.clockDomains)
+				auto* const configNode = controlledEntity.getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (configNode != nullptr)
 				{
-					computeAndUpdateMediaClockChain(controlledEntity, clockDomainNode, entityID, clockDomainIndex, std::nullopt, entityID);
+					for (auto& [clockDomainIndex, clockDomainNode] : configNode->clockDomains)
+					{
+						computeAndUpdateMediaClockChain(controlledEntity, clockDomainNode, entityID, clockDomainIndex, std::nullopt, entityID);
+					}
 				}
-			}
-			catch (...)
-			{
-				AVDECC_ASSERT(false, "Unexpected exception");
 			}
 
 			// Process all other entities and update media clock if needed
@@ -3643,10 +5025,10 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 			{
 				if (eid != entityID && entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
 				{
-					try
+					auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+					if (configNode != nullptr)
 					{
-						auto& configNode = entity->getCurrentConfigurationNode();
-						for (auto& clockDomainKV : configNode.clockDomains)
+						for (auto& clockDomainKV : configNode->clockDomains)
 						{
 							auto& clockDomainNode = clockDomainKV.second;
 
@@ -3673,10 +5055,6 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 								}
 							}
 						}
-					}
-					catch (...)
-					{
-						AVDECC_ASSERT(false, "Unexpected exception");
 					}
 				}
 			}
@@ -3717,22 +5095,19 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 
 			for (auto const& [streamIndex, streamInputNode] : configurationNode.streamInputs)
 			{
-				if (streamInputNode.dynamicModel)
+				// If the Stream is Connected, search for the Talker we are connected to
+				if (streamInputNode.dynamicModel.connectionInfo.state == entity::model::StreamInputConnectionInfo::State::Connected)
 				{
-					// If the Stream is Connected, search for the Talker we are connected to
-					if (streamInputNode.dynamicModel->connectionInfo.state == entity::model::StreamInputConnectionInfo::State::Connected)
-					{
-						// Take a "scoped locked" shared copy of the ControlledEntity
-						auto talkerEntity = getControlledEntityImplGuard(streamInputNode.dynamicModel->connectionInfo.talkerStream.entityID, true);
+					// Take a "scoped locked" shared copy of the ControlledEntity
+					auto talkerEntity = getControlledEntityImplGuard(streamInputNode.dynamicModel.connectionInfo.talkerStream.entityID, true);
 
-						// Only process same virtual/physical kind
-						if (talkerEntity && isVirtualEntity == talkerEntity->isVirtual())
-						{
-							auto& talker = *talkerEntity;
-							auto const talkerStreamIndex = streamInputNode.dynamicModel->connectionInfo.talkerStream.streamIndex;
-							talker.delStreamOutputConnection(talkerStreamIndex, { entityID, streamIndex });
-							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputConnectionsChanged, this, &talker, talkerStreamIndex, talker.getStreamOutputConnections(talkerStreamIndex));
-						}
+					// Only process same virtual/physical kind
+					if (talkerEntity && isVirtualEntity == talkerEntity->isVirtual())
+					{
+						auto& talker = *talkerEntity;
+						auto const talkerStreamIndex = streamInputNode.dynamicModel.connectionInfo.talkerStream.streamIndex;
+						talker.delStreamOutputConnection(talkerStreamIndex, { entityID, streamIndex }, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputConnectionsChanged, this, &talker, talkerStreamIndex, talker.getStreamOutputConnections(talkerStreamIndex));
 					}
 				}
 			}
@@ -3752,10 +5127,10 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 		{
 			if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
 			{
-				try
+				auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (configNode != nullptr)
 				{
-					auto& configNode = entity->getCurrentConfigurationNode();
-					for (auto& clockDomainKV : configNode.clockDomains)
+					for (auto& clockDomainKV : configNode->clockDomains)
 					{
 						auto& clockDomainNode = clockDomainKV.second;
 						// Check if the chain has a node on that departing entity
@@ -3776,10 +5151,6 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 							}
 						}
 					}
-				}
-				catch (...)
-				{
-					AVDECC_ASSERT(false, "Unexpected exception");
 				}
 			}
 		}
@@ -4002,6 +5373,144 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForControlStatus(e
 	}
 }
 
+/* This method handles non-success AemCommandStatus returned while trying to check if GET_DYNAMIC_INFO command is supported */
+bool ControllerImpl::processEmptyGetDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity) noexcept
+{
+	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
+
+	auto const entityID = entity->getEntity().getEntityID();
+	auto const action = getFailureActionForAemCommandStatus(status);
+	switch (action)
+	{
+		case FailureAction::MisbehaveContinue:
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			return true;
+		case FailureAction::BadArguments:
+			[[fallthrough]];
+		case FailureAction::ErrorContinue:
+			return true;
+		case FailureAction::NotAuthenticated:
+			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
+			return true;
+		case FailureAction::WarningContinue:
+			return true;
+		case FailureAction::NotSupported:
+			return true;
+		case FailureAction::TimedOut:
+			[[fallthrough]];
+		case FailureAction::Busy:
+		{
+			auto const [shouldRetry, retryTimer] = entity->getCheckDynamicInfoSupportedRetryTimer();
+			if (shouldRetry)
+			{
+				checkDynamicInfoSupported(entity);
+			}
+			else
+			{
+				// Too many retries, result depends on FailureAction and AemCommandStatus
+				if (action == FailureAction::TimedOut)
+				{
+					// Don't care, we won't use that command
+				}
+				else if (action == FailureAction::Busy)
+				{
+					switch (status)
+					{
+						case entity::ControllerEntity::AemCommandStatus::LockedByOther: // Should not happen for a read operation but some devices are bugged
+							[[fallthrough]];
+						case entity::ControllerEntity::AemCommandStatus::AcquiredByOther: // Should not happen for a read operation but some devices are bugged
+						{
+							LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for AEM command: GET_DYNAMIC_INFO ({})", entity::LocalEntity::statusToString(status));
+							// Flag the entity as "Not fully IEEE1722.1 compliant"
+							removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+							break;
+						}
+						default:
+							break;
+					}
+				}
+			}
+			return true;
+		}
+		case FailureAction::ErrorFatal:
+			return false;
+		default:
+			return false;
+	}
+}
+
+/* This method handles non-success AemCommandStatus returned while using GET_DYNAMIC_INFO commands */
+bool ControllerImpl::processGetDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::controller::DynamicInfoParameters const& dynamicInfoParameters, std::uint16_t const packetID, ControlledEntityImpl::EnumerationStep const step) noexcept
+{
+	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
+
+	auto const entityID = entity->getEntity().getEntityID();
+	auto const action = getFailureActionForAemCommandStatus(status);
+	auto checkScheduleRetry = false;
+	auto fallbackStaticModelEnumeration = false;
+
+	switch (action)
+	{
+		case FailureAction::MisbehaveContinue:
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			fallbackStaticModelEnumeration = true;
+			break;
+		case FailureAction::BadArguments:
+			fallbackStaticModelEnumeration = true;
+			break;
+		case FailureAction::ErrorContinue:
+			fallbackStaticModelEnumeration = true;
+			break;
+		case FailureAction::NotAuthenticated:
+			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
+			return true;
+		case FailureAction::WarningContinue:
+			return true;
+		case FailureAction::NotSupported:
+			fallbackStaticModelEnumeration = true;
+			break;
+		case FailureAction::TimedOut:
+			checkScheduleRetry = true;
+			fallbackStaticModelEnumeration = true;
+			break;
+		case FailureAction::Busy:
+			checkScheduleRetry = true;
+			fallbackStaticModelEnumeration = true;
+			break;
+		case FailureAction::ErrorFatal:
+			return false;
+		default:
+			return false;
+	}
+
+	if (checkScheduleRetry)
+	{
+		auto const [shouldRetry, retryTimer] = entity->getGetDynamicInfoRetryTimer();
+		if (shouldRetry)
+		{
+			queryInformation(entity, dynamicInfoParameters, packetID, step, retryTimer);
+			return true;
+		}
+	}
+
+	if (fallbackStaticModelEnumeration)
+	{
+		// Fallback to full DescriptorDynamicInfo enumeration
+		// We also need to reset currently inflight DescriptorDynamicInfo queries since the condition to run checkEnumerationSteps requires both GetDynamicInfo and DescriptorDynamicInfo to be cleared
+		// (we don't care about getting early DescriptorDynamicInfo answers in this case, it will still be processed and the newly created one will just be unexpected with no consequence)
+		entity->setGetDynamicInfoSupported(false);
+		entity->clearAllExpectedDescriptorDynamicInfo();
+		entity->clearAllExpectedGetDynamicInfo();
+		entity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+		LOG_CONTROLLER_ERROR(entityID, "Failed to use cached EntityModel (too many DescriptorDynamic query retries), falling back to full StaticModel enumeration");
+		return true;
+	}
+
+	return false;
+}
+
 /* This method handles non-success AemCommandStatus returned while trying to RegisterUnsolicitedNotifications */
 bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity) noexcept
 {
@@ -4034,6 +5543,8 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 				LOG_CONTROLLER_WARN(entityID, "Milan mandatory command not supported by the entity: REGISTER_UNSOLICITED_NOTIFICATION");
 				removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Milan);
 			}
+			// Remove "Unsolicited notifications supported" as device does not support the command
+			entity->setUnsolicitedNotificationsSupported(false);
 			return true;
 		case FailureAction::TimedOut:
 			[[fallthrough]];
@@ -4260,7 +5771,7 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 			return true;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 mandatory dynamic info ({}): {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
+			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 dynamic info ({}): {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
 			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			return true;
 		case FailureAction::NotAuthenticated:
@@ -4523,7 +6034,7 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 			break;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 mandatory descriptor dynamic info ({}): {}", ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType), entity::LocalEntity::statusToString(status));
+			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 descriptor dynamic info ({}): {}", ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType), entity::LocalEntity::statusToString(status));
 			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			fallbackStaticModelEnumeration = true;
 			break;
@@ -4630,8 +6141,11 @@ bool ControllerImpl::fetchCorrespondingDescriptor(ControlledEntityImpl* const en
 			// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
 			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, descriptorIndex);
 			break;
-		case ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName:
-			descriptorType = entity::model::DescriptorType::AvbInterface;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName:
+			descriptorType = entity::model::DescriptorType::JackInput;
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName:
+			descriptorType = entity::model::DescriptorType::JackOutput;
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName:
 			descriptorType = entity::model::DescriptorType::ClockSource;
@@ -4669,6 +6183,15 @@ bool ControllerImpl::fetchCorrespondingDescriptor(ControlledEntityImpl* const en
 			// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
 			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, descriptorIndex);
 			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::TimingName:
+			descriptorType = entity::model::DescriptorType::Timing;
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::PtpInstanceName:
+			descriptorType = entity::model::DescriptorType::PtpInstance;
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::PtpPortName:
+			descriptorType = entity::model::DescriptorType::PtpPort;
+			break;
 		default:
 			AVDECC_ASSERT(false, "Unhandled DescriptorDynamicInfoType");
 			break;
@@ -4676,7 +6199,7 @@ bool ControllerImpl::fetchCorrespondingDescriptor(ControlledEntityImpl* const en
 
 	if (!!descriptorType)
 	{
-		LOG_CONTROLLER_DEBUG(entity->getEntity().getEntityID(), "Failed to get DescriptorDynamicInfo, trying to get the corresponding Descriptor");
+		LOG_CONTROLLER_DEBUG(entity->getEntity().getEntityID(), "Failed to get DescriptorDynamicInfo ({}), falling back to {} Descriptor enumeration", ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType), entity::model::descriptorTypeToString(descriptorType));
 		queryInformation(entity, configurationIndex, descriptorType, descriptorIndex);
 		return true;
 	}
@@ -4733,7 +6256,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 				addCompatibilityFlag(this, *listenerEntity, ControlledEntity::CompatibilityFlag::Misbehaving);
 				return;
 			}
-			auto const previousInfo = listenerEntity->setStreamInputConnectionInformation(listenerStream.streamIndex, info);
+			auto const previousInfo = listenerEntity->setStreamInputConnectionInformation(listenerStream.streamIndex, info, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 
 			// Entity was advertised to the user, notify observers
 			if (listenerEntity->wasAdvertised() && previousInfo != info)
@@ -4741,8 +6264,9 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 				auto& listener = *listenerEntity;
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputConnectionChanged, this, &listener, listenerStream.streamIndex, info, changedByOther);
 
+				auto isTalkerStreamChanged = previousInfo.talkerStream != info.talkerStream;
 				// If the Listener was already advertised, check if talker StreamIdentification changed (no need to do it during listener enumeration, the connections to the talker will be updated when the listener is ready to advertise)
-				if (previousInfo.talkerStream != info.talkerStream)
+				if (isTalkerStreamChanged)
 				{
 					if (previousInfo.talkerStream.entityID)
 					{
@@ -4761,65 +6285,87 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 					// Lock to protect _controlledEntities
 					auto const lg = std::lock_guard{ _lock };
 
-					// Update all entities for which the chain has a node with a connection to that stream
-					for (auto& [eid, entity] : _controlledEntities)
+					// Detects which connection transition is happening
+					auto isConnecting = info.state == entity::model::StreamInputConnectionInfo::State::Connected && previousInfo.state == entity::model::StreamInputConnectionInfo::State::NotConnected;
+					auto isDisconnecting = info.state == entity::model::StreamInputConnectionInfo::State::NotConnected && previousInfo.state == entity::model::StreamInputConnectionInfo::State::Connected;
+					auto isConnectingToDifferentTalker = info.state == entity::model::StreamInputConnectionInfo::State::Connected && previousInfo.state == entity::model::StreamInputConnectionInfo::State::Connected && isTalkerStreamChanged;
+					auto isLegacyFastConnecting = info.state == entity::model::StreamInputConnectionInfo::State::FastConnecting || previousInfo.state == entity::model::StreamInputConnectionInfo::State::FastConnecting;
+
+					auto updateMediaClockChain = std::function<void(ControlledEntityImpl&, model::ClockDomainNode&)>{ nullptr };
+
+					// We are now connected and we are not changing the talker
+					if (isConnecting)
 					{
-						if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
+						updateMediaClockChain = [this, &listenerStream](ControlledEntityImpl& entity, model::ClockDomainNode& clockDomainNode)
 						{
-							try
+							if (AVDECC_ASSERT_WITH_RET(!clockDomainNode.mediaClockChain.empty(), "Chain should not be empty"))
 							{
-								auto& configNode = entity->getCurrentConfigurationNode();
-								for (auto& clockDomainKV : configNode.clockDomains)
+								// Check if the last node had a status of StreamNotConnected for that listener
+								if (auto const& lastNode = clockDomainNode.mediaClockChain.back(); lastNode.status == model::MediaClockChainNode::Status::StreamNotConnected && lastNode.entityID == listenerStream.entityID)
 								{
-									auto& clockDomainNode = clockDomainKV.second;
+									// Save the domain/stream indexes, we'll continue from it
+									auto const continueDomainIndex = lastNode.clockDomainIndex;
+									auto const continueStreamOutputIndex = lastNode.streamOutputIndex;
 
-									// We are now connected, check if the last node had a status of StreamNotConnected for that listener
-									if (conState == entity::model::StreamInputConnectionInfo::State::Connected)
-									{
-										if (AVDECC_ASSERT_WITH_RET(!clockDomainNode.mediaClockChain.empty(), "Chain should not be empty"))
-										{
-											auto& lastNode = clockDomainNode.mediaClockChain.back();
-											if (lastNode.status == model::MediaClockChainNode::Status::StreamNotConnected && lastNode.entityID == listenerStream.entityID)
-											{
-												// Save the domain/stream indexes, we'll continue from it
-												auto const continueDomainIndex = lastNode.clockDomainIndex;
-												auto const continueStreamOutputIndex = lastNode.streamOutputIndex;
+									// Remove the node
+									clockDomainNode.mediaClockChain.pop_back();
 
-												// Remove the node
-												clockDomainNode.mediaClockChain.pop_back();
-
-												// Update the chain starting from this entity
-												computeAndUpdateMediaClockChain(*entity, clockDomainNode, listenerStream.entityID, continueDomainIndex, continueStreamOutputIndex, {});
-											}
-										}
-									}
-									// We are now disconnected, check for any node in the chain that had an Active status with that listener
-									else
-									{
-										// Check if the chain has a node on that disconnected listener entity
-										for (auto nodeIt = clockDomainNode.mediaClockChain.begin(); nodeIt != clockDomainNode.mediaClockChain.end(); ++nodeIt)
-										{
-											auto const& node = *nodeIt;
-											if (node.status == model::MediaClockChainNode::Status::Active && node.type == model::MediaClockChainNode::Type::StreamInput && node.entityID == listenerStream.entityID && node.streamInputIndex && *node.streamInputIndex == listenerStream.streamIndex)
-											{
-												// Save the domain/stream indexes, we'll continue from it
-												auto const continueDomainIndex = nodeIt->clockDomainIndex;
-												auto const continueStreamOutputIndex = nodeIt->streamOutputIndex;
-
-												// Remove this node and all following nodes
-												clockDomainNode.mediaClockChain.erase(nodeIt, clockDomainNode.mediaClockChain.end());
-
-												// Update the chain starting from this entity
-												computeAndUpdateMediaClockChain(*entity, clockDomainNode, listenerStream.entityID, continueDomainIndex, continueStreamOutputIndex, {});
-												break;
-											}
-										}
-									}
+									// Update the chain starting from this entity
+									computeAndUpdateMediaClockChain(entity, clockDomainNode, listenerStream.entityID, continueDomainIndex, continueStreamOutputIndex, {});
 								}
 							}
-							catch (...)
+						};
+					}
+					// We are now disconnected or we are changing the talker, check for any node in the chain that had an Active status with that listener
+					else if (isDisconnecting || isConnectingToDifferentTalker)
+					{
+						updateMediaClockChain = [this, &listenerStream](ControlledEntityImpl& entity, model::ClockDomainNode& clockDomainNode)
+						{
+							// Check if the chain has a node on that disconnected listener entity
+							for (auto nodeIt = clockDomainNode.mediaClockChain.begin(); nodeIt != clockDomainNode.mediaClockChain.end(); ++nodeIt)
 							{
-								AVDECC_ASSERT(false, "Unexpected exception");
+								auto const& node = *nodeIt;
+								if (node.status == model::MediaClockChainNode::Status::Active && node.type == model::MediaClockChainNode::Type::StreamInput && node.entityID == listenerStream.entityID && node.streamInputIndex && *node.streamInputIndex == listenerStream.streamIndex)
+								{
+									// Save the domain/stream indexes, we'll continue from it
+									auto const continueDomainIndex = nodeIt->clockDomainIndex;
+									auto const continueStreamOutputIndex = nodeIt->streamOutputIndex;
+
+									// Remove this node and all following nodes
+									clockDomainNode.mediaClockChain.erase(nodeIt, clockDomainNode.mediaClockChain.end());
+
+									// Update the chain starting from this entity
+									computeAndUpdateMediaClockChain(entity, clockDomainNode, listenerStream.entityID, continueDomainIndex, continueStreamOutputIndex, {});
+									break;
+								}
+							}
+						};
+					}
+					else if (isLegacyFastConnecting)
+					{
+						LOG_CONTROLLER_DEBUG(UniqueIdentifier::getNullUniqueIdentifier(), "Legacy FastConnect transition for listener entity {}, nothing to do", utils::toHexString(listenerStream.entityID, true));
+					}
+					else
+					{
+						AVDECC_ASSERT(false, "Unsupported connection transition");
+					}
+
+					if (updateMediaClockChain)
+					{
+						// Update all entities for which the chain has a node with a connection to that stream
+						for (auto& [eid, entity] : _controlledEntities)
+						{
+							if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
+							{
+								auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+								if (configNode != nullptr)
+								{
+									for (auto& clockDomainKV : configNode->clockDomains)
+									{
+										auto& clockDomainNode = clockDomainKV.second;
+										updateMediaClockChain(*entity, clockDomainNode);
+									}
+								}
 							}
 						}
 					}
@@ -4867,11 +6413,11 @@ void ControllerImpl::handleTalkerStreamStateNotification(entity::model::StreamId
 			auto shouldNotify{ false }; // Only notify if we actually changed the connections list
 			if (isConnected)
 			{
-				shouldNotify = talkerEntity->addStreamOutputConnection(talkerStream.streamIndex, listenerStream);
+				shouldNotify = talkerEntity->addStreamOutputConnection(talkerStream.streamIndex, listenerStream, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
-				shouldNotify = talkerEntity->delStreamOutputConnection(talkerStream.streamIndex, listenerStream);
+				shouldNotify = talkerEntity->delStreamOutputConnection(talkerStream.streamIndex, listenerStream, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			if (shouldNotify)
 			{
@@ -4881,15 +6427,15 @@ void ControllerImpl::handleTalkerStreamStateNotification(entity::model::StreamId
 	}
 }
 
-void ControllerImpl::clearTalkerStreamConnections(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex) const noexcept
+void ControllerImpl::clearTalkerStreamConnections(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const
 {
-	talkerEntity->clearStreamOutputConnections(talkerStreamIndex);
+	talkerEntity->clearStreamOutputConnections(talkerStreamIndex, notFoundBehavior);
 }
 
-void ControllerImpl::addTalkerStreamConnection(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex, entity::model::StreamIdentification const& listenerStream) const noexcept
+void ControllerImpl::addTalkerStreamConnection(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex, entity::model::StreamIdentification const& listenerStream, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const
 {
 	// Update our internal cache
-	talkerEntity->addStreamOutputConnection(talkerStreamIndex, listenerStream);
+	talkerEntity->addStreamOutputConnection(talkerStreamIndex, listenerStream, notFoundBehavior);
 }
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON
@@ -4935,7 +6481,18 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::loadControlledEntityF
 	// Choose a locale
 	if (entity.hasAnyConfiguration())
 	{
-		chooseLocale(&entity, entity.getCurrentConfigurationIndex(), "en-US", nullptr);
+		// Load locale for each configuration
+		try
+		{
+			auto const& entityNode = entity.getEntityNode();
+			for (auto const& [configurationIndex, configurationNode] : entityNode.configurations)
+			{
+				chooseLocale(&entity, configurationIndex, "en-US", nullptr);
+			}
+		}
+		catch (ControlledEntity::Exception const&)
+		{
+		}
 	}
 
 	auto const entityID = entity.getEntity().getEntityID();
@@ -4962,26 +6519,114 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 		_controlledEntities.insert(std::make_pair(entityID, controlledEntity));
 	}
 
-	// Ready to advertise using the network executor
-	ExecutorManager::getInstance().pushJob(protocol::ProtocolInterface::DefaultExecutorName,
-		[this, entityID]()
+	// Set entity as virtual
+	_controllerProxy->setVirtualEntity(entityID);
+
+	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
+	auto& executor = ExecutorManager::getInstance();
+
+	// Job to run
+	auto const job = [this, entityID]()
+	{
+		auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+		if (AVDECC_ASSERT_WITH_RET(!!controlledEntity, "Entity should be in the list"))
 		{
-			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
+			checkEnumerationSteps(controlledEntity.get());
+		}
+	};
 
-			auto controlledEntity = getControlledEntityImplGuard(entityID);
-
-			if (AVDECC_ASSERT_WITH_RET(!!controlledEntity, "Entity should be in the list"))
+	// If current thread is Executor thread, directly call handler
+	if (std::this_thread::get_id() == executor.getExecutorThread(exName))
+	{
+		job();
+	}
+	else
+	{
+		// Ready to advertise using the network executor
+		executor.pushJob(exName,
+			[this, job]()
 			{
-				checkEnumerationSteps(controlledEntity.get());
-			}
-		});
+				auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
 
-	// Flush executor to be sure everything is loaded before returning
-	ExecutorManager::getInstance().flush(protocol::ProtocolInterface::DefaultExecutorName);
+				job();
+			});
+
+		// Insert a special "marker" job in the queue (and wait for it to be executed) to be sure everything is loaded before returning
+		auto markerPromise = std::promise<void>{};
+		executor.pushJob(exName,
+			[&markerPromise]()
+			{
+				markerPromise.set_value();
+			});
+
+		// Wait for the marker job to be executed
+		[[maybe_unused]] auto const status = markerPromise.get_future().wait_for(std::chrono::seconds{ 30 });
+		AVDECC_ASSERT(status == std::future_status::ready, "Timeout waiting for marker job to be executed");
+	}
 
 	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Successfully registered virtual entity with ID {}", utils::toHexString(entityID, true));
 
 	return { avdecc::jsonSerializer::DeserializationError::NoError, "" };
+}
+
+ControllerImpl::SharedControlledEntityImpl ControllerImpl::deregisterVirtualControlledEntity(UniqueIdentifier const entityID) noexcept
+{
+	auto sharedControlledEntity = decltype(_controlledEntities)::value_type::second_type{};
+
+	// Check if entity is virtual
+	{
+		// Lock to protect _controlledEntities
+		std::lock_guard<decltype(_lock)> const lg(_lock);
+
+		auto entityIt = _controlledEntities.find(entityID);
+		// Entity not found
+		if (entityIt == _controlledEntities.end())
+		{
+			return sharedControlledEntity;
+		}
+		// Entity is not virtual
+		if (!entityIt->second->isVirtual())
+		{
+			return sharedControlledEntity;
+		}
+		// Take a shared ownership on the ControlledEntity (without locking it)
+		sharedControlledEntity = entityIt->second;
+	}
+
+	// Ready to remove using the network executor
+	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
+	auto& executor = ExecutorManager::getInstance();
+
+	// Job to run
+	auto const job = [this, entityID]()
+	{
+		onEntityOffline(_controller, entityID);
+	};
+
+	// If current thread is Executor thread, directly call handler
+	if (std::this_thread::get_id() == executor.getExecutorThread(exName))
+	{
+		job();
+	}
+	else
+	{
+		executor.pushJob(exName,
+			[this, job]()
+			{
+				auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
+
+				job();
+			});
+
+		// Flush executor to be sure everything is loaded before returning
+		executor.flush(exName);
+	}
+
+	// Clear entity as virtual
+	_controllerProxy->clearVirtualEntity(entityID);
+
+	return sharedControlledEntity;
 }
 
 ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntityFromJson(json const& object, entity::model::jsonSerializer::Flags const flags, ControlledEntityImpl::LockInformation::SharedPointer const& lockInfo)
@@ -4992,7 +6637,7 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 		auto const dumpVersion = object.at(jsonSerializer::keyName::ControlledEntity_DumpVersion).get<decltype(jsonSerializer::keyValue::ControlledEntity_DumpVersion)>();
 		if (dumpVersion != jsonSerializer::keyValue::ControlledEntity_DumpVersion)
 		{
-			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::UnsupportedDumpVersion, std::string("Unsupported dump version: ") + std::to_string(dumpVersion) };
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::IncompatibleDumpVersion, std::string("Incompatible dump version: ") + std::to_string(dumpVersion) };
 		}
 
 		auto commonInfo = entity::Entity::CommonInformation{};
@@ -5081,7 +6726,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vecto
 {
 	// Try to open the input file
 	auto const mode = std::ios::binary | std::ios::in;
-	auto ifs = std::ifstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+	auto ifs = std::ifstream{ utils::filePathFromUTF8String(filePath), mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
 
 	// Failed to open file for reading
 	if (!ifs.is_open())
@@ -5111,7 +6756,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vecto
 		auto const dumpVersion = object.at(jsonSerializer::keyName::Controller_DumpVersion).get<decltype(jsonSerializer::keyValue::Controller_DumpVersion)>();
 		if (dumpVersion != jsonSerializer::keyValue::Controller_DumpVersion)
 		{
-			return { avdecc::jsonSerializer::DeserializationError::UnsupportedDumpVersion, std::string("Unsupported dump version: ") + std::to_string(dumpVersion), {} };
+			return { avdecc::jsonSerializer::DeserializationError::IncompatibleDumpVersion, std::string("Incompatible dump version: ") + std::to_string(dumpVersion), {} };
 		}
 
 		// Get entities
@@ -5189,7 +6834,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, Controller
 {
 	// Try to open the input file
 	auto const mode = std::ios::binary | std::ios::in;
-	auto ifs = std::ifstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+	auto ifs = std::ifstream{ utils::filePathFromUTF8String(filePath), mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
 
 	// Failed to open file for reading
 	if (!ifs.is_open())
@@ -5247,6 +6892,76 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, Controller
 	catch (json::exception const& e)
 	{
 		return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what(), nullptr };
+	}
+}
+
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::model::EntityTree, UniqueIdentifier> ControllerImpl::deserializeJsonEntityModel(std::string const& filePath, bool const isBinaryFormat) noexcept
+{
+	// Try to open the input file
+	auto const mode = std::ios::binary | std::ios::in;
+	auto ifs = std::ifstream{ utils::filePathFromUTF8String(filePath), mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+
+	// Failed to open file for reading
+	if (!ifs.is_open())
+	{
+		return { avdecc::jsonSerializer::DeserializationError::AccessDenied, std::strerror(errno), {}, {} };
+	}
+
+	// Load the JSON object from disk
+	auto object = json{};
+	try
+	{
+		auto flags = entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel };
+		if (isBinaryFormat)
+		{
+			flags.set(entity::model::jsonSerializer::Flag::BinaryFormat);
+			object = json::from_msgpack(ifs);
+		}
+		else
+		{
+			ifs >> object;
+		}
+
+		// Read Entity Tree
+		auto entityTree = entity::model::jsonSerializer::createEntityTree(object.at(jsonSerializer::keyName::ControlledEntity_EntityModel), flags);
+		auto entityModelID = object.at(jsonSerializer::keyName::ControlledEntity_EntityModelID).get<la::avdecc::UniqueIdentifier>();
+		return { avdecc::jsonSerializer::DeserializationError::NoError, "", entityTree, entityModelID };
+	}
+	catch (json::type_error const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what(), {}, {} };
+	}
+	catch (json::parse_error const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::ParseError, e.what(), {}, {} };
+	}
+	catch (json::out_of_range const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::MissingKey, e.what(), {}, {} };
+	}
+	catch (json::other_error const& e)
+	{
+		if (e.id == 555)
+		{
+			return { avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what(), {}, {} };
+		}
+		else
+		{
+			return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what(), {}, {} };
+		}
+	}
+	catch (json::exception const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what(), {}, {} };
+	}
+	catch (avdecc::jsonSerializer::DeserializationException const& e)
+	{
+		return { e.getError(), e.what(), {}, {} };
+	}
+	catch (...)
+	{
+		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here");
+		return { avdecc::jsonSerializer::DeserializationError::InternalError, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here.", {}, {} };
 	}
 }
 
@@ -5321,11 +7036,15 @@ bool LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::isMediaClockStreamFormat(e
 	return false;
 }
 
-std::string LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::computeEntityModelChecksum(ControlledEntity const& controlledEntity, std::uint32_t const checksumVersion) noexcept
+std::optional<std::string> LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::computeEntityModelChecksum(ControlledEntity const& controlledEntity, std::uint32_t const checksumVersion) noexcept
 {
-	auto visitor = ChecksumEntityModelVisitor{ checksumVersion };
-	controlledEntity.accept(&visitor);
-	return visitor.getHash();
+	if (controlledEntity.isEntityModelValidForCaching())
+	{
+		auto visitor = ChecksumEntityModelVisitor{ checksumVersion };
+		controlledEntity.accept(&visitor, true);
+		return visitor.getHash();
+	}
+	return std::nullopt;
 }
 
 

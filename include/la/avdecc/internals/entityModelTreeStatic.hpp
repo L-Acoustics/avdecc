@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -98,21 +98,19 @@ struct StreamNodeStaticModel
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 };
 
+struct JackNodeStaticModel
+{
+	LocalizedStringReference localizedDescription{};
+	entity::JackFlags jackFlags{};
+	JackType jackType{ JackType::Speaker };
+	std::uint16_t numberOfControls{ 0u };
+	ControlIndex baseControl{ ControlIndex(0u) };
+};
+
 struct AvbInterfaceNodeStaticModel
 {
 	LocalizedStringReference localizedDescription{};
-	networkInterface::MacAddress macAddress{};
 	entity::AvbInterfaceFlags interfaceFlags{};
-	UniqueIdentifier clockIdentity{};
-	std::uint8_t priority1{ 0xff };
-	std::uint8_t clockClass{ 0xff };
-	std::uint16_t offsetScaledLogVariance{ 0x0000 };
-	std::uint8_t clockAccuracy{ 0xff };
-	std::uint8_t priority2{ 0xff };
-	std::uint8_t domainNumber{ 0u };
-	std::uint8_t logSyncInterval{ 0u };
-	std::uint8_t logAnnounceInterval{ 0u };
-	std::uint8_t logPDelayInterval{ 0u };
 	std::uint16_t portNumber{ 0x0000 };
 };
 
@@ -188,6 +186,7 @@ struct ControlNodeStaticModel
 	DescriptorIndex signalIndex{ DescriptorIndex(0u) };
 	std::uint16_t signalOutput{ 0u };
 	ControlValueType controlValueType{};
+	std::uint16_t numberOfValues{ 0u };
 	ControlValues values{};
 };
 
@@ -195,6 +194,34 @@ struct ClockDomainNodeStaticModel
 {
 	LocalizedStringReference localizedDescription{};
 	ClockSources clockSources{};
+};
+
+struct TimingNodeStaticModel
+{
+	LocalizedStringReference localizedDescription{};
+	TimingAlgorithm algorithm{ TimingAlgorithm::Single };
+	PtpInstances ptpInstances{};
+};
+
+struct PtpInstanceNodeStaticModel
+{
+	LocalizedStringReference localizedDescription{};
+	UniqueIdentifier clockIdentity{};
+	PtpInstanceFlags flags{};
+	std::uint16_t numberOfControls{ 0u };
+	ControlIndex baseControl{ ControlIndex(0u) };
+	std::uint16_t numberOfPtpPorts{ 0u };
+	PtpPortIndex basePtpPort{ PtpPortIndex(0u) };
+};
+
+struct PtpPortNodeStaticModel
+{
+	LocalizedStringReference localizedDescription{};
+	std::uint16_t portNumber{ 0u };
+	PtpPortType portType{ PtpPortType::P2PLinkLayer };
+	PtpPortFlags flags{};
+	AvbInterfaceIndex avbInterfaceIndex{ AvbInterfaceIndex(0u) };
+	networkInterface::MacAddress profileIdentifier{ 0u };
 };
 
 struct ConfigurationNodeStaticModel

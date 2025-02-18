@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -96,7 +96,7 @@ public:
 	{
 	public:
 		virtual ~Observer() noexcept {}
-		virtual void onLogItem(la::avdecc::logger::Level const /*level*/, la::avdecc::logger::LogItem const* const /*item*/) noexcept {}
+		virtual void onLogItem(la::avdecc::logger::Level const level, la::avdecc::logger::LogItem const* const item) noexcept = 0;
 	};
 
 	static LA_AVDECC_API Logger& LA_AVDECC_CALL_CONVENTION getInstance() noexcept;

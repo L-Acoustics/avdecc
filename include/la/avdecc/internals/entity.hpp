@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -223,9 +223,11 @@ public:
 	/** Generates an EID from a MacAddress (OUI-36) and a ProgID. This method is provided for backward compatibility, use ProtocolInterface::getDynamicEID instead. */
 	static UniqueIdentifier generateEID(la::networkInterface::MacAddress const& macAddress, std::uint16_t const progID, bool const useDeprecatedAlgorithm)
 	{
-		UniqueIdentifier::value_type eid{ 0u };
+		auto eid = UniqueIdentifier::value_type{ 0u };
 		if (macAddress.size() != 6)
+		{
 			throw Exception("Invalid MAC address size");
+		}
 		eid += macAddress[0];
 		eid <<= 8;
 		eid += macAddress[1];
@@ -453,6 +455,9 @@ public:
 
 	/** Requests a targetted remote entity discovery. */
 	virtual bool discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept = 0;
+
+	/** Forgets the specified remote entity. */
+	virtual bool forgetRemoteEntity(UniqueIdentifier const entityID) const noexcept = 0;
 
 	/** Sets automatic discovery delay. 0 (default) for no automatic discovery. */
 	virtual void setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept = 0;

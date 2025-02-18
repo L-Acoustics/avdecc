@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -28,4 +28,13 @@
 #include <la/avdecc/internals/protocolInterface.hpp>
 #include "la/avdecc/avdecc.h"
 
+namespace la
+{
+namespace avdecc
+{
+namespace bindings
+{
 la::avdecc::protocol::ProtocolInterface& getProtocolInterface(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle);
+} // namespace bindings
+} // namespace avdecc
+} // namespace la

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -99,6 +99,7 @@ public:
 	/* ************************************************************ */
 	ProtocolInterface::Error setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept;
 	void discoverMessageSent() noexcept;
+	ProtocolInterface::Error forgetRemoteEntity(UniqueIdentifier const entityID) noexcept;
 
 	/* ************************************************************ */
 	/* Sending entry points                                         */

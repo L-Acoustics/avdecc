@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -44,12 +44,27 @@
 #include <vector>
 #include <mutex>
 
+#if !defined(__GNUC__) || __GNUC__ >= 10 /* <version> is not present in earier versions of gcc (not sure which version exactly, using 10 here) */
+#	include <version>
+#endif
+
+#if __cpp_lib_filesystem >= 201703L
+#	define LA_AVDECC_USES_STD_FILESYSTEM
+#	include <filesystem>
+#endif // __cpp_lib_filesystem >= 201703L
+
 namespace la
 {
 namespace avdecc
 {
 namespace utils
 {
+#ifdef LA_AVDECC_USES_STD_FILESYSTEM
+using FilePath = std::filesystem::path;
+#else // !LA_AVDECC_USES_STD_FILESYSTEM
+using FilePath = std::string;
+#endif // LA_AVDECC_USES_STD_FILESYSTEM
+
 enum class ThreadPriority
 {
 	Idle = 0,
@@ -96,6 +111,15 @@ bool avdeccAssertRelease(Cond const condition) noexcept
 {
 	bool const result = !!condition;
 	return result;
+}
+
+inline FilePath filePathFromUTF8String(std::string const& utf8FilePath) noexcept
+{
+#ifdef LA_AVDECC_USES_STD_FILESYSTEM
+	return std::filesystem::u8path(utf8FilePath);
+#else // !LA_AVDECC_USES_STD_FILESYSTEM
+	return utf8FilePath;
+#endif // LA_AVDECC_USES_STD_FILESYSTEM
 }
 
 } // namespace utils
@@ -1113,12 +1137,14 @@ public:
 		return _subjects.size();
 	}
 
-	// Defaulted compiler auto-generated methods
-	Observer() = default;
-	Observer(Observer&&) = default;
-	Observer(Observer const&) = default;
-	Observer& operator=(Observer const&) = default;
-	Observer& operator=(Observer&&) = default;
+	// Default constructor
+	Observer() noexcept = default;
+
+	// Deleted compiler auto-generated methods
+	Observer(Observer const&) noexcept = delete;
+	Observer(Observer&&) noexcept = delete;
+	Observer& operator=(Observer const&) noexcept = delete;
+	Observer& operator=(Observer&&) noexcept = delete;
 
 private:
 	friend class Subject<Observable, mutex_type>;
@@ -1434,7 +1460,7 @@ protected:
 	*       except if the class template parameter is a recursive mutex kind (or EmptyLock).
 	*/
 	template<class DerivedObserver, typename Method, typename... Parameters>
-	void notifyObserversMethod(Method&& method, Parameters&&... params) const noexcept
+	void notifyObserversMethod(Method&& method, Parameters const&... params) const noexcept
 	{
 		if (method != nullptr)
 		{
@@ -1450,7 +1476,8 @@ protected:
 				// Using try-catch to protect ourself from errors in the handler
 				try
 				{
-					(static_cast<DerivedObserver*>(*it)->*method)(std::forward<Parameters>(params)...);
+					// We must **not** use std::forward here, we don't want to allow the observer to modify the parameters
+					(static_cast<DerivedObserver*>(*it)->*method)(params...);
 				}
 				catch (...)
 				{

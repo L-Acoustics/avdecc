@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -37,6 +37,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <optional>
 
 namespace la
 {
@@ -54,6 +55,8 @@ public:
 		InterfaceInvalid = 4, /**< Specified interface is invalid. */
 		DuplicateEntityID = 5, /**< EntityID not available (either duplicate, or no EntityID left on the local computer). */
 		InvalidEntityModel = 6, /**< Provided EntityModel is invalid. */
+		DuplicateExecutorName = 7, /**< Provided executor name already exists. */
+		UnknownExecutorName = 8, /**< Provided executor name doesn't exist. */
 		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 
@@ -81,18 +84,19 @@ public:
 	* @brief Factory method to create a new EndStation.
 	* @details Creates a new EndStation as a unique pointer.
 	* @param[in] protocolInterfaceType The protocol interface type to use.
-	* @param[in] networkInterfaceName The name of the network interface to use. Use #la::avdecc::networkInterface::enumerateInterfaces to get a valid interface name.
+	* @param[in] networkInterfaceID The ID of the network interface to use. Use #la::avdecc::networkInterface::enumerateInterfaces to get a valid interface ID.
+	* @param[in] executorName The name of the executor to use to dispatch incoming messages (must be created before the call). If empty, a default executor will be created.
 	* @return A new EndStation as a EndStation::UniquePointer.
 	* @note Might throw an Exception.
 	* @warning This class is currently NOT thread-safe.
 	*/
-	static UniquePointer create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceName)
+	static UniquePointer create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceID, std::optional<std::string> const& executorName)
 	{
 		auto deleter = [](EndStation* self)
 		{
 			self->destroy();
 		};
-		return UniquePointer(createRawEndStation(protocolInterfaceType, networkInterfaceName), deleter);
+		return UniquePointer(createRawEndStation(protocolInterfaceType, networkInterfaceID, executorName), deleter);
 	}
 
 	/**
@@ -110,6 +114,9 @@ public:
 	// TODO: Add all other AggregateEntity parameters
 	virtual entity::AggregateEntity* addAggregateEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::model::EntityTree const* const entityModelTree, entity::controller::Delegate* const controllerDelegate) = 0;
 
+	/** Returns the protocol interface used by this EndStation. */
+	virtual protocol::ProtocolInterface const* getProtocolInterface() const noexcept = 0;
+
 	/** Deserializes a JSON file representing an entity model, and returns the model without loading it. */
 	static LA_AVDECC_API std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::model::EntityTree> LA_AVDECC_CALL_CONVENTION deserializeEntityModelFromJson(std::string const& filePath, bool const processDynamicModel, bool const isBinaryFormat) noexcept;
 
@@ -119,16 +126,16 @@ public:
 	EndStation& operator=(EndStation const&) = delete;
 	EndStation& operator=(EndStation&&) = delete;
 
+	/** Destructor */
+	virtual ~EndStation() noexcept = default;
+
 protected:
 	/** Constructor */
 	EndStation() noexcept = default;
 
-	/** Destructor */
-	virtual ~EndStation() noexcept = default;
-
 private:
 	/** Entry point */
-	static LA_AVDECC_API EndStation* LA_AVDECC_CALL_CONVENTION createRawEndStation(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceName);
+	static LA_AVDECC_API EndStation* LA_AVDECC_CALL_CONVENTION createRawEndStation(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceID, std::optional<std::string> const& executorName);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -93,6 +93,7 @@ public:
 		IEEE17221 = 1u << 0, /** Classic IEEE1722.1 entity */
 		Milan = 1u << 1, /** MILAN compatible entity */
 
+		IEEE17221Warning = 1u << 5, /** IEEE17221 compatible entity but with minor warnings in the model/behavior that do not retrograde a IEEE17221 entity (this flag it additive with IEEE17221 flag) */
 		MilanWarning = 1u << 6, /** MILAN compatible entity but with minor warnings in the model/behavior that do not retrograde a Milan entity (this flag it additive with Milan flag) */
 		Misbehaving = 1u << 7, /** Entity is sending correctly formed messages but with incoherent values that can cause undefined behavior. */
 	};
@@ -110,6 +111,7 @@ public:
 	struct Diagnostics
 	{
 		bool redundancyWarning{ false }; /** Flag indicating a Milan redundant device has both interfaces connected to the same network */
+		std::set<entity::model::ControlIndex> controlCurrentValueOutOfBounds{}; /** List of Controls whose current value is outside the specified min-max range */
 		std::set<entity::model::StreamIndex> streamInputOverLatency{}; /** List of StreamInput whose MSRP Latency is greater than Talker's Presentation Time */
 	};
 
@@ -118,7 +120,9 @@ public:
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept = 0;
 	virtual bool isMilanRedundant() const noexcept = 0; // True if the entity is currently in Milan Redundancy mode (ie. current configuration has at least one redundant stream)
 	virtual bool gotFatalEnumerationError() const noexcept = 0; // True if the controller had a fatal error during entity information retrieval (leading to Exception::Type::EnumerationError if any throwing method is called).
+	virtual bool isGetDynamicInfoSupported() const noexcept = 0; // True if the entity supports GET_DYNAMIC_INFO
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept = 0;
+	virtual bool areUnsolicitedNotificationsSupported() const noexcept = 0;
 	virtual bool isAcquired() const noexcept = 0; // Is entity acquired by the controller it's attached to
 	virtual bool isAcquireCommandInProgress() const noexcept = 0; // Is the attached controller trying to acquire or release the entity
 	virtual bool isAcquiredByOther() const noexcept = 0; // Is entity acquired by another controller
@@ -144,13 +148,15 @@ public:
 	virtual model::EntityNode const& getEntityNode() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 	virtual model::ConfigurationNode const& getCurrentConfigurationNode() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity
+	virtual model::AudioUnitNode const& getAudioUnitNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if audioUnitIndex do not exist
 	virtual model::StreamInputNode const& getStreamInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 	virtual model::StreamOutputNode const& getStreamOutputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	virtual model::RedundantStreamNode const& getRedundantStreamInputNode(entity::model::ConfigurationIndex const configurationIndex, model::VirtualIndex const redundantStreamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if redundantStreamIndex do not exist
 	virtual model::RedundantStreamNode const& getRedundantStreamOutputNode(entity::model::ConfigurationIndex const configurationIndex, model::VirtualIndex const redundantStreamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if redundantStreamIndex do not exist
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
-	virtual model::AudioUnitNode const& getAudioUnitNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if audioUnitIndex do not exist
+	virtual model::JackInputNode const& getJackInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if jackIndex do not exist
+	virtual model::JackOutputNode const& getJackOutputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if jackIndex do not exist
 	virtual model::AvbInterfaceNode const& getAvbInterfaceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if avbInterfaceIndex do not exist
 	virtual model::ClockSourceNode const& getClockSourceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if clockSourceIndex do not exist
 	virtual model::StreamPortNode const& getStreamPortInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if audioUnitIndex or streamPortIndex do not exist
@@ -159,8 +165,11 @@ public:
 	//virtual model::AudioMapNode const& getAudioMapNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if audioUnitIndex, streamPortIndex or MapIndex do not exist
 	virtual model::ControlNode const& getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if controlIndex do not exist
 	virtual model::ClockDomainNode const& getClockDomainNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if clockDomainIndex do not exist
+	virtual model::TimingNode const& getTimingNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if timingIndex do not exist
+	virtual model::PtpInstanceNode const& getPtpInstanceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if ptpInstanceIndex do not exist
+	virtual model::PtpPortNode const& getPtpPortNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if ptpPortIndex do not exist
 
-	virtual entity::model::LocaleNodeStaticModel const* findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& locale) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
+	virtual model::LocaleNode const* findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& locale) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::LocalizedStringReference const& stringReference) const noexcept = 0; // Get localized string or empty string if not found, in current configuration descriptor
 	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const& stringReference) const noexcept = 0; // Get localized string or empty string if not found // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 
@@ -251,9 +260,15 @@ public:
 	}
 
 	/** Returns true if the entity is online (meaning a valid ControlledEntity can be retrieved using an operator overload) */
-	explicit operator bool() const noexcept
+	bool isValid() const noexcept
 	{
 		return _controlledEntity != nullptr;
+	}
+
+	/** Entity validity bool operator (equivalent to isValid()) */
+	explicit operator bool() const noexcept
+	{
+		return isValid();
 	}
 
 	/** Releases the Guarded ControlledEntity (and the exclusive access to it). */
@@ -275,7 +290,7 @@ public:
 	}
 
 	// Swap method
-	friend void swap(ControlledEntityGuard& lhs, ControlledEntityGuard& rhs)
+	friend void swap(ControlledEntityGuard& lhs, ControlledEntityGuard& rhs) noexcept
 	{
 		using std::swap;
 
@@ -310,12 +325,12 @@ public:
 	}
 
 	// Allow move semantics
-	ControlledEntityGuard(ControlledEntityGuard&& other)
+	ControlledEntityGuard(ControlledEntityGuard&& other) noexcept
 	{
 		swap(*this, other);
 	}
 
-	ControlledEntityGuard& operator=(ControlledEntityGuard&& other)
+	ControlledEntityGuard& operator=(ControlledEntityGuard&& other) noexcept
 	{
 		swap(*this, other);
 		return *this;
@@ -328,7 +343,7 @@ public:
 private:
 	friend class ControllerImpl;
 	// Ownership (and locked state) is transfered during construction
-	ControlledEntityGuard(SharedControlledEntity&& entity)
+	ControlledEntityGuard(SharedControlledEntity&& entity) noexcept
 		: _controlledEntity(std::move(entity))
 	{
 		registerWatchdog();

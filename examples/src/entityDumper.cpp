@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -47,7 +47,7 @@
 /* Dumper class                                                               */
 /* ************************************************************************** */
 
-class Dumper : public la::avdecc::controller::Controller::Observer, public la::avdecc::logger::Logger::Observer
+class Dumper : public la::avdecc::controller::Controller::DefaultedObserver, public la::avdecc::logger::Logger::Observer
 {
 public:
 	/** Constructor/destructor/destroy */
@@ -80,7 +80,7 @@ private:
 };
 
 Dumper::Dumper(la::avdecc::protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale)
-	: _controller(la::avdecc::controller::Controller::create(protocolInterfaceType, interfaceName, progID, entityModelID, preferedLocale, nullptr))
+	: _controller(la::avdecc::controller::Controller::create(protocolInterfaceType, interfaceName, progID, entityModelID, preferedLocale, nullptr, std::nullopt, nullptr))
 {
 	// Register observers
 	la::avdecc::logger::Logger::getInstance().registerObserver(this);

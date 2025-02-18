@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -38,6 +38,8 @@
 #include <iostream>
 #include <string>
 
+static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
+
 static la::networkInterface::Interface getFirstInterface()
 {
 	auto interface = la::networkInterface::Interface{};
@@ -57,12 +59,12 @@ static la::networkInterface::Interface getFirstInterface()
 
 TEST(ProtocolInterfacePCap, InvalidName)
 {
-	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
 
 	// Not using EXPECT_THROW, we want to check the error code inside our custom exception
 	try
 	{
-		std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap>(la::avdecc::protocol::ProtocolInterfacePcap::createRawProtocolInterfacePcap(""));
+		std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap>(la::avdecc::protocol::ProtocolInterfacePcap::createRawProtocolInterfacePcap("", DefaultExecutorName));
 		EXPECT_FALSE(true); // We expect an exception to have been raised
 	}
 	catch (la::avdecc::protocol::ProtocolInterface::Exception const& e)
@@ -111,7 +113,7 @@ TEST(ProtocolInterfacePCap, TransportError)
 		std::cout << "Using interface " << interface.alias << std::endl;
 
 		Observer obs;
-		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap>(la::avdecc::protocol::ProtocolInterfacePcap::createRawProtocolInterfacePcap(interface.id));
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap>(la::avdecc::protocol::ProtocolInterfacePcap::createRawProtocolInterfacePcap(interface.id, DefaultExecutorName));
 		intfc->registerObserver(&obs);
 
 		auto status = entityOnlinePromise.get_future().wait_for(std::chrono::seconds(5));
@@ -130,23 +132,23 @@ public:
 	virtual void SetUp() override
 	{
 		// Search a valid NetworkInterface, the first active one actually
-		auto networkInterfaceName = std::string{};
+		auto networkInterfaceID = std::string{};
 		la::networkInterface::NetworkInterfaceHelper::getInstance().enumerateInterfaces(
-			[&networkInterfaceName](la::networkInterface::Interface const& intfc)
+			[&networkInterfaceID](la::networkInterface::Interface const& intfc)
 			{
-				if (!networkInterfaceName.empty())
+				if (!networkInterfaceID.empty())
 				{
 					return;
 				}
 				if (intfc.type == la::networkInterface::Interface::Type::Ethernet && intfc.isConnected && !intfc.isVirtual)
 				{
-					networkInterfaceName = intfc.id;
+					networkInterfaceID = intfc.id;
 				}
 			});
 
-		ASSERT_FALSE(networkInterfaceName.empty()) << "No valid NetworkInterface found";
-		_ew = la::avdecc::ExecutorManager::getInstance().registerExecutor(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
-		_pi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap>(la::avdecc::protocol::ProtocolInterfacePcap::createRawProtocolInterfacePcap(networkInterfaceName));
+		ASSERT_FALSE(networkInterfaceID.empty()) << "No valid NetworkInterface found";
+		_ew = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+		_pi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap>(la::avdecc::protocol::ProtocolInterfacePcap::createRawProtocolInterfacePcap(networkInterfaceID, DefaultExecutorName));
 	}
 
 	virtual void TearDown() override

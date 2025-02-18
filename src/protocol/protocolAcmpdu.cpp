@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -76,7 +76,7 @@ void LA_AVDECC_CALL_CONVENTION Acmpdu::deserialize(DeserializationBuffer& buffer
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 
-	// Check is there are less advertised data than the required minimum
+	// Check if there are less advertised data than the required minimum
 	if (_controlDataLength < Length)
 	{
 #if defined(IGNORE_INVALID_CONTROL_DATA_LENGTH)

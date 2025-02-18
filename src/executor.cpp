@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -94,7 +94,7 @@ private:
 };
 
 /** ExecutorProxy Entry point */
-ExecutorProxy* LA_AVDECC_CALL_CONVENTION ExecutorProxy::createRawExecutorProxy(PushJobProxy const& pushJobProxy, FlushProxy const& flushProxy, TerminateProxy const& terminateProxy, GetExecutorThreadProxy const& getExecutorThreadProxy)
+ExecutorProxy* LA_AVDECC_CALL_CONVENTION ExecutorProxy::createRawExecutorProxy(PushJobProxy const& pushJobProxy, FlushProxy const& flushProxy, TerminateProxy const& terminateProxy, GetExecutorThreadProxy const& getExecutorThreadProxy) noexcept
 {
 	return new ExecutorProxyImpl(pushJobProxy, flushProxy, terminateProxy, getExecutorThreadProxy);
 }
@@ -164,9 +164,16 @@ public:
 						jobsToProcess.clear();
 					}
 
-					// Notify that we are done processing jobs
-					_flushingJobs = false;
-					_jobProcessedCondVar.notify_one();
+					// If we were asked to flush, notify that we are done
+					// (It may happen that the _flushingJobs bool is set to true after we checked it in the wait condition, but reset it anyway as we processed some jobs and the flush() method will check for any other pending jobs)
+					if (_flushingJobs)
+					{
+						auto const lg = std::lock_guard{ _executorLock };
+
+						// Notify that we are done processing jobs
+						_flushingJobs = false;
+						_flushedPromise.set_value();
+					}
 				}
 				_jobs.clear();
 			});
@@ -193,9 +200,10 @@ public:
 			return;
 		}
 
-		// Enqueue the job
 		{
 			auto const lg = std::lock_guard(_executorLock);
+
+			// Enqueue the job
 			_jobs.push_back(std::move(job));
 		}
 
@@ -209,24 +217,29 @@ public:
 		auto const cs = std::lock_guard(_enqueueLock);
 
 		// Wait until all jobs are processed. We must loop as one job might have been pushed while the executor is calling jobs (and will soon reset _flushingJobs)
-		while (!_jobs.empty())
+		do
 		{
-			// Set flag to indicate that we are flushing, we want to wait for the flag to be reset
-			_flushingJobs = true;
+			{
+				auto const lg = std::lock_guard(_executorLock);
+
+				// Set flag to indicate that we are flushing
+				_flushingJobs = true;
+
+				// Create a new promise to wait for the executor thread to finish processing the jobs
+				_flushedPromise = std::promise<void>{};
+			}
 
 			// Notify the executor thread
 			_executorCondVar.notify_one();
 
 			// Wait for the executor thread to finish processing the jobs
+			auto const fut = _flushedPromise.get_future();
+			auto const ret = fut.wait_for(std::chrono::seconds(30));
+			if (!AVDECC_ASSERT_WITH_RET(ret != std::future_status::timeout, "Executor timed out while flushing jobs"))
 			{
-				auto lock = std::unique_lock{ _executorLock };
-				_jobProcessedCondVar.wait(lock,
-					[this]
-					{
-						return !_flushingJobs;
-					});
+				break;
 			}
-		}
+		} while (!_jobs.empty());
 	}
 
 	virtual void terminate(bool const flushJobs = true) noexcept override
@@ -239,15 +252,16 @@ public:
 		{
 			flush();
 		}
-		else
-		{
-			// Discard jobs
-			auto const lg = std::lock_guard(_executorLock);
-			_jobs.clear();
-		}
 
-		// Set termination flag
-		_shouldTerminate = true;
+		{
+			auto const lg = std::lock_guard(_executorLock);
+
+			// Discard (unflushed) jobs
+			_jobs.clear();
+
+			// Set termination flag
+			_shouldTerminate = true;
+		}
 
 		// Notify the executor thread
 		_executorCondVar.notify_one();
@@ -278,8 +292,9 @@ public:
 
 private:
 	// Private members
-	std::atomic<bool> _shouldTerminate{ false }; // Flag to indicate that the executor thread should terminate
-	std::atomic<bool> _flushingJobs{ false }; // Flag to indicate we want to flush the jobs
+	bool _shouldTerminate{ false }; // Flag to indicate that the executor thread should terminate
+	bool _flushingJobs{ false }; // Flag to indicate we want to flush the jobs
+	std::promise<void> _flushedPromise{}; // Promise to notify when the jobs have been flushed
 	std::recursive_mutex _enqueueLock{}; // Lock to prevent new jobs to be pushed. We have to use a recursive lock to allow flush to be called from the destructor
 	std::mutex _executorLock{}; // Lock to protect the executor queue
 	std::deque<Job> _jobs{}; // Queue of jobs to be executed (could have used a std::queue but we want to be able to iterate and clear the queue)
@@ -289,7 +304,7 @@ private:
 };
 
 /** ExecutorWithDispatchQueue Entry point */
-ExecutorWithDispatchQueue* LA_AVDECC_CALL_CONVENTION ExecutorWithDispatchQueue::createRawExecutorWithDispatchQueue(std::optional<std::string> const& name, utils::ThreadPriority const prio)
+ExecutorWithDispatchQueue* LA_AVDECC_CALL_CONVENTION ExecutorWithDispatchQueue::createRawExecutorWithDispatchQueue(std::optional<std::string> const& name, utils::ThreadPriority const prio) noexcept
 {
 	return new ExecutorWithDispatchQueueImpl(name, prio);
 }
@@ -316,8 +331,10 @@ public:
 
 private:
 	// Private members
-	mutable std::mutex _lock{};
+	mutable std::mutex _executorsLock{};
+	mutable std::mutex _executorThreadsLock{}; // Use a separate lock as we need to be able to query the threadIds even if executor are currently locked (eg. by a flush)
 	std::unordered_map<std::string, Executor::UniquePointer> _executors{};
+	std::unordered_map<std::string, std::thread::id> _executorThreadIds{};
 };
 
 class ExecutorWrapperImpl final : public ExecutorManager::ExecutorWrapper
@@ -381,18 +398,25 @@ private:
 
 bool ExecutorManagerImpl::isExecutorRegistered(std::string const& name) const noexcept
 {
-	auto const lg = std::lock_guard(_lock);
+	auto const lg = std::lock_guard(_executorsLock);
 	return _executors.find(name) != _executors.end();
 }
 
 ExecutorManager::ExecutorWrapper::UniquePointer ExecutorManagerImpl::registerExecutor(std::string const& name, Executor::UniquePointer&& executor)
 {
-	auto const lg = std::lock_guard(_lock);
+	auto const lg = std::lock_guard(_executorsLock);
+	auto const tid = executor->getExecutorThread();
 	auto const result = _executors.try_emplace(name, std::move(executor));
 	// If the insertion failed, throw an exception
 	if (!result.second)
 	{
 		throw std::runtime_error{ "ExecutorManager: Executor with name '" + name + "' already exists" };
+	}
+
+	// Store the threadId of that executor
+	{
+		auto const tlg = std::lock_guard(_executorThreadsLock);
+		_executorThreadIds[name] = tid;
 	}
 
 	auto deleter = [](ExecutorWrapper* self)
@@ -404,7 +428,7 @@ ExecutorManager::ExecutorWrapper::UniquePointer ExecutorManagerImpl::registerExe
 
 bool ExecutorManagerImpl::destroyExecutor(std::string const& name) noexcept
 {
-	auto const lg = std::lock_guard(_lock);
+	auto const lg = std::lock_guard(_executorsLock);
 	if (auto const it = _executors.find(name); it != _executors.end())
 	{
 		_executors.erase(it);
@@ -416,7 +440,7 @@ bool ExecutorManagerImpl::destroyExecutor(std::string const& name) noexcept
 
 void ExecutorManagerImpl::pushJob(std::string const& name, Executor::Job&& job) noexcept
 {
-	auto const lg = std::lock_guard(_lock);
+	auto const lg = std::lock_guard(_executorsLock);
 	if (auto const it = _executors.find(name); it != _executors.end())
 	{
 		it->second->pushJob(std::move(job));
@@ -425,7 +449,7 @@ void ExecutorManagerImpl::pushJob(std::string const& name, Executor::Job&& job) 
 
 void ExecutorManagerImpl::flush(std::string const& name) noexcept
 {
-	auto const lg = std::lock_guard(_lock);
+	auto const lg = std::lock_guard(_executorsLock);
 	if (auto const it = _executors.find(name); it != _executors.end())
 	{
 		it->second->flush();
@@ -434,10 +458,10 @@ void ExecutorManagerImpl::flush(std::string const& name) noexcept
 
 std::thread::id ExecutorManagerImpl::getExecutorThread(std::string const& name) const noexcept
 {
-	auto const lg = std::lock_guard(_lock);
-	if (auto const it = _executors.find(name); it != _executors.end())
+	auto const lg = std::lock_guard(_executorThreadsLock);
+	if (auto const it = _executorThreadIds.find(name); it != _executorThreadIds.end())
 	{
-		return it->second->getExecutorThread();
+		return it->second;
 	}
 	return {};
 }

@@ -11,6 +11,12 @@
 /externals/3rdparty/winpcap/Include
 /externals/3rdparty/winpcap/Lib
 
+# Ignore generated entities
+/tests/data/generatedEntities
 
 # Ignore .defaults.sh file
 /.defaults.sh
+
+# Ignore user cmake presets
+/CMakeUserPresets.json
+

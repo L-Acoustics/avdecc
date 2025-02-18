@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -198,26 +198,19 @@ ConfigurationDescriptor AemHandler::buildConfigurationDescriptor(entity::model::
 	configDescriptor.objectName = configTree.dynamicModel.objectName;
 	configDescriptor.localizedDescription = configTree.staticModel.localizedDescription;
 
-	setDescriptorsCount<DescriptorType::AudioUnit>(configDescriptor, configTree.audioUnitModels);
+	setDescriptorsCount<DescriptorType::AudioUnit>(configDescriptor, configTree.audioUnitTrees);
 	setDescriptorsCount<DescriptorType::StreamInput>(configDescriptor, configTree.streamInputModels);
 	setDescriptorsCount<DescriptorType::StreamOutput>(configDescriptor, configTree.streamOutputModels);
-	//setDescriptorsCount<DescriptorType::JackInput>(configDescriptor, configTree.jackInputModels);
-	//setDescriptorsCount<DescriptorType::JackOutput>(configDescriptor, configTree.jackOutputModels);
+	setDescriptorsCount<DescriptorType::JackInput>(configDescriptor, configTree.jackInputTrees);
+	setDescriptorsCount<DescriptorType::JackOutput>(configDescriptor, configTree.jackOutputTrees);
 	setDescriptorsCount<DescriptorType::AvbInterface>(configDescriptor, configTree.avbInterfaceModels);
 	setDescriptorsCount<DescriptorType::ClockSource>(configDescriptor, configTree.clockSourceModels);
 	setDescriptorsCount<DescriptorType::MemoryObject>(configDescriptor, configTree.memoryObjectModels);
-	setDescriptorsCount<DescriptorType::Locale>(configDescriptor, configTree.localeModels);
-	setDescriptorsCount<DescriptorType::Strings>(configDescriptor, configTree.stringsModels);
-	setDescriptorsCount<DescriptorType::StreamPortInput>(configDescriptor, configTree.streamPortInputModels);
-	setDescriptorsCount<DescriptorType::StreamPortOutput>(configDescriptor, configTree.streamPortOutputModels);
-	//setDescriptorsCount<DescriptorType::ExternalPortInput>(configDescriptor, configTree.externalPortInputModels);
-	//setDescriptorsCount<DescriptorType::ExternalPortOutput>(configDescriptor, configTree.externalPortOutputModels);
-	//setDescriptorsCount<DescriptorType::InternalPortInput>(configDescriptor, configTree.internalPortInputModels);
-	//setDescriptorsCount<DescriptorType::InternalPortOutput>(configDescriptor, configTree.internalPortOutputModels);
-	setDescriptorsCount<DescriptorType::AudioCluster>(configDescriptor, configTree.audioClusterModels);
-	setDescriptorsCount<DescriptorType::AudioMap>(configDescriptor, configTree.audioMapModels);
+	setDescriptorsCount<DescriptorType::Locale>(configDescriptor, configTree.localeTrees);
 	setDescriptorsCount<DescriptorType::Control>(configDescriptor, configTree.controlModels);
 	setDescriptorsCount<DescriptorType::ClockDomain>(configDescriptor, configTree.clockDomainModels);
+	setDescriptorsCount<DescriptorType::Timing>(configDescriptor, configTree.timingModels);
+	setDescriptorsCount<DescriptorType::PtpInstance>(configDescriptor, configTree.ptpInstanceTrees);
 
 	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash> descriptorCounts{};
 

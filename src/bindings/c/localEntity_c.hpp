@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -29,4 +29,13 @@
 #include <la/avdecc/internals/aggregateEntity.hpp>
 #include "la/avdecc/avdecc.h"
 
+namespace la
+{
+namespace avdecc
+{
+namespace bindings
+{
 la::avdecc::entity::AggregateEntity& getAggregateEntity(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle);
+}
+} // namespace avdecc
+} // namespace la

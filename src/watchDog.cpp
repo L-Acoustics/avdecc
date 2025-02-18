@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -22,12 +22,14 @@
 * @author Christophe Calmejane
 */
 
+#include "utils.hpp"
 #include "la/avdecc/watchDog.hpp"
 
 #include <unordered_map>
 #include <thread>
 #include <string>
 #include <iostream>
+#include <stdlib.h> // std::getenv
 #ifdef _WIN32
 #	include <Windows.h>
 #endif // _WIN32
@@ -68,22 +70,24 @@ public:
 						{
 							for (auto& [name, watchInfo] : watchedMap)
 							{
-#ifdef _WIN32
 								// If debugger is present, update the last alive time and don't check the timeout
-								if (IsDebuggerPresent())
+								if (utils::isDebuggerPresent())
 								{
 									watchInfo.lastAlive = currentTime;
 								}
-#endif // _WIN32
 
 								// Check if we timed out
 								if (!watchInfo.ignore && std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - watchInfo.lastAlive).count() > watchInfo.maximumInterval.count())
 								{
 									_observers.notifyObserversMethod<Observer>(&Observer::onIntervalExceeded, name, watchInfo.maximumInterval);
 
-									auto stream = std::stringstream{};
-									stream << "WatchDog event '" << name << "' exceeded the maximum allowed time (ThreadId: 0x" << std::hex << watchInfo.threadId << "). Deadlock?";
-									AVDECC_ASSERT(false, stream.str());
+									// Only print message if "AVDECC_NO_WATCHDOG_ASSERT" is not defined
+									if (std::getenv("AVDECC_NO_WATCHDOG_ASSERT") == nullptr)
+									{
+										auto stream = std::stringstream{};
+										stream << "WatchDog event '" << name << "' exceeded the maximum allowed time (ThreadId: 0x" << std::hex << watchInfo.threadId << "). Deadlock?";
+										AVDECC_ASSERT(false, stream.str());
+									}
 
 									watchInfo.ignore = true;
 								}

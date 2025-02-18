@@ -28,11 +28,13 @@ fi
 # Parse variables
 gen_doc=1
 gen_c=0
+gen_csharp=0
 
 function extend_gc_fnc_help()
 {
 	echo " -no-doc -> Do not generate (nor install) documentation."
 	echo " -build-c -> Build the C bindings library."
+	echo " -build-csharp -> Build the C# bindings library."
 }
 
 function extend_gc_fnc_unhandled_arg()
@@ -44,6 +46,10 @@ function extend_gc_fnc_unhandled_arg()
 			;;
 		-build-c)
 			gen_c=1
+			return 1
+			;;
+		-build-csharp)
+			gen_csharp=1
 			return 1
 			;;
 	esac
@@ -64,6 +70,11 @@ function extend_gc_fnc_precmake()
 		add_cmake_opt+=("-DBUILD_AVDECC_BINDINGS_C=TRUE")
 		add_cmake_opt+=("-DINSTALL_AVDECC_BINDINGS=TRUE")
 	fi
+	if [ $gen_csharp -eq 1 ]; then
+		add_cmake_opt+=("-DBUILD_AVDECC_BINDINGS_CSHARP=TRUE")
+		add_cmake_opt+=("-DINSTALL_AVDECC_BINDINGS=TRUE")
+		add_cmake_opt+=("-DAVDECC_SWIG_LANGUAGES=csharp")
+	fi
 }
 
 function boolToString()
@@ -79,6 +90,7 @@ function extend_gc_fnc_props_summary()
 {
 	echo "| - Doc: $(boolToString $gen_doc)"
 	echo "| - C Bindings: $(boolToString $gen_c)"
+	echo "| - C# Bindings: $(boolToString $gen_csharp)"
 }
 
 # execute gen_cmake script from bashUtils

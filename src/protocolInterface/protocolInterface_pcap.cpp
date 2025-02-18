@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -45,6 +45,7 @@
 #include <memory>
 #include <chrono>
 #include <cstdlib>
+#include <ctime>
 #ifdef __linux__
 #	include <csignal>
 #endif // __linux__
@@ -62,8 +63,8 @@ public:
 	/* Public APIs                                                  */
 	/* ************************************************************ */
 	/** Constructor */
-	ProtocolInterfacePcapImpl(std::string const& networkInterfaceName)
-		: ProtocolInterfacePcap(networkInterfaceName)
+	ProtocolInterfacePcapImpl(std::string const& networkInterfaceID, std::string const& executorName)
+		: ProtocolInterfacePcap(networkInterfaceID, executorName)
 	{
 		static constexpr int PCAP_BufferSize = 65536;
 		static constexpr int PCAP_PromiscMode = 1;
@@ -76,9 +77,9 @@ public:
 		std::array<char, PCAP_ERRBUF_SIZE> errbuf;
 #ifdef _WIN32
 		// NPF device name
-		auto const pcapInterfaceName = std::string("\\Device\\NPF_") + networkInterfaceName;
+		auto const pcapInterfaceName = std::string("\\Device\\NPF_") + networkInterfaceID;
 #else // !_WIN32
-		auto const pcapInterfaceName = networkInterfaceName;
+		auto const pcapInterfaceName = networkInterfaceID;
 #endif // _WIN32
 		auto pcap = _pcapLibrary.open_live((pcapInterfaceName).c_str(), PCAP_BufferSize, PCAP_PromiscMode, PCAP_TimeoutMsec, errbuf.data());
 		// Failed to open interface (might be disabled)
@@ -86,7 +87,7 @@ public:
 		{
 #ifdef _WIN32
 			// Try without NPF prefix
-			pcap = _pcapLibrary.open_live((networkInterfaceName).c_str(), PCAP_BufferSize, PCAP_PromiscMode, PCAP_TimeoutMsec, errbuf.data());
+			pcap = _pcapLibrary.open_live((networkInterfaceID).c_str(), PCAP_BufferSize, PCAP_PromiscMode, PCAP_TimeoutMsec, errbuf.data());
 			// Let's assume it's Win10pcap
 			if (pcap != nullptr)
 			{
@@ -190,13 +191,16 @@ private:
 			_captureThread.join();
 		}
 
+		// Flush executor jobs
+		la::avdecc::ExecutorManager::getInstance().flush(getExecutorName());
+
 		// Release the pcapLibrary
 		_pcap.reset();
 	}
 
 	virtual UniqueIdentifier getDynamicEID() const noexcept override
 	{
-		UniqueIdentifier::value_type eid{ 0u };
+		auto eid = UniqueIdentifier::value_type{ 0u };
 		auto const& macAddress = getMacAddress();
 
 		eid += macAddress[0];
@@ -204,15 +208,15 @@ private:
 		eid += macAddress[1];
 		eid <<= 8;
 		eid += macAddress[2];
-		eid <<= 16;
-		std::srand(static_cast<unsigned int>(std::time(0)));
-		eid += static_cast<std::uint16_t>((std::rand() % 0xFFFD) + 1);
 		eid <<= 8;
 		eid += macAddress[3];
 		eid <<= 8;
 		eid += macAddress[4];
 		eid <<= 8;
 		eid += macAddress[5];
+		eid <<= 16;
+		std::srand(static_cast<unsigned int>(std::time(0)));
+		eid += static_cast<std::uint16_t>((std::rand() % 0xFFFD) + 1);
 
 		return UniqueIdentifier{ eid };
 	}
@@ -275,6 +279,11 @@ private:
 			_stateMachineManager.discoverMessageSent(); // Notify we are sending a discover message
 		}
 		return err;
+	}
+
+	virtual Error forgetRemoteEntity(UniqueIdentifier const entityID) const noexcept override
+	{
+		return _stateMachineManager.forgetRemoteEntity(entityID);
 	}
 
 	virtual Error setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) const noexcept override
@@ -615,7 +624,7 @@ private:
 	/* ************************************************************ */
 	void processRawPacket(la::avdecc::MemoryBuffer&& packet) const noexcept
 	{
-		la::avdecc::ExecutorManager::getInstance().pushJob(DefaultExecutorName,
+		la::avdecc::ExecutorManager::getInstance().pushJob(getExecutorName(),
 			[this, msg = std::move(packet)]()
 			{
 				// Packet received, process it
@@ -697,8 +706,8 @@ private:
 	EthernetPacketDispatcher<ProtocolInterfacePcapImpl> _ethernetPacketDispatcher{ this, _stateMachineManager };
 };
 
-ProtocolInterfacePcap::ProtocolInterfacePcap(std::string const& networkInterfaceName)
-	: ProtocolInterface(networkInterfaceName)
+ProtocolInterfacePcap::ProtocolInterfacePcap(std::string const& networkInterfaceID, std::string const& executorName)
+	: ProtocolInterface(networkInterfaceID, executorName)
 {
 }
 
@@ -716,9 +725,9 @@ bool ProtocolInterfacePcap::isSupported() noexcept
 	}
 }
 
-ProtocolInterfacePcap* ProtocolInterfacePcap::createRawProtocolInterfacePcap(std::string const& networkInterfaceName)
+ProtocolInterfacePcap* ProtocolInterfacePcap::createRawProtocolInterfacePcap(std::string const& networkInterfaceID, std::string const& executorName)
 {
-	return new ProtocolInterfacePcapImpl(networkInterfaceName);
+	return new ProtocolInterfacePcapImpl(networkInterfaceID, executorName);
 }
 
 } // namespace protocol

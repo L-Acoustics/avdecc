@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -43,6 +43,8 @@ public:
 	// EndStation overrides
 	virtual entity::ControllerEntity* addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::model::EntityTree const* const entityModelTree, entity::controller::Delegate* const delegate) override;
 	virtual entity::AggregateEntity* addAggregateEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::model::EntityTree const* const entityModelTree, entity::controller::Delegate* const controllerDelegate) override;
+	virtual protocol::ProtocolInterface const* getProtocolInterface() const noexcept override;
+
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept override;

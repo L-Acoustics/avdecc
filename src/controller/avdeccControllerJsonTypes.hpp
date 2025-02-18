@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -73,6 +73,7 @@ constexpr auto ControlledEntityState_OwningControllerID = "owning_controller_id"
 constexpr auto ControlledEntityState_LockState = "lock_state";
 constexpr auto ControlledEntityState_LockingControllerID = "locking_controller_id";
 constexpr auto ControlledEntityState_SubscribedUnsol = "subscribed_unsol";
+constexpr auto ControlledEntityState_UnsolSupported = "unsol_supported";
 constexpr auto ControlledEntityState_ActiveConfiguration = "active_configuration";
 
 /* ControlledEntityStatistics */
@@ -95,6 +96,8 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ControlledEntity::CompatibilityFlag, {
 																																		{ ControlledEntity::CompatibilityFlag::None, "UNKNOWN" },
 																																		{ ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE17221" },
 																																		{ ControlledEntity::CompatibilityFlag::Milan, "MILAN" },
+																																		{ ControlledEntity::CompatibilityFlag::IEEE17221Warning, "IEEE17221WARNING" },
+																																		{ ControlledEntity::CompatibilityFlag::MilanWarning, "MILANWARNING" },
 																																		{ ControlledEntity::CompatibilityFlag::Misbehaving, "MISBEHAVING" },
 																																	});
 
@@ -126,7 +129,7 @@ namespace keyValue
 constexpr auto Controller_DumpVersion = std::uint32_t{ 1 };
 
 /* ControlledEntity nodes */
-constexpr auto ControlledEntity_DumpVersion = std::uint32_t{ 1 };
+constexpr auto ControlledEntity_DumpVersion = std::uint32_t{ 2 };
 
 } // namespace keyValue
 } // namespace jsonSerializer

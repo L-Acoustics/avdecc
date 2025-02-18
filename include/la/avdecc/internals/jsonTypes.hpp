@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -40,6 +40,7 @@
 #include <chrono>
 #include <unordered_map>
 #include <stdexcept> // invalid_argument
+#include <limits> // quiet_NaN // infinity
 
 using json = nlohmann::json;
 
@@ -61,6 +62,71 @@ inline void logJsonSerializer(Level const level, std::string const& message)
 
 namespace nlohmann
 {
+/** float converter that supports NaN and inf values*/
+template<>
+struct adl_serializer<float>
+{
+	static void to_json(json& j, float const& v)
+	{
+		// Handle NaN and inf values
+		if (std::isnan(v))
+		{
+			j = json::object({ { "NaN", true } });
+			return;
+		}
+		else if (std::isinf(v))
+		{
+			if (v > 0.0f)
+			{
+				j = json::object({ { "Inf", true } });
+			}
+			else
+			{
+				j = json::object({ { "-Inf", true } });
+			}
+			return;
+		}
+
+		// Default behavior
+		::nlohmann::to_json(j, v);
+	}
+	static void from_json(json const& j, float& v)
+	{
+		if (j.is_object())
+		{
+			auto const& o = j.get<json::object_t>();
+			if (o.size() == 1)
+			{
+				auto const& it = o.begin();
+				// Check the only value is a boolean and is true
+				auto const& bVal = it->second;
+				if (bVal.is_boolean() && bVal.get<bool>())
+				{
+					if (it->first == "NaN")
+					{
+						v = std::numeric_limits<float>::quiet_NaN();
+						return;
+					}
+					else if (it->first == "Inf")
+					{
+						v = std::numeric_limits<float>::infinity();
+						return;
+					}
+					else if (it->first == "-Inf")
+					{
+						v = -std::numeric_limits<float>::infinity();
+						return;
+					}
+				}
+			}
+		}
+
+		// Default behavior
+		::nlohmann::from_json(j, v);
+	}
+};
+
+/** std::optional converter */
 template<typename T>
 struct adl_serializer<std::optional<T>>
 {
@@ -84,6 +150,7 @@ struct adl_serializer<std::optional<T>>
 	}
 };
 
+/** std::chrono::milliseconds converter */
 template<>
 struct adl_serializer<std::chrono::milliseconds>
 {
@@ -97,6 +164,7 @@ struct adl_serializer<std::chrono::milliseconds>
 	}
 };
 
+/** converter for an optionnaly defined value */
 template<typename KeyT, typename ValueType>
 inline void get_optional_value(json const& j, KeyT&& key, ValueType& v)
 {
@@ -107,6 +175,7 @@ inline void get_optional_value(json const& j, KeyT&& key, ValueType& v)
 	}
 }
 
+/** la::avdecc::entity::model::EntityCounters converter */
 template<>
 struct adl_serializer<la::avdecc::entity::model::EntityCounters>
 {
@@ -142,6 +211,7 @@ struct adl_serializer<la::avdecc::entity::model::EntityCounters>
 	}
 };
 
+/** la::avdecc::entity::model::AvbInterfaceCounters converter */
 template<>
 struct adl_serializer<la::avdecc::entity::model::AvbInterfaceCounters>
 {
@@ -185,6 +255,7 @@ struct adl_serializer<la::avdecc::entity::model::AvbInterfaceCounters>
 	}
 };
 
+/** la::avdecc::entity::model::ClockDomainCounters converter */
 template<>
 struct adl_serializer<la::avdecc::entity::model::ClockDomainCounters>
 {
@@ -228,6 +299,7 @@ struct adl_serializer<la::avdecc::entity::model::ClockDomainCounters>
 	}
 };
 
+/** la::avdecc::entity::model::StreamInputCounters converter */
 template<>
 struct adl_serializer<la::avdecc::entity::model::StreamInputCounters>
 {
@@ -271,6 +343,7 @@ struct adl_serializer<la::avdecc::entity::model::StreamInputCounters>
 	}
 };
 
+/** la::avdecc::entity::model::StreamOutputCounters converter */
 template<>
 struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
 {
@@ -481,6 +554,10 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ConnectionFlag, {
 																							 { ConnectionFlag::SupportsEncrypted, "SUPPORTS_ENCRYPTED" },
 																							 { ConnectionFlag::EncryptedPdu, "ENCRYPTED_PDU" },
 																							 { ConnectionFlag::TalkerFailed, "TALKER_FAILED" },
+																							 { ConnectionFlag::SrpRegistrationFailed, "SRP_REGISTRATION_FAILED" },
+																							 { ConnectionFlag::ClEntriesValid, "CL_ENTRIES_VALID" },
+																							 { ConnectionFlag::NoSrp, "NO_SRP" },
+																							 { ConnectionFlag::Udp, "UDP" },
 																						 });
 
 /* StreamFlag conversion */
@@ -496,6 +573,12 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamFlag, {
 																					 { StreamFlag::SecondaryBackupValid, "SECONDARY_BACKUP_VALID" },
 																					 { StreamFlag::TertiaryBackupSupported, "TERTIARY_BACKUP_SUPPORTED" },
 																					 { StreamFlag::TertiaryBackupValid, "TERTIARY_BACKUP_VALID" },
+																					 { StreamFlag::SupportsAvtpUdpV4, "SUPPORTS_AVTP_UDP_V4" },
+																					 { StreamFlag::SupportsAvtpUdpV6, "SUPPORTS_AVTP_UDP_V6" },
+																					 { StreamFlag::NoSupportAvtpNative, "NO_SUPPORT_AVTP_NATIVE" },
+																					 { StreamFlag::TimingFieldValid, "TIMING_FIELD_VALID" },
+																					 { StreamFlag::NoMediaClock, "NO_MEDIA_CLOCK" },
+																					 { StreamFlag::SupportsNoSrp, "SUPPORTS_NO_SRP" },
 																				 });
 
 /* JackFlag conversion */
@@ -511,6 +594,10 @@ NLOHMANN_JSON_SERIALIZE_ENUM(AvbInterfaceFlag, {
 																								 { AvbInterfaceFlag::GptpGrandmasterSupported, "GPTP_GRANDMASTER_SUPPORTED" },
 																								 { AvbInterfaceFlag::GptpSupported, "GPTP_SUPPORTED" },
 																								 { AvbInterfaceFlag::SrpSupported, "SRP_SUPPORTED" },
+																								 { AvbInterfaceFlag::FqtssNotSupported, "FQTSS_NOT_SUPPORTED" },
+																								 { AvbInterfaceFlag::ScheduledTrafficSupported, "SCHEDULED_TRAFFIC_SUPPORTED" },
+																								 { AvbInterfaceFlag::CanListenToSelf, "CAN_LISTEN_TO_SELF" },
+																								 { AvbInterfaceFlag::CanListenToOtherSelf, "CAN_LISTEN_TO_OTHER_SELF" },
 																							 });
 
 /* ClockSourceFlag conversion */
@@ -528,6 +615,42 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PortFlag, {
 																				 { PortFlag::SyncSampleRateConv, "SYNC_SAMPLE_RATE_CONV" },
 																			 });
 
+/* PtpInstanceFlag conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(PtpInstanceFlag, {
+																								{ PtpInstanceFlag::None, "UNKNOWN" },
+																								{ PtpInstanceFlag::CanSetInstanceEnable, "CAN_SET_INSTANCE_ENABLE" },
+																								{ PtpInstanceFlag::CanSetPriority1, "CAN_SET_PRIORITY_1" },
+																								{ PtpInstanceFlag::CanSetPriority2, "CAN_SET_PRIORITY_2" },
+																								{ PtpInstanceFlag::CanSetDomainNumber, "CAN_SET_DOMAIN_NUMBER" },
+																								{ PtpInstanceFlag::CanSetExternalPortConfiguration, "CAN_SET_EXTERNAL_PORT_CONFIGURATION" },
+																								{ PtpInstanceFlag::CanSetSlaveOnly, "CAN_SET_SLAVE_ONLY" },
+																								{ PtpInstanceFlag::CanEnablePerformance, "CAN_ENABLE_PERFORMANCE" },
+																								{ PtpInstanceFlag::PerformanceMonitoring, "PERFORMANCE_MONITORING" },
+																								{ PtpInstanceFlag::GrandmasterCapable, "GRANDMASTER_CAPABLE" },
+																							});
+
+/* PtpPortFlag conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(PtpPortFlag, {
+																						{ PtpPortFlag::None, "UNKNOWN" },
+																						{ PtpPortFlag::CanSetEnable, "CAN_SET_ENABLE" },
+																						{ PtpPortFlag::CanSetLinkDelayThreshold, "CAN_SET_LINK_DELAY_THRESHOLD" },
+																						{ PtpPortFlag::CanSetDelayMechanism, "CAN_SET_DELAY_MECHANISM" },
+																						{ PtpPortFlag::CanSetDelayAsymmetry, "CAN_SET_DELAY_ASYMMETRY" },
+																						{ PtpPortFlag::CanSetInitialMessageIntervals, "CAN_SET_INITIAL_MESSAGE_INTERVALS" },
+																						{ PtpPortFlag::CanSetTimeouts, "CAN_SET_TIMEOUTS" },
+																						{ PtpPortFlag::CanOverrideAnnounceInterval, "CAN_OVERRIDE_ANNOUNCE_INTERVAL" },
+																						{ PtpPortFlag::CanOverrideSyncInterval, "CAN_OVERRIDE_SYNC_INTERVAL" },
+																						{ PtpPortFlag::CanOverridePDelayInterval, "CAN_OVERRIDE_PDELAY_INTERVAL" },
+																						{ PtpPortFlag::CanOverrideGptpCapableInterval, "CAN_OVERRIDE_GPTP_CAPABLE_INTERVAL" },
+																						{ PtpPortFlag::CanOverrideComputeNeighbor, "CAN_OVERRIDE_COMPUTE_NEIGHBOR" },
+																						{ PtpPortFlag::CanOverrideComputeLinkDelay, "CAN_OVERRIDE_COMPUTE_LINK_DELAY" },
+																						{ PtpPortFlag::CanOverrideOnestep, "CAN_OVERRIDE_ONESTEP" },
+																						{ PtpPortFlag::SupportsRemoteIntervalSignal, "SUPPORTS_REMOTE_INTERVAL_SIGNAL" },
+																						{ PtpPortFlag::SupportsOnestepTransmit, "SUPPORTS_ONESTEP_TRANSMIT" },
+																						{ PtpPortFlag::SupportsOnestepReceive, "SUPPORTS_ONESTEP_RECEIVE" },
+																						{ PtpPortFlag::SupportsUnicastNegotiate, "SUPPORTS_UNICAST_NEGOTIATE" },
+																					});
+
 /* StreamInfoFlag conversion */
 NLOHMANN_JSON_SERIALIZE_ENUM(StreamInfoFlag, {
 																							 { StreamInfoFlag::None, "UNKNOWN" },
@@ -538,6 +661,13 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamInfoFlag, {
 																							 { StreamInfoFlag::SupportsEncrypted, "SUPPORTS_ENCRYPTED" },
 																							 { StreamInfoFlag::EncryptedPdu, "ENCRYPTED_PDU" },
 																							 { StreamInfoFlag::TalkerFailed, "TALKER_FAILED" },
+																							 { StreamInfoFlag::NoSrp, "NO_SRP" },
+																							 { StreamInfoFlag::IpFlagsValid, "IP_FLAGS_VALID" },
+																							 { StreamInfoFlag::IpSrcPortValid, "IP_SRC_PORT_VALID" },
+																							 { StreamInfoFlag::IpDstPortValid, "IP_DST_PORT_VALID" },
+																							 { StreamInfoFlag::IpSrcAddrValid, "IP_SRC_ADDR_VALID" },
+																							 { StreamInfoFlag::IpDstAddrValid, "IP_DST_ADDR_VALID" },
+																							 { StreamInfoFlag::NotRegisteringSrp, "NOT_REGISTERING_SRP" },
 																							 { StreamInfoFlag::StreamVlanIDValid, "STREAM_VLAN_ID_VALID" },
 																							 { StreamInfoFlag::Connected, "CONNECTED" },
 																							 { StreamInfoFlag::MsrpFailureValid, "MSRP_FAILURE_VALID" },
@@ -559,6 +689,8 @@ NLOHMANN_JSON_SERIALIZE_ENUM(AvbInfoFlag, {
 																						{ AvbInfoFlag::AsCapable, "AS_CAPABLE" },
 																						{ AvbInfoFlag::GptpEnabled, "GPTP_ENABLED" },
 																						{ AvbInfoFlag::SrpEnabled, "SRP_ENABLED" },
+																						{ AvbInfoFlag::AvtpDown, "AVTP_DOWN" },
+																						{ AvbInfoFlag::AvtpDownValid, "AVTP_DOWN_VALID" },
 																					});
 
 /* EntityCounterValidFlag conversion */
@@ -712,6 +844,8 @@ constexpr auto NodeName_ConfigurationDescriptors = "configuration_descriptors";
 constexpr auto NodeName_AudioUnitDescriptors = "audio_unit_descriptors";
 constexpr auto NodeName_StreamInputDescriptors = "stream_input_descriptors";
 constexpr auto NodeName_StreamOutputDescriptors = "stream_output_descriptors";
+constexpr auto NodeName_JackInputDescriptors = "jack_input_descriptors";
+constexpr auto NodeName_JackOutputDescriptors = "jack_output_descriptors";
 constexpr auto NodeName_AvbInterfaceDescriptors = "avb_interface_descriptors";
 constexpr auto NodeName_ClockSourceDescriptors = "clock_source_descriptors";
 constexpr auto NodeName_MemoryObjectDescriptors = "memory_object_descriptors";
@@ -723,6 +857,9 @@ constexpr auto NodeName_AudioClusterDescriptors = "audio_cluster_descriptors";
 constexpr auto NodeName_AudioMapDescriptors = "audio_map_descriptors";
 constexpr auto NodeName_ControlDescriptors = "control_descriptors";
 constexpr auto NodeName_ClockDomainDescriptors = "clock_domain_descriptors";
+constexpr auto NodeName_TimingDescriptors = "timing_descriptors";
+constexpr auto NodeName_PtpInstanceDescriptors = "ptp_instance_descriptors";
+constexpr auto NodeName_PtpPortDescriptors = "ptp_port_descriptors";
 
 /* Globals */
 constexpr auto Node_Informative_Index = "_index (informative)";
@@ -742,12 +879,14 @@ constexpr auto EntityNode_Dynamic_Counters = "counters";
 
 /* ConfigurationNode */
 constexpr auto ConfigurationNode_Static_LocalizedDescription = "localized_description";
+constexpr auto ConfigurationNode_Static_DescriptorCounts = "descriptor_counts";
 constexpr auto ConfigurationNode_Dynamic_ObjectName = "object_name";
 
 /* AudioUnitNode */
 constexpr auto AudioUnitNode_Static_LocalizedDescription = "localized_description";
 constexpr auto AudioUnitNode_Static_ClockDomainIndex = "clock_domain_index";
 constexpr auto AudioUnitNode_Static_SamplingRates = "sampling_rates";
+constexpr auto AudioUnitNode_Static_ControlCounts = "control_counts";
 constexpr auto AudioUnitNode_Dynamic_ObjectName = "object_name";
 constexpr auto AudioUnitNode_Dynamic_CurrentSamplingRate = "current_sampling_rate";
 
@@ -784,22 +923,29 @@ constexpr auto StreamOutputNode_Dynamic_StreamRunning = "stream_running";
 constexpr auto StreamOutputNode_Dynamic_StreamDynamicInfo = "stream_dynamic_info";
 constexpr auto StreamOutputNode_Dynamic_Counters = "counters";
 
+/* JackNode */
+constexpr auto JackNode_Static_LocalizedDescription = "localized_description";
+constexpr auto JackNode_Static_Flags = "flags";
+constexpr auto JackNode_Static_Type = "type";
+constexpr auto JackNode_Static_ControlCounts = "control_counts";
+constexpr auto JackNode_Dynamic_ObjectName = "object_name";
+
 /* AvbInterfaceNode */
 constexpr auto AvbInterfaceNode_Static_LocalizedDescription = "localized_description";
-constexpr auto AvbInterfaceNode_Static_MacAddress = "mac_address";
 constexpr auto AvbInterfaceNode_Static_Flags = "flags";
-constexpr auto AvbInterfaceNode_Static_ClockIdentity = "clock_identity";
-constexpr auto AvbInterfaceNode_Static_Priority1 = "priority1";
-constexpr auto AvbInterfaceNode_Static_ClockClass = "clock_class";
-constexpr auto AvbInterfaceNode_Static_OffsetScaledLogVariance = "offset_scaled_log_variance";
-constexpr auto AvbInterfaceNode_Static_ClockAccuracy = "clock_accuracy";
-constexpr auto AvbInterfaceNode_Static_Priority2 = "priority2";
-constexpr auto AvbInterfaceNode_Static_DomainNumber = "domain_number";
-constexpr auto AvbInterfaceNode_Static_LogSyncInterval = "log_sync_interval";
-constexpr auto AvbInterfaceNode_Static_LogAnnounceInterval = "log_announce_interval";
-constexpr auto AvbInterfaceNode_Static_LogPdelayInterval = "log_pdelay_interval";
 constexpr auto AvbInterfaceNode_Static_PortNumber = "port_number";
 constexpr auto AvbInterfaceNode_Dynamic_ObjectName = "object_name";
+constexpr auto AvbInterfaceNode_Dynamic_MacAddress = "mac_address";
+constexpr auto AvbInterfaceNode_Dynamic_ClockIdentity = "clock_identity";
+constexpr auto AvbInterfaceNode_Dynamic_Priority1 = "priority1";
+constexpr auto AvbInterfaceNode_Dynamic_ClockClass = "clock_class";
+constexpr auto AvbInterfaceNode_Dynamic_OffsetScaledLogVariance = "offset_scaled_log_variance";
+constexpr auto AvbInterfaceNode_Dynamic_ClockAccuracy = "clock_accuracy";
+constexpr auto AvbInterfaceNode_Dynamic_Priority2 = "priority2";
+constexpr auto AvbInterfaceNode_Dynamic_DomainNumber = "domain_number";
+constexpr auto AvbInterfaceNode_Dynamic_LogSyncInterval = "log_sync_interval";
+constexpr auto AvbInterfaceNode_Dynamic_LogAnnounceInterval = "log_announce_interval";
+constexpr auto AvbInterfaceNode_Dynamic_LogPdelayInterval = "log_pdelay_interval";
 constexpr auto AvbInterfaceNode_Dynamic_GptpGrandmasterID = "gptp_grandmaster_id";
 constexpr auto AvbInterfaceNode_Dynamic_GptpDomainNumber = "gptp_domain_number";
 constexpr auto AvbInterfaceNode_Dynamic_AvbInterfaceInfo = "avb_interface_info";
@@ -835,6 +981,7 @@ constexpr auto StringsNode_Static_Strings = "strings";
 /* StreamPortNode */
 constexpr auto StreamPortNode_Static_ClockDomainIndex = "clock_domain_index";
 constexpr auto StreamPortNode_Static_Flags = "flags";
+constexpr auto StreamPortNode_Static_ControlCounts = "control_counts";
 constexpr auto StreamPortNode_Dynamic_DynamicMappings = "dynamic_mappings";
 
 /* AudioClusterNode */
@@ -862,6 +1009,7 @@ constexpr auto ControlNode_Static_SignalType = "signal_type";
 constexpr auto ControlNode_Static_SignalIndex = "signal_index";
 constexpr auto ControlNode_Static_SignalOutput = "signal_output";
 constexpr auto ControlNode_Static_ControlValueType = "control_value_type";
+constexpr auto ControlNode_Static_NumberOfValues = "number_of_values";
 constexpr auto ControlNode_Static_Values = "values";
 constexpr auto ControlNode_Dynamic_ObjectName = "object_name";
 constexpr auto ControlNode_Dynamic_Values = "values";
@@ -875,7 +1023,7 @@ constexpr auto ControlValueType_Type = "value_type";
 constexpr auto ControlValues_Type = "type";
 constexpr auto ControlValues_Values = "values";
 
-/* LinearValue */
+/* LinearValue - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 constexpr auto LinearValue_Minimum = "minimum";
 constexpr auto LinearValue_Maximum = "maximum";
 constexpr auto LinearValue_Step = "step";
@@ -883,7 +1031,12 @@ constexpr auto LinearValue_Default = "default";
 constexpr auto LinearValue_Unit = "unit";
 constexpr auto LinearValue_String = "string";
 
-/* ArrayValue */
+/* SelectorValue - IEEE1722.1-2013 Clause 7.3.5.2.2 */
+constexpr auto SelectorValue_Default = "default";
+constexpr auto SelectorValue_Unit = "unit";
+constexpr auto SelectorValue_Options = "options";
+
+/* ArrayValue - IEEE1722.1-2013 Clause 7.3.5.2.3 */
 constexpr auto ArrayValue_Minimum = "minimum";
 constexpr auto ArrayValue_Maximum = "maximum";
 constexpr auto ArrayValue_Step = "step";
@@ -897,6 +1050,29 @@ constexpr auto ClockDomainNode_Static_ClockSources = "clock_sources";
 constexpr auto ClockDomainNode_Dynamic_ObjectName = "object_name";
 constexpr auto ClockDomainNode_Dynamic_ClockSourceIndex = "clock_source_index";
 constexpr auto ClockDomainNode_Dynamic_Counters = "counters";
+
+/* TimingNode */
+constexpr auto TimingNode_Static_LocalizedDescription = "localized_description";
+constexpr auto TimingNode_Static_Algorithm = "algorithm";
+constexpr auto TimingNode_Static_PtpInstances = "ptp_instances";
+constexpr auto TimingNode_Dynamic_ObjectName = "object_name";
+
+/* PtpInstanceNode */
+constexpr auto PtpInstanceNode_Static_LocalizedDescription = "localized_description";
+constexpr auto PtpInstanceNode_Static_ClockIdentity = "clock_identity";
+constexpr auto PtpInstanceNode_Static_Flags = "flags";
+constexpr auto PtpInstanceNode_Static_ControlCounts = "control_counts";
+constexpr auto PtpInstanceNode_Static_PtpPortCounts = "ptp_port_counts";
+constexpr auto PtpInstanceNode_Dynamic_ObjectName = "object_name";
+
+/* PtpPortNode */
+constexpr auto PtpPortNode_Static_LocalizedDescription = "localized_description";
+constexpr auto PtpPortNode_Static_PortNumber = "port_number";
+constexpr auto PtpPortNode_Static_PortType = "port_type";
+constexpr auto PtpPortNode_Static_Flags = "flags";
+constexpr auto PtpPortNode_Static_AvbInterfaceIndex = "avb_interface_index";
+constexpr auto PtpPortNode_Static_ProfileIdentifier = "profile_identifier";
+constexpr auto PtpPortNode_Dynamic_ObjectName = "object_name";
 
 /* ControlValueUnit */
 constexpr auto ControlValueUnit_Multiplier = "multiplier";
@@ -991,6 +1167,9 @@ NLOHMANN_JSON_SERIALIZE_ENUM(DescriptorType, {
 																							 { DescriptorType::SignalTranscoder, "SIGNAL_TRANSCODER" },
 																							 { DescriptorType::ClockDomain, "CLOCK_DOMAIN" },
 																							 { DescriptorType::ControlBlock, "CONTROL_BLOCK" },
+																							 { DescriptorType::Timing, "TIMING" },
+																							 { DescriptorType::PtpInstance, "PTP_INSTANCE" },
+																							 { DescriptorType::PtpPort, "PTP_PORT" },
 																						 });
 
 /* JackType conversion */
@@ -1070,6 +1249,29 @@ NLOHMANN_JSON_SERIALIZE_ENUM(AudioClusterFormat, {
 																									 { AudioClusterFormat::Midi, "MIDI" },
 																									 { AudioClusterFormat::Smpte, "SMPTE" },
 																								 });
+
+/* TimingAlgorithm conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(TimingAlgorithm, {
+																								{ TimingAlgorithm::Single, "SINGLE" },
+																								{ TimingAlgorithm::Fallback, "FALLBACK" },
+																								{ TimingAlgorithm::Combined, "COMBINED" },
+																							});
+
+/* PtpPortType conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(PtpPortType, {
+																						{ PtpPortType::P2PLinkLayer, "P2P_LINK_LAYER" },
+																						{ PtpPortType::P2PMulticastUdpV4, "P2P_MULTICAST_UDP_V4" },
+																						{ PtpPortType::P2PMulticastUdpV6, "P2P_MULTICAST_UDP_V6" },
+																						{ PtpPortType::TimingMeasurement, "TIMING_MEASUREMENT" },
+																						{ PtpPortType::FineTimingMeasurement, "FINE_TIMING_MEASUREMENT" },
+																						{ PtpPortType::E2ELinkLayer, "E2E_LINK_LAYER" },
+																						{ PtpPortType::E2EMulticastUdpV4, "E2E_MULTICAST_UDP_V4" },
+																						{ PtpPortType::E2EMulticastUdpV6, "E2E_MULTICAST_UDP_V6" },
+																						{ PtpPortType::P2PUnicastUdpV4, "P2P_UNICAST_UDP_V4" },
+																						{ PtpPortType::P2PUnicastUdpV6, "P2P_UNICAST_UDP_V6" },
+																						{ PtpPortType::E2EUnicastUdpV4, "E2E_UNICAST_UDP_V4" },
+																						{ PtpPortType::E2EUnicastUdpV6, "E2E_UNICAST_UDP_V6" },
+																					});
 
 /* ControlValueUnit::Unit conversion */
 NLOHMANN_JSON_SERIALIZE_ENUM(ControlValueUnit::Unit, {
@@ -1462,10 +1664,12 @@ inline void from_json(json const& j, EntityNodeDynamicModel& d)
 inline void to_json(json& j, ConfigurationNodeStaticModel const& s)
 {
 	j[keyName::ConfigurationNode_Static_LocalizedDescription] = s.localizedDescription;
+	j[keyName::ConfigurationNode_Static_DescriptorCounts] = s.descriptorCounts;
 }
 inline void from_json(json const& j, ConfigurationNodeStaticModel& s)
 {
 	get_optional_value(j, keyName::ConfigurationNode_Static_LocalizedDescription, s.localizedDescription);
+	get_optional_value(j, keyName::ConfigurationNode_Static_DescriptorCounts, s.descriptorCounts);
 }
 
 /* ConfigurationNodeDynamicModel conversion */
@@ -1484,12 +1688,14 @@ inline void to_json(json& j, AudioUnitNodeStaticModel const& s)
 	j[keyName::AudioUnitNode_Static_LocalizedDescription] = s.localizedDescription;
 	j[keyName::AudioUnitNode_Static_ClockDomainIndex] = s.clockDomainIndex;
 	j[keyName::AudioUnitNode_Static_SamplingRates] = s.samplingRates;
+	j[keyName::AudioUnitNode_Static_ControlCounts] = s.numberOfControls;
 }
 inline void from_json(json const& j, AudioUnitNodeStaticModel& s)
 {
 	get_optional_value(j, keyName::AudioUnitNode_Static_LocalizedDescription, s.localizedDescription);
 	j.at(keyName::AudioUnitNode_Static_ClockDomainIndex).get_to(s.clockDomainIndex);
 	j.at(keyName::AudioUnitNode_Static_SamplingRates).get_to(s.samplingRates);
+	get_optional_value(j, keyName::AudioUnitNode_Static_ControlCounts, s.numberOfControls);
 }
 
 /* AudioUnitNodeDynamicModel conversion */
@@ -1598,39 +1804,43 @@ inline void from_json(json const& j, StreamOutputNodeDynamicModel& d)
 	get_optional_value(j, keyName::StreamOutputNode_Dynamic_Counters, d.counters);
 }
 
+/* JackNodeStaticModel conversion */
+inline void to_json(json& j, JackNodeStaticModel const& s)
+{
+	j[keyName::JackNode_Static_LocalizedDescription] = s.localizedDescription;
+	j[keyName::JackNode_Static_Flags] = s.jackFlags;
+	j[keyName::JackNode_Static_Type] = s.jackType;
+	j[keyName::JackNode_Static_ControlCounts] = s.numberOfControls;
+}
+inline void from_json(json const& j, JackNodeStaticModel& s)
+{
+	get_optional_value(j, keyName::JackNode_Static_LocalizedDescription, s.localizedDescription);
+	j.at(keyName::JackNode_Static_Flags).get_to(s.jackFlags);
+	j.at(keyName::JackNode_Static_Type).get_to(s.jackType);
+	get_optional_value(j, keyName::JackNode_Static_ControlCounts, s.numberOfControls);
+}
+
+/* JackNodeDynamicModel conversion */
+inline void to_json(json& j, JackNodeDynamicModel const& d)
+{
+	j[keyName::JackNode_Dynamic_ObjectName] = d.objectName;
+}
+inline void from_json(json const& j, JackNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::JackNode_Dynamic_ObjectName, d.objectName);
+}
+
 /* AvbInterfaceNodeStaticModel conversion */
 inline void to_json(json& j, AvbInterfaceNodeStaticModel const& s)
 {
 	j[keyName::AvbInterfaceNode_Static_LocalizedDescription] = s.localizedDescription;
-	j[keyName::AvbInterfaceNode_Static_MacAddress] = networkInterface::NetworkInterfaceHelper::macAddressToString(s.macAddress, true);
 	j[keyName::AvbInterfaceNode_Static_Flags] = s.interfaceFlags;
-	j[keyName::AvbInterfaceNode_Static_ClockIdentity] = s.clockIdentity;
-	j[keyName::AvbInterfaceNode_Static_Priority1] = s.priority1;
-	j[keyName::AvbInterfaceNode_Static_ClockClass] = s.clockClass;
-	j[keyName::AvbInterfaceNode_Static_OffsetScaledLogVariance] = s.offsetScaledLogVariance;
-	j[keyName::AvbInterfaceNode_Static_ClockAccuracy] = s.clockAccuracy;
-	j[keyName::AvbInterfaceNode_Static_Priority2] = s.priority2;
-	j[keyName::AvbInterfaceNode_Static_DomainNumber] = s.domainNumber;
-	j[keyName::AvbInterfaceNode_Static_LogSyncInterval] = s.logSyncInterval;
-	j[keyName::AvbInterfaceNode_Static_LogAnnounceInterval] = s.logAnnounceInterval;
-	j[keyName::AvbInterfaceNode_Static_LogPdelayInterval] = s.logPDelayInterval;
 	j[keyName::AvbInterfaceNode_Static_PortNumber] = s.portNumber;
 }
 inline void from_json(json const& j, AvbInterfaceNodeStaticModel& s)
 {
 	get_optional_value(j, keyName::AvbInterfaceNode_Static_LocalizedDescription, s.localizedDescription);
-	s.macAddress = networkInterface::NetworkInterfaceHelper::stringToMacAddress(j.at(keyName::AvbInterfaceNode_Static_MacAddress).get<std::string>());
 	j.at(keyName::AvbInterfaceNode_Static_Flags).get_to(s.interfaceFlags);
-	j.at(keyName::AvbInterfaceNode_Static_ClockIdentity).get_to(s.clockIdentity);
-	j.at(keyName::AvbInterfaceNode_Static_Priority1).get_to(s.priority1);
-	j.at(keyName::AvbInterfaceNode_Static_ClockClass).get_to(s.clockClass);
-	j.at(keyName::AvbInterfaceNode_Static_OffsetScaledLogVariance).get_to(s.offsetScaledLogVariance);
-	j.at(keyName::AvbInterfaceNode_Static_ClockAccuracy).get_to(s.clockAccuracy);
-	j.at(keyName::AvbInterfaceNode_Static_Priority2).get_to(s.priority2);
-	j.at(keyName::AvbInterfaceNode_Static_DomainNumber).get_to(s.domainNumber);
-	j.at(keyName::AvbInterfaceNode_Static_LogSyncInterval).get_to(s.logSyncInterval);
-	j.at(keyName::AvbInterfaceNode_Static_LogAnnounceInterval).get_to(s.logAnnounceInterval);
-	j.at(keyName::AvbInterfaceNode_Static_LogPdelayInterval).get_to(s.logPDelayInterval);
 	j.at(keyName::AvbInterfaceNode_Static_PortNumber).get_to(s.portNumber);
 }
 
@@ -1638,6 +1848,17 @@ inline void from_json(json const& j, AvbInterfaceNodeStaticModel& s)
 inline void to_json(json& j, AvbInterfaceNodeDynamicModel const& d)
 {
 	j[keyName::AvbInterfaceNode_Dynamic_ObjectName] = d.objectName;
+	j[keyName::AvbInterfaceNode_Dynamic_MacAddress] = networkInterface::NetworkInterfaceHelper::macAddressToString(d.macAddress, true);
+	j[keyName::AvbInterfaceNode_Dynamic_ClockIdentity] = d.clockIdentity;
+	j[keyName::AvbInterfaceNode_Dynamic_Priority1] = d.priority1;
+	j[keyName::AvbInterfaceNode_Dynamic_ClockClass] = d.clockClass;
+	j[keyName::AvbInterfaceNode_Dynamic_OffsetScaledLogVariance] = d.offsetScaledLogVariance;
+	j[keyName::AvbInterfaceNode_Dynamic_ClockAccuracy] = d.clockAccuracy;
+	j[keyName::AvbInterfaceNode_Dynamic_Priority2] = d.priority2;
+	j[keyName::AvbInterfaceNode_Dynamic_DomainNumber] = d.domainNumber;
+	j[keyName::AvbInterfaceNode_Dynamic_LogSyncInterval] = d.logSyncInterval;
+	j[keyName::AvbInterfaceNode_Dynamic_LogAnnounceInterval] = d.logAnnounceInterval;
+	j[keyName::AvbInterfaceNode_Dynamic_LogPdelayInterval] = d.logPDelayInterval;
 	j[keyName::AvbInterfaceNode_Dynamic_GptpGrandmasterID] = d.gptpGrandmasterID;
 	j[keyName::AvbInterfaceNode_Dynamic_GptpDomainNumber] = d.gptpDomainNumber;
 	j[keyName::AvbInterfaceNode_Dynamic_AvbInterfaceInfo] = d.avbInterfaceInfo;
@@ -1647,6 +1868,20 @@ inline void to_json(json& j, AvbInterfaceNodeDynamicModel const& d)
 inline void from_json(json const& j, AvbInterfaceNodeDynamicModel& d)
 {
 	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_ObjectName, d.objectName);
+
+	d.macAddress = networkInterface::NetworkInterfaceHelper::stringToMacAddress(j.at(keyName::AvbInterfaceNode_Dynamic_MacAddress).get<std::string>());
+	j.at(keyName::AvbInterfaceNode_Dynamic_ClockIdentity).get_to(d.clockIdentity);
+	j.at(keyName::AvbInterfaceNode_Dynamic_Priority1).get_to(d.priority1);
+	j.at(keyName::AvbInterfaceNode_Dynamic_ClockClass).get_to(d.clockClass);
+	j.at(keyName::AvbInterfaceNode_Dynamic_OffsetScaledLogVariance).get_to(d.offsetScaledLogVariance);
+	j.at(keyName::AvbInterfaceNode_Dynamic_ClockAccuracy).get_to(d.clockAccuracy);
+	j.at(keyName::AvbInterfaceNode_Dynamic_Priority2).get_to(d.priority2);
+	j.at(keyName::AvbInterfaceNode_Dynamic_DomainNumber).get_to(d.domainNumber);
+	j.at(keyName::AvbInterfaceNode_Dynamic_LogSyncInterval).get_to(d.logSyncInterval);
+	j.at(keyName::AvbInterfaceNode_Dynamic_LogAnnounceInterval).get_to(d.logAnnounceInterval);
+	j.at(keyName::AvbInterfaceNode_Dynamic_LogPdelayInterval).get_to(d.logPDelayInterval);
+
+
 	j.at(keyName::AvbInterfaceNode_Dynamic_GptpGrandmasterID).get_to(d.gptpGrandmasterID);
 	j.at(keyName::AvbInterfaceNode_Dynamic_GptpDomainNumber).get_to(d.gptpDomainNumber);
 	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_AvbInterfaceInfo, d.avbInterfaceInfo);
@@ -1742,11 +1977,13 @@ inline void to_json(json& j, StreamPortNodeStaticModel const& s)
 {
 	j[keyName::StreamPortNode_Static_ClockDomainIndex] = s.clockDomainIndex;
 	j[keyName::StreamPortNode_Static_Flags] = s.portFlags;
+	j[keyName::StreamPortNode_Static_ControlCounts] = s.numberOfControls;
 }
 inline void from_json(json const& j, StreamPortNodeStaticModel& s)
 {
 	j.at(keyName::StreamPortNode_Static_ClockDomainIndex).get_to(s.clockDomainIndex);
 	j.at(keyName::StreamPortNode_Static_Flags).get_to(s.portFlags);
+	get_optional_value(j, keyName::StreamPortNode_Static_ControlCounts, s.numberOfControls);
 }
 
 /* StreamPortNodeDynamicModel conversion */
@@ -1803,8 +2040,8 @@ inline void from_json(json const& j, AudioMapNodeStaticModel& s)
 	j.at(keyName::AudioMapNode_Static_Mappings).get_to(s.mappings);
 }
 
-/* LinearValueStatic conversion */
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>>
+/* LinearValueStatic conversion - IEEE1722.1-2013 Clause 7.3.5.2.1 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 inline void to_json(json& j, LinearValueStatic<SizeType> const& value)
 {
 	j[keyName::LinearValue_Minimum] = value.minimum;
@@ -1814,7 +2051,7 @@ inline void to_json(json& j, LinearValueStatic<SizeType> const& value)
 	j[keyName::LinearValue_Unit] = value.unit;
 	j[keyName::LinearValue_String] = value.localizedName;
 }
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>>
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 inline void from_json(json const& j, LinearValueStatic<SizeType>& value)
 {
 	j.at(keyName::LinearValue_Minimum).get_to(value.minimum);
@@ -1825,19 +2062,19 @@ inline void from_json(json const& j, LinearValueStatic<SizeType>& value)
 	get_optional_value(j, keyName::LinearValue_String, value.localizedName);
 }
 
-/* LinearValueDynamic conversion */
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>>
+/* LinearValueDynamic conversion - IEEE1722.1-2013 Clause 7.3.5.2.1 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 inline void to_json(json& j, LinearValueDynamic<SizeType> const& value)
 {
 	j = value.currentValue;
 }
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>>
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 inline void from_json(json const& j, LinearValueDynamic<SizeType>& value)
 {
 	value.currentValue = j;
 }
 
-/* LinearValues conversion */
+/* LinearValues conversion - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 template<typename ValueType, typename Traits = ControlValues::control_value_details_traits<LinearValues<ValueType>>>
 inline void to_json(json& j, LinearValues<ValueType> const& values)
 {
@@ -1853,8 +2090,44 @@ inline void from_json(json const& j, LinearValues<ValueType>& values)
 	j.get_to(values.getValues());
 }
 
-/* ArrayValueStatic conversion */
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>, typename Traits = ControlValues::control_value_details_traits<ArrayValueStatic<SizeType>>>
+/* SelectorValueStatic conversion - IEEE1722.1-2013 Clause 7.3.5.2.2 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType> || std::is_same_v<SizeType, LocalizedStringReference>>, typename Traits = ControlValues::control_value_details_traits<SelectorValueStatic<SizeType>>>
+inline void to_json(json& j, SelectorValueStatic<SizeType> const& value)
+{
+	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
+
+	j[keyName::SelectorValue_Default] = value.defaultValue;
+	j[keyName::SelectorValue_Unit] = value.unit;
+	j[keyName::SelectorValue_Options] = value.options;
+}
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType> || std::is_same_v<SizeType, LocalizedStringReference>>, typename Traits = ControlValues::control_value_details_traits<SelectorValueStatic<SizeType>>>
+inline void from_json(json const& j, SelectorValueStatic<SizeType>& value)
+{
+	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
+
+	j.at(keyName::SelectorValue_Default).get_to(value.defaultValue);
+	j.at(keyName::SelectorValue_Unit).get_to(value.unit);
+	j.at(keyName::SelectorValue_Options).get_to(value.options);
+}
+
+/* SelectorValueDynamic conversion - IEEE1722.1-2013 Clause 7.3.5.2.2 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType> || std::is_same_v<SizeType, LocalizedStringReference>>, typename Traits = ControlValues::control_value_details_traits<SelectorValueDynamic<SizeType>>>
+inline void to_json(json& j, SelectorValueDynamic<SizeType> const& value)
+{
+	static_assert(Traits::is_value_details, "to_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
+
+	j = value.currentValue;
+}
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType> || std::is_same_v<SizeType, LocalizedStringReference>>, typename Traits = ControlValues::control_value_details_traits<SelectorValueDynamic<SizeType>>>
+inline void from_json(json const& j, SelectorValueDynamic<SizeType>& value)
+{
+	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
+
+	j.get_to(value.currentValue);
+}
+
+/* ArrayValueStatic conversion - IEEE1722.1-2013 Clause 7.3.5.2.3 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>, typename Traits = ControlValues::control_value_details_traits<ArrayValueStatic<SizeType>>>
 inline void to_json(json& j, ArrayValueStatic<SizeType> const& value)
 {
 	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
@@ -1866,7 +2139,7 @@ inline void to_json(json& j, ArrayValueStatic<SizeType> const& value)
 	j[keyName::ArrayValue_Unit] = value.unit;
 	j[keyName::ArrayValue_String] = value.localizedName;
 }
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>, typename Traits = ControlValues::control_value_details_traits<ArrayValueStatic<SizeType>>>
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>, typename Traits = ControlValues::control_value_details_traits<ArrayValueStatic<SizeType>>>
 inline void from_json(json const& j, ArrayValueStatic<SizeType>& value)
 {
 	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
@@ -1879,15 +2152,15 @@ inline void from_json(json const& j, ArrayValueStatic<SizeType>& value)
 	get_optional_value(j, keyName::ArrayValue_String, value.localizedName);
 }
 
-/* ArrayValueDynamic conversion */
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>, typename Traits = ControlValues::control_value_details_traits<ArrayValueDynamic<SizeType>>>
+/* ArrayValueDynamic conversion - IEEE1722.1-2013 Clause 7.3.5.2.3 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>, typename Traits = ControlValues::control_value_details_traits<ArrayValueDynamic<SizeType>>>
 inline void to_json(json& j, ArrayValueDynamic<SizeType> const& value)
 {
 	static_assert(Traits::is_value_details, "to_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
 
 	j = value.currentValues;
 }
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>, typename Traits = ControlValues::control_value_details_traits<ArrayValueDynamic<SizeType>>>
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>, typename Traits = ControlValues::control_value_details_traits<ArrayValueDynamic<SizeType>>>
 inline void from_json(json const& j, ArrayValueDynamic<SizeType>& value)
 {
 	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
@@ -1895,7 +2168,7 @@ inline void from_json(json const& j, ArrayValueDynamic<SizeType>& value)
 	j.get_to(value.currentValues);
 }
 
-/* UTF8StringValueStatic conversion */
+/* UTF8StringValueStatic conversion - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 inline void to_json(json& /*j*/, UTF8StringValueStatic const& /*value*/)
 {
 	// UTF8 Static has no data
@@ -1905,7 +2178,7 @@ inline void from_json(json const& /*j*/, UTF8StringValueStatic& /*value*/)
 	// UTF8 Static has no data
 }
 
-/* UTF8StringValueDynamic conversion */
+/* UTF8StringValueDynamic conversion - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 inline void to_json(json& j, UTF8StringValueDynamic const& value)
 {
 	auto constexpr nullCharacter = decltype(value.currentValue)::value_type{ 0u };
@@ -1984,6 +2257,7 @@ inline void createToJsonDispatchTable(std::unordered_map<ControlValueType::Type,
 {
 	if constexpr (IsDynamic)
 	{
+		/** Linear Values - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 		dispatchTable[ControlValueType::Type::ControlLinearInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearUInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearInt16] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int16_t>>>();
@@ -1995,6 +2269,20 @@ inline void createToJsonDispatchTable(std::unordered_map<ControlValueType::Type,
 		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<float>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<double>>>();
 
+		/** Selector Value - IEEE1722.1-2013 Clause 7.3.5.2.2 */
+		dispatchTable[ControlValueType::Type::ControlSelectorInt8] = createToJsonDispatchFunctor<SelectorValueDynamic<std::int8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt8] = createToJsonDispatchFunctor<SelectorValueDynamic<std::uint8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt16] = createToJsonDispatchFunctor<SelectorValueDynamic<std::int16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt16] = createToJsonDispatchFunctor<SelectorValueDynamic<std::uint16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt32] = createToJsonDispatchFunctor<SelectorValueDynamic<std::int32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt32] = createToJsonDispatchFunctor<SelectorValueDynamic<std::uint32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt64] = createToJsonDispatchFunctor<SelectorValueDynamic<std::int64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt64] = createToJsonDispatchFunctor<SelectorValueDynamic<std::uint64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorFloat] = createToJsonDispatchFunctor<SelectorValueDynamic<float>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorDouble] = createToJsonDispatchFunctor<SelectorValueDynamic<double>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorString] = createToJsonDispatchFunctor<SelectorValueDynamic<LocalizedStringReference>>();
+
+		/** Array Values - IEEE1722.1-2013 Clause 7.3.5.2.3 */
 		dispatchTable[ControlValueType::Type::ControlArrayInt8] = createToJsonDispatchFunctor<ArrayValueDynamic<std::int8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayUInt8] = createToJsonDispatchFunctor<ArrayValueDynamic<std::uint8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayInt16] = createToJsonDispatchFunctor<ArrayValueDynamic<std::int16_t>>();
@@ -2006,10 +2294,12 @@ inline void createToJsonDispatchTable(std::unordered_map<ControlValueType::Type,
 		dispatchTable[ControlValueType::Type::ControlArrayFloat] = createToJsonDispatchFunctor<ArrayValueDynamic<float>>();
 		dispatchTable[ControlValueType::Type::ControlArrayDouble] = createToJsonDispatchFunctor<ArrayValueDynamic<double>>();
 
+		/** UTF-8 String Value - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 		dispatchTable[ControlValueType::Type::ControlUtf8] = createToJsonDispatchFunctor<UTF8StringValueDynamic>();
 	}
 	else
 	{
+		/** Linear Values - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 		dispatchTable[ControlValueType::Type::ControlLinearInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearUInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearInt16] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int16_t>>>();
@@ -2021,6 +2311,20 @@ inline void createToJsonDispatchTable(std::unordered_map<ControlValueType::Type,
 		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<float>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<double>>>();
 
+		/** Selector Value - IEEE1722.1-2013 Clause 7.3.5.2.2 */
+		dispatchTable[ControlValueType::Type::ControlSelectorInt8] = createToJsonDispatchFunctor<SelectorValueStatic<std::int8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt8] = createToJsonDispatchFunctor<SelectorValueStatic<std::uint8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt16] = createToJsonDispatchFunctor<SelectorValueStatic<std::int16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt16] = createToJsonDispatchFunctor<SelectorValueStatic<std::uint16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt32] = createToJsonDispatchFunctor<SelectorValueStatic<std::int32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt32] = createToJsonDispatchFunctor<SelectorValueStatic<std::uint32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt64] = createToJsonDispatchFunctor<SelectorValueStatic<std::int64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt64] = createToJsonDispatchFunctor<SelectorValueStatic<std::uint64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorFloat] = createToJsonDispatchFunctor<SelectorValueStatic<float>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorDouble] = createToJsonDispatchFunctor<SelectorValueStatic<double>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorString] = createToJsonDispatchFunctor<SelectorValueStatic<LocalizedStringReference>>();
+
+		/** Array Values - IEEE1722.1-2013 Clause 7.3.5.2.3 */
 		dispatchTable[ControlValueType::Type::ControlArrayInt8] = createToJsonDispatchFunctor<ArrayValueStatic<std::int8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayUInt8] = createToJsonDispatchFunctor<ArrayValueStatic<std::uint8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayInt16] = createToJsonDispatchFunctor<ArrayValueStatic<std::int16_t>>();
@@ -2032,6 +2336,7 @@ inline void createToJsonDispatchTable(std::unordered_map<ControlValueType::Type,
 		dispatchTable[ControlValueType::Type::ControlArrayFloat] = createToJsonDispatchFunctor<ArrayValueStatic<float>>();
 		dispatchTable[ControlValueType::Type::ControlArrayDouble] = createToJsonDispatchFunctor<ArrayValueStatic<double>>();
 
+		/** UTF-8 String Value - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 		dispatchTable[ControlValueType::Type::ControlUtf8] = createToJsonDispatchFunctor<UTF8StringValueStatic>();
 	}
 }
@@ -2040,6 +2345,7 @@ inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Typ
 {
 	if constexpr (IsDynamic)
 	{
+		/** Linear Values - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 		dispatchTable[ControlValueType::Type::ControlLinearInt8] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearUInt8] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearInt16] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int16_t>>>();
@@ -2051,6 +2357,20 @@ inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Typ
 		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<float>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<double>>>();
 
+		/** Selector Value - IEEE1722.1-2013 Clause 7.3.5.2.2 */
+		dispatchTable[ControlValueType::Type::ControlSelectorInt8] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::int8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt8] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::uint8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt16] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::int16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt16] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::uint16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt32] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::int32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt32] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::uint32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt64] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::int64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt64] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::uint64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorFloat] = createFromJsonDispatchFunctor<SelectorValueDynamic<float>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorDouble] = createFromJsonDispatchFunctor<SelectorValueDynamic<double>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorString] = createFromJsonDispatchFunctor<SelectorValueDynamic<LocalizedStringReference>>();
+
+		/** Array Values - IEEE1722.1-2013 Clause 7.3.5.2.3 */
 		dispatchTable[ControlValueType::Type::ControlArrayInt8] = createFromJsonDispatchFunctor<ArrayValueDynamic<std::int8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayUInt8] = createFromJsonDispatchFunctor<ArrayValueDynamic<std::uint8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayInt16] = createFromJsonDispatchFunctor<ArrayValueDynamic<std::int16_t>>();
@@ -2062,10 +2382,12 @@ inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Typ
 		dispatchTable[ControlValueType::Type::ControlArrayFloat] = createFromJsonDispatchFunctor<ArrayValueDynamic<float>>();
 		dispatchTable[ControlValueType::Type::ControlArrayDouble] = createFromJsonDispatchFunctor<ArrayValueDynamic<double>>();
 
+		/** UTF-8 String Value - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 		dispatchTable[ControlValueType::Type::ControlUtf8] = createFromJsonDispatchFunctor<UTF8StringValueDynamic>();
 	}
 	else
 	{
+		/** Linear Values - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 		dispatchTable[ControlValueType::Type::ControlLinearInt8] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearUInt8] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearInt16] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int16_t>>>();
@@ -2077,6 +2399,20 @@ inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Typ
 		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<float>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<double>>>();
 
+		/** Selector Value - IEEE1722.1-2013 Clause 7.3.5.2.2 */
+		dispatchTable[ControlValueType::Type::ControlSelectorInt8] = createFromJsonDispatchFunctor<SelectorValueStatic<std::int8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt8] = createFromJsonDispatchFunctor<SelectorValueStatic<std::uint8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt16] = createFromJsonDispatchFunctor<SelectorValueStatic<std::int16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt16] = createFromJsonDispatchFunctor<SelectorValueStatic<std::uint16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt32] = createFromJsonDispatchFunctor<SelectorValueStatic<std::int32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt32] = createFromJsonDispatchFunctor<SelectorValueStatic<std::uint32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt64] = createFromJsonDispatchFunctor<SelectorValueStatic<std::int64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt64] = createFromJsonDispatchFunctor<SelectorValueStatic<std::uint64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorFloat] = createFromJsonDispatchFunctor<SelectorValueStatic<float>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorDouble] = createFromJsonDispatchFunctor<SelectorValueStatic<double>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorString] = createFromJsonDispatchFunctor<SelectorValueStatic<LocalizedStringReference>>();
+
+		/** Array Values - IEEE1722.1-2013 Clause 7.3.5.2.3 */
 		dispatchTable[ControlValueType::Type::ControlArrayInt8] = createFromJsonDispatchFunctor<ArrayValueStatic<std::int8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayUInt8] = createFromJsonDispatchFunctor<ArrayValueStatic<std::uint8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayInt16] = createFromJsonDispatchFunctor<ArrayValueStatic<std::int16_t>>();
@@ -2088,6 +2424,7 @@ inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Typ
 		dispatchTable[ControlValueType::Type::ControlArrayFloat] = createFromJsonDispatchFunctor<ArrayValueStatic<float>>();
 		dispatchTable[ControlValueType::Type::ControlArrayDouble] = createFromJsonDispatchFunctor<ArrayValueStatic<double>>();
 
+		/** UTF-8 String Value - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 		dispatchTable[ControlValueType::Type::ControlUtf8] = createFromJsonDispatchFunctor<UTF8StringValueStatic>();
 	}
 }
@@ -2114,16 +2451,24 @@ inline void to_json(json& j, ControlNodeStaticModel const& s)
 	j[keyName::ControlNode_Static_SignalIndex] = s.signalIndex;
 	j[keyName::ControlNode_Static_SignalOutput] = s.signalOutput;
 	j[keyName::ControlNode_Static_ControlValueType] = s.controlValueType;
+	j[keyName::ControlNode_Static_NumberOfValues] = s.numberOfValues;
 
 	// Pack type dependant values
-	auto const valueType = s.values.getType();
-	if (auto const& it = s_toJsonDispatch.find(valueType); it != s_toJsonDispatch.end())
+	if (s.values)
 	{
-		j[keyName::ControlNode_Static_Values] = it->second(s.values);
+		auto const valueType = s.values.getType();
+		if (auto const& it = s_toJsonDispatch.find(valueType); it != s_toJsonDispatch.end())
+		{
+			j[keyName::ControlNode_Static_Values] = it->second(s.values);
+		}
+		else
+		{
+			throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, "Unsupported ControlValues Type" };
+		}
 	}
 	else
 	{
-		throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, "Unsupported ControlValues Type" };
+		j[keyName::ControlNode_Static_Values] = nullptr;
 	}
 }
 inline void from_json(json const& j, ControlNodeStaticModel& s)
@@ -2147,6 +2492,8 @@ inline void from_json(json const& j, ControlNodeStaticModel& s)
 	j.at(keyName::ControlNode_Static_SignalIndex).get_to(s.signalIndex);
 	j.at(keyName::ControlNode_Static_SignalOutput).get_to(s.signalOutput);
 	j.at(keyName::ControlNode_Static_ControlValueType).get_to(s.controlValueType);
+	// Optionnaly get this field for backward compatibility (not present in older versions, but we absolutely need it now so we'll build it in parent call if it's 0)
+	get_optional_value(j, keyName::ControlNode_Static_NumberOfValues, s.numberOfValues);
 
 	// Unpack type dependant values
 	auto const& jvalues = j.at(keyName::ControlNode_Static_Values);
@@ -2179,14 +2526,21 @@ inline void to_json(json& j, ControlNodeDynamicModel const& d)
 	j[keyName::ControlNode_Dynamic_ObjectName] = d.objectName;
 
 	// Pack type dependant values
-	auto const valueType = d.values.getType();
-	if (auto const& it = s_toJsonDispatch.find(valueType); it != s_toJsonDispatch.end())
+	if (d.values)
 	{
-		j[keyName::ControlNode_Dynamic_Values] = it->second(d.values);
+		auto const valueType = d.values.getType();
+		if (auto const& it = s_toJsonDispatch.find(valueType); it != s_toJsonDispatch.end())
+		{
+			j[keyName::ControlNode_Dynamic_Values] = it->second(d.values);
+		}
+		else
+		{
+			throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, "Unsupported ControlValues Type" };
+		}
 	}
 	else
 	{
-		throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, "Unsupported ControlValues Type" };
+		j[keyName::ControlNode_Dynamic_Values] = nullptr;
 	}
 }
 inline void from_json(json const& j, ControlNodeDynamicModel& d)
@@ -2242,6 +2596,88 @@ inline void from_json(json const& j, ClockDomainNodeDynamicModel& d)
 	get_optional_value(j, keyName::ClockDomainNode_Dynamic_ObjectName, d.objectName);
 	j.at(keyName::ClockDomainNode_Dynamic_ClockSourceIndex).get_to(d.clockSourceIndex);
 	get_optional_value(j, keyName::ClockDomainNode_Dynamic_Counters, d.counters);
+}
+
+/* TimingNodeStaticModel conversion */
+inline void to_json(json& j, TimingNodeStaticModel const& s)
+{
+	j[keyName::TimingNode_Static_LocalizedDescription] = s.localizedDescription;
+	j[keyName::TimingNode_Static_Algorithm] = s.algorithm;
+	j[keyName::TimingNode_Static_PtpInstances] = s.ptpInstances;
+}
+inline void from_json(json const& j, TimingNodeStaticModel& s)
+{
+	j.at(keyName::TimingNode_Static_LocalizedDescription).get_to(s.localizedDescription);
+	j.at(keyName::TimingNode_Static_Algorithm).get_to(s.algorithm);
+	j.at(keyName::TimingNode_Static_PtpInstances).get_to(s.ptpInstances);
+}
+
+/* TimingNodeDynamicModel conversion */
+inline void to_json(json& j, TimingNodeDynamicModel const& d)
+{
+	j[keyName::TimingNode_Dynamic_ObjectName] = d.objectName;
+}
+inline void from_json(json const& j, TimingNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::TimingNode_Dynamic_ObjectName, d.objectName);
+}
+
+/* PtpInstanceNodeStaticModel conversion */
+inline void to_json(json& j, PtpInstanceNodeStaticModel const& s)
+{
+	j[keyName::PtpInstanceNode_Static_LocalizedDescription] = s.localizedDescription;
+	j[keyName::PtpInstanceNode_Static_ClockIdentity] = s.clockIdentity;
+	j[keyName::PtpInstanceNode_Static_Flags] = s.flags;
+	j[keyName::PtpInstanceNode_Static_ControlCounts] = s.numberOfControls;
+	j[keyName::PtpInstanceNode_Static_PtpPortCounts] = s.numberOfPtpPorts;
+}
+inline void from_json(json const& j, PtpInstanceNodeStaticModel& s)
+{
+	j.at(keyName::PtpInstanceNode_Static_LocalizedDescription).get_to(s.localizedDescription);
+	j.at(keyName::PtpInstanceNode_Static_ClockIdentity).get_to(s.clockIdentity);
+	j.at(keyName::PtpInstanceNode_Static_Flags).get_to(s.flags);
+	j.at(keyName::PtpInstanceNode_Static_ControlCounts).get_to(s.numberOfControls); // Not optional, field was added before that descriptor
+	j.at(keyName::PtpInstanceNode_Static_PtpPortCounts).get_to(s.numberOfPtpPorts); // Not optional, field was added before that descriptor
+}
+
+/* PtpInstanceNodeDynamicModel conversion */
+inline void to_json(json& j, PtpInstanceNodeDynamicModel const& d)
+{
+	j[keyName::PtpInstanceNode_Dynamic_ObjectName] = d.objectName;
+}
+inline void from_json(json const& j, PtpInstanceNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::PtpInstanceNode_Dynamic_ObjectName, d.objectName);
+}
+
+/* PtpPortNodeStaticModel conversion */
+inline void to_json(json& j, PtpPortNodeStaticModel const& s)
+{
+	j[keyName::PtpPortNode_Static_LocalizedDescription] = s.localizedDescription;
+	j[keyName::PtpPortNode_Static_PortNumber] = s.portNumber;
+	j[keyName::PtpPortNode_Static_PortType] = s.portType;
+	j[keyName::PtpPortNode_Static_Flags] = s.flags;
+	j[keyName::PtpPortNode_Static_AvbInterfaceIndex] = s.avbInterfaceIndex;
+	j[keyName::PtpPortNode_Static_ProfileIdentifier] = networkInterface::NetworkInterfaceHelper::macAddressToString(s.profileIdentifier, true);
+}
+inline void from_json(json const& j, PtpPortNodeStaticModel& s)
+{
+	j.at(keyName::PtpPortNode_Static_LocalizedDescription).get_to(s.localizedDescription);
+	j.at(keyName::PtpPortNode_Static_PortNumber).get_to(s.portNumber);
+	j.at(keyName::PtpPortNode_Static_PortType).get_to(s.portType);
+	j.at(keyName::PtpPortNode_Static_Flags).get_to(s.flags);
+	j.at(keyName::PtpPortNode_Static_AvbInterfaceIndex).get_to(s.avbInterfaceIndex);
+	s.profileIdentifier = networkInterface::NetworkInterfaceHelper::stringToMacAddress(j.at(keyName::PtpPortNode_Static_ProfileIdentifier).get<std::string>());
+}
+
+/* PtpPortNodeDynamicModel conversion */
+inline void to_json(json& j, PtpPortNodeDynamicModel const& d)
+{
+	j[keyName::PtpPortNode_Dynamic_ObjectName] = d.objectName;
+}
+inline void from_json(json const& j, PtpPortNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::PtpPortNode_Dynamic_ObjectName, d.objectName);
 }
 
 /* MilanInfo conversion */

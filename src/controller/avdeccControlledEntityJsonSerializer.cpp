@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -92,7 +92,7 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 		if (isAemSupported && (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel) || flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel)))
 		{
 			// Dump model(s)
-			object[keyName::ControlledEntity_EntityModel] = entity::model::jsonSerializer::createJsonObject(entity.getEntityTree(), flags);
+			object[keyName::ControlledEntity_EntityModel] = entity::model::jsonSerializer::createJsonObject(entity.getEntityModelTree(), flags);
 			// Dump EntityModelID
 			if (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel))
 			{
@@ -119,6 +119,7 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 			state[controller::keyName::ControlledEntityState_LockState] = entity.getLockState();
 			state[controller::keyName::ControlledEntityState_LockingControllerID] = entity.getLockingControllerID();
 			state[controller::keyName::ControlledEntityState_SubscribedUnsol] = entity.isSubscribedToUnsolicitedNotifications();
+			state[controller::keyName::ControlledEntityState_UnsolSupported] = entity.areUnsolicitedNotificationsSupported();
 			state[controller::keyName::ControlledEntityState_ActiveConfiguration] = hasAnyConfiguration ? entity.getCurrentConfigurationIndex() : entity::model::ConfigurationIndex{ 0u };
 		}
 
@@ -172,8 +173,8 @@ void setEntityModel(ControlledEntityImpl& entity, json const& object, entity::mo
 			// Read Entity Tree
 			auto entityTree = entity::model::jsonSerializer::createEntityTree(object, flags);
 
-			// Set tree on entity
-			entity.setEntityTree(entityTree);
+			// Build EntityNode from EntityTree
+			entity.buildEntityModelGraph(entityTree);
 		}
 	}
 	catch (json::exception const& e)
@@ -226,13 +227,26 @@ void setEntityState(ControlledEntityImpl& entity, json const& object)
 			}
 		}
 		{
+			auto const it = object.find(controller::keyName::ControlledEntityState_UnsolSupported);
+			if (it != object.end())
+			{
+				entity.setUnsolicitedNotificationsSupported(it->get<bool>());
+			}
+		}
+		{
 			auto const it = object.find(controller::keyName::ControlledEntityState_SubscribedUnsol);
 			if (it != object.end())
 			{
-				entity.setSubscribedToUnsolicitedNotifications(it->get<bool>());
+				auto const isSubscribed = it->get<bool>();
+				entity.setSubscribedToUnsolicitedNotifications(isSubscribed);
+				// Forward compatibility in case we load an old file (where controller::keyName::ControlledEntityState_UnsolSupported was not present)
+				if (isSubscribed)
+				{
+					entity.setUnsolicitedNotificationsSupported(true);
+				}
 			}
 		}
-		entity.setCurrentConfiguration(object.at(controller::keyName::ControlledEntityState_ActiveConfiguration).get<entity::model::DescriptorIndex>());
+		entity.setCurrentConfiguration(object.at(controller::keyName::ControlledEntityState_ActiveConfiguration).get<entity::model::DescriptorIndex>(), TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 	}
 	catch (json::type_error const& e)
 	{

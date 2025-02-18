@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -38,7 +38,7 @@ namespace protocol
 class Acmpdu final : public AvtpduControl
 {
 public:
-	static constexpr size_t Length = 44; /* ACMPDU size - Clause 8.2.1.7 */
+	static constexpr size_t Length = 44; /* ACMPDU size - IEEE1722.1-2013 Clause 8.2.1.7 */
 	using UniquePointer = std::unique_ptr<Acmpdu, void (*)(Acmpdu*)>;
 	static LA_AVDECC_API networkInterface::MacAddress const Multicast_Mac_Address; /* Annex B */
 

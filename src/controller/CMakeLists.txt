@@ -1,6 +1,6 @@
 # avdecc controller
 
-cu_setup_project(la_avdecc_controller ${LA_AVDECC_CONTROLLER_VERSION} "AVDECC Controller Library")
+cu_setup_project(la_avdecc_controller ${LA_AVDECC_CONTROLLER_VERSION} "AVDECC Controller Library" MARKETING_VERSION_DIGITS ${MARKETING_VERSION_DIGITS} MARKETING_VERSION_POSTFIX ${MARKETING_VERSION_POSTFIX} MARKETING_VERSION ${MARKETING_VERSION})
 
 # Configure file based on CMakeLists.txt
 configure_file(
@@ -29,6 +29,7 @@ set (PUBLIC_HEADER_FILES
 	${CU_ROOT_DIR}/include/la/avdecc/controller/avdeccController.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntity.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityModel.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/virtualEntityBuilder.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/exports.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/logItems.hpp
 )
@@ -38,8 +39,13 @@ set (HEADER_FILES_COMMON
 	avdeccControllerImpl.hpp
 	avdeccControlledEntityImpl.hpp
 	avdeccControllerLogHelper.hpp
+	avdeccControllerProxy.hpp
 	avdeccEntityModelCache.hpp
 	entityModelChecksum.hpp
+	treeModelAccessStrategy.hpp
+	treeModelAccessTraverseStrategy.hpp
+	treeModelAccessCacheStrategy.hpp
+	virtualEntityModelVisitor.hpp
 )
 
 set (SOURCE_FILES_COMMON
@@ -48,9 +54,16 @@ set (SOURCE_FILES_COMMON
 	avdeccControllerImplDelegateOverrides.cpp
 	avdeccControllerImplHandlers.cpp
 	avdeccControllerImplOverrides.cpp
+	avdeccControllerProxy.cpp
 	avdeccControlledEntityImpl.cpp
 	entityModelChecksum.cpp
+	virtualEntityModelVisitor.cpp
 )
+
+# 64 bits visual studio requires /bigobj to be used for this file (apperently there are too many symbols in the file), but let's set the flag for 32 bits as well
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+	set_source_files_properties(avdeccControllerImpl.cpp PROPERTIES COMPILE_FLAGS "/bigobj")
+endif()
 
 # Features
 if(ENABLE_AVDECC_FEATURE_REDUNDANCY)
@@ -106,7 +119,7 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(${PROJECT_NAME}_cxx PRIVATE nlohmann_json)
+		target_link_libraries(${PROJECT_NAME}_cxx PRIVATE nlohmann_json::nlohmann_json)
 	endif()
 
 	# Setup install (and signing)
@@ -134,7 +147,7 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(${PROJECT_NAME}_static PRIVATE nlohmann_json)
+		target_link_libraries(${PROJECT_NAME}_static PRIVATE nlohmann_json::nlohmann_json)
 	endif()
 
 	# Link with avdecc using static library
@@ -146,5 +159,47 @@ endif()
 
 # Set installation rules
 if(INSTALL_AVDECC_HEADERS)
-	cu_setup_headers_install_rules("${PUBLIC_HEADER_FILES}" "${CU_ROOT_DIR}/include")
+	cu_setup_headers_install_rules("${PUBLIC_HEADER_FILES}" "${CU_ROOT_DIR}/include" CONFIGURATIONS Release Debug)
+endif()
+
+if(BUILD_AVDECC_BINDINGS_CSHARP)
+	include(${CU_BASE_DIR}/helpers/SetupSwig.cmake REQUIRED)
+
+	# avdecc controller library
+	set(TARGET_PREFIX ${PROJECT_NAME})
+	set(SWIG_INTERFACE_FILE "${CU_ROOT_DIR}/include/la/avdecc/controller/avdeccController.i")
+	set(SWIG_FILE_DEPENDENCIES
+		"${CU_ROOT_DIR}/include/la/avdecc/utils.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/memoryBuffer.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/chrono.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/csharp_optional.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/optional.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/swig_foreach.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_function.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_tuple.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_unordered_map.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/entityModel.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/avdecc.i"
+	)
+	cu_setup_swig_target(VERSION 4.3 TARGET_NAME ${PROJECT_NAME}::shared INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES FILE_DEPENDENCIES ${SWIG_FILE_DEPENDENCIES} INSTALL_CONFIGURATIONS Release Debug OUTVAR_PREFIX_SUPPORT_FILES_FOLDER SUPPORT_FILES_FOLDER)
+
+	# Post process generated targets
+	foreach(SWIG_LANG ${AVDECC_SWIG_LANGUAGES})
+		set(SWIG_TARGET_NAME ${TARGET_PREFIX}-${SWIG_LANG})
+
+		# Add all public header files as dependency, so that wrapper files are re-generated whenever they change
+		set_property(TARGET ${SWIG_TARGET_NAME} PROPERTY SWIG_DEPENDS ${PUBLIC_HEADER_FILES})
+		# Setup common options like any other project
+		cu_setup_library_options(${SWIG_TARGET_NAME} ALIAS_NAME ${SWIG_LANG} NO_ALIAS_TARGET)
+		if(${SWIG_LANG} STREQUAL "csharp")
+			include(${CU_ROOT_DIR}/cmake/cmakeUtils/helpers/GenerateNugetTarget.cmake REQUIRED)
+			cu_generate_csharp_nuget_target(TARGET_NAME ${SWIG_TARGET_NAME} NUGET_SOURCE_URL "${NUGET_PUBLISH_SOURCE_URL}" NUGET_API_KEY "${NUGET_PUBLISH_API_KEY}" CS_SOURCE_FOLDERS "${SUPPORT_FILES_FOLDER_csharp}" CS_PACKAGE_DEPENDENCIES "la_avdecc:${AVDECC_PROJECT_FRIENDLY_VERSION}" NUGET_PACK_TARGET_DEPENDENCIES la_avdecc-csharp-nuget-push)
+		elseif(${SWIG_LANG} STREQUAL "lua")
+			target_link_libraries(${SWIG_TARGET_NAME} PRIVATE liblua)
+		endif()
+
+		# Setup install (and signing)
+		cu_setup_deploy_library(${SWIG_TARGET_NAME} ${INSTALL_BINDINGS_FLAG} ${SIGN_FLAG})
+
+	endforeach()
 endif()

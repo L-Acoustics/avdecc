@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -54,6 +54,7 @@ static model::AvbInfo const s_emptyAvbInfo{}; // Empty AvbInfo used by timeout c
 static model::AsPath const s_emptyAsPath{}; // Empty AsPath used by timeout callback (needs a ref to an AsPath)
 static model::AvdeccFixedString const s_emptyAvdeccFixedString{}; // Empty AvdeccFixedString used by timeout callback (needs a ref to a std::string)
 static model::MilanInfo const s_emptyMilanInfo{}; // Empty MilanInfo used by timeout callback (need a ref to a MilanInfo)
+static DynamicInfoParameters const s_emptyDynamicInfoParameters{}; // Empty DynamicInfoParameters used by timeout callback (need a ref to a DynamicInfoParameters)
 
 /* ************************************************************************** */
 /* Exceptions                                                                 */
@@ -523,6 +524,51 @@ void CapabilityDelegate::readClockDomainDescriptor(UniqueIdentifier const target
 	}
 }
 
+void CapabilityDelegate::readTimingDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::TimingIndex const timingIndex, Interface::TimingDescriptorHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, timingIndex, model::TimingDescriptor{});
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::Timing, timingIndex);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readTimingDescriptor: '}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::readPtpInstanceDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::PtpInstanceIndex const ptpInstanceIndex, Interface::PtpInstanceDescriptorHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, ptpInstanceIndex, model::PtpInstanceDescriptor{});
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::PtpInstance, ptpInstanceIndex);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readPtpInstanceDescriptor: '}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::readPtpPortDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::PtpPortIndex const ptpPortIndex, Interface::PtpPortDescriptorHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, ptpPortIndex, model::PtpPortDescriptor{});
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::PtpPort, ptpPortIndex);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readPtpPortDescriptor: '}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
 void CapabilityDelegate::setConfiguration(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, Interface::SetConfigurationHandler const& handler) const noexcept
 {
 	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex);
@@ -934,6 +980,66 @@ void CapabilityDelegate::getStreamOutputName(UniqueIdentifier const targetEntity
 	}
 }
 
+void CapabilityDelegate::setJackInputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, model::AvdeccFixedString const& jackInputName, Interface::SetJackInputNameHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, s_emptyAvdeccFixedString);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::JackInput, jackIndex, 0, configurationIndex, jackInputName);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::getJackInputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, Interface::GetJackInputNameHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, s_emptyAvdeccFixedString);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::JackInput, jackIndex, 0, configurationIndex);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::setJackOutputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, model::AvdeccFixedString const& jackOutputName, Interface::SetJackOutputNameHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, s_emptyAvdeccFixedString);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::JackOutput, jackIndex, 0, configurationIndex, jackOutputName);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::getJackOutputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, Interface::GetJackOutputNameHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, s_emptyAvdeccFixedString);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::JackOutput, jackIndex, 0, configurationIndex);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
 void CapabilityDelegate::setAvbInterfaceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvbInterfaceIndex const avbInterfaceIndex, model::AvdeccFixedString const& avbInterfaceName, Interface::SetAvbInterfaceNameHandler const& handler) const noexcept
 {
 	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex, s_emptyAvdeccFixedString);
@@ -1105,6 +1211,96 @@ void CapabilityDelegate::getClockDomainName(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::ClockDomain, clockDomainIndex, 0, configurationIndex);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::setTimingName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::TimingIndex const timingIndex, model::AvdeccFixedString const& timingName, Interface::SetTimingNameHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, timingIndex, s_emptyAvdeccFixedString);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::Timing, timingIndex, 0, configurationIndex, timingName);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::getTimingName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::TimingIndex const timingIndex, Interface::GetTimingNameHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, timingIndex, s_emptyAvdeccFixedString);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::Timing, timingIndex, 0, configurationIndex);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::setPtpInstanceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::PtpInstanceIndex const ptpInstanceIndex, model::AvdeccFixedString const& ptpInstanceName, Interface::SetPtpInstanceNameHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, ptpInstanceIndex, s_emptyAvdeccFixedString);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::PtpInstance, ptpInstanceIndex, 0, configurationIndex, ptpInstanceName);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::getPtpInstanceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::PtpInstanceIndex const ptpInstanceIndex, Interface::GetPtpInstanceNameHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, ptpInstanceIndex, s_emptyAvdeccFixedString);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::PtpInstance, ptpInstanceIndex, 0, configurationIndex);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::setPtpPortName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::PtpPortIndex const ptpPortIndex, model::AvdeccFixedString const& ptpPortName, Interface::SetPtpPortNameHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, ptpPortIndex, s_emptyAvdeccFixedString);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::PtpPort, ptpPortIndex, 0, configurationIndex, ptpPortName);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::getPtpPortName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::PtpPortIndex const ptpPortIndex, Interface::GetPtpPortNameHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, ptpPortIndex, s_emptyAvdeccFixedString);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::PtpPort, ptpPortIndex, 0, configurationIndex);
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
@@ -1541,6 +1737,301 @@ void CapabilityDelegate::getMemoryObjectLength(UniqueIdentifier const targetEnti
 	catch ([[maybe_unused]] std::exception const& e)
 	{
 		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getMemoryObjectLength: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::getDynamicInfo(UniqueIdentifier const targetEntityID, DynamicInfoParameters const& parameters, Interface::GetDynamicInfoHandler const& handler) const noexcept
+{
+	static auto s_DynamicInfoDispatch = std::unordered_map<protocol::AemCommandType::value_type, std::function<void(UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)>>{
+		// Get Configuration
+		{ protocol::AemCommandType::GetConfiguration.getValue(),
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			{
+				// Validate parameters
+				auto const& args = parameters.arguments;
+				auto constexpr ExpectedArgsCount = 0u;
+				if (args.size() != ExpectedArgsCount)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Invalid number of arguments for {} command ({} but expected {})", static_cast<std::string>(parameters.commandType), args.size(), ExpectedArgsCount);
+					throw std::invalid_argument("Invalid number of arguments for GetConfiguration command");
+				}
+				// No payload
+				dynamicInfos.emplace_back(la::avdecc::protocol::AemAecpStatus::Success, parameters.commandType, la::avdecc::MemoryBuffer{});
+			} },
+		// Get Stream Format
+		{ protocol::AemCommandType::GetStreamFormat.getValue(),
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			{
+				// Validate parameters
+				auto const& args = parameters.arguments;
+				auto constexpr ExpectedArgsCount = 2u;
+				if (args.size() != ExpectedArgsCount)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Invalid number of arguments for {} command ({} but expected {})", static_cast<std::string>(parameters.commandType), args.size(), ExpectedArgsCount);
+					throw std::invalid_argument("Invalid number of arguments for GetStreamFormat command");
+				}
+				try
+				{
+					auto const descriptorType = std::any_cast<model::DescriptorType>(args.at(0));
+					auto const descriptorIndex = std::any_cast<model::DescriptorIndex>(args.at(1));
+					auto const ser = la::avdecc::protocol::aemPayload::serializeGetStreamFormatCommand(descriptorType, descriptorIndex);
+					dynamicInfos.emplace_back(la::avdecc::protocol::AemAecpStatus::Success, la::avdecc::protocol::AemCommandType::GetStreamFormat, la::avdecc::MemoryBuffer{ ser.data(), ser.usedBytes() });
+				}
+				catch (std::bad_any_cast const&)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Incorrect argument type");
+					throw std::invalid_argument("Failed to serialize getDynamicInfo: Incorrect argument type");
+				}
+			} },
+		// Get Video Format
+		// Get Sensor Format
+		// Get Stream Info
+		{ protocol::AemCommandType::GetStreamInfo.getValue(),
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			{
+				// Validate parameters
+				auto const& args = parameters.arguments;
+				auto constexpr ExpectedArgsCount = 2u;
+				if (args.size() != ExpectedArgsCount)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Invalid number of arguments for {} command ({} but expected {})", static_cast<std::string>(parameters.commandType), args.size(), ExpectedArgsCount);
+					throw std::invalid_argument("Invalid number of arguments for GetStreamInfo command");
+				}
+				try
+				{
+					auto const descriptorType = std::any_cast<model::DescriptorType>(args.at(0));
+					auto const descriptorIndex = std::any_cast<model::DescriptorIndex>(args.at(1));
+					auto const ser = la::avdecc::protocol::aemPayload::serializeGetStreamInfoCommand(descriptorType, descriptorIndex);
+					dynamicInfos.emplace_back(la::avdecc::protocol::AemAecpStatus::Success, la::avdecc::protocol::AemCommandType::GetStreamInfo, la::avdecc::MemoryBuffer{ ser.data(), ser.usedBytes() });
+				}
+				catch (std::bad_any_cast const&)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Incorrect argument type");
+					throw std::invalid_argument("Failed to serialize getDynamicInfo: Incorrect argument type");
+				}
+			} },
+		// Get Name
+		{ protocol::AemCommandType::GetName.getValue(),
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			{
+				// Validate parameters
+				auto const& args = parameters.arguments;
+				auto constexpr ExpectedArgsCount = 4u;
+				if (args.size() != ExpectedArgsCount)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Invalid number of arguments for {} command ({} but expected {})", static_cast<std::string>(parameters.commandType), args.size(), ExpectedArgsCount);
+					throw std::invalid_argument("Invalid number of arguments for GetConfiguration command");
+				}
+				try
+				{
+					auto const configurationIndex = std::any_cast<model::ConfigurationIndex>(args.at(0));
+					auto const descriptorType = std::any_cast<model::DescriptorType>(args.at(1));
+					auto const descriptorIndex = std::any_cast<model::DescriptorIndex>(args.at(2));
+					auto const nameIndex = std::any_cast<std::uint16_t>(args.at(3));
+					auto const ser = la::avdecc::protocol::aemPayload::serializeGetNameCommand(descriptorType, descriptorIndex, nameIndex, configurationIndex);
+					dynamicInfos.emplace_back(la::avdecc::protocol::AemAecpStatus::Success, la::avdecc::protocol::AemCommandType::GetName, la::avdecc::MemoryBuffer{ ser.data(), ser.usedBytes() });
+				}
+				catch (std::bad_any_cast const&)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Incorrect argument type");
+					throw std::invalid_argument("Failed to serialize getDynamicInfo: Incorrect argument type");
+				}
+			} },
+		// Get Association ID
+		{ protocol::AemCommandType::GetAssociationID.getValue(),
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			{
+				// Validate parameters
+				auto const& args = parameters.arguments;
+				auto constexpr ExpectedArgsCount = 0u;
+				if (args.size() != ExpectedArgsCount)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Invalid number of arguments for {} command ({} but expected {})", static_cast<std::string>(parameters.commandType), args.size(), ExpectedArgsCount);
+					throw std::invalid_argument("Invalid number of arguments for GetAssociationID command");
+				}
+				// No payload
+				dynamicInfos.emplace_back(la::avdecc::protocol::AemAecpStatus::Success, parameters.commandType, la::avdecc::MemoryBuffer{});
+			} },
+		// Get Sampling Rate
+		{ protocol::AemCommandType::GetSamplingRate.getValue(),
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			{
+				// Validate parameters
+				auto const& args = parameters.arguments;
+				auto constexpr ExpectedArgsCount = 2u;
+				if (args.size() != ExpectedArgsCount)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Invalid number of arguments for {} command ({} but expected {})", static_cast<std::string>(parameters.commandType), args.size(), ExpectedArgsCount);
+					throw std::invalid_argument("Invalid number of arguments for GetSamplingRate command");
+				}
+				try
+				{
+					auto const descriptorType = std::any_cast<model::DescriptorType>(args.at(0));
+					auto const descriptorIndex = std::any_cast<model::DescriptorIndex>(args.at(1));
+					auto const ser = la::avdecc::protocol::aemPayload::serializeGetSamplingRateCommand(descriptorType, descriptorIndex);
+					dynamicInfos.emplace_back(la::avdecc::protocol::AemAecpStatus::Success, la::avdecc::protocol::AemCommandType::GetSamplingRate, la::avdecc::MemoryBuffer{ ser.data(), ser.usedBytes() });
+				}
+				catch (std::bad_any_cast const&)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Incorrect argument type");
+					throw std::invalid_argument("Failed to serialize getDynamicInfo: Incorrect argument type");
+				}
+			} },
+		// Get Clock Source
+		{ protocol::AemCommandType::GetClockSource.getValue(),
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			{
+				// Validate parameters
+				auto const& args = parameters.arguments;
+				auto constexpr ExpectedArgsCount = 1u;
+				if (args.size() != ExpectedArgsCount)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Invalid number of arguments for {} command ({} but expected {})", static_cast<std::string>(parameters.commandType), args.size(), ExpectedArgsCount);
+					throw std::invalid_argument("Invalid number of arguments for GetClockSource command");
+				}
+				try
+				{
+					auto const clockDomainIndex = std::any_cast<model::DescriptorIndex>(args.at(0));
+					auto const ser = la::avdecc::protocol::aemPayload::serializeGetClockSourceCommand(model::DescriptorType::ClockDomain, clockDomainIndex);
+					dynamicInfos.emplace_back(la::avdecc::protocol::AemAecpStatus::Success, la::avdecc::protocol::AemCommandType::GetClockSource, la::avdecc::MemoryBuffer{ ser.data(), ser.usedBytes() });
+				}
+				catch (std::bad_any_cast const&)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Incorrect argument type");
+					throw std::invalid_argument("Failed to serialize getDynamicInfo: Incorrect argument type");
+				}
+			} },
+		// Get Signal Selector
+		// Get Counters
+		{ protocol::AemCommandType::GetCounters.getValue(),
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			{
+				// Validate parameters
+				auto const& args = parameters.arguments;
+				auto constexpr ExpectedArgsCount = 2u;
+				if (args.size() != ExpectedArgsCount)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Invalid number of arguments for {} command ({} but expected {})", static_cast<std::string>(parameters.commandType), args.size(), ExpectedArgsCount);
+					throw std::invalid_argument("Invalid number of arguments for GetCounters command");
+				}
+				try
+				{
+					auto const descriptorType = std::any_cast<model::DescriptorType>(args.at(0));
+					auto const descriptorIndex = std::any_cast<model::DescriptorIndex>(args.at(1));
+					auto const ser = la::avdecc::protocol::aemPayload::serializeGetCountersCommand(descriptorType, descriptorIndex);
+					dynamicInfos.emplace_back(la::avdecc::protocol::AemAecpStatus::Success, la::avdecc::protocol::AemCommandType::GetCounters, la::avdecc::MemoryBuffer{ ser.data(), ser.usedBytes() });
+				}
+				catch (std::bad_any_cast const&)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Incorrect argument type");
+					throw std::invalid_argument("Failed to serialize getDynamicInfo: Incorrect argument type");
+				}
+			} },
+		// Get Memory Object Length
+		{ protocol::AemCommandType::GetMemoryObjectLength.getValue(),
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			{
+				// Validate parameters
+				auto const& args = parameters.arguments;
+				auto constexpr ExpectedArgsCount = 2u;
+				if (args.size() != ExpectedArgsCount)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Invalid number of arguments for {} command ({} but expected {})", static_cast<std::string>(parameters.commandType), args.size(), ExpectedArgsCount);
+					throw std::invalid_argument("Invalid number of arguments for GetMemoryObjectLength command");
+				}
+				try
+				{
+					auto const configurationIndex = std::any_cast<model::ConfigurationIndex>(args.at(0));
+					auto const memoryObjectIndex = std::any_cast<model::MemoryObjectIndex>(args.at(1));
+					auto const ser = la::avdecc::protocol::aemPayload::serializeGetMemoryObjectLengthCommand(configurationIndex, memoryObjectIndex);
+					dynamicInfos.emplace_back(la::avdecc::protocol::AemAecpStatus::Success, la::avdecc::protocol::AemCommandType::GetMemoryObjectLength, la::avdecc::MemoryBuffer{ ser.data(), ser.usedBytes() });
+				}
+				catch (std::bad_any_cast const&)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Incorrect argument type");
+					throw std::invalid_argument("Failed to serialize getDynamicInfo: Incorrect argument type");
+				}
+			} },
+		// Get Stream Backup
+		// Get Max Transit Time
+		{ protocol::AemCommandType::GetMaxTransitTime.getValue(),
+			[]([[maybe_unused]] UniqueIdentifier const targetEntityID, DynamicInfoParameter const& parameters, protocol::aemPayload::DynamicInfos& dynamicInfos)
+			{
+				// Validate parameters
+				auto const& args = parameters.arguments;
+				auto constexpr ExpectedArgsCount = 1u;
+				if (args.size() != ExpectedArgsCount)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Invalid number of arguments for {} command ({} but expected {})", static_cast<std::string>(parameters.commandType), args.size(), ExpectedArgsCount);
+					throw std::invalid_argument("Invalid number of arguments for GetMaxTransitTime command");
+				}
+				try
+				{
+					auto const streamIndex = std::any_cast<model::StreamIndex>(args.at(0));
+					auto const ser = la::avdecc::protocol::aemPayload::serializeGetMaxTransitTimeCommand(model::DescriptorType::StreamOutput, streamIndex);
+					dynamicInfos.emplace_back(la::avdecc::protocol::AemAecpStatus::Success, la::avdecc::protocol::AemCommandType::GetMaxTransitTime, la::avdecc::MemoryBuffer{ ser.data(), ser.usedBytes() });
+				}
+				catch (std::bad_any_cast const&)
+				{
+					LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Incorrect argument type");
+					throw std::invalid_argument("Failed to serialize getDynamicInfo: Incorrect argument type");
+				}
+			} },
+	};
+
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, s_emptyDynamicInfoParameters);
+	try
+	{
+		auto dynamicInfos = la::avdecc::protocol::aemPayload::DynamicInfos{};
+		for (auto const& dynInfo : parameters)
+		{
+			auto const& it = s_DynamicInfoDispatch.find(dynInfo.commandType.getValue());
+			if (it == s_DynamicInfoDispatch.end())
+			{
+				LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: Unhandled command type {} ({})", std::string(dynInfo.commandType), utils::toHexString(dynInfo.commandType.getValue()));
+				utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+				return;
+			}
+			it->second(targetEntityID, dynInfo, dynamicInfos);
+#pragma message("TODO: Somehow, check for maximum payload size (both send AND recv")
+		}
+		auto const ser = protocol::aemPayload::serializeGetDynamicInfoCommand(dynamicInfos);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetDynamicInfo, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getDynamicInfo: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::setMaxTransitTime(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, Interface::SetMaxTransitTimeHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, std::chrono::nanoseconds{ 0u });
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetMaxTransitTimeCommand(model::DescriptorType::StreamOutput, streamIndex, static_cast<std::uint64_t>(maxTransitTime.count()));
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetMaxTransitTime, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setMaxTransitTime: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::getMaxTransitTime(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, Interface::GetMaxTransitTimeHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, std::chrono::nanoseconds{ 0u });
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetMaxTransitTimeCommand(model::DescriptorType::StreamOutput, streamIndex);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetMaxTransitTime, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getMaxTransitTime: {}", e.what());
 		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
 	}
 }
@@ -2109,7 +2600,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 						// Deserialize configuration descriptor
 						auto configurationDescriptor = protocol::aemPayload::deserializeReadConfigurationDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::ConfigurationDescriptorHandler>(protocolViolationCallback, controllerInterface, targetID, status, static_cast<model::ConfigurationIndex>(descriptorIndex), configurationDescriptor); // Passing descriptorIndex as ConfigurationIndex here is NOT an error. See 7.4.5.1
+						answerCallback.invoke<controller::Interface::ConfigurationDescriptorHandler>(protocolViolationCallback, controllerInterface, targetID, status, static_cast<model::ConfigurationIndex>(descriptorIndex), configurationDescriptor); // Passing descriptorIndex as ConfigurationIndex here is NOT an error. See IEEE1722.1-2013 Clause 7.4.5.1
 						break;
 					}
 
@@ -2293,6 +2784,33 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 						break;
 					}
 
+					case model::DescriptorType::Timing:
+					{
+						// Deserialize timing descriptor
+						auto timingDescriptor = protocol::aemPayload::deserializeReadTimingDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<controller::Interface::TimingDescriptorHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, timingDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::PtpInstance:
+					{
+						// Deserialize ptp instance descriptor
+						auto ptpInstanceDescriptor = protocol::aemPayload::deserializeReadPtpInstanceDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<controller::Interface::PtpInstanceDescriptorHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, ptpInstanceDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::PtpPort:
+					{
+						// Deserialize ptp port descriptor
+						auto ptpPortDescriptor = protocol::aemPayload::deserializeReadPtpPortDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<controller::Interface::PtpPortDescriptorHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, ptpPortDescriptor);
+						break;
+					}
+
 					default:
 						AVDECC_ASSERT(false, "Unhandled descriptor type");
 						break;
@@ -2413,7 +2931,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 				if (descriptorType == model::DescriptorType::StreamInput)
 				{
 					answerCallback.invoke<controller::Interface::GetStreamInputInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, streamInfo);
-					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
+					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (IEEE1722.1-2013 Clause 7.5.2)
 					{
 						utils::invokeProtectedMethod(&controller::Delegate::onStreamInputInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, streamInfo, true);
 					}
@@ -2421,7 +2939,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 				else if (descriptorType == model::DescriptorType::StreamOutput)
 				{
 					answerCallback.invoke<controller::Interface::GetStreamOutputInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, streamInfo);
-					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
+					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (IEEE1722.1-2013 Clause 7.5.2)
 					{
 						utils::invokeProtectedMethod(&controller::Delegate::onStreamOutputInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, streamInfo, true);
 					}
@@ -2544,6 +3062,40 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 						}
 						break;
 					}
+					case model::DescriptorType::JackInput:
+					{
+						switch (nameIndex)
+						{
+							case 0: // jack_name
+								answerCallback.invoke<controller::Interface::SetJackInputNameHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									utils::invokeProtectedMethod(&controller::Delegate::onJackInputNameChanged, delegate, controllerInterface, targetID, configurationIndex, descriptorIndex, name);
+								}
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for JackInput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::JackOutput:
+					{
+						switch (nameIndex)
+						{
+							case 0: // jack_name
+								answerCallback.invoke<controller::Interface::SetJackOutputNameHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									utils::invokeProtectedMethod(&controller::Delegate::onJackOutputNameChanged, delegate, controllerInterface, targetID, configurationIndex, descriptorIndex, name);
+								}
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for JackOutput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
 					case model::DescriptorType::AvbInterface:
 					{
 						switch (nameIndex)
@@ -2646,6 +3198,57 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 						}
 						break;
 					}
+					case model::DescriptorType::Timing:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<controller::Interface::SetTimingNameHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									utils::invokeProtectedMethod(&controller::Delegate::onTimingNameChanged, delegate, controllerInterface, targetID, configurationIndex, descriptorIndex, name);
+								}
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for Timing Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::PtpInstance:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<controller::Interface::SetPtpInstanceNameHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									utils::invokeProtectedMethod(&controller::Delegate::onPtpInstanceNameChanged, delegate, controllerInterface, targetID, configurationIndex, descriptorIndex, name);
+								}
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for PtpInstance Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::PtpPort:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<controller::Interface::SetPtpPortNameHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									utils::invokeProtectedMethod(&controller::Delegate::onPtpPortNameChanged, delegate, controllerInterface, targetID, configurationIndex, descriptorIndex, name);
+								}
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for PtpPort Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
 					default:
 						LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled descriptorType in SET_NAME response: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 						break;
@@ -2742,6 +3345,32 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 						}
 						break;
 					}
+					case model::DescriptorType::JackInput:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<controller::Interface::GetJackInputNameHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for JackInput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::JackOutput:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<controller::Interface::GetJackOutputNameHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for JackOutput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
 					case model::DescriptorType::AvbInterface:
 					{
 						switch (nameIndex)
@@ -2816,6 +3445,45 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 								break;
 							default:
 								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for ClockDomain Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::Timing:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<controller::Interface::GetTimingNameHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for Timing Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::PtpInstance:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<controller::Interface::GetPtpInstanceNameHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for PtpInstance Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::PtpPort:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<controller::Interface::GetPtpPortNameHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for PtpPort Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 								break;
 						}
 						break;
@@ -2954,14 +3622,18 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 			}
 		},
 		// Get Control
-		{ protocol::AemCommandType::GetControl.getValue(),[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+		{ protocol::AemCommandType::GetControl.getValue(),[](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const [descriptorType, descriptorIndex, controlValues] = protocol::aemPayload::deserializeGetControlResponse(status, aem.getPayload());
+				auto const [descriptorType, descriptorIndex, packedControlValues] = protocol::aemPayload::deserializeGetControlResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::GetControlValuesHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, controlValues);
+				answerCallback.invoke<controller::Interface::GetControlValuesHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, packedControlValues);
+				if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change from the device itself
+				{
+					utils::invokeProtectedMethod(&controller::Delegate::onControlValuesChanged, delegate, controllerInterface, targetID, descriptorIndex, packedControlValues);
+				}
 			}
 		},
 		// Start Streaming
@@ -3052,7 +3724,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 				if (descriptorType == model::DescriptorType::AvbInterface)
 				{
 					answerCallback.invoke<controller::Interface::GetAvbInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, avbInfo);
-					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
+					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (IEEE1722.1-2013 Clause 7.5.2)
 					{
 						utils::invokeProtectedMethod(&controller::Delegate::onAvbInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, avbInfo);
 					}
@@ -3070,7 +3742,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 
 				// Notify handlers
 				answerCallback.invoke<controller::Interface::GetAsPathHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, asPath);
-				if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
+				if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (IEEE1722.1-2013 Clause 7.5.2)
 				{
 					utils::invokeProtectedMethod(&controller::Delegate::onAsPathChanged, delegate, controllerInterface, targetID, descriptorIndex, asPath);
 				}
@@ -3331,6 +4003,481 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		},
 		// Set Stream Backup
 		// Get Stream Backup
+		// Get Dynamic Info
+		{ protocol::AemCommandType::GetDynamicInfo.getValue(),[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+			{
+				// Deserialize payload
+				auto const dynamicInfos = protocol::aemPayload::deserializeGetDynamicInfoResponse(status, aem.getPayload());
+				auto const targetID = aem.getTargetEntityID();
+
+				auto parameters = DynamicInfoParameters{};
+
+				// Unpack responses if SUCCESS
+				if (status == LocalEntity::AemCommandStatus::Success)
+				{
+					static auto s_DynamicInfoDispatch = std::unordered_map<protocol::AemCommandType::value_type, std::function<DynamicInfoParameter::Parameters(UniqueIdentifier const targetID, entity::LocalEntity::AemCommandStatus const status, protocol::AemAecpdu::Payload const payload)>>{
+						// Get Configuration
+						{ protocol::AemCommandType::GetConfiguration.getValue(),
+							[](UniqueIdentifier const /*targetID*/, entity::LocalEntity::AemCommandStatus const status, protocol::AemAecpdu::Payload const payload)
+							{
+								// Deserialize payload
+								auto const [configurationIndex] = protocol::aemPayload::deserializeGetConfigurationResponse(status, payload);
+
+								// Append to dynamic info parameters
+								auto parameters = DynamicInfoParameter::Parameters{};
+								parameters.emplace_back(configurationIndex);
+
+								return parameters;
+							} },
+						// Get Stream Format
+						{ protocol::AemCommandType::GetStreamFormat.getValue(),
+							[](UniqueIdentifier const /*targetID*/, entity::LocalEntity::AemCommandStatus const status, protocol::AemAecpdu::Payload const payload)
+							{
+								// Deserialize payload
+								auto const[descriptorType, descriptorIndex, streamFormat] = protocol::aemPayload::deserializeGetStreamFormatResponse(status, payload);
+
+								// Append to dynamic info parameters
+								auto parameters = DynamicInfoParameter::Parameters{};
+								parameters.emplace_back(descriptorType);
+								parameters.emplace_back(static_cast<model::StreamIndex>(descriptorIndex)); // descriptorIndex can only be a StreamIndex as of IEEE1722.1-2021
+								parameters.emplace_back(streamFormat);
+
+								// Validate values
+								switch (descriptorType)
+								{
+									case model::DescriptorType::StreamInput:
+									case model::DescriptorType::StreamOutput:
+										break;
+									default:
+										throw InvalidDescriptorTypeException();
+								}
+
+								return parameters;
+							} },
+						// Get Video Format
+						// Get Sensor Format
+						// Get Stream Info
+						{ protocol::AemCommandType::GetStreamInfo.getValue(),
+							[](UniqueIdentifier const /*targetID*/, entity::LocalEntity::AemCommandStatus const status, protocol::AemAecpdu::Payload const payload)
+							{
+								// Deserialize payload
+								auto const[descriptorType, descriptorIndex, streamInfo] = protocol::aemPayload::deserializeGetStreamInfoResponse(status, payload);
+
+								// Append to dynamic info parameters
+								auto parameters = DynamicInfoParameter::Parameters{};
+								parameters.emplace_back(descriptorType);
+								parameters.emplace_back(static_cast<model::StreamIndex>(descriptorIndex)); // descriptorIndex can only be a StreamIndex as of IEEE1722.1-2021
+								parameters.emplace_back(streamInfo);
+
+								// Validate values
+								switch (descriptorType)
+								{
+									case model::DescriptorType::StreamInput:
+									case model::DescriptorType::StreamOutput:
+										break;
+									default:
+										throw InvalidDescriptorTypeException();
+								}
+
+								return parameters;
+							} },
+						// Get Name
+						{ protocol::AemCommandType::GetName.getValue(),
+							[]([[maybe_unused]] UniqueIdentifier const targetID, entity::LocalEntity::AemCommandStatus const status, protocol::AemAecpdu::Payload const payload)
+							{
+								// Deserialize payload
+								auto const [descriptorType, descriptorIndex, nameIndex, configurationIndex, name] = protocol::aemPayload::deserializeGetNameResponse(status, payload);
+
+								// Append to dynamic info parameters
+								auto parameters = DynamicInfoParameter::Parameters{};
+								parameters.emplace_back(configurationIndex);
+								parameters.emplace_back(descriptorType);
+								parameters.emplace_back(descriptorIndex);
+								parameters.emplace_back(nameIndex);
+								parameters.emplace_back(name);
+
+								// Validate values
+								switch (descriptorType)
+								{
+									case model::DescriptorType::Entity:
+									{
+										if (descriptorIndex != 0)
+										{
+											LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Invalid descriptorIndex in GET_NAME response for Entity Descriptor: DescriptorIndex={}", descriptorIndex);
+											throw std::invalid_argument("Invalid descriptorIndex in GET_NAME response for Entity Descriptor");
+										}
+										if (configurationIndex != 0)
+										{
+											LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Invalid configurationIndex in GET_NAME response for Entity Descriptor: ConfigurationIndex={}", configurationIndex);
+											throw std::invalid_argument("Invalid configurationIndex in GET_NAME response for Entity Descriptor");
+										}
+										switch (nameIndex)
+										{
+											case 0: // entity_name
+												break;
+											case 1: // group_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for Entity Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for Entity Descriptor");
+										}
+										break;
+									}
+									case model::DescriptorType::Configuration:
+									{
+										if (configurationIndex != 0)
+										{
+											LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Invalid configurationIndex in GET_NAME response for Configuration Descriptor: ConfigurationIndex={}", configurationIndex);
+											throw std::invalid_argument("Invalid configurationIndex in GET_NAME response for Configuration Descriptor");
+										}
+										switch (nameIndex)
+										{
+											case 0: // object_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for Configuration Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for Configuration Descriptor");
+										}
+										break;
+									}
+									case model::DescriptorType::AudioUnit:
+									{
+										switch (nameIndex)
+										{
+											case 0: // object_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for AudioUnit Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for AudioUnit Descriptor");
+										}
+										break;
+									}
+									case model::DescriptorType::StreamInput:
+									{
+										switch (nameIndex)
+										{
+											case 0: // object_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for StreamInput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for StreamInput Descriptor");
+										}
+										break;
+									}
+									case model::DescriptorType::StreamOutput:
+									{
+										switch (nameIndex)
+										{
+											case 0: // object_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for StreamOutput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for StreamOutput Descriptor");
+										}
+										break;
+									}
+									case model::DescriptorType::JackInput:
+									{
+										switch (nameIndex)
+										{
+											case 0: // object_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for JackInput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for JackInput Descriptor");
+										}
+										break;
+									}
+									case model::DescriptorType::JackOutput:
+									{
+										switch (nameIndex)
+										{
+											case 0: // object_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for JackOutput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for JackOutput Descriptor");
+										}
+										break;
+									}
+									case model::DescriptorType::AvbInterface:
+									{
+										switch (nameIndex)
+										{
+											case 0: // object_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for AvbInterface Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for AvbInterface Descriptor");
+										}
+										break;
+									}
+									case model::DescriptorType::ClockSource:
+									{
+										switch (nameIndex)
+										{
+											case 0: // object_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for ClockSource Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for ClockSource Descriptor");
+										}
+										break;
+									}
+									case model::DescriptorType::MemoryObject:
+									{
+										switch (nameIndex)
+										{
+											case 0: // object_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for MemoryObject Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for MemoryObject Descriptor");
+										}
+										break;
+									}
+									case model::DescriptorType::AudioCluster:
+									{
+										switch (nameIndex)
+										{
+											case 0: // object_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for AudioCluster Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for AudioCluster Descriptor");
+										}
+										break;
+									}
+									case model::DescriptorType::Control:
+									{
+										switch (nameIndex)
+										{
+											case 0: // object_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for Control Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for Control Descriptor");
+										}
+										break;
+									}
+									case model::DescriptorType::ClockDomain:
+									{
+										switch (nameIndex)
+										{
+											case 0: // object_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for ClockDomain Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for ClockDomain Descriptor");
+										}
+										break;
+									}
+									case model::DescriptorType::Timing:
+									{
+										switch (nameIndex)
+										{
+											case 0: // object_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for Timing Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for Timing Descriptor");
+										}
+										break;
+									}
+									case model::DescriptorType::PtpInstance:
+									{
+										switch (nameIndex)
+										{
+											case 0: // object_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for PtpInstance Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for PtpInstance Descriptor");
+										}
+										break;
+									}
+									case model::DescriptorType::PtpPort:
+									{
+										switch (nameIndex)
+										{
+											case 0: // object_name
+												break;
+											default:
+												LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for PtpPort Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+												throw std::invalid_argument("Unhandled nameIndex in GET_NAME response for PtpPort Descriptor");
+										}
+										break;
+									}
+									default:
+										LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled descriptorType in GET_NAME response: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+										throw std::invalid_argument("Unhandled descriptorType in GET_NAME response");
+								}
+
+								return parameters;
+							} },
+						// Get Association ID
+						{ protocol::AemCommandType::GetAssociationID.getValue(),
+							[](UniqueIdentifier const /*targetID*/, entity::LocalEntity::AemCommandStatus const status, protocol::AemAecpdu::Payload const payload)
+							{
+								// Deserialize payload
+								auto const[associationID] = protocol::aemPayload::deserializeGetAssociationIDResponse(status, payload);
+
+								// Append to dynamic info parameters
+								auto parameters = DynamicInfoParameter::Parameters{};
+								parameters.emplace_back(associationID);
+
+								return parameters;
+							} },
+						// Get Sampling Rate
+						{ protocol::AemCommandType::GetSamplingRate.getValue(),
+							[](UniqueIdentifier const /*targetID*/, entity::LocalEntity::AemCommandStatus const status, protocol::AemAecpdu::Payload const payload)
+							{
+								// Deserialize payload
+								auto const[descriptorType, descriptorIndex, samplingRate] = protocol::aemPayload::deserializeGetSamplingRateResponse(status, payload);
+
+								// Append to dynamic info parameters
+								auto parameters = DynamicInfoParameter::Parameters{};
+								parameters.emplace_back(descriptorType);
+								parameters.emplace_back(descriptorIndex);
+								parameters.emplace_back(samplingRate);
+
+								// Validate values
+								switch (descriptorType)
+								{
+									case model::DescriptorType::AudioUnit:
+									case model::DescriptorType::VideoCluster:
+									case model::DescriptorType::SensorCluster:
+										break;
+									default:
+										throw InvalidDescriptorTypeException();
+								}
+
+								return parameters;
+							} },
+						// Get Clock Source
+						{ protocol::AemCommandType::GetClockSource.getValue(),
+							[](UniqueIdentifier const /*targetID*/, entity::LocalEntity::AemCommandStatus const status, protocol::AemAecpdu::Payload const payload)
+							{
+								// Deserialize payload
+								auto const[descriptorType, descriptorIndex, clockSourceIndex] = protocol::aemPayload::deserializeGetClockSourceResponse(status, payload);
+
+								// Append to dynamic info parameters
+								auto parameters = DynamicInfoParameter::Parameters{};
+								parameters.emplace_back(static_cast<model::ClockDomainIndex>(descriptorIndex)); // descriptorIndex can only be a ClockDomainIndex as of IEEE1722.1-2021
+								parameters.emplace_back(clockSourceIndex);
+
+								return parameters;
+							} },
+						// Get Signal Selector
+						// Get Counters
+						{ protocol::AemCommandType::GetCounters.getValue(),
+							[]([[maybe_unused]] UniqueIdentifier const targetID, entity::LocalEntity::AemCommandStatus const status, protocol::AemAecpdu::Payload const payload)
+							{
+								// Deserialize payload
+								auto const[descriptorType, descriptorIndex, validFlags, counters] = protocol::aemPayload::deserializeGetCountersResponse(status, payload);
+
+								// Append to dynamic info parameters
+								auto parameters = DynamicInfoParameter::Parameters{};
+								parameters.emplace_back(descriptorType);
+								parameters.emplace_back(descriptorIndex);
+								parameters.emplace_back(validFlags);
+								parameters.emplace_back(counters);
+
+								// Validate values
+								switch (descriptorType)
+								{
+									case model::DescriptorType::Entity:
+									case model::DescriptorType::AvbInterface:
+									case model::DescriptorType::ClockDomain:
+									case model::DescriptorType::StreamInput:
+									case model::DescriptorType::StreamOutput:
+										break;
+									default:
+										LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled descriptorType in GET_COUNTERS response: DescriptorType={} DescriptorIndex={}", utils::to_integral(descriptorType), descriptorIndex);
+										throw InvalidDescriptorTypeException();
+								}
+
+								return parameters;
+							} },
+						// Get Memory Object Length
+						{ protocol::AemCommandType::GetMemoryObjectLength.getValue(),
+							[](UniqueIdentifier const /*targetID*/, entity::LocalEntity::AemCommandStatus const status, protocol::AemAecpdu::Payload const payload)
+							{
+								// Deserialize payload
+								auto const[configurationIndex, memoryObjectIndex, length] = protocol::aemPayload::deserializeGetMemoryObjectLengthResponse(status, payload);
+
+								// Append to dynamic info parameters
+								auto parameters = DynamicInfoParameter::Parameters{};
+								parameters.emplace_back(configurationIndex);
+								parameters.emplace_back(memoryObjectIndex);
+								parameters.emplace_back(length);
+
+								return parameters;
+							} },
+						// Get Stream Backup
+						// Get Max Transit Time
+						{ protocol::AemCommandType::GetMaxTransitTime.getValue(),
+							[](UniqueIdentifier const /*targetID*/, entity::LocalEntity::AemCommandStatus const status, protocol::AemAecpdu::Payload const payload)
+							{
+								// Deserialize payload
+								auto const[descriptorType, streamIndex, maxTransitTime] = protocol::aemPayload::deserializeGetMaxTransitTimeResponse(status, payload);
+
+								// Append to dynamic info parameters
+								auto parameters = DynamicInfoParameter::Parameters{};
+								//parameters.emplace_back(descriptorType); // Ignored, descriptorType is not part of the response
+								parameters.emplace_back(streamIndex);
+								parameters.emplace_back(maxTransitTime);
+
+								return parameters;
+							} },
+					};
+
+					for (auto const& [dynamicInfoStatus, commandType, buffer] : dynamicInfos)
+					{
+						auto const& it = s_DynamicInfoDispatch.find(commandType.getValue());
+						if (it == s_DynamicInfoDispatch.end())
+						{
+							LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Failed to deserialize getDynamicInfo: Unhandled command type {} ({})", std::string(commandType), utils::toHexString(commandType.getValue()));
+							throw std::invalid_argument("Failed to deserialize getDynamicInfo: Unhandled command type");
+						}
+						auto const st = entity::LocalEntity::AemCommandStatus{ dynamicInfoStatus.getValue() };
+						auto arguments = it->second(targetID, st, protocol::AemAecpdu::Payload{ buffer.data(), buffer.size() });
+						parameters.emplace_back(DynamicInfoParameter{ st, commandType, std::move(arguments) });
+					}
+				}
+
+				// Notify handlers
+				answerCallback.invoke<controller::Interface::GetDynamicInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, parameters);
+			}
+		},
+		// Set Max Transit Time
+		{ protocol::AemCommandType::SetMaxTransitTime.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+			{
+				// Deserialize payload
+				auto const[descriptorType, streamIndex, maxTransitTime] = protocol::aemPayload::deserializeSetMaxTransitTimeResponse(status, aem.getPayload());
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				auto const transitTime = std::chrono::nanoseconds{ maxTransitTime };
+				answerCallback.invoke<controller::Interface::SetMaxTransitTimeHandler>(protocolViolationCallback, controllerInterface, targetID, status, streamIndex, transitTime);
+				if (aem.getUnsolicited() && delegate && !!status)
+				{
+					utils::invokeProtectedMethod(&controller::Delegate::onMaxTransitTimeChanged, delegate, controllerInterface, targetID, streamIndex, transitTime);
+				}
+			}
+		},
+		// Get Max Transit Time
+		{ protocol::AemCommandType::GetMaxTransitTime.getValue(),[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+			{
+				// Deserialize payload
+				auto const[descriptorType, streamIndex, maxTransitTime] = protocol::aemPayload::deserializeGetMaxTransitTimeResponse(status, aem.getPayload());
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				auto const transitTime = std::chrono::nanoseconds{ maxTransitTime };
+				answerCallback.invoke<controller::Interface::GetMaxTransitTimeHandler>(protocolViolationCallback, controllerInterface, targetID, status, streamIndex, transitTime);
+			}
+		},
 	};
 
 	auto const& it = s_Dispatch.find(responseCommandType.getValue());

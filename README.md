@@ -1,7 +1,8 @@
 # LA AVDECC
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/14038.svg)](https://scan.coverity.com/projects/l-acoustics-avdecc)
+[![Linux](https://github.com/L-Acoustics/avdecc/actions/workflows/linux.yml/badge.svg)](https://github.com/L-Acoustics/avdecc/actions/workflows/linux.yml)
 
-Copyright (C) 2016-2023, L-Acoustics and its contributors
+Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 ## What is LA_avdecc
 LA_avdecc is a set of open source libraries for controlling and monitoring AVB entities using the AVDECC protocol (IEEE 1722.1) compliant to Avnu Milan.
@@ -60,13 +61,13 @@ C language bindings over la_avdecc library.
 
 ### Windows
 - Windows 10
-- Visual Studio 2019 v16.3 or greater (using platform toolset v142)
+- Visual Studio 2022 v17.4 or greater (using platform toolset v143)
 - WinPcap 4.1.2 Developer's Pack (see [this file](externals/3rdparty/winpcap/README.md) for more details)
 - GitBash or cygwin
 
 ### macOS
 - macOS 10.13
-- Xcode 12
+- Xcode 14
 
 ### Linux
 - C++17 compliant compiler (for g++, v11.0 or greater)

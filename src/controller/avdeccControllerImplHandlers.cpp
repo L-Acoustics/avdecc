@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -32,10 +32,10 @@ namespace avdecc
 {
 namespace controller
 {
-static auto const s_MilanMandatoryStreamInputCounters = entity::StreamInputCounterValidFlags{ entity::StreamInputCounterValidFlag::MediaLocked, entity::StreamInputCounterValidFlag::MediaUnlocked, entity::StreamInputCounterValidFlag::StreamInterrupted, entity::StreamInputCounterValidFlag::SeqNumMismatch, entity::StreamInputCounterValidFlag::MediaReset, entity::StreamInputCounterValidFlag::TimestampUncertain, entity::StreamInputCounterValidFlag::UnsupportedFormat, entity::StreamInputCounterValidFlag::LateTimestamp, entity::StreamInputCounterValidFlag::EarlyTimestamp, entity::StreamInputCounterValidFlag::FramesRx }; // Milan Clause 6.8.10
-static auto const s_MilanMandatoryStreamOutputCounters = entity::StreamOutputCounterValidFlags{ entity::StreamOutputCounterValidFlag::StreamStart, entity::StreamOutputCounterValidFlag::StreamStop, entity::StreamOutputCounterValidFlag::MediaReset, entity::StreamOutputCounterValidFlag::TimestampUncertain, entity::StreamOutputCounterValidFlag::FramesTx }; // Milan Clause 6.7.7
-static auto const s_MilanMandatoryAvbInterfaceCounters = entity::AvbInterfaceCounterValidFlags{ entity::AvbInterfaceCounterValidFlag::LinkUp, entity::AvbInterfaceCounterValidFlag::LinkDown, entity::AvbInterfaceCounterValidFlag::GptpGmChanged }; // Milan Clause 6.6.3
-static auto const s_MilanMandatoryClockDomainCounters = entity::ClockDomainCounterValidFlags{ entity::ClockDomainCounterValidFlag::Locked, entity::ClockDomainCounterValidFlag::Unlocked }; // Milan Clause 6.11.2
+static auto const s_MilanMandatoryStreamInputCounters = entity::StreamInputCounterValidFlags{ entity::StreamInputCounterValidFlag::MediaLocked, entity::StreamInputCounterValidFlag::MediaUnlocked, entity::StreamInputCounterValidFlag::StreamInterrupted, entity::StreamInputCounterValidFlag::SeqNumMismatch, entity::StreamInputCounterValidFlag::MediaReset, entity::StreamInputCounterValidFlag::TimestampUncertain, entity::StreamInputCounterValidFlag::UnsupportedFormat, entity::StreamInputCounterValidFlag::LateTimestamp, entity::StreamInputCounterValidFlag::EarlyTimestamp, entity::StreamInputCounterValidFlag::FramesRx }; // Milan-2019 Clause 6.8.10
+static auto const s_MilanMandatoryStreamOutputCounters = entity::StreamOutputCounterValidFlags{ entity::StreamOutputCounterValidFlag::StreamStart, entity::StreamOutputCounterValidFlag::StreamStop, entity::StreamOutputCounterValidFlag::MediaReset, entity::StreamOutputCounterValidFlag::TimestampUncertain, entity::StreamOutputCounterValidFlag::FramesTx }; // Milan-2019 Clause 6.7.7
+static auto const s_MilanMandatoryAvbInterfaceCounters = entity::AvbInterfaceCounterValidFlags{ entity::AvbInterfaceCounterValidFlag::LinkUp, entity::AvbInterfaceCounterValidFlag::LinkDown, entity::AvbInterfaceCounterValidFlag::GptpGmChanged }; // Milan-2019 Clause 6.6.3
+static auto const s_MilanMandatoryClockDomainCounters = entity::ClockDomainCounterValidFlags{ entity::ClockDomainCounterValidFlag::Locked, entity::ClockDomainCounterValidFlag::Unlocked }; // Milan-2019 Clause 6.11.2
 
 /* ************************************************************ */
 /* Result handlers                                              */
@@ -87,6 +87,511 @@ void ControllerImpl::onGetMilanInfoResult(entity::controller::Interface const* c
 	}
 }
 
+void ControllerImpl::onEmptyGetDynamicInfoResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onEmptyGetDynamicInfoResult: {}", entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+
+		if (entity.checkAndClearExpectedCheckDynamicInfoSupported())
+		{
+			if (!!status)
+			{
+				entity.setGetDynamicInfoSupported(true);
+			}
+			else
+			{
+				if (!processEmptyGetDynamicInfoFailureStatus(status, &entity))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &entity, QueryCommandError::CheckDynamicInfoSupported);
+					return;
+				}
+			}
+
+			// Got all expected "descriptors"check dynamic info supported"
+			if (entity.gotExpectedCheckDynamicInfoSupported())
+			{
+				// Clear this enumeration step and check for next one
+				entity.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::CheckDynamicInfoSupported);
+				checkEnumerationSteps(&entity);
+			}
+		}
+	}
+}
+
+void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::controller::DynamicInfoParameters const& resultParameters, entity::controller::DynamicInfoParameters const& sentParameters, std::uint16_t const packetID, ControlledEntityImpl::EnumerationStep const step) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onGetDynamicInfoResult (PacketID={}): {}", packetID, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+
+		if (entity.checkAndClearExpectedGetDynamicInfo(packetID))
+		{
+			auto updatedStatus = status;
+
+			if (!!updatedStatus)
+			{
+				if (resultParameters.size() != sentParameters.size())
+				{
+					LOG_CONTROLLER_DEBUG(entityID, "GetDynamicInfo failed: resultParameters.size() != sentParameters.size()");
+					updatedStatus = entity::ControllerEntity::AemCommandStatus::ProtocolError;
+				}
+			}
+
+			/*
+			  For the time being, we reject the whole command if there is at least one error in a sub-command.
+			  This is easier to handle, as the fallback will be to query everything again one by one without having to keep track of what was already queried.
+			  Improvement would be to handle each sub-command error individually and only retrieve the missing information.
+			  When doing this, we shall probably remove the generic handle of the error (the 'if' with the 'break' inside it) and handle errors in each commandType so we can query what we are missing.
+			  We'll probably no longer the 'gotError' variable either as we'll have some sort of 'processGetDynamicInfoFailureStatus' for each commandType to fallback if needed. Be careful with the main status code as well, as processGetDynamicInfoFailureStatus doesn't expect to be called with SUCCESS.
+			  The best solution would be to be able to dispatch to the real onXXXResult handler for each commandType.
+			  See https://github.com/L-Acoustics/avdecc/issues/141
+			*/
+			auto gotError = !updatedStatus;
+			if (!gotError)
+			{
+				try
+				{
+					for (auto const& [st, commandType, arguments] : resultParameters)
+					{
+						gotError |= !st;
+						if (gotError)
+						{
+							updatedStatus = st;
+							LOG_CONTROLLER_DEBUG(entityID, "GetDynamicInfo failed for commandType={} with status={}", static_cast<std::string>(commandType), entity::ControllerEntity::statusToString(st));
+							break;
+						}
+
+						if (commandType == la::avdecc::protocol::AemCommandType::GetConfiguration)
+						{
+							// Shouldn't be used
+						}
+						else if (commandType == la::avdecc::protocol::AemCommandType::GetStreamFormat)
+						{
+							auto const descriptorType = std::any_cast<entity::model::DescriptorType>(arguments.at(0));
+							auto const streamIndex = std::any_cast<entity::model::StreamIndex>(arguments.at(1));
+							auto const streamFormat = std::any_cast<entity::model::StreamFormat>(arguments.at(2));
+
+							switch (descriptorType)
+							{
+								case entity::model::DescriptorType::StreamInput:
+								{
+									updateStreamInputFormat(*controlledEntity, streamIndex, streamFormat, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+									break;
+								}
+								case entity::model::DescriptorType::StreamOutput:
+								{
+									updateStreamOutputFormat(*controlledEntity, streamIndex, streamFormat, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+									break;
+								}
+								default:
+									LOG_CONTROLLER_DEBUG(entityID, "Unhandled descriptorType in GET_STREAM_FORMAT response: {}", utils::to_integral(descriptorType));
+									break;
+							}
+						}
+						else if (commandType == la::avdecc::protocol::AemCommandType::GetStreamInfo)
+						{
+							AVDECC_ASSERT(false, "TODO");
+						}
+						else if (commandType == la::avdecc::protocol::AemCommandType::GetName)
+						{
+							auto const configurationIndex = std::any_cast<entity::model::ConfigurationIndex>(arguments.at(0));
+							auto const descriptorType = std::any_cast<entity::model::DescriptorType>(arguments.at(1));
+							auto const descriptorIndex = std::any_cast<entity::model::DescriptorIndex>(arguments.at(2));
+							auto const nameIndex = std::any_cast<std::uint16_t>(arguments.at(3));
+							auto const name = std::any_cast<entity::model::AvdeccFixedString>(arguments.at(4));
+
+#pragma message("TODO: Use an unordered_map of std::function (with std::bind) to dispatch descriptorType")
+							switch (descriptorType)
+							{
+								case entity::model::DescriptorType::Entity:
+								{
+									// Shouldn't be used
+									break;
+								}
+								case entity::model::DescriptorType::Configuration:
+								{
+									switch (nameIndex)
+									{
+										case 0: // object_name
+											updateConfigurationName(*controlledEntity, descriptorIndex, name, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull); // CAUTION: descriptorIndex is the configurationIndex here (see IEEE1722.1-2021 Clause 7.4.18.1)
+											break;
+										default:
+											LOG_CONTROLLER_DEBUG(entityID, "Unhandled nameIndex in GET_NAME response for Configuration Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+											break;
+									}
+									break;
+								}
+								case entity::model::DescriptorType::AudioUnit:
+								{
+									switch (nameIndex)
+									{
+										case 0: // object_name
+											updateAudioUnitName(*controlledEntity, configurationIndex, descriptorIndex, name, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+											break;
+										default:
+											LOG_CONTROLLER_DEBUG(entityID, "Unhandled nameIndex in GET_NAME response for AudioUnit Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+											break;
+									}
+									break;
+								}
+								case entity::model::DescriptorType::StreamInput:
+								{
+									switch (nameIndex)
+									{
+										case 0: // object_name
+											updateStreamInputName(*controlledEntity, configurationIndex, descriptorIndex, name, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+											break;
+										default:
+											LOG_CONTROLLER_DEBUG(entityID, "Unhandled nameIndex in GET_NAME response for StreamInput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+											break;
+									}
+									break;
+								}
+								case entity::model::DescriptorType::StreamOutput:
+								{
+									switch (nameIndex)
+									{
+										case 0: // object_name
+											updateStreamOutputName(*controlledEntity, configurationIndex, descriptorIndex, name, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+											break;
+										default:
+											LOG_CONTROLLER_DEBUG(entityID, "Unhandled nameIndex in GET_NAME response for StreamOutput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+											break;
+									}
+									break;
+								}
+								case entity::model::DescriptorType::JackInput:
+								{
+									switch (nameIndex)
+									{
+										case 0: // object_name
+											updateJackInputName(*controlledEntity, configurationIndex, descriptorIndex, name, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+											break;
+										default:
+											LOG_CONTROLLER_DEBUG(entityID, "Unhandled nameIndex in GET_NAME response for JackInput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+											break;
+									}
+									break;
+								}
+								case entity::model::DescriptorType::JackOutput:
+								{
+									switch (nameIndex)
+									{
+										case 0: // object_name
+											updateJackOutputName(*controlledEntity, configurationIndex, descriptorIndex, name, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+											break;
+										default:
+											LOG_CONTROLLER_DEBUG(entityID, "Unhandled nameIndex in GET_NAME response for JackOutput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+											break;
+									}
+									break;
+								}
+								case entity::model::DescriptorType::AvbInterface:
+								{
+									switch (nameIndex)
+									{
+										case 0: // object_name
+											updateAvbInterfaceName(*controlledEntity, configurationIndex, descriptorIndex, name, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+											break;
+										default:
+											LOG_CONTROLLER_DEBUG(entityID, "Unhandled nameIndex in GET_NAME response for AvbInterface Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+											break;
+									}
+									break;
+								}
+								case entity::model::DescriptorType::ClockSource:
+								{
+									switch (nameIndex)
+									{
+										case 0: // object_name
+											updateClockSourceName(*controlledEntity, configurationIndex, descriptorIndex, name, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+											break;
+										default:
+											LOG_CONTROLLER_DEBUG(entityID, "Unhandled nameIndex in GET_NAME response for ClockSource Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+											break;
+									}
+									break;
+								}
+								case entity::model::DescriptorType::MemoryObject:
+								{
+									switch (nameIndex)
+									{
+										case 0: // object_name
+											updateMemoryObjectName(*controlledEntity, configurationIndex, descriptorIndex, name, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+											break;
+										default:
+											LOG_CONTROLLER_DEBUG(entityID, "Unhandled nameIndex in GET_NAME response for MemoryObject Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+											break;
+									}
+									break;
+								}
+								case entity::model::DescriptorType::AudioCluster:
+								{
+									switch (nameIndex)
+									{
+										case 0: // object_name
+											updateAudioClusterName(*controlledEntity, configurationIndex, descriptorIndex, name, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+											break;
+										default:
+											LOG_CONTROLLER_DEBUG(entityID, "Unhandled nameIndex in GET_NAME response for AudioCluster Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+											break;
+									}
+									break;
+								}
+								case entity::model::DescriptorType::Control:
+								{
+									switch (nameIndex)
+									{
+										case 0: // object_name
+											updateControlName(*controlledEntity, configurationIndex, descriptorIndex, name, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+											break;
+										default:
+											LOG_CONTROLLER_DEBUG(entityID, "Unhandled nameIndex in GET_NAME response for Control Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+											break;
+									}
+									break;
+								}
+								case entity::model::DescriptorType::ClockDomain:
+								{
+									switch (nameIndex)
+									{
+										case 0: // object_name
+											updateClockDomainName(*controlledEntity, configurationIndex, descriptorIndex, name, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+											break;
+										default:
+											LOG_CONTROLLER_DEBUG(entityID, "Unhandled nameIndex in GET_NAME response for ClockDomain Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+											break;
+									}
+									break;
+								}
+								case entity::model::DescriptorType::Timing:
+								{
+									switch (nameIndex)
+									{
+										case 0: // object_name
+											updateTimingName(*controlledEntity, configurationIndex, descriptorIndex, name, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+											break;
+										default:
+											LOG_CONTROLLER_DEBUG(entityID, "Unhandled nameIndex in GET_NAME response for Timing Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+											break;
+									}
+									break;
+								}
+								case entity::model::DescriptorType::PtpInstance:
+								{
+									switch (nameIndex)
+									{
+										case 0: // object_name
+											updatePtpInstanceName(*controlledEntity, configurationIndex, descriptorIndex, name, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+											break;
+										default:
+											LOG_CONTROLLER_DEBUG(entityID, "Unhandled nameIndex in GET_NAME response for PtpInstance Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+											break;
+									}
+									break;
+								}
+								case entity::model::DescriptorType::PtpPort:
+								{
+									switch (nameIndex)
+									{
+										case 0: // object_name
+											updatePtpPortName(*controlledEntity, configurationIndex, descriptorIndex, name, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+											break;
+										default:
+											LOG_CONTROLLER_DEBUG(entityID, "Unhandled nameIndex in GET_NAME response for PtpPort Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+											break;
+									}
+									break;
+								}
+								default:
+									LOG_CONTROLLER_DEBUG(entityID, "Unhandled descriptorType in GET_NAME response: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+									break;
+							}
+						}
+						else if (commandType == la::avdecc::protocol::AemCommandType::GetAssociationID)
+						{
+							AVDECC_ASSERT(false, "TODO");
+						}
+						else if (commandType == la::avdecc::protocol::AemCommandType::GetSamplingRate)
+						{
+							auto const descriptorType = std::any_cast<entity::model::DescriptorType>(arguments.at(0));
+							auto const descriptorIndex = std::any_cast<entity::model::DescriptorIndex>(arguments.at(1));
+							auto const samplingRate = std::any_cast<entity::model::SamplingRate>(arguments.at(2));
+
+							switch (descriptorType)
+							{
+								case entity::model::DescriptorType::AudioUnit:
+								{
+									updateAudioUnitSamplingRate(*controlledEntity, descriptorIndex, samplingRate, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+									break;
+								}
+								default:
+									LOG_CONTROLLER_DEBUG(entityID, "Unhandled descriptorType in GET_SAMPLING_RATE response: {}", utils::to_integral(descriptorType));
+									break;
+							}
+						}
+						else if (commandType == la::avdecc::protocol::AemCommandType::GetClockSource)
+						{
+							auto const clockDomainIndex = std::any_cast<entity::model::ClockDomainIndex>(arguments.at(0));
+							auto const clockSourceIndex = std::any_cast<entity::model::ClockSourceIndex>(arguments.at(1));
+
+							updateClockSource(*controlledEntity, clockDomainIndex, clockSourceIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+						}
+						else if (commandType == la::avdecc::protocol::AemCommandType::GetCounters)
+						{
+							auto const descriptorType = std::any_cast<entity::model::DescriptorType>(arguments.at(0));
+							auto const descriptorIndex = std::any_cast<entity::model::DescriptorIndex>(arguments.at(1));
+							auto const validFlag = std::any_cast<entity::model::DescriptorCounterValidFlag>(arguments.at(2));
+							auto const counters = std::any_cast<entity::model::DescriptorCounters>(arguments.at(3));
+
+							switch (descriptorType)
+							{
+								case entity::model::DescriptorType::Entity:
+								{
+									auto validCounters = entity::EntityCounterValidFlags{};
+									validCounters.assign(validFlag);
+									updateEntityCounters(entity, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+									break;
+								}
+								case entity::model::DescriptorType::StreamInput:
+								{
+									auto validCounters = entity::StreamInputCounterValidFlags{};
+									validCounters.assign(validFlag);
+
+									// If Milan device, validate mandatory counters are present
+									if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+									{
+										if ((validCounters & s_MilanMandatoryStreamInputCounters) != s_MilanMandatoryStreamInputCounters)
+										{
+											LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for STREAM_INPUT descriptor");
+											removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan);
+										}
+									}
+
+									updateStreamInputCounters(entity, descriptorIndex, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+									break;
+								}
+								case entity::model::DescriptorType::StreamOutput:
+								{
+									auto validCounters = entity::StreamOutputCounterValidFlags{};
+									validCounters.assign(validFlag);
+
+									// If Milan device, validate mandatory counters are present
+									if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+									{
+										if ((validCounters & s_MilanMandatoryStreamOutputCounters) != s_MilanMandatoryStreamOutputCounters)
+										{
+											LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for STREAM_OUTPUT descriptor");
+											removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan);
+										}
+									}
+
+									updateStreamOutputCounters(entity, descriptorIndex, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+									break;
+								}
+								case entity::model::DescriptorType::ClockDomain:
+								{
+									auto validCounters = entity::ClockDomainCounterValidFlags{};
+									validCounters.assign(validFlag);
+
+									// If Milan device, validate mandatory counters are present
+									if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+									{
+										if ((validCounters & s_MilanMandatoryClockDomainCounters) != s_MilanMandatoryClockDomainCounters)
+										{
+											LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for CLOCK_DOMAIN descriptor");
+											removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan);
+										}
+									}
+
+									updateClockDomainCounters(entity, descriptorIndex, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+									break;
+								}
+								case entity::model::DescriptorType::AvbInterface:
+								{
+									auto validCounters = entity::AvbInterfaceCounterValidFlags{};
+									validCounters.assign(validFlag);
+
+									// If Milan device, validate mandatory counters are present
+									if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+									{
+										if ((validCounters & s_MilanMandatoryAvbInterfaceCounters) != s_MilanMandatoryAvbInterfaceCounters)
+										{
+											LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for AVB_INTERFACE descriptor");
+											removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan);
+										}
+									}
+
+									updateAvbInterfaceCounters(entity, descriptorIndex, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+									break;
+								}
+								default:
+									LOG_CONTROLLER_DEBUG(entityID, "Unhandled descriptorType in GET_COUNTERS response: {}", utils::to_integral(descriptorType));
+									break;
+							}
+						}
+						else if (commandType == la::avdecc::protocol::AemCommandType::GetMemoryObjectLength)
+						{
+							auto const configurationIndex = std::any_cast<entity::model::ConfigurationIndex>(arguments.at(0));
+							auto const memoryObjectIndex = std::any_cast<entity::model::MemoryObjectIndex>(arguments.at(1));
+							auto const length = std::any_cast<std::uint64_t>(arguments.at(2));
+							updateMemoryObjectLength(*controlledEntity, configurationIndex, memoryObjectIndex, length, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+						}
+						else if (commandType == la::avdecc::protocol::AemCommandType::GetMaxTransitTime)
+						{
+							auto const streamIndex = std::any_cast<entity::model::StreamIndex>(arguments.at(0));
+							auto const maxTransitTime = std::any_cast<std::chrono::nanoseconds>(arguments.at(1));
+							updateMaxTransitTime(*controlledEntity, streamIndex, maxTransitTime, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+						}
+						else
+						{
+							LOG_CONTROLLER_DEBUG(entityID, "Unhandled commandType in GET_DYNAMIC_INFO response: CommandType={}", static_cast<std::string>(commandType));
+							AVDECC_ASSERT(false, "Unhandled commandType in GET_DYNAMIC_INFO response");
+						}
+					}
+				}
+				catch (std::bad_any_cast const&)
+				{
+					gotError = true;
+				}
+			}
+
+			if (gotError)
+			{
+				if (!processGetDynamicInfoFailureStatus(updatedStatus, &entity, sentParameters, packetID, step))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &entity, QueryCommandError::GetDynamicInfo);
+					return;
+				}
+			}
+
+			// Got all expected dynamic information (either descriptor dynamic information or dynamic information, because GET_DYNAMIC_INFO contains both)
+			if (entity.gotAllExpectedGetDynamicInfo())
+			{
+				if ((step == ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo && entity.gotAllExpectedDescriptorDynamicInfo()) || (step == ControlledEntityImpl::EnumerationStep::GetDynamicInfo && entity.gotAllExpectedDynamicInfo()))
+				{
+					// Clear this enumeration step and check for next one
+					controlledEntity->clearEnumerationStep(step);
+					checkEnumerationSteps(&entity);
+				}
+			}
+		}
+	}
+}
+
 void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onRegisterUnsolicitedNotificationsResult: {}", entity::ControllerEntity::statusToString(status));
@@ -100,6 +605,7 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 
 		if (entity.checkAndClearExpectedRegisterUnsol())
 		{
+			entity.setUnsolicitedNotificationsSupported(true); // Set to true by default, will be set to false if we get a failure status
 			if (!!status)
 			{
 				entity.setSubscribedToUnsolicitedNotifications(true);
@@ -114,7 +620,7 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 				}
 			}
 
-			// Got all expected descriptors
+			// Got all expected "register unsolicited notifications"
 			if (entity.gotExpectedRegisterUnsol())
 			{
 				// Clear this enumeration step and check for next one
@@ -175,14 +681,14 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 
 				// Search in the AEM cache for the AEM of the active configuration (if not ignored)
 				auto const entityModelID = descriptor.entityModelID;
-				auto cachedModel = std::optional<entity::model::EntityTree>{ std::nullopt };
+				auto cachedModel = std::optional<model::EntityNode>{ std::nullopt };
 				auto const& entityModelCache = EntityModelCache::getInstance();
 				// If AEM Cache is Enabled and the entity has an EntityModelID defined
 				if (!entity.shouldIgnoreCachedEntityModel() && entityModelCache.isCacheEnabled() && entityModelID)
 				{
 					if (EntityModelCache::isValidEntityModelID(entityModelID))
 					{
-						cachedModel = entityModelCache.getCachedEntityTree(entityModelID);
+						cachedModel = entityModelCache.getCachedEntityModel(entityModelID);
 					}
 					else
 					{
@@ -191,7 +697,7 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 				}
 
 				// Already cached, no need to get the remaining of EnumerationSteps::GetStaticModel, proceed with EnumerationSteps::GetDescriptorDynamicInfo
-				if (cachedModel && entity.setCachedEntityTree(*cachedModel, descriptor, _fullStaticModelEnumeration))
+				if (cachedModel && entity.setCachedEntityNode(std::move(*cachedModel), descriptor, _fullStaticModelEnumeration))
 				{
 					LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Loaded model for EntityModelID {}", utils::toHexString(entityModelID, true, false));
 					entity.addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -238,139 +744,197 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::controller::Interfa
 		{
 			if (!!status)
 			{
-				controlledEntity->setConfigurationDescriptor(descriptor, configurationIndex);
-				auto const isCurrentConfiguration = configurationIndex == controlledEntity->getCurrentConfigurationIndex();
-				// Get full descriptors for active configuration or if _fullStaticModelEnumeration is set
-				if (isCurrentConfiguration || _fullStaticModelEnumeration)
+				try
 				{
-					// Get Locales as soon as possible
+					controlledEntity->setConfigurationDescriptor(descriptor, configurationIndex);
+					auto const isCurrentConfiguration = configurationIndex == *controlledEntity->getCurrentConfigurationIndex(TreeModelAccessStrategy::NotFoundBehavior::Throw);
+					// Get full descriptors for active configuration or if _fullStaticModelEnumeration is set
+					if (isCurrentConfiguration || _fullStaticModelEnumeration)
 					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Locale);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+						// Get Locales as soon as possible
 						{
-							auto count = countIt->second;
-							for (auto index = entity::model::LocaleIndex(0); index < count; ++index)
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Locale);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
 							{
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Locale, index);
+								auto count = countIt->second;
+								for (auto index = entity::model::LocaleIndex(0); index < count; ++index)
+								{
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Locale, index);
+								}
+							}
+						}
+						// Get audio units
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::AudioUnit);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::AudioUnitIndex(0); index < count; ++index)
+								{
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AudioUnit, index);
+								}
+							}
+						}
+						// Get input streams
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::StreamInput);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::StreamIndex(0); index < count; ++index)
+								{
+									// Get Stream Descriptor
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamInput, index);
+								}
+							}
+						}
+						// Get output streams
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::StreamOutput);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::StreamIndex(0); index < count; ++index)
+								{
+									// Get Stream Descriptor
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamOutput, index);
+								}
+							}
+						}
+						// Get input jacks
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::JackInput);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::JackIndex(0); index < count; ++index)
+								{
+									// Get Jack Descriptor
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::JackInput, index);
+								}
+							}
+						}
+						// Get output jacks
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::JackOutput);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::JackIndex(0); index < count; ++index)
+								{
+									// Get Jack Descriptor
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::JackOutput, index);
+								}
+							}
+						}
+						// Get avb interfaces
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::AvbInterface);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
+								{
+									// Get AVBInterface Descriptor
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AvbInterface, index);
+								}
+							}
+						}
+						// Get clock sources
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::ClockSource);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::ClockSourceIndex(0); index < count; ++index)
+								{
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockSource, index);
+								}
+							}
+						}
+						// Get memory objects
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::MemoryObject);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::MemoryObjectIndex(0); index < count; ++index)
+								{
+									// Get Memory Object Descriptor
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::MemoryObject, index);
+								}
+							}
+						}
+						// Get controls
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Control);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::ControlIndex(0); index < count; ++index)
+								{
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Control, index);
+								}
+							}
+						}
+						// Get clock domains
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::ClockDomain);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
+								{
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockDomain, index);
+								}
+							}
+						}
+						// Get timings
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Timing);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::TimingIndex(0); index < count; ++index)
+								{
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Timing, index);
+								}
+							}
+						}
+						// Get ptp instances
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::PtpInstance);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::PtpInstanceIndex(0); index < count; ++index)
+								{
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::PtpInstance, index);
+								}
 							}
 						}
 					}
-					// Get audio units
+					// For non-active configurations, just get locales (and strings)
+					else
 					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::AudioUnit);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+						// Get Locales
 						{
-							auto count = countIt->second;
-							for (auto index = entity::model::AudioUnitIndex(0); index < count; ++index)
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Locale);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
 							{
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AudioUnit, index);
-							}
-						}
-					}
-					// Get input streams
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::StreamInput);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::StreamIndex(0); index < count; ++index)
-							{
-								// Get Stream Descriptor
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamInput, index);
-							}
-						}
-					}
-					// Get output streams
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::StreamOutput);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::StreamIndex(0); index < count; ++index)
-							{
-								// Get Stream Descriptor
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamOutput, index);
-							}
-						}
-					}
-					// Get avb interfaces
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::AvbInterface);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
-							{
-								// Get AVBInterface Descriptor
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AvbInterface, index);
-							}
-						}
-					}
-					// Get clock sources
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::ClockSource);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::ClockSourceIndex(0); index < count; ++index)
-							{
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockSource, index);
-							}
-						}
-					}
-					// Get memory objects
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::MemoryObject);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::MemoryObjectIndex(0); index < count; ++index)
-							{
-								// Get Memory Object Descriptor
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::MemoryObject, index);
-							}
-						}
-					}
-					// Get controls
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Control);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::ControlIndex(0); index < count; ++index)
-							{
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Control, index);
-							}
-						}
-					}
-					// Get clock domains
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::ClockDomain);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
-							{
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockDomain, index);
+								auto count = countIt->second;
+								for (auto index = entity::model::LocaleIndex(0); index < count; ++index)
+								{
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Locale, index);
+								}
 							}
 						}
 					}
 				}
-				// For non-active configurations, just get locales (and strings)
-				else
+				catch (ControlledEntity::Exception const&)
 				{
-					// Get Locales
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Locale);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::LocaleIndex(0); index < count; ++index)
-							{
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Locale, index);
-							}
-						}
-					}
+					controlledEntity->setGetFatalEnumerationError();
+					return;
 				}
 			}
 			else
@@ -413,9 +977,10 @@ void ControllerImpl::onAudioUnitDescriptorResult(entity::controller::Interface c
 				{
 					if (descriptor.numberOfStreamInputPorts != 0)
 					{
+						AVDECC_ASSERT(descriptor.baseStreamInputPort == 0, "descriptor.baseStreamInputPort should probably be 0");
 						for (auto index = entity::model::StreamPortIndex(0); index < descriptor.numberOfStreamInputPorts; ++index)
 						{
-							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamPortInput, index);
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamPortInput, descriptor.baseStreamInputPort + index);
 						}
 					}
 				}
@@ -423,9 +988,24 @@ void ControllerImpl::onAudioUnitDescriptorResult(entity::controller::Interface c
 				{
 					if (descriptor.numberOfStreamOutputPorts != 0)
 					{
+						AVDECC_ASSERT(descriptor.baseStreamOutputPort == 0, "descriptor.baseStreamOutputPort should probably be 0");
 						for (auto index = entity::model::StreamPortIndex(0); index < descriptor.numberOfStreamOutputPorts; ++index)
 						{
-							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamPortOutput, index);
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamPortOutput, descriptor.baseStreamOutputPort + index);
+						}
+					}
+				}
+				// Get external port input
+				// Get external port output
+				// Get internal port input
+				// Get internal port output
+				// Get controls
+				{
+					if (descriptor.numberOfControls != 0)
+					{
+						for (auto index = entity::model::ControlIndex(0); index < descriptor.numberOfControls; ++index)
+						{
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Control, descriptor.baseControl + index);
 						}
 					}
 				}
@@ -523,27 +1103,38 @@ void ControllerImpl::onStreamOutputDescriptorResult(entity::controller::Interfac
 	}
 }
 
-void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const interfaceIndex, entity::model::AvbInterfaceDescriptor const& descriptor) noexcept
+void ControllerImpl::onJackInputDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::JackDescriptor const& descriptor) noexcept
 {
-	LOG_CONTROLLER_TRACE(entityID, "onAvbInterfaceDescriptorResult (ConfigurationIndex={} InterfaceIndex={}): {}", configurationIndex, interfaceIndex, entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(entityID, "onJackInputDescriptorResult (ConfigurationIndex={} JackIndex={}): {}", configurationIndex, jackIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
-		if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::AvbInterface, interfaceIndex))
+		if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::JackInput, jackIndex))
 		{
 			if (!!status)
 			{
-				controlledEntity->setAvbInterfaceDescriptor(descriptor, configurationIndex, interfaceIndex);
+				controlledEntity->setJackInputDescriptor(descriptor, configurationIndex, jackIndex);
+
+				// Get controls
+				{
+					if (descriptor.numberOfControls != 0)
+					{
+						for (auto index = entity::model::ControlIndex(0); index < descriptor.numberOfControls; ++index)
+						{
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Control, descriptor.baseControl + index);
+						}
+					}
+				}
 			}
 			else
 			{
-				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AvbInterface, interfaceIndex))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::JackInput, jackIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceDescriptor);
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::JackInputDescriptor);
 					return;
 				}
 			}
@@ -555,6 +1146,129 @@ void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interfac
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 				checkEnumerationSteps(controlledEntity.get());
 			}
+		}
+	}
+}
+
+void ControllerImpl::onJackOutputDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::JackDescriptor const& descriptor) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onJackOutputDescriptorResult (ConfigurationIndex={} JackIndex={}): {}", configurationIndex, jackIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::JackOutput, jackIndex))
+		{
+			if (!!status)
+			{
+				controlledEntity->setJackOutputDescriptor(descriptor, configurationIndex, jackIndex);
+
+				// Get controls
+				{
+					if (descriptor.numberOfControls != 0)
+					{
+						for (auto index = entity::model::ControlIndex(0); index < descriptor.numberOfControls; ++index)
+						{
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Control, descriptor.baseControl + index);
+						}
+					}
+				}
+			}
+			else
+			{
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::JackOutput, jackIndex))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::JackOutputDescriptor);
+					return;
+				}
+			}
+
+			// Got all expected descriptors
+			if (controlledEntity->gotAllExpectedDescriptors())
+			{
+				// Clear this enumeration step and check for next one
+				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		}
+	}
+}
+
+void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const interfaceIndex, entity::model::AvbInterfaceDescriptor const& descriptor, ControlledEntityImpl::EnumerationStep const step) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onAvbInterfaceDescriptorResult (ConfigurationIndex={} InterfaceIndex={}): {}", configurationIndex, interfaceIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto const processSuccessHandler = [&descriptor, configurationIndex, interfaceIndex, &controlledEntity]()
+		{
+			controlledEntity->setAvbInterfaceDescriptor(descriptor, configurationIndex, interfaceIndex);
+		};
+		switch (step)
+		{
+			case ControlledEntityImpl::EnumerationStep::GetStaticModel:
+			{
+				if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::AvbInterface, interfaceIndex))
+				{
+					if (!!status)
+					{
+						processSuccessHandler();
+					}
+					else
+					{
+						if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AvbInterface, interfaceIndex))
+						{
+							controlledEntity->setGetFatalEnumerationError();
+							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceDescriptor);
+							return;
+						}
+					}
+					// Got all expected descriptors
+					if (controlledEntity->gotAllExpectedDescriptors())
+					{
+						// Clear this enumeration step and check for next one
+						controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
+						checkEnumerationSteps(controlledEntity.get());
+					}
+				}
+				break;
+			}
+			case ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo:
+			{
+				if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceDescriptor, interfaceIndex))
+				{
+					if (!!status)
+					{
+						processSuccessHandler();
+					}
+					else
+					{
+						if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceDescriptor, interfaceIndex, false))
+						{
+							controlledEntity->setGetFatalEnumerationError();
+							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceDescriptor);
+							return;
+						}
+					}
+					// Got all expected descriptor dynamic information
+					if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+					{
+						// Clear this enumeration step and check for next one
+						controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+						checkEnumerationSteps(controlledEntity.get());
+					}
+				}
+				break;
+			}
+			default:
+				AVDECC_ASSERT(false, "Invalid EnumerationStep");
+				break;
 		}
 	}
 }
@@ -597,7 +1311,7 @@ void ControllerImpl::onClockSourceDescriptorResult(entity::controller::Interface
 
 void ControllerImpl::onMemoryObjectDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::MemoryObjectDescriptor const& descriptor) noexcept
 {
-	LOG_CONTROLLER_TRACE(entityID, "onMemoryObjectDescriptorResult (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(entityID, "onMemoryObjectDescriptorResult (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -608,6 +1322,14 @@ void ControllerImpl::onMemoryObjectDescriptorResult(entity::controller::Interfac
 		{
 			if (!!status)
 			{
+				// Validate some fields
+				if (descriptor.length > descriptor.maximumLength)
+				{
+					auto& entity = *controlledEntity;
+					LOG_CONTROLLER_WARN(entityID, "Invalid MemoryObject.length value (greater than MemoryObject.maximumLength value): {} > {}", descriptor.length, descriptor.maximumLength);
+					removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					entity.setIgnoreCachedEntityModel();
+				}
 				controlledEntity->setMemoryObjectDescriptor(descriptor, configurationIndex, memoryObjectIndex);
 			}
 			else
@@ -645,24 +1367,30 @@ void ControllerImpl::onLocaleDescriptorResult(entity::controller::Interface cons
 			if (!!status)
 			{
 				controlledEntity->setLocaleDescriptor(descriptor, configurationIndex, localeIndex);
-				auto const& configTree = controlledEntity->getConfigurationTree(configurationIndex);
-				std::uint16_t countLocales{ 0u };
+				auto const* const configNode = controlledEntity->getModelAccessStrategy().getConfigurationNode(configurationIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (configNode)
 				{
-					auto const localeIt = configTree.staticModel.descriptorCounts.find(entity::model::DescriptorType::Locale);
-					if (localeIt != configTree.staticModel.descriptorCounts.end())
-						countLocales = localeIt->second;
-				}
-				auto const allLocalesLoaded = configTree.localeModels.size() == countLocales;
-				// We got all locales, now load strings for the desired locale
-				if (allLocalesLoaded)
-				{
-					auto* const entity = controlledEntity.get();
-					chooseLocale(entity, configurationIndex, _preferedLocale,
-						[this, entity, configurationIndex](entity::model::StringsIndex const stringsIndex)
+					//auto const& configTree = controlledEntity->getConfigurationTree(configurationIndex);
+					auto countLocales = std::uint16_t{ 0u };
+					{
+						auto const localeIt = configNode->staticModel.descriptorCounts.find(entity::model::DescriptorType::Locale);
+						if (localeIt != configNode->staticModel.descriptorCounts.end())
 						{
-							// Strings not in cache, we need to query the device
-							queryInformation(entity, configurationIndex, entity::model::DescriptorType::Strings, stringsIndex);
-						});
+							countLocales = localeIt->second;
+						}
+					}
+					auto const allLocalesLoaded = configNode->locales.size() == countLocales;
+					// We got all locales, now load strings for the desired locale
+					if (allLocalesLoaded)
+					{
+						auto* const entity = controlledEntity.get();
+						chooseLocale(entity, configurationIndex, _preferedLocale,
+							[this, entity, configurationIndex](entity::model::StringsIndex const stringsIndex)
+							{
+								// Strings not in cache, we need to query the device
+								queryInformation(entity, configurationIndex, entity::model::DescriptorType::Strings, stringsIndex);
+							});
+					}
 				}
 			}
 			else
@@ -736,6 +1464,17 @@ void ControllerImpl::onStreamPortInputDescriptorResult(entity::controller::Inter
 			if (!!status)
 			{
 				controlledEntity->setStreamPortInputDescriptor(descriptor, configurationIndex, streamPortIndex);
+
+				// Get controls
+				{
+					if (descriptor.numberOfControls != 0)
+					{
+						for (auto index = entity::model::ControlIndex(0); index < descriptor.numberOfControls; ++index)
+						{
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Control, descriptor.baseControl + index);
+						}
+					}
+				}
 				// Get audio clusters
 				{
 					if (descriptor.numberOfClusters != 0)
@@ -791,6 +1530,17 @@ void ControllerImpl::onStreamPortOutputDescriptorResult(entity::controller::Inte
 			if (!!status)
 			{
 				controlledEntity->setStreamPortOutputDescriptor(descriptor, configurationIndex, streamPortIndex);
+
+				// Get controls
+				{
+					if (descriptor.numberOfControls != 0)
+					{
+						for (auto index = entity::model::ControlIndex(0); index < descriptor.numberOfControls; ++index)
+						{
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Control, descriptor.baseControl + index);
+						}
+					}
+				}
 				// Get audio clusters
 				{
 					if (descriptor.numberOfClusters != 0)
@@ -976,6 +1726,135 @@ void ControllerImpl::onClockDomainDescriptorResult(entity::controller::Interface
 	}
 }
 
+void ControllerImpl::onTimingDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex, entity::model::TimingDescriptor const& descriptor) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onTimingDescriptorResult (ConfigurationIndex={} TimingIndex={}): {}", configurationIndex, timingIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::Timing, timingIndex))
+		{
+			if (!!status)
+			{
+				controlledEntity->setTimingDescriptor(descriptor, configurationIndex, timingIndex);
+			}
+			else
+			{
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Timing, timingIndex))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::TimingDescriptor);
+					return;
+				}
+			}
+
+			// Got all expected descriptors
+			if (controlledEntity->gotAllExpectedDescriptors())
+			{
+				// Clear this enumeration step and check for next one
+				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		}
+	}
+}
+
+void ControllerImpl::onPtpInstanceDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex, entity::model::PtpInstanceDescriptor const& descriptor) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onPtpInstanceDescriptorResult (ConfigurationIndex={} PtpInstanceIndex={}): {}", configurationIndex, ptpInstanceIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::PtpInstance, ptpInstanceIndex))
+		{
+			if (!!status)
+			{
+				controlledEntity->setPtpInstanceDescriptor(descriptor, configurationIndex, ptpInstanceIndex);
+
+				// Get controls
+				{
+					if (descriptor.numberOfControls != 0)
+					{
+						for (auto index = entity::model::ControlIndex(0); index < descriptor.numberOfControls; ++index)
+						{
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Control, descriptor.baseControl + index);
+						}
+					}
+				}
+				// Get ptp ports
+				{
+					if (descriptor.numberOfPtpPorts != 0)
+					{
+						for (auto index = entity::model::PtpPortIndex(0); index < descriptor.numberOfPtpPorts; ++index)
+						{
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::PtpPort, descriptor.basePtpPort + index);
+						}
+					}
+				}
+			}
+			else
+			{
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::PtpInstance, ptpInstanceIndex))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::PtpInstanceDescriptor);
+					return;
+				}
+			}
+
+			// Got all expected descriptors
+			if (controlledEntity->gotAllExpectedDescriptors())
+			{
+				// Clear this enumeration step and check for next one
+				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		}
+	}
+}
+
+void ControllerImpl::onPtpPortDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex, entity::model::PtpPortDescriptor const& descriptor) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onPtpPortDescriptorResult (ConfigurationIndex={} PtpPortIndex={}): {}", configurationIndex, ptpPortIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::PtpPort, ptpPortIndex))
+		{
+			if (!!status)
+			{
+				controlledEntity->setPtpPortDescriptor(descriptor, configurationIndex, ptpPortIndex);
+			}
+			else
+			{
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::PtpPort, ptpPortIndex))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::PtpPortDescriptor);
+					return;
+				}
+			}
+
+			// Got all expected descriptors
+			if (controlledEntity->gotAllExpectedDescriptors())
+			{
+				// Clear this enumeration step and check for next one
+				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		}
+	}
+}
+
 void ControllerImpl::onGetStreamInputInfoResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetStreamInputInfoResult (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
@@ -990,7 +1869,7 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::controller::Interface co
 			if (!!status)
 			{
 				// Use the "update**" method, there are many things to do
-				updateStreamInputInfo(*controlledEntity, streamIndex, info, true, true);
+				updateStreamInputInfo(*controlledEntity, streamIndex, info, true, true, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1003,7 +1882,7 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::controller::Interface co
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1027,7 +1906,7 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::controller::Interface c
 			if (!!status)
 			{
 				// Use the "update**" method, there are many things to do
-				updateStreamOutputInfo(*controlledEntity, streamIndex, info, true, true);
+				updateStreamOutputInfo(*controlledEntity, streamIndex, info, true, true, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1040,7 +1919,7 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::controller::Interface c
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1052,7 +1931,7 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::controller::Interface c
 
 void ControllerImpl::onGetAcquiredStateResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity) noexcept
 {
-	LOG_CONTROLLER_TRACE(entityID, "onGetAcquiredStateResult (OwningEntity={}): {}", owningEntity, entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(entityID, "onGetAcquiredStateResult (OwningEntity={}): {}", utils::toHexString(owningEntity), entity::ControllerEntity::statusToString(status));
 
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -1079,7 +1958,7 @@ void ControllerImpl::onGetAcquiredStateResult(entity::controller::Interface cons
 			updateAcquiredState(entity, acquireState, owningController);
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1091,7 +1970,7 @@ void ControllerImpl::onGetAcquiredStateResult(entity::controller::Interface cons
 
 void ControllerImpl::onGetLockedStateResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity) noexcept
 {
-	LOG_CONTROLLER_TRACE(entityID, "onGetLockedStateResult (LockingEntity={}): {}", lockingEntity, entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(entityID, "onGetLockedStateResult (LockingEntity={}): {}", utils::toHexString(lockingEntity), entity::ControllerEntity::statusToString(status));
 
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -1118,7 +1997,7 @@ void ControllerImpl::onGetLockedStateResult(entity::controller::Interface const*
 			updateLockedState(entity, lockState, lockingController);
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1143,7 +2022,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::controller::Inte
 			{
 				if (mapIndex == 0)
 				{
-					controlledEntity->clearStreamPortInputAudioMappings(streamPortIndex);
+					controlledEntity->clearStreamPortInputAudioMappings(streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 				}
 				bool isComplete{ true };
 				if (numberOfMaps != 0)
@@ -1154,7 +2033,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::controller::Inte
 				{
 					LOG_CONTROLLER_WARN(entityID, "onGetStreamPortInputAudioMapResult returned 0 as numberOfMaps but mappings array is not empty");
 				}
-				controlledEntity->addStreamPortInputAudioMappings(streamPortIndex, mappings);
+				controlledEntity->addStreamPortInputAudioMappings(streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 				if (!isComplete)
 				{
 					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex, mapIndex + 1);
@@ -1181,7 +2060,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::controller::Inte
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1206,7 +2085,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::controller::Int
 			{
 				if (mapIndex == 0)
 				{
-					controlledEntity->clearStreamPortOutputAudioMappings(streamPortIndex);
+					controlledEntity->clearStreamPortOutputAudioMappings(streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 				}
 				bool isComplete{ true };
 				if (numberOfMaps != 0)
@@ -1217,7 +2096,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::controller::Int
 				{
 					LOG_CONTROLLER_WARN(entityID, "onGetStreamPortOutputAudioMapResult returned 0 as numberOfMaps but mappings array is not empty");
 				}
-				controlledEntity->addStreamPortOutputAudioMappings(streamPortIndex, mappings);
+				controlledEntity->addStreamPortOutputAudioMappings(streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 				if (!isComplete)
 				{
 					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex, mapIndex + 1);
@@ -1244,7 +2123,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::controller::Int
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1269,7 +2148,7 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 			if (!!status)
 			{
 				// Use the "update**" method, there are many things to do
-				updateAvbInfo(entity, avbInterfaceIndex, info);
+				updateAvbInfo(entity, avbInterfaceIndex, info, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1282,22 +2161,26 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 
 				// Special case for gPTP info, we always want to have valid gPTP information in the AvbInterfaceDescriptor model (updated when an ADP is received, or GET_AVB_INFO unsolicited)
 				// So we have to retrieve the matching ADP information to force an update of the cached model
-				auto const& macAddress = entity.getNodeStaticModel(configurationIndex, avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels).macAddress;
-				auto& e = controlledEntity->getEntity();
-				auto const caps = e.getEntityCapabilities();
-				if (caps.test(entity::EntityCapability::GptpSupported))
+				auto const* const avbInterfaceDynamicModel = entity.getModelAccessStrategy().getAvbInterfaceNodeDynamicModel(configurationIndex, avbInterfaceIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (avbInterfaceDynamicModel)
 				{
-					// Search which InterfaceInformation matches this AvbInterfaceIndex (searching by Index, or by MacAddress in case the Index was not specified in ADP)
-					for (auto& [interfaceIndex, interfaceInfo] : e.getInterfacesInformation())
+					auto const& macAddress = avbInterfaceDynamicModel->macAddress;
+					auto& e = controlledEntity->getEntity();
+					auto const caps = e.getEntityCapabilities();
+					if (caps.test(entity::EntityCapability::GptpSupported))
 					{
-						// Do we even have gPTP info on this InterfaceInfo
-						if (interfaceInfo.gptpGrandmasterID)
+						// Search which InterfaceInformation matches this AvbInterfaceIndex (searching by Index, or by MacAddress in case the Index was not specified in ADP)
+						for (auto& [interfaceIndex, interfaceInfo] : e.getInterfacesInformation())
 						{
-							// Match with the passed AvbInterfaceIndex, or with macAddress if this ADP is the GlobalAvbInterfaceIndex
-							if (interfaceIndex == avbInterfaceIndex || (interfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == interfaceInfo.macAddress))
+							// Do we even have gPTP info on this InterfaceInfo
+							if (interfaceInfo.gptpGrandmasterID)
 							{
-								// Force InterfaceInfo with these gPTP info
-								updateGptpInformation(entity, avbInterfaceIndex, macAddress, *interfaceInfo.gptpGrandmasterID, *interfaceInfo.gptpDomainNumber);
+								// Match with the passed AvbInterfaceIndex, or with macAddress if this ADP is the GlobalAvbInterfaceIndex
+								if (interfaceIndex == avbInterfaceIndex || (interfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == interfaceInfo.macAddress))
+								{
+									// Force InterfaceInfo with these gPTP info
+									updateGptpInformation(entity, avbInterfaceIndex, macAddress, *interfaceInfo.gptpGrandmasterID, *interfaceInfo.gptpDomainNumber, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+								}
 							}
 						}
 					}
@@ -1305,7 +2188,7 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1328,7 +2211,7 @@ void ControllerImpl::onGetAsPathResult(entity::controller::Interface const* cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setAsPath(avbInterfaceIndex, asPath);
+				updateAsPath(*controlledEntity, avbInterfaceIndex, asPath, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1341,7 +2224,7 @@ void ControllerImpl::onGetAsPathResult(entity::controller::Interface const* cons
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1367,7 +2250,7 @@ void ControllerImpl::onGetEntityCountersResult(entity::controller::Interface con
 				auto& entity = *controlledEntity;
 
 				// Use the "update**" method, there are many things to do
-				updateEntityCounters(entity, validCounters, counters);
+				updateEntityCounters(entity, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1380,7 +2263,7 @@ void ControllerImpl::onGetEntityCountersResult(entity::controller::Interface con
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1416,7 +2299,7 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interfa
 				}
 
 				// Use the "update**" method, there are many things to do
-				updateAvbInterfaceCounters(entity, avbInterfaceIndex, validCounters, counters);
+				updateAvbInterfaceCounters(entity, avbInterfaceIndex, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1429,7 +2312,7 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interfa
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1465,7 +2348,7 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::controller::Interfac
 				}
 
 				// Use the "update**" method, there are many things to do
-				updateClockDomainCounters(entity, clockDomainIndex, validCounters, counters);
+				updateClockDomainCounters(entity, clockDomainIndex, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1478,7 +2361,7 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::controller::Interfac
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1514,7 +2397,7 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interfac
 				}
 
 				// Use the "update**" method, there are many things to do
-				updateStreamInputCounters(entity, streamIndex, validCounters, counters);
+				updateStreamInputCounters(entity, streamIndex, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1527,7 +2410,7 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interfac
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1563,7 +2446,7 @@ void ControllerImpl::onGetStreamOutputCountersResult(entity::controller::Interfa
 				}
 
 				// Use the "update**" method, there are many things to do
-				updateStreamOutputCounters(entity, streamIndex, validCounters, counters);
+				updateStreamOutputCounters(entity, streamIndex, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1576,7 +2459,7 @@ void ControllerImpl::onGetStreamOutputCountersResult(entity::controller::Interfa
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1599,7 +2482,7 @@ void ControllerImpl::onConfigurationNameResult(entity::controller::Interface con
 		{
 			if (!!status)
 			{
-				controlledEntity->setConfigurationName(configurationIndex, configurationName);
+				updateConfigurationName(*controlledEntity, configurationIndex, configurationName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1612,7 +2495,7 @@ void ControllerImpl::onConfigurationNameResult(entity::controller::Interface con
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -1635,7 +2518,7 @@ void ControllerImpl::onAudioUnitNameResult(entity::controller::Interface const* 
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, audioUnitIndex, &entity::model::ConfigurationTree::audioUnitModels, audioUnitName);
+				updateAudioUnitName(*controlledEntity, configurationIndex, audioUnitIndex, audioUnitName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1648,7 +2531,7 @@ void ControllerImpl::onAudioUnitNameResult(entity::controller::Interface const* 
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -1671,7 +2554,7 @@ void ControllerImpl::onAudioUnitSamplingRateResult(entity::controller::Interface
 		{
 			if (!!status)
 			{
-				controlledEntity->setSamplingRate(audioUnitIndex, samplingRate);
+				updateAudioUnitSamplingRate(*controlledEntity, audioUnitIndex, samplingRate, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1684,7 +2567,7 @@ void ControllerImpl::onAudioUnitSamplingRateResult(entity::controller::Interface
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -1707,7 +2590,7 @@ void ControllerImpl::onInputStreamNameResult(entity::controller::Interface const
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamInputModels, streamInputName);
+				updateStreamInputName(*controlledEntity, configurationIndex, streamIndex, streamInputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1720,7 +2603,7 @@ void ControllerImpl::onInputStreamNameResult(entity::controller::Interface const
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -1744,7 +2627,7 @@ void ControllerImpl::onInputStreamFormatResult(entity::controller::Interface con
 			if (!!status)
 			{
 				// Use the "update**" method, there are many things to do
-				updateStreamInputFormat(*controlledEntity, streamIndex, streamFormat);
+				updateStreamInputFormat(*controlledEntity, streamIndex, streamFormat, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1757,7 +2640,7 @@ void ControllerImpl::onInputStreamFormatResult(entity::controller::Interface con
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -1780,7 +2663,7 @@ void ControllerImpl::onOutputStreamNameResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamOutputModels, streamOutputName);
+				updateStreamOutputName(*controlledEntity, configurationIndex, streamIndex, streamOutputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1793,7 +2676,7 @@ void ControllerImpl::onOutputStreamNameResult(entity::controller::Interface cons
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -1817,7 +2700,7 @@ void ControllerImpl::onOutputStreamFormatResult(entity::controller::Interface co
 			if (!!status)
 			{
 				// Use the "update**" method, there are many things to do
-				updateStreamOutputFormat(*controlledEntity, streamIndex, streamFormat);
+				updateStreamOutputFormat(*controlledEntity, streamIndex, streamFormat, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1830,7 +2713,7 @@ void ControllerImpl::onOutputStreamFormatResult(entity::controller::Interface co
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -1840,33 +2723,69 @@ void ControllerImpl::onOutputStreamFormatResult(entity::controller::Interface co
 	}
 }
 
-void ControllerImpl::onAvbInterfaceNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& avbInterfaceName) noexcept
+void ControllerImpl::onInputJackNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& jackInputName) noexcept
 {
-	LOG_CONTROLLER_TRACE(entityID, "onAvbInterfaceNameResult (ConfigurationIndex={} AvbInterfaceIndex={}): {}", configurationIndex, avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(entityID, "onInputJackNameResult (ConfigurationIndex={} JackIndex={}): {}", configurationIndex, jackIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
-		if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, avbInterfaceIndex))
+		if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName, jackIndex))
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels, avbInterfaceName);
+				updateJackInputName(*controlledEntity, configurationIndex, jackIndex, jackInputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, avbInterfaceIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName, jackIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceName);
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::InputJackName);
 					return;
 				}
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			{
+				// Clear this enumeration step and check for next one
+				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		}
+	}
+}
+
+void ControllerImpl::onOutputJackNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& jackOutputName) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onOutputJackNameResult (ConfigurationIndex={} JackIndex={}): {}", configurationIndex, jackIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName, jackIndex))
+		{
+			if (!!status)
+			{
+				updateJackOutputName(*controlledEntity, configurationIndex, jackIndex, jackOutputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			}
+			else
+			{
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName, jackIndex, false))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::OutputJackName);
+					return;
+				}
+			}
+
+			// Got all expected descriptor dynamic information
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -1889,7 +2808,7 @@ void ControllerImpl::onClockSourceNameResult(entity::controller::Interface const
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, clockSourceIndex, &entity::model::ConfigurationTree::clockSourceModels, clockSourceName);
+				updateClockSourceName(*controlledEntity, configurationIndex, clockSourceIndex, clockSourceName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1902,7 +2821,7 @@ void ControllerImpl::onClockSourceNameResult(entity::controller::Interface const
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -1925,7 +2844,7 @@ void ControllerImpl::onMemoryObjectNameResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, memoryObjectIndex, &entity::model::ConfigurationTree::memoryObjectModels, memoryObjectName);
+				updateMemoryObjectName(*controlledEntity, configurationIndex, memoryObjectIndex, memoryObjectName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1938,7 +2857,7 @@ void ControllerImpl::onMemoryObjectNameResult(entity::controller::Interface cons
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -1961,7 +2880,7 @@ void ControllerImpl::onMemoryObjectLengthResult(entity::controller::Interface co
 		{
 			if (!!status)
 			{
-				controlledEntity->setMemoryObjectLength(configurationIndex, memoryObjectIndex, length);
+				updateMemoryObjectLength(*controlledEntity, configurationIndex, memoryObjectIndex, length, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1974,7 +2893,7 @@ void ControllerImpl::onMemoryObjectLengthResult(entity::controller::Interface co
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -1997,7 +2916,7 @@ void ControllerImpl::onAudioClusterNameResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, audioClusterIndex, &entity::model::ConfigurationTree::audioClusterModels, audioClusterName);
+				updateAudioClusterName(*controlledEntity, configurationIndex, audioClusterIndex, audioClusterName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -2010,7 +2929,7 @@ void ControllerImpl::onAudioClusterNameResult(entity::controller::Interface cons
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2033,7 +2952,7 @@ void ControllerImpl::onControlNameResult(entity::controller::Interface const* co
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, controlIndex, &entity::model::ConfigurationTree::controlModels, controlName);
+				updateControlName(*controlledEntity, configurationIndex, controlIndex, controlName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -2046,7 +2965,7 @@ void ControllerImpl::onControlNameResult(entity::controller::Interface const* co
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2072,7 +2991,7 @@ void ControllerImpl::onControlValuesResult(entity::controller::Interface const* 
 			if (!!st)
 			{
 				// Use the "update**" method, there are many things to do
-				if (!updateControlValues(*controlledEntity, controlIndex, packedControlValues))
+				if (!updateControlValues(*controlledEntity, controlIndex, packedControlValues, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull))
 				{
 					st = entity::ControllerEntity::AemCommandStatus::ProtocolError;
 				}
@@ -2086,7 +3005,7 @@ void ControllerImpl::onControlValuesResult(entity::controller::Interface const* 
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2109,7 +3028,7 @@ void ControllerImpl::onClockDomainNameResult(entity::controller::Interface const
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, clockDomainIndex, &entity::model::ConfigurationTree::clockDomainModels, clockDomainName);
+				updateClockDomainName(*controlledEntity, configurationIndex, clockDomainIndex, clockDomainName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -2122,7 +3041,7 @@ void ControllerImpl::onClockDomainNameResult(entity::controller::Interface const
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2145,7 +3064,7 @@ void ControllerImpl::onClockDomainSourceIndexResult(entity::controller::Interfac
 		{
 			if (!!status)
 			{
-				controlledEntity->setClockSource(clockDomainIndex, clockSourceIndex);
+				updateClockSource(*controlledEntity, clockDomainIndex, clockSourceIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -2158,7 +3077,115 @@ void ControllerImpl::onClockDomainSourceIndexResult(entity::controller::Interfac
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			{
+				// Clear this enumeration step and check for next one
+				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		}
+	}
+}
+
+void ControllerImpl::onTimingNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex, entity::model::AvdeccFixedString const& timingName) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onTimingNameResult (ConfigurationIndex={} TimingIndex={}): {}", configurationIndex, timingIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::TimingName, timingIndex))
+		{
+			if (!!status)
+			{
+				updateTimingName(*controlledEntity, configurationIndex, timingIndex, timingName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			}
+			else
+			{
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::TimingName, timingIndex, false))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::TimingName);
+					return;
+				}
+			}
+
+			// Got all expected descriptor dynamic information
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			{
+				// Clear this enumeration step and check for next one
+				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		}
+	}
+}
+
+void ControllerImpl::onPtpInstanceNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex, entity::model::AvdeccFixedString const& ptpInstanceName) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onPtpInstanceNameResult (ConfigurationIndex={} PtpInstanceIndex={}): {}", configurationIndex, ptpInstanceIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpInstanceName, ptpInstanceIndex))
+		{
+			if (!!status)
+			{
+				updatePtpInstanceName(*controlledEntity, configurationIndex, ptpInstanceIndex, ptpInstanceName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			}
+			else
+			{
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpInstanceName, ptpInstanceIndex, false))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::PtpInstanceName);
+					return;
+				}
+			}
+
+			// Got all expected descriptor dynamic information
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			{
+				// Clear this enumeration step and check for next one
+				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		}
+	}
+}
+
+void ControllerImpl::onPtpPortNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex, entity::model::AvdeccFixedString const& ptpPortName) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onPtpPortNameResult (ConfigurationIndex={} PtpPortIndex={}): {}", configurationIndex, ptpPortIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpPortName, ptpPortIndex))
+		{
+			if (!!status)
+			{
+				updatePtpPortName(*controlledEntity, configurationIndex, ptpPortIndex, ptpPortName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			}
+			else
+			{
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpPortName, ptpPortIndex, false))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::PtpPortName);
+					return;
+				}
+			}
+
+			// Got all expected descriptor dynamic information
+			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2193,7 +3220,7 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface 
 		{
 			if (!!status)
 			{
-				clearTalkerStreamConnections(&talker, talkerStream.streamIndex);
+				clearTalkerStreamConnections(&talker, talkerStream.streamIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 
 				// Milan device should return 0 as connectionCount
 				if (talker.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
@@ -2221,7 +3248,7 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface 
 			}
 
 			// Got all expected dynamic information
-			if (talker.gotAllExpectedDynamicInfo())
+			if (talker.gotAllExpectedGetDynamicInfo() && talker.gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				talker.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2263,7 +3290,7 @@ void ControllerImpl::onGetListenerStreamStateResult(entity::controller::Interfac
 			}
 
 			// Got all expected dynamic information
-			if (listener->gotAllExpectedDynamicInfo())
+			if (listener->gotAllExpectedGetDynamicInfo() && listener->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				listener->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2286,7 +3313,7 @@ void ControllerImpl::onGetTalkerStreamConnectionResult(entity::controller::Inter
 		{
 			if (!!status)
 			{
-				addTalkerStreamConnection(talker.get(), talkerStream.streamIndex, listenerStream);
+				addTalkerStreamConnection(talker.get(), talkerStream.streamIndex, listenerStream, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -2299,7 +3326,7 @@ void ControllerImpl::onGetTalkerStreamConnectionResult(entity::controller::Inter
 			}
 
 			// Got all expected dynamic information
-			if (talker->gotAllExpectedDynamicInfo())
+			if (talker->gotAllExpectedGetDynamicInfo() && talker->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				talker->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);

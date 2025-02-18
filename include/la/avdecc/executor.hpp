@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -82,7 +82,7 @@ public:
 	* @details Creates a new ExecutorProxy as a unique pointer.
 	* @return A new ExecutorProxy as a Executor::UniquePointer.
 	*/
-	static UniquePointer create(PushJobProxy const& pushJobProxy, FlushProxy const& flushProxy, TerminateProxy const& terminateProxy, GetExecutorThreadProxy const& getExecutorThreadProxy)
+	static UniquePointer create(PushJobProxy const& pushJobProxy, FlushProxy const& flushProxy, TerminateProxy const& terminateProxy, GetExecutorThreadProxy const& getExecutorThreadProxy) noexcept
 	{
 		auto deleter = [](Executor* self)
 		{
@@ -107,7 +107,7 @@ protected:
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API ExecutorProxy* LA_AVDECC_CALL_CONVENTION createRawExecutorProxy(PushJobProxy const& pushJobProxy, FlushProxy const& flushProxy, TerminateProxy const& terminateProxy, GetExecutorThreadProxy const& getExecutorThreadProxy);
+	static LA_AVDECC_API ExecutorProxy* LA_AVDECC_CALL_CONVENTION createRawExecutorProxy(PushJobProxy const& pushJobProxy, FlushProxy const& flushProxy, TerminateProxy const& terminateProxy, GetExecutorThreadProxy const& getExecutorThreadProxy) noexcept;
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;
@@ -120,9 +120,11 @@ public:
 	/**
 	* @brief Factory method to create a new ExecutorWithDispatchQueue.
 	* @details Creates a new ExecutorWithDispatchQueue as a unique pointer.
+	* @param[in] name An optional name for this Executor. If defined, will be used as the thread name.
+	* @param[in] prio The priority of the thread.
 	* @return A new ExecutorWithDispatchQueue as a Executor::UniquePointer.
 	*/
-	static UniquePointer create(std::optional<std::string> const& name = std::nullopt, utils::ThreadPriority const prio = utils::ThreadPriority::Normal)
+	static UniquePointer create(std::optional<std::string> const& name = std::nullopt, utils::ThreadPriority const prio = utils::ThreadPriority::Normal) noexcept
 	{
 		auto deleter = [](Executor* self)
 		{
@@ -146,7 +148,7 @@ protected:
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API ExecutorWithDispatchQueue* LA_AVDECC_CALL_CONVENTION createRawExecutorWithDispatchQueue(std::optional<std::string> const& name, utils::ThreadPriority const prio);
+	static LA_AVDECC_API ExecutorWithDispatchQueue* LA_AVDECC_CALL_CONVENTION createRawExecutorWithDispatchQueue(std::optional<std::string> const& name, utils::ThreadPriority const prio) noexcept;
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;
@@ -182,12 +184,12 @@ public:
 		ExecutorWrapper& operator=(ExecutorWrapper const&) = delete;
 		ExecutorWrapper& operator=(ExecutorWrapper&&) = delete;
 
+		/** Destructor */
+		virtual ~ExecutorWrapper() noexcept = default;
+
 	protected:
 		/** Constructor */
 		ExecutorWrapper() noexcept = default;
-
-		/** Destructor */
-		virtual ~ExecutorWrapper() noexcept = default;
 	};
 
 	/** Singleton instance */
@@ -196,7 +198,7 @@ public:
 	/** Checks if an Executor with the given name is already registered. */
 	virtual bool isExecutorRegistered(std::string const& name) const noexcept = 0;
 
-	/** Register a new Executor with the givent name. Throws a std::runtime_error if an Executor with that name already exists. */
+	/** Register a new Executor with the given name. Throws a std::runtime_error if an Executor with that name already exists. */
 	virtual ExecutorWrapper::UniquePointer registerExecutor(std::string const& name, Executor::UniquePointer&& executor) = 0;
 
 	/** Destroy an Executor with a given name. Returns true if the Executor was destroyed, false if it didn't exist. */

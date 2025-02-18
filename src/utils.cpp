@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -22,6 +22,7 @@
 * @author Christophe Calmejane
 */
 
+#include "utils.hpp"
 #include "la/avdecc/utils.hpp"
 
 #if defined(_WIN32)
@@ -47,7 +48,7 @@ namespace avdecc
 namespace utils
 {
 #if defined(__APPLE__)
-static bool IsDebuggerPresent()
+bool isDebuggerPresent()
 {
 	[[maybe_unused]] int junk;
 	int mib[4];
@@ -77,8 +78,52 @@ static bool IsDebuggerPresent()
 
 	return ((info.kp_proc.p_flag & P_TRACED) != 0);
 }
-#elif !defined(_WIN32)
-static bool IsDebuggerPresent()
+#elif defined(__linux__)
+#	include <sys/stat.h>
+#	include <string.h>
+#	include <fcntl.h>
+#	include <unistd.h>
+#	include <ctype.h>
+#	include <limits.h>
+
+bool isDebuggerPresent()
+{
+	// https://stackoverflow.com/questions/3596781/how-to-detect-if-the-current-process-is-being-run-by-gdb
+	char buf[PATH_MAX + 1];
+
+	const int status_fd = open("/proc/self/status", O_RDONLY);
+	if (status_fd == -1)
+		return false;
+
+	const ssize_t num_read = read(status_fd, buf, sizeof(buf) - 1);
+	close(status_fd);
+
+	if (num_read <= 0)
+		return false;
+
+	buf[num_read] = '\0';
+	constexpr char tracerPidString[] = "TracerPid:";
+	const auto tracer_pid_ptr = strstr(buf, tracerPidString);
+	if (!tracer_pid_ptr)
+		return false;
+
+	for (const char* characterPtr = tracer_pid_ptr + sizeof(tracerPidString) - 1; characterPtr <= buf + num_read; ++characterPtr)
+	{
+		if (isspace(*characterPtr))
+			continue;
+		else
+			return isdigit(*characterPtr) != 0 && *characterPtr != '0';
+	}
+
+	return false;
+}
+#elif defined(_WIN32)
+bool isDebuggerPresent()
+{
+	return IsDebuggerPresent();
+}
+#else
+bool isDebuggerPresent()
 {
 	return false;
 }
@@ -228,7 +273,7 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 					"Press 'Ignore' to try to continue normal execution\n");
 			}
 		}
-		if (IsDebuggerPresent())
+		if (isDebuggerPresent())
 		{
 			shouldBreak = true; // Always call DebugBreak if debugger is attached
 			shouldAbort = false; // Always try to continue if debugger is attached

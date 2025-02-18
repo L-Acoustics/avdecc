@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -136,7 +136,7 @@ void LA_AVDECC_CALL_CONVENTION AemAecpdu::deserialize(DeserializationBuffer& buf
 	_unsolicited = ((u_ct & 0x8000) >> 15) != 0;
 	_commandType = static_cast<AemCommandType>(u_ct & 0x7fff);
 
-	// Check is there are less advertised data than the required minimum (we can do it after we (tried) unpacked as it would have thrown in case the buffer was too small)
+	// Check if there are less advertised data than the required minimum (we can do it after we (tried) unpacked as it would have thrown in case the buffer was too small)
 	auto constexpr minCDL = HeaderLength + Aecpdu::HeaderLength;
 	if (_controlDataLength < minCDL)
 	{

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -34,10 +34,10 @@ namespace protocol
 {
 namespace mvuPayload
 {
-/** GET_MILAN_INFO Command - Milan Clause 7.4.1 */
+/** GET_MILAN_INFO Command - Milan-2019 Clause 7.4.1 */
 constexpr size_t AecpMvuGetMilanInfoCommandPayloadSize = 2u;
 
-/** GET_MILAN_INFO Response - Milan Clause 7.4.1 */
+/** GET_MILAN_INFO Response - Milan-2019 Clause 7.4.1 */
 constexpr size_t AecpMvuGetMilanInfoResponsePayloadSize = 14u;
 
 

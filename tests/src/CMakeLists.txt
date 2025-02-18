@@ -18,6 +18,7 @@ set(TESTS_SOURCE
 	controllerEntity_tests.cpp
 	commandStateMachine_tests.cpp
 	controllerCapabilityDelegate_tests.cpp
+	endStation_tests.cpp
 	enum_tests.cpp
 	entity_tests.cpp
 	instrumentationObserver.hpp
@@ -62,10 +63,17 @@ target_link_libraries(Tests PRIVATE ${LINK_LIBRARIES} ${ADD_LINK_LIBRARIES})
 add_custom_command(
 	TARGET Tests
 	POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/../data ${CMAKE_BINARY_DIR}/tests/src/data
+	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/../data" "${CMAKE_BINARY_DIR}/tests/src/data"
 	COMMENT "Copying Tests data to output folder"
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/../data/SimpleEntity.json" "${CMAKE_BINARY_DIR}/tests/src/data/テスト.json"
+	COMMENT "Creating UTF-8 file"
 	VERBATIM
 )
+
+# Set specific compile flag for aemPayloads_tests.cpp
+if(MSVC)
+	set_source_files_properties(aemPayloads_tests.cpp PROPERTIES COMPILE_FLAGS /bigobj)
+endif()
 
 # Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
 cu_setup_deploy_runtime(Tests ${INSTALL_TEST_FLAG} ${SIGN_FLAG})

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -146,8 +146,8 @@ enum avdecc_protocol_interface_error_e
 	avdecc_protocol_interface_error_unknown_local_entity = 4, /**< Unknown local entity. */
 	avdecc_protocol_interface_error_invalid_entity_type = 5, /**< Invalid entity type for the operation. */
 	avdecc_protocol_interface_error_duplicate_local_entity_id = 6, /**< The EntityID specified in a LocalEntity is already in use by another local entity. */
-	avdecc_protocol_interface_error_interface_not_found = 7, /**< Specified interfaceName not found. */
-	avdecc_protocol_interface_error_invalid_parameters = 8, /**< Specified parameters are invalid (either interfaceName and/or macAddress). */
+	avdecc_protocol_interface_error_interface_not_found = 7, /**< Specified InterfaceID not found. */
+	avdecc_protocol_interface_error_invalid_parameters = 8, /**< Specified parameters are invalid (either InterfaceID and/or macAddress). */
 	avdecc_protocol_interface_error_interface_not_supported = 9, /**< This protocol interface is not in the list of supported protocol interfaces. */
 	avdecc_protocol_interface_error_message_not_supported = 10, /**< This type of message is not supported by this protocol interface. */
 	avdecc_protocol_interface_error_executor_not_initialized = 11, /**< The executor is not initialized. */

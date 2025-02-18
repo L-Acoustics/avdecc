@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -45,6 +45,8 @@ struct Context
 	AudioUnitIndex nextExpectedAudioUnitIndex{ 0u };
 	StreamIndex nextExpectedStreamInputIndex{ 0u };
 	StreamIndex nextExpectedStreamOutputIndex{ 0u };
+	JackIndex nextExpectedJackInputIndex{ 0u };
+	JackIndex nextExpectedJackOutputIndex{ 0u };
 	AvbInterfaceIndex nextExpectedAvbInterfaceIndex{ 0u };
 	ClockSourceIndex nextExpectedClockSourceIndex{ 0u };
 	MemoryObjectIndex nextExpectedMemoryObjectIndex{ 0u };
@@ -56,6 +58,9 @@ struct Context
 	MapIndex nextExpectedAudioMapIndex{ 0u };
 	ControlIndex nextExpectedControlIndex{ 0u };
 	ClockDomainIndex nextExpectedClockDomainIndex{ 0u };
+	TimingIndex nextExpectedTimingIndex{ 0u };
+	PtpInstanceIndex nextExpectedPtpInstanceIndex{ 0u };
+	PtpPortIndex nextExpectedPtpPortIndex{ 0u };
 
 	bool getSanityCheckError{ false };
 };
@@ -63,8 +68,8 @@ struct Context
 /* ************************************************************ */
 /* Dump methods                                                 */
 /* ************************************************************ */
-template<bool hasDynamicModel = true, typename FieldPointer>
-json dumpLeafModels(Context& c, ConfigurationTree const& configTree, Flags const flags, FieldPointer ConfigurationTree::*const Field, DescriptorIndex& nextExpectedIndex, std::string const& descriptorName, DescriptorIndex const baseIndex, size_t const numberOfIndexes)
+template<bool hasDynamicModel = true, class ParentTree, typename FieldPointer>
+json dumpLeafModels(Context& c, ParentTree const& parentTree, Flags const flags, FieldPointer ParentTree::*const Field, DescriptorIndex& nextExpectedIndex, std::string const& descriptorName, DescriptorIndex const baseIndex, size_t const numberOfIndexes)
 {
 	auto objects = json{};
 
@@ -84,8 +89,8 @@ json dumpLeafModels(Context& c, ConfigurationTree const& configTree, Flags const
 		}
 		++nextExpectedIndex;
 
-		auto const modelsIt = (configTree.*Field).find(descriptorIndex);
-		if (modelsIt == (configTree.*Field).end())
+		auto const modelsIt = (parentTree.*Field).find(descriptorIndex);
+		if (modelsIt == (parentTree.*Field).end())
 		{
 			throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid " + descriptorName + " Descriptor Index: " + std::to_string(descriptorIndex) + " (out of range)" };
 		}
@@ -120,15 +125,15 @@ json dumpLeafModels(Context& c, ConfigurationTree const& configTree, Flags const
 }
 
 template<typename FieldPointer>
-json dumpStringsModels(ConfigurationTree const& configTree, Flags const flags, FieldPointer ConfigurationTree::*const Field, DescriptorIndex const baseStrings, std::uint16_t const numberOfStrings)
+json dumpStringsModels(LocaleTree const& localeTree, Flags const flags, FieldPointer LocaleTree::*const Field, DescriptorIndex const baseStrings, std::uint16_t const numberOfStrings)
 {
 	auto strings = json{};
 
 	for (auto stringsIndexCounter = StringsIndex(0); stringsIndexCounter < numberOfStrings; ++stringsIndexCounter)
 	{
 		auto const stringsIndex = StringsIndex(stringsIndexCounter + baseStrings);
-		auto const stringsModelsIt = (configTree.*Field).find(stringsIndex);
-		if (stringsModelsIt == (configTree.*Field).end())
+		auto const stringsModelsIt = (localeTree.*Field).find(stringsIndex);
+		if (stringsModelsIt == (localeTree.*Field).end())
 		{
 			// Don't throw if Strings not found (if it's the first of the range), it was probably not loaded
 			if (stringsIndexCounter == 0)
@@ -158,7 +163,7 @@ json dumpStringsModels(ConfigurationTree const& configTree, Flags const flags, F
 }
 
 template<typename FieldPointer>
-json dumpStreamPortModels(Context& c, ConfigurationTree const& configTree, Flags const flags, FieldPointer ConfigurationTree::*const Field, DescriptorIndex& nextExpectedIndex, DescriptorIndex const baseStreamPort, std::uint16_t const numberOfStreamPorts)
+json dumpStreamPortModels(Context& c, AudioUnitTree const& audioUnitTree, Flags const flags, FieldPointer AudioUnitTree::*const Field, DescriptorIndex& nextExpectedIndex, std::string const& descriptorName, DescriptorIndex const baseStreamPort, std::uint16_t const numberOfStreamPorts)
 {
 	auto streamPorts = json{};
 
@@ -169,7 +174,7 @@ json dumpStreamPortModels(Context& c, ConfigurationTree const& configTree, Flags
 		{
 			if (!flags.test(Flag::IgnoreAEMSanityChecks))
 			{
-				throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid StreamPort Descriptor Index: " + std::to_string(streamPortIndex) + " but expected " + std::to_string(nextExpectedIndex) };
+				throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid " + descriptorName + " Descriptor Index: " + std::to_string(streamPortIndex) + " but expected " + std::to_string(nextExpectedIndex) };
 			}
 			else
 			{
@@ -178,17 +183,17 @@ json dumpStreamPortModels(Context& c, ConfigurationTree const& configTree, Flags
 		}
 		++nextExpectedIndex;
 
-		auto const streamPortModelsIt = (configTree.*Field).find(streamPortIndex);
-		if (streamPortModelsIt == (configTree.*Field).end())
+		auto const streamPortTreeIt = (audioUnitTree.*Field).find(streamPortIndex);
+		if (streamPortTreeIt == (audioUnitTree.*Field).end())
 		{
-			throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid StreamPort Descriptor Index: " + std::to_string(streamPortIndex) + " (out of range)" };
+			throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid " + descriptorName + " Descriptor Index: " + std::to_string(streamPortIndex) + " (out of range)" };
 		}
-		auto const& streamPortModels = streamPortModelsIt->second;
+		auto const& streamPortTree = streamPortTreeIt->second;
 
 		auto streamPort = json{};
 
 		// Dump Static model
-		auto const& staticModel = streamPortModels.staticModel;
+		auto const& staticModel = streamPortTree.staticModel;
 		if (flags.test(Flag::ProcessStaticModel))
 		{
 			// Dump StreamPort Descriptor Model
@@ -199,14 +204,17 @@ json dumpStreamPortModels(Context& c, ConfigurationTree const& configTree, Flags
 		if (flags.test(Flag::ProcessDynamicModel))
 		{
 			// Dump StreamPort Descriptor Model
-			streamPort[keyName::Node_DynamicInformation] = streamPortModels.dynamicModel;
+			streamPort[keyName::Node_DynamicInformation] = streamPortTree.dynamicModel;
 		}
 
 		// Dump AudioClusters
-		streamPort[keyName::NodeName_AudioClusterDescriptors] = dumpLeafModels(c, configTree, flags, &ConfigurationTree::audioClusterModels, c.nextExpectedAudioClusterIndex, "AudioCluster", staticModel.baseCluster, staticModel.numberOfClusters);
+		streamPort[keyName::NodeName_AudioClusterDescriptors] = dumpLeafModels(c, streamPortTree, flags, &StreamPortTree::audioClusterModels, c.nextExpectedAudioClusterIndex, "AudioCluster", staticModel.baseCluster, staticModel.numberOfClusters);
 
 		// Dump AudioMaps
-		streamPort[keyName::NodeName_AudioMapDescriptors] = dumpLeafModels<false>(c, configTree, flags, &ConfigurationTree::audioMapModels, c.nextExpectedAudioMapIndex, "AudioMap", staticModel.baseMap, staticModel.numberOfMaps);
+		streamPort[keyName::NodeName_AudioMapDescriptors] = dumpLeafModels<false>(c, streamPortTree, flags, &StreamPortTree::audioMapModels, c.nextExpectedAudioMapIndex, "AudioMap", staticModel.baseMap, staticModel.numberOfMaps);
+
+		// Dump Controls
+		streamPort[keyName::NodeName_ControlDescriptors] = dumpLeafModels(c, streamPortTree, flags, &StreamPortTree::controlModels, c.nextExpectedControlIndex, "Control", staticModel.baseControl, staticModel.numberOfControls);
 
 		// Dump informative DescriptorIndex
 		streamPort[model::keyName::Node_Informative_Index] = streamPortIndex;
@@ -221,7 +229,7 @@ json dumpAudioUnitModels(Context& c, ConfigurationTree const& configTree, Flags 
 {
 	auto audioUnits = json{};
 
-	for (auto const& [audioUnitIndex, audioUnitModels] : configTree.audioUnitModels)
+	for (auto const& [audioUnitIndex, audioUnitTree] : configTree.audioUnitTrees)
 	{
 		if (audioUnitIndex != c.nextExpectedAudioUnitIndex)
 		{
@@ -239,7 +247,7 @@ json dumpAudioUnitModels(Context& c, ConfigurationTree const& configTree, Flags 
 		auto audioUnit = json{};
 
 		// Dump Static model
-		auto const& staticModel = audioUnitModels.staticModel;
+		auto const& staticModel = audioUnitTree.staticModel;
 		if (flags.test(Flag::ProcessStaticModel))
 		{
 			// Dump AudioUnit Descriptor Model
@@ -250,14 +258,23 @@ json dumpAudioUnitModels(Context& c, ConfigurationTree const& configTree, Flags 
 		if (flags.test(Flag::ProcessDynamicModel))
 		{
 			// Dump AudioUnit Descriptor Model
-			audioUnit[keyName::Node_DynamicInformation] = audioUnitModels.dynamicModel;
+			audioUnit[keyName::Node_DynamicInformation] = audioUnitTree.dynamicModel;
 		}
 
-		// Dump StreamPortInputs
-		audioUnit[keyName::NodeName_StreamPortInputDescriptors] = dumpStreamPortModels(c, configTree, flags, &ConfigurationTree::streamPortInputModels, c.nextExpectedStreamPortInputIndex, staticModel.baseStreamInputPort, staticModel.numberOfStreamInputPorts);
+		// We first need to dump leaves, as some trees may contain the same type of leaves we can find at the configuration level (eg. Controls)
+		{
+			// Dump Controls
+			audioUnit[keyName::NodeName_ControlDescriptors] = dumpLeafModels(c, audioUnitTree, flags, &AudioUnitTree::controlModels, c.nextExpectedControlIndex, "Control", staticModel.baseControl, staticModel.numberOfControls);
+		}
 
-		// Dump StreamPortOutputs
-		audioUnit[keyName::NodeName_StreamPortOutputDescriptors] = dumpStreamPortModels(c, configTree, flags, &ConfigurationTree::streamPortOutputModels, c.nextExpectedStreamPortOutputIndex, staticModel.baseStreamOutputPort, staticModel.numberOfStreamOutputPorts);
+		// Now we can dump the trees
+		{
+			// Dump StreamPortInputs
+			audioUnit[keyName::NodeName_StreamPortInputDescriptors] = dumpStreamPortModels(c, audioUnitTree, flags, &AudioUnitTree::streamPortInputTrees, c.nextExpectedStreamPortInputIndex, "StreamPortInput", staticModel.baseStreamInputPort, staticModel.numberOfStreamInputPorts);
+
+			// Dump StreamPortOutputs
+			audioUnit[keyName::NodeName_StreamPortOutputDescriptors] = dumpStreamPortModels(c, audioUnitTree, flags, &AudioUnitTree::streamPortOutputTrees, c.nextExpectedStreamPortOutputIndex, "StreamPortOutput", staticModel.baseStreamOutputPort, staticModel.numberOfStreamOutputPorts);
+		}
 
 		// Dump informative DescriptorIndex
 		audioUnit[model::keyName::Node_Informative_Index] = audioUnitIndex;
@@ -268,11 +285,128 @@ json dumpAudioUnitModels(Context& c, ConfigurationTree const& configTree, Flags 
 	return audioUnits;
 }
 
+template<typename FieldPointer>
+json dumpJackModels(Context& c, ConfigurationTree const& configTree, Flags const flags, FieldPointer ConfigurationTree::*const Field, DescriptorIndex& nextExpectedIndex, std::string const& descriptorName, DescriptorIndex const baseJack, std::uint16_t const numberOfJacks)
+{
+	auto jacks = json{};
+
+	for (auto jackIndexCounter = JackIndex(0); jackIndexCounter < numberOfJacks; ++jackIndexCounter)
+	{
+		auto const jackIndex = JackIndex(jackIndexCounter + baseJack);
+		if (jackIndex != nextExpectedIndex)
+		{
+			if (!flags.test(Flag::IgnoreAEMSanityChecks))
+			{
+				throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid " + descriptorName + " Descriptor Index: " + std::to_string(jackIndex) + " but expected " + std::to_string(nextExpectedIndex) };
+			}
+			else
+			{
+				c.getSanityCheckError = true;
+			}
+		}
+		++nextExpectedIndex;
+
+		auto const jackTreeIt = (configTree.*Field).find(jackIndex);
+		if (jackTreeIt == (configTree.*Field).end())
+		{
+			throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid " + descriptorName + " Descriptor Index: " + std::to_string(jackIndex) + " (out of range)" };
+		}
+		auto const& jackTree = jackTreeIt->second;
+
+		auto jack = json{};
+
+		// Dump Static model
+		auto const& staticModel = jackTree.staticModel;
+		if (flags.test(Flag::ProcessStaticModel))
+		{
+			// Dump Jack Descriptor Model
+			jack[keyName::Node_StaticInformation] = staticModel;
+		}
+
+		// Dump Dynamic model
+		if (flags.test(Flag::ProcessDynamicModel))
+		{
+			// Dump Jack Descriptor Model
+			jack[keyName::Node_DynamicInformation] = jackTree.dynamicModel;
+		}
+
+		// Dump Controls
+		jack[keyName::NodeName_ControlDescriptors] = dumpLeafModels(c, jackTree, flags, &JackTree::controlModels, c.nextExpectedControlIndex, "Control", staticModel.baseControl, staticModel.numberOfControls);
+
+		// Dump informative DescriptorIndex
+		jack[model::keyName::Node_Informative_Index] = jackIndex;
+
+		jacks.push_back(std::move(jack));
+	}
+
+	return jacks;
+}
+
+template<typename FieldPointer>
+json dumpPtpInstanceModels(Context& c, ConfigurationTree const& configTree, Flags const flags, FieldPointer ConfigurationTree::*const Field, DescriptorIndex& nextExpectedIndex, std::string const& descriptorName, DescriptorIndex const basePtpInstance, std::uint16_t const numberOfPtpInstances)
+{
+	auto ptpInstances = json{};
+
+	for (auto ptpInstanceIndexCounter = PtpInstanceIndex(0); ptpInstanceIndexCounter < numberOfPtpInstances; ++ptpInstanceIndexCounter)
+	{
+		auto const ptpInstanceIndex = PtpInstanceIndex(ptpInstanceIndexCounter + basePtpInstance);
+		if (ptpInstanceIndex != nextExpectedIndex)
+		{
+			if (!flags.test(Flag::IgnoreAEMSanityChecks))
+			{
+				throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid " + descriptorName + " Descriptor Index: " + std::to_string(ptpInstanceIndex) + " but expected " + std::to_string(nextExpectedIndex) };
+			}
+			else
+			{
+				c.getSanityCheckError = true;
+			}
+		}
+		++nextExpectedIndex;
+
+		auto const ptpInstanceTreeIt = (configTree.*Field).find(ptpInstanceIndex);
+		if (ptpInstanceTreeIt == (configTree.*Field).end())
+		{
+			throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid " + descriptorName + " Descriptor Index: " + std::to_string(ptpInstanceIndex) + " (out of range)" };
+		}
+		auto const& ptpInstanceTree = ptpInstanceTreeIt->second;
+
+		auto ptpInstance = json{};
+
+		// Dump Static model
+		auto const& staticModel = ptpInstanceTree.staticModel;
+		if (flags.test(Flag::ProcessStaticModel))
+		{
+			// Dump PtpInstance Descriptor Model
+			ptpInstance[keyName::Node_StaticInformation] = staticModel;
+		}
+
+		// Dump Dynamic model
+		if (flags.test(Flag::ProcessDynamicModel))
+		{
+			// Dump PtpInstance Descriptor Model
+			ptpInstance[keyName::Node_DynamicInformation] = ptpInstanceTree.dynamicModel;
+		}
+
+		// Dump Controls
+		ptpInstance[keyName::NodeName_ControlDescriptors] = dumpLeafModels(c, ptpInstanceTree, flags, &PtpInstanceTree::controlModels, c.nextExpectedControlIndex, "Control", staticModel.baseControl, staticModel.numberOfControls);
+
+		// Dump PtpPorts
+		ptpInstance[keyName::NodeName_PtpPortDescriptors] = dumpLeafModels(c, ptpInstanceTree, flags, &PtpInstanceTree::ptpPortModels, c.nextExpectedPtpPortIndex, "PtpPort", staticModel.basePtpPort, staticModel.numberOfPtpPorts);
+
+		// Dump informative DescriptorIndex
+		ptpInstance[model::keyName::Node_Informative_Index] = ptpInstanceIndex;
+
+		ptpInstances.push_back(std::move(ptpInstance));
+	}
+
+	return ptpInstances;
+}
+
 json dumpLocaleModels(Context& c, ConfigurationTree const& configTree, Flags const flags)
 {
 	auto locales = json{};
 
-	for (auto const& [localeIndex, localeModels] : configTree.localeModels)
+	for (auto const& [localeIndex, localeTree] : configTree.localeTrees)
 	{
 		if (localeIndex != c.nextExpectedLocaleIndex)
 		{
@@ -290,7 +424,7 @@ json dumpLocaleModels(Context& c, ConfigurationTree const& configTree, Flags con
 		auto locale = json{};
 
 		// Dump Static model
-		auto const& staticModel = localeModels.staticModel;
+		auto const& staticModel = localeTree.staticModel;
 		if (flags.test(Flag::ProcessStaticModel))
 		{
 			// Dump Locale Descriptor Model
@@ -298,7 +432,7 @@ json dumpLocaleModels(Context& c, ConfigurationTree const& configTree, Flags con
 		}
 
 		// Dump Strings
-		locale[keyName::NodeName_StringsDescriptors] = dumpStringsModels(configTree, flags, &ConfigurationTree::stringsModels, staticModel.baseStringDescriptorIndex, staticModel.numberOfStringDescriptors);
+		locale[keyName::NodeName_StringsDescriptors] = dumpStringsModels(localeTree, flags, &LocaleTree::stringsModels, staticModel.baseStringDescriptorIndex, staticModel.numberOfStringDescriptors);
 
 		// Dump informative DescriptorIndex
 		locale[model::keyName::Node_Informative_Index] = localeIndex;
@@ -336,10 +470,27 @@ json dumpConfigurationTrees(std::map<ConfigurationIndex, ConfigurationTree> cons
 		auto dumpFlags = flags;
 
 		// Dump Static model
+		auto const& staticModel = configTree.staticModel;
 		if (flags.test(Flag::ProcessStaticModel))
 		{
 			// Dump Configuration Descriptor Model
-			config[keyName::Node_StaticInformation] = configTree.staticModel;
+			config[keyName::Node_StaticInformation] = staticModel;
+
+#if 1
+			// Until we are able to load VIDEO/SENSOR/CONTROL_BLOCK, we need to flag the device as incomplete because of possible CONTROLS at other levels of the model, breaking the numbering
+#	pragma message("TODO: Load VIDEO/SENSOR/CONTROL_BLOCK")
+			if (staticModel.descriptorCounts.count(avdecc::entity::model::DescriptorType::VideoUnit) > 0 || staticModel.descriptorCounts.count(avdecc::entity::model::DescriptorType::SensorUnit) > 0 || staticModel.descriptorCounts.count(avdecc::entity::model::DescriptorType::ControlBlock) > 0)
+			{
+				if (!flags.test(Flag::IgnoreAEMSanityChecks))
+				{
+					throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::NotSupported, "Unsupported descriptor type: Video and/or Sensor and/or ControlBlock" };
+				}
+				else
+				{
+					c.getSanityCheckError = true;
+				}
+			}
+#endif
 		}
 
 		// Dump Dynamic model
@@ -354,32 +505,51 @@ json dumpConfigurationTrees(std::map<ConfigurationIndex, ConfigurationTree> cons
 			}
 		}
 
-		// Dump AudioUnits
-		config[keyName::NodeName_AudioUnitDescriptors] = dumpAudioUnitModels(c, configTree, dumpFlags);
+		// We first need to dump leaves, as some trees may contain the same type of leaves we can find at the configuration level (eg. Controls)
+		{
+			// Dump StreamInputs
+			config[keyName::NodeName_StreamInputDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::streamInputModels, c.nextExpectedStreamInputIndex, "StreamInput", 0, configTree.streamInputModels.size());
 
-		// Dump StreamInputs
-		config[keyName::NodeName_StreamInputDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::streamInputModels, c.nextExpectedStreamInputIndex, "StreamInput", 0, configTree.streamInputModels.size());
+			// Dump StreamOutputs
+			config[keyName::NodeName_StreamOutputDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::streamOutputModels, c.nextExpectedStreamOutputIndex, "StreamOutput", 0, configTree.streamOutputModels.size());
 
-		// Dump StreamOutputs
-		config[keyName::NodeName_StreamOutputDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::streamOutputModels, c.nextExpectedStreamOutputIndex, "StreamOutput", 0, configTree.streamOutputModels.size());
+			// Dump ClockSources
+			config[keyName::NodeName_ClockSourceDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::clockSourceModels, c.nextExpectedClockSourceIndex, "ClockSource", 0, configTree.clockSourceModels.size());
 
-		// Dump AvbInterfaces
-		config[keyName::NodeName_AvbInterfaceDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::avbInterfaceModels, c.nextExpectedAvbInterfaceIndex, "AvbInterface", 0, configTree.avbInterfaceModels.size());
+			// Dump MemoryObjects
+			config[keyName::NodeName_MemoryObjectDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::memoryObjectModels, c.nextExpectedMemoryObjectIndex, "MemoryObject", 0, configTree.memoryObjectModels.size());
 
-		// Dump ClockSources
-		config[keyName::NodeName_ClockSourceDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::clockSourceModels, c.nextExpectedClockSourceIndex, "ClockSource", 0, configTree.clockSourceModels.size());
+			// Dump Locales
+			config[keyName::NodeName_LocaleDescriptors] = dumpLocaleModels(c, configTree, dumpFlags);
 
-		// Dump MemoryObjects
-		config[keyName::NodeName_MemoryObjectDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::memoryObjectModels, c.nextExpectedMemoryObjectIndex, "MemoryObject", 0, configTree.memoryObjectModels.size());
+			// Dump Controls
+			config[keyName::NodeName_ControlDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::controlModels, c.nextExpectedControlIndex, "Control", 0, configTree.controlModels.size());
 
-		// Dump Locales
-		config[keyName::NodeName_LocaleDescriptors] = dumpLocaleModels(c, configTree, dumpFlags);
+			// Dump ClockDomains
+			config[keyName::NodeName_ClockDomainDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::clockDomainModels, c.nextExpectedClockDomainIndex, "ClockDomain", 0, configTree.clockDomainModels.size());
 
-		// Dump Controls
-		config[keyName::NodeName_ControlDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::controlModels, c.nextExpectedControlIndex, "Control", 0, configTree.controlModels.size());
+			// Dump Timings
+			config[keyName::NodeName_TimingDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::timingModels, c.nextExpectedTimingIndex, "Timing", 0, configTree.timingModels.size());
+		}
 
-		// Dump ClockDomains
-		config[keyName::NodeName_ClockDomainDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::clockDomainModels, c.nextExpectedClockDomainIndex, "ClockDomain", 0, configTree.clockDomainModels.size());
+		// Now we can dump the trees
+		{
+			// Dump AudioUnits
+			config[keyName::NodeName_AudioUnitDescriptors] = dumpAudioUnitModels(c, configTree, dumpFlags);
+
+			// Dump JackInputs
+			config[keyName::NodeName_JackInputDescriptors] = dumpJackModels(c, configTree, dumpFlags, &ConfigurationTree::jackInputTrees, c.nextExpectedJackInputIndex, "JackInput", 0, static_cast<std::uint16_t>(configTree.jackInputTrees.size()));
+
+			// Dump JackOutputs
+			config[keyName::NodeName_JackOutputDescriptors] = dumpJackModels(c, configTree, dumpFlags, &ConfigurationTree::jackOutputTrees, c.nextExpectedJackOutputIndex, "JackOutput", 0, static_cast<std::uint16_t>(configTree.jackOutputTrees.size()));
+
+			// Dump AvbInterfaces
+			// Will be a tree in 1722.1-2021
+			config[keyName::NodeName_AvbInterfaceDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::avbInterfaceModels, c.nextExpectedAvbInterfaceIndex, "AvbInterface", 0, configTree.avbInterfaceModels.size());
+
+			// Dump PtpInstances
+			config[keyName::NodeName_PtpInstanceDescriptors] = dumpPtpInstanceModels(c, configTree, dumpFlags, &ConfigurationTree::ptpInstanceTrees, c.nextExpectedPtpInstanceIndex, "PtpInstance", 0, static_cast<std::uint16_t>(configTree.ptpInstanceTrees.size()));
+		}
 
 		// Dump informative DescriptorIndex
 		config[model::keyName::Node_Informative_Index] = configIndex;
@@ -503,6 +673,15 @@ void readLeafModels(json const& object, Flags const flags, std::string const& ke
 				else
 				{
 					j.at(keyName::Node_DynamicInformation).get_to(modelTree.dynamicModel);
+
+					// Special handling of CONTROL descriptors that were missing the 'number_of_values' field (in the static model) in previous dump versions
+					if constexpr (std::is_same_v<typename ModelTrees::mapped_type, ControlNodeModels>)
+					{
+						if (flags.test(Flag::ProcessStaticModel) && modelTree.staticModel.numberOfValues == 0)
+						{
+							modelTree.staticModel.numberOfValues = static_cast<std::uint16_t>(modelTree.dynamicModel.values.size());
+						}
+					}
 				}
 			}
 		}
@@ -512,7 +691,7 @@ void readLeafModels(json const& object, Flags const flags, std::string const& ke
 }
 
 template<bool isKeyRequired = false, bool isStaticModelOptional = false, bool isDynamicModelOptional = false, bool hasDynamicModel = true, typename ModelTrees>
-void readStreamPortModels(json const& object, Flags const flags, std::string const& keyName, DescriptorIndex& currentIndex, ModelTrees& modelTrees, Context& c, ConfigurationTree& config, bool const ignoreDynamicModel)
+void readStreamPortModels(json const& object, Flags const flags, std::string const& keyName, DescriptorIndex& currentIndex, ModelTrees& modelTrees, Context& c, bool const ignoreDynamicModel)
 {
 	auto const* obj = static_cast<json const*>(nullptr);
 
@@ -534,14 +713,13 @@ void readStreamPortModels(json const& object, Flags const flags, std::string con
 	for (auto const& j : *obj)
 	{
 		auto modelTree = typename ModelTrees::mapped_type{};
+		auto const baseCluster = c.nextExpectedAudioClusterIndex;
+		auto const baseMap = c.nextExpectedAudioMapIndex;
+		auto const baseControl = c.nextExpectedControlIndex;
 
 		// Read Static model
 		if (flags.test(Flag::ProcessStaticModel))
 		{
-			// Get base cluster and map descriptor index
-			modelTree.staticModel.baseCluster = c.nextExpectedAudioClusterIndex;
-			modelTree.staticModel.baseMap = c.nextExpectedAudioMapIndex;
-
 			if constexpr (isStaticModelOptional)
 			{
 				get_optional_value(object, keyName::Node_StaticInformation, modelTree.staticModel);
@@ -569,16 +747,36 @@ void readStreamPortModels(json const& object, Flags const flags, std::string con
 		}
 
 		// Read AudioClusters
-		readLeafModels<true, false, true>(j, flags, keyName::NodeName_AudioClusterDescriptors, c.nextExpectedAudioClusterIndex, config.audioClusterModels, ignoreDynamicModel);
+		readLeafModels<true, false, true>(j, flags, keyName::NodeName_AudioClusterDescriptors, c.nextExpectedAudioClusterIndex, modelTree.audioClusterModels, ignoreDynamicModel);
 
 		// Read AudioMaps
-		readLeafModels<false, false, true, false>(j, flags, keyName::NodeName_AudioMapDescriptors, c.nextExpectedAudioMapIndex, config.audioMapModels, ignoreDynamicModel);
+		readLeafModels<false, false, true, false>(j, flags, keyName::NodeName_AudioMapDescriptors, c.nextExpectedAudioMapIndex, modelTree.audioMapModels, ignoreDynamicModel);
+
+		// Read Controls
+		readLeafModels(j, flags, keyName::NodeName_ControlDescriptors, c.nextExpectedControlIndex, modelTree.controlModels, ignoreDynamicModel);
 
 		if (flags.test(Flag::ProcessStaticModel))
 		{
-			// Get number of cluster and map descriptors that were read
-			modelTree.staticModel.numberOfClusters = c.nextExpectedAudioClusterIndex - modelTree.staticModel.baseCluster;
-			modelTree.staticModel.numberOfMaps = c.nextExpectedAudioMapIndex - modelTree.staticModel.baseMap;
+			// Get number of descriptors that were read
+			auto const numberOfClusters = static_cast<decltype(baseCluster)>(c.nextExpectedAudioClusterIndex - baseCluster);
+			auto const numberOfMaps = static_cast<decltype(baseMap)>(c.nextExpectedAudioMapIndex - baseMap);
+			auto const numberOfControls = static_cast<decltype(baseControl)>(c.nextExpectedControlIndex - baseControl);
+			// Only update fields if at least one descriptor was read
+			if (numberOfClusters > 0)
+			{
+				modelTree.staticModel.baseCluster = baseCluster;
+				modelTree.staticModel.numberOfClusters = numberOfClusters;
+			}
+			if (numberOfMaps > 0)
+			{
+				modelTree.staticModel.baseMap = baseMap;
+				modelTree.staticModel.numberOfMaps = numberOfMaps;
+			}
+			if (numberOfControls > 0)
+			{
+				modelTree.staticModel.baseControl = baseControl;
+				modelTree.staticModel.numberOfControls = numberOfControls;
+			}
 			modelTree.staticModel.hasDynamicAudioMap = modelTree.staticModel.numberOfMaps == 0;
 		}
 
@@ -590,15 +788,14 @@ void readAudioUnitModels(json const& object, Flags const flags, Context& c, Conf
 {
 	for (auto const& j : object)
 	{
-		auto audioUnitTree = AudioUnitNodeModels{};
+		auto audioUnitTree = AudioUnitTree{};
+		auto const baseStreamInputPort = c.nextExpectedStreamPortInputIndex;
+		auto const baseStreamOutputPort = c.nextExpectedStreamPortOutputIndex;
+		auto const baseControl = c.nextExpectedControlIndex;
 
 		// Read Static model
 		if (flags.test(Flag::ProcessStaticModel))
 		{
-			// Get base stream port descriptor index
-			audioUnitTree.staticModel.baseStreamInputPort = c.nextExpectedStreamPortInputIndex;
-			audioUnitTree.staticModel.baseStreamOutputPort = c.nextExpectedStreamPortOutputIndex;
-
 			j.at(keyName::Node_StaticInformation).get_to(audioUnitTree.staticModel);
 		}
 
@@ -608,20 +805,196 @@ void readAudioUnitModels(json const& object, Flags const flags, Context& c, Conf
 			j.at(keyName::Node_DynamicInformation).get_to(audioUnitTree.dynamicModel);
 		}
 
-		// Read StreamPortInputs
-		readStreamPortModels<false, false, true>(j, flags, keyName::NodeName_StreamPortInputDescriptors, c.nextExpectedStreamPortInputIndex, config.streamPortInputModels, c, config, ignoreDynamicModel);
+		// We first need to read leaves, as some trees may contain the same type of leaves we can find at the configuration level (eg. Controls)
+		{
+			// Read Controls
+			readLeafModels(j, flags, keyName::NodeName_ControlDescriptors, c.nextExpectedControlIndex, audioUnitTree.controlModels, ignoreDynamicModel);
+		}
 
-		// Read StreamPortOutputs
-		readStreamPortModels<false, false, true>(j, flags, keyName::NodeName_StreamPortOutputDescriptors, c.nextExpectedStreamPortOutputIndex, config.streamPortOutputModels, c, config, ignoreDynamicModel);
+		// Now we can read the trees
+		{
+			// Read StreamPortInputs
+			readStreamPortModels<false, false, true>(j, flags, keyName::NodeName_StreamPortInputDescriptors, c.nextExpectedStreamPortInputIndex, audioUnitTree.streamPortInputTrees, c, ignoreDynamicModel);
+
+			// Read StreamPortOutputs
+			readStreamPortModels<false, false, true>(j, flags, keyName::NodeName_StreamPortOutputDescriptors, c.nextExpectedStreamPortOutputIndex, audioUnitTree.streamPortOutputTrees, c, ignoreDynamicModel);
+		}
 
 		if (flags.test(Flag::ProcessStaticModel))
 		{
-			// Get number of stream port descriptors that were read
-			audioUnitTree.staticModel.numberOfStreamInputPorts = c.nextExpectedStreamPortInputIndex - audioUnitTree.staticModel.baseStreamInputPort;
-			audioUnitTree.staticModel.numberOfStreamOutputPorts = c.nextExpectedStreamPortOutputIndex - audioUnitTree.staticModel.baseStreamOutputPort;
+			// Get number of descriptors that were read
+			auto const numberOfStreamInputPorts = static_cast<decltype(baseStreamInputPort)>(c.nextExpectedStreamPortInputIndex - baseStreamInputPort);
+			auto const numberOfStreamOutputPorts = static_cast<decltype(baseStreamOutputPort)>(c.nextExpectedStreamPortOutputIndex - baseStreamOutputPort);
+			auto const numberOfControls = static_cast<decltype(baseControl)>(c.nextExpectedControlIndex - baseControl);
+			// Only update fields if at least one descriptor was read
+			if (numberOfStreamInputPorts > 0)
+			{
+				audioUnitTree.staticModel.baseStreamInputPort = baseStreamInputPort;
+				audioUnitTree.staticModel.numberOfStreamInputPorts = numberOfStreamInputPorts;
+			}
+			if (numberOfStreamOutputPorts > 0)
+			{
+				audioUnitTree.staticModel.baseStreamOutputPort = baseStreamOutputPort;
+				audioUnitTree.staticModel.numberOfStreamOutputPorts = numberOfStreamOutputPorts;
+			}
+			if (numberOfControls > 0)
+			{
+				audioUnitTree.staticModel.baseControl = baseControl;
+				audioUnitTree.staticModel.numberOfControls = numberOfControls;
+			}
 		}
 
-		config.audioUnitModels[c.nextExpectedAudioUnitIndex++] = std::move(audioUnitTree);
+		config.audioUnitTrees[c.nextExpectedAudioUnitIndex++] = std::move(audioUnitTree);
+	}
+}
+
+template<bool isKeyRequired = false, bool isStaticModelOptional = false, bool isDynamicModelOptional = false, bool hasDynamicModel = true, typename ModelTrees>
+void readJackModels(json const& object, Flags const flags, std::string const& keyName, DescriptorIndex& currentIndex, ModelTrees& modelTrees, Context& c, bool const ignoreDynamicModel)
+{
+	auto const* obj = static_cast<json const*>(nullptr);
+
+	if constexpr (isKeyRequired)
+	{
+		obj = &object.at(keyName);
+	}
+	else
+	{
+		auto const it = object.find(keyName);
+		if (it == object.end())
+		{
+			return;
+		}
+
+		obj = &(*it);
+	}
+
+	for (auto const& j : *obj)
+	{
+		auto modelTree = typename ModelTrees::mapped_type{};
+		auto const baseControl = c.nextExpectedControlIndex;
+
+		// Read Static model
+		if (flags.test(Flag::ProcessStaticModel))
+		{
+			if constexpr (isStaticModelOptional)
+			{
+				get_optional_value(object, keyName::Node_StaticInformation, modelTree.staticModel);
+			}
+			else
+			{
+				j.at(keyName::Node_StaticInformation).get_to(modelTree.staticModel);
+			}
+		}
+
+		// Read Dynamic model
+		if constexpr (hasDynamicModel)
+		{
+			if (flags.test(Flag::ProcessDynamicModel) && !ignoreDynamicModel)
+			{
+				if constexpr (isDynamicModelOptional)
+				{
+					get_optional_value(j, keyName::Node_DynamicInformation, modelTree.dynamicModel);
+				}
+				else
+				{
+					j.at(keyName::Node_DynamicInformation).get_to(modelTree.dynamicModel);
+				}
+			}
+		}
+
+		// Read Controls
+		readLeafModels(j, flags, keyName::NodeName_ControlDescriptors, c.nextExpectedControlIndex, modelTree.controlModels, ignoreDynamicModel);
+
+		if (flags.test(Flag::ProcessStaticModel))
+		{
+			// Get number of descriptors that were read
+			auto const numberOfControls = static_cast<decltype(baseControl)>(c.nextExpectedControlIndex - baseControl);
+			// Only update fields if at least one descriptor was read
+			if (numberOfControls > 0)
+			{
+				modelTree.staticModel.baseControl = baseControl;
+				modelTree.staticModel.numberOfControls = numberOfControls;
+			}
+		}
+
+		modelTrees[currentIndex++] = std::move(modelTree);
+	}
+}
+
+template<bool isKeyRequired = false, bool isStaticModelOptional = false, bool isDynamicModelOptional = false, bool hasDynamicModel = true, typename ModelTrees>
+void readPtpInstanceModels(json const& object, Flags const flags, std::string const& keyName, DescriptorIndex& currentIndex, ModelTrees& modelTrees, Context& c, bool const ignoreDynamicModel)
+{
+	auto const* obj = static_cast<json const*>(nullptr);
+
+	if constexpr (isKeyRequired)
+	{
+		obj = &object.at(keyName);
+	}
+	else
+	{
+		auto const it = object.find(keyName);
+		if (it == object.end())
+		{
+			return;
+		}
+
+		obj = &(*it);
+	}
+
+	for (auto const& j : *obj)
+	{
+		auto modelTree = typename ModelTrees::mapped_type{};
+		auto const baseControl = c.nextExpectedControlIndex;
+
+		// Read Static model
+		if (flags.test(Flag::ProcessStaticModel))
+		{
+			if constexpr (isStaticModelOptional)
+			{
+				get_optional_value(object, keyName::Node_StaticInformation, modelTree.staticModel);
+			}
+			else
+			{
+				j.at(keyName::Node_StaticInformation).get_to(modelTree.staticModel);
+			}
+		}
+
+		// Read Dynamic model
+		if constexpr (hasDynamicModel)
+		{
+			if (flags.test(Flag::ProcessDynamicModel) && !ignoreDynamicModel)
+			{
+				if constexpr (isDynamicModelOptional)
+				{
+					get_optional_value(j, keyName::Node_DynamicInformation, modelTree.dynamicModel);
+				}
+				else
+				{
+					j.at(keyName::Node_DynamicInformation).get_to(modelTree.dynamicModel);
+				}
+			}
+		}
+
+		// Read Controls
+		readLeafModels(j, flags, keyName::NodeName_ControlDescriptors, c.nextExpectedControlIndex, modelTree.controlModels, ignoreDynamicModel);
+
+		// Read PtpPorts
+		readLeafModels(j, flags, keyName::NodeName_PtpPortDescriptors, c.nextExpectedPtpPortIndex, modelTree.ptpPortModels, ignoreDynamicModel);
+
+		if (flags.test(Flag::ProcessStaticModel))
+		{
+			// Get number of descriptors that were read
+			auto const numberOfControls = static_cast<decltype(baseControl)>(c.nextExpectedControlIndex - baseControl);
+			// Only update fields if at least one descriptor was read
+			if (numberOfControls > 0)
+			{
+				modelTree.staticModel.baseControl = baseControl;
+				modelTree.staticModel.numberOfControls = numberOfControls;
+			}
+			modelTree.staticModel.numberOfPtpPorts = c.nextExpectedPtpPortIndex - modelTree.staticModel.basePtpPort;
+		}
+
+		modelTrees[currentIndex++] = std::move(modelTree);
 	}
 }
 
@@ -629,7 +1002,7 @@ void readLocaleModels(json const& object, Flags const flags, Context& c, Configu
 {
 	for (auto const& j : object)
 	{
-		auto localeTree = LocaleNodeModels{};
+		auto localeTree = LocaleTree{};
 
 		// Read Static model
 		if (flags.test(Flag::ProcessStaticModel))
@@ -640,13 +1013,22 @@ void readLocaleModels(json const& object, Flags const flags, Context& c, Configu
 			localeTree.staticModel.baseStringDescriptorIndex = c.nextExpectedStringsIndex;
 
 			// Read Strings
-			readLeafModels<true, false, true, false>(j, flags, keyName::NodeName_StringsDescriptors, c.nextExpectedStringsIndex, config.stringsModels, ignoreDynamicModel);
+			readLeafModels<true, false, true, false>(j, flags, keyName::NodeName_StringsDescriptors, c.nextExpectedStringsIndex, localeTree.stringsModels, ignoreDynamicModel);
 
 			// Get number of strings descriptors that were read
 			localeTree.staticModel.numberOfStringDescriptors = c.nextExpectedStringsIndex - localeTree.staticModel.baseStringDescriptorIndex;
 		}
 
-		config.localeModels[c.nextExpectedLocaleIndex++] = std::move(localeTree);
+		config.localeTrees[c.nextExpectedLocaleIndex++] = std::move(localeTree);
+	}
+}
+
+template<typename ModelTrees>
+void setDescriptorCount(DescriptorCounts& counts, DescriptorType const descriptorType, ModelTrees const& modelTrees)
+{
+	if (!modelTrees.empty())
+	{
+		counts[descriptorType] = static_cast<DescriptorCounts::mapped_type>(modelTrees.size());
 	}
 }
 
@@ -661,11 +1043,25 @@ EntityTree::ConfigurationTrees readConfigurationTrees(json const& object, Flags 
 		auto c = Context{};
 
 		auto config = ConfigurationTree{};
+		auto mustRebuildDescriptorCount = false;
 
 		// Read Static model
 		if (flags.test(Flag::ProcessStaticModel))
 		{
 			get_optional_value(j, keyName::Node_StaticInformation, config.staticModel);
+			// Check for old dump file
+			if (config.staticModel.descriptorCounts.empty())
+			{
+				// Make sure the static model key exists
+				if (auto const confStaticModelIt = j.find(keyName::Node_StaticInformation); confStaticModelIt != j.end())
+				{
+					// If the descriptor count is missing (ie. old dump file), we need to rebuild it
+					if (confStaticModelIt->find(keyName::ConfigurationNode_Static_DescriptorCounts) == confStaticModelIt->end())
+					{
+						mustRebuildDescriptorCount = true;
+					}
+				}
+			}
 		}
 
 		// Read Dynamic model
@@ -681,38 +1077,76 @@ EntityTree::ConfigurationTrees readConfigurationTrees(json const& object, Flags 
 
 		auto const ignoreDynamicModel = currentConfiguration ? (*currentConfiguration != configurationIndex) : false;
 
-		// Read AudioUnits
-		if (auto const jtree = j.find(keyName::NodeName_AudioUnitDescriptors); jtree != j.end())
+		// We first need to read leaves, as some trees may contain the same type of leaves we can find at the configuration level (eg. Controls)
 		{
-			readAudioUnitModels(*jtree, flags, c, config, ignoreDynamicModel);
+			// Read StreamInputs
+			readLeafModels(j, flags, keyName::NodeName_StreamInputDescriptors, c.nextExpectedStreamInputIndex, config.streamInputModels, ignoreDynamicModel);
+
+			// Read StreamOutputs
+			readLeafModels(j, flags, keyName::NodeName_StreamOutputDescriptors, c.nextExpectedStreamOutputIndex, config.streamOutputModels, ignoreDynamicModel);
+
+			// Read ClockSources
+			readLeafModels<false, false, true>(j, flags, keyName::NodeName_ClockSourceDescriptors, c.nextExpectedClockSourceIndex, config.clockSourceModels, ignoreDynamicModel);
+
+			// Read MemoryObjects
+			readLeafModels(j, flags, keyName::NodeName_MemoryObjectDescriptors, c.nextExpectedMemoryObjectIndex, config.memoryObjectModels, ignoreDynamicModel);
+
+			// Read Locales
+			if (auto const jtree = j.find(keyName::NodeName_LocaleDescriptors); jtree != j.end())
+			{
+				readLocaleModels(*jtree, flags, c, config, ignoreDynamicModel);
+			}
+
+			// Read Controls
+			readLeafModels(j, flags, keyName::NodeName_ControlDescriptors, c.nextExpectedControlIndex, config.controlModels, ignoreDynamicModel);
+
+			// Read ClockDomains
+			readLeafModels(j, flags, keyName::NodeName_ClockDomainDescriptors, c.nextExpectedClockDomainIndex, config.clockDomainModels, ignoreDynamicModel);
+
+			// Read Timings
+			readLeafModels(j, flags, keyName::NodeName_TimingDescriptors, c.nextExpectedTimingIndex, config.timingModels, ignoreDynamicModel);
 		}
 
-		// Read StreamInputs
-		readLeafModels(j, flags, keyName::NodeName_StreamInputDescriptors, c.nextExpectedStreamInputIndex, config.streamInputModels, ignoreDynamicModel);
-
-		// Read StreamOutputs
-		readLeafModels(j, flags, keyName::NodeName_StreamOutputDescriptors, c.nextExpectedStreamOutputIndex, config.streamOutputModels, ignoreDynamicModel);
-
-		// Read AvbInterfaces
-		readLeafModels<false, false, true>(j, flags, keyName::NodeName_AvbInterfaceDescriptors, c.nextExpectedAvbInterfaceIndex, config.avbInterfaceModels, ignoreDynamicModel);
-
-		// Read ClockSources
-		readLeafModels<false, false, true>(j, flags, keyName::NodeName_ClockSourceDescriptors, c.nextExpectedClockSourceIndex, config.clockSourceModels, ignoreDynamicModel);
-
-		// Read MemoryObjects
-		readLeafModels(j, flags, keyName::NodeName_MemoryObjectDescriptors, c.nextExpectedMemoryObjectIndex, config.memoryObjectModels, ignoreDynamicModel);
-
-		// Read Locales
-		if (auto const jtree = j.find(keyName::NodeName_LocaleDescriptors); jtree != j.end())
+		// Now we can read the trees
 		{
-			readLocaleModels(*jtree, flags, c, config, ignoreDynamicModel);
+			// Read AudioUnits
+			if (auto const jtree = j.find(keyName::NodeName_AudioUnitDescriptors); jtree != j.end())
+			{
+				readAudioUnitModels(*jtree, flags, c, config, ignoreDynamicModel);
+			}
+
+			// Read JackInputs
+			readJackModels(j, flags, keyName::NodeName_JackInputDescriptors, c.nextExpectedJackInputIndex, config.jackInputTrees, c, ignoreDynamicModel);
+
+			// Read JackOutputs
+			readJackModels(j, flags, keyName::NodeName_JackOutputDescriptors, c.nextExpectedJackOutputIndex, config.jackOutputTrees, c, ignoreDynamicModel);
+
+			// Read AvbInterfaces
+			// Will be a tree in 1722.1-2021
+			readLeafModels<false, false, true>(j, flags, keyName::NodeName_AvbInterfaceDescriptors, c.nextExpectedAvbInterfaceIndex, config.avbInterfaceModels, ignoreDynamicModel);
+
+			// Read PtpInstances
+			readPtpInstanceModels(j, flags, keyName::NodeName_PtpInstanceDescriptors, c.nextExpectedPtpInstanceIndex, config.ptpInstanceTrees, c, ignoreDynamicModel);
 		}
 
-		// Read Controls
-		readLeafModels(j, flags, keyName::NodeName_ControlDescriptors, c.nextExpectedControlIndex, config.controlModels, ignoreDynamicModel);
-
-		// Read ClockDomains
-		readLeafModels(j, flags, keyName::NodeName_ClockDomainDescriptors, c.nextExpectedClockDomainIndex, config.clockDomainModels, ignoreDynamicModel);
+		// Legacy dump file support, we must build the descriptor counts
+		if (mustRebuildDescriptorCount)
+		{
+			auto& counts = config.staticModel.descriptorCounts;
+			setDescriptorCount(counts, DescriptorType::AudioUnit, config.audioUnitTrees);
+			setDescriptorCount(counts, DescriptorType::StreamInput, config.streamInputModels);
+			setDescriptorCount(counts, DescriptorType::StreamOutput, config.streamOutputModels);
+			setDescriptorCount(counts, DescriptorType::JackInput, config.jackInputTrees);
+			setDescriptorCount(counts, DescriptorType::JackOutput, config.jackOutputTrees);
+			setDescriptorCount(counts, DescriptorType::AvbInterface, config.avbInterfaceModels);
+			setDescriptorCount(counts, DescriptorType::ClockSource, config.clockSourceModels);
+			setDescriptorCount(counts, DescriptorType::Control, config.controlModels);
+			setDescriptorCount(counts, DescriptorType::Locale, config.localeTrees);
+			setDescriptorCount(counts, DescriptorType::MemoryObject, config.memoryObjectModels);
+			setDescriptorCount(counts, DescriptorType::ClockDomain, config.clockDomainModels);
+			setDescriptorCount(counts, DescriptorType::Timing, config.timingModels);
+			setDescriptorCount(counts, DescriptorType::PtpInstance, config.ptpInstanceTrees);
+		}
 
 		configurationTrees[configurationIndex++] = std::move(config);
 	}
@@ -758,7 +1192,7 @@ EntityTree LA_AVDECC_CALL_CONVENTION createEntityTree(json const& object, Flags 
 			get_optional_value(object, keyName::Node_NotCompliant, notCompliant);
 			if (notCompliant && !flags.test(Flag::IgnoreAEMSanityChecks))
 			{
-				throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::NotCompliant, "Model is not full compliant with IEEE1722.1." };
+				throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::NotCompliant, "Model is not fully compliant with IEEE1722.1, or is incomplete." };
 			}
 		}
 

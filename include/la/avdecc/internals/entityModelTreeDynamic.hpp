@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -73,9 +73,25 @@ struct StreamOutputNodeDynamicModel : public StreamNodeDynamicModel
 	std::optional<StreamOutputCounters> counters{ std::nullopt };
 };
 
+struct JackNodeDynamicModel
+{
+	AvdeccFixedString objectName{};
+};
+
 struct AvbInterfaceNodeDynamicModel
 {
 	AvdeccFixedString objectName{};
+	networkInterface::MacAddress macAddress{};
+	UniqueIdentifier clockIdentity{};
+	std::uint8_t priority1{ 0xff };
+	std::uint8_t clockClass{ 0xff };
+	std::uint16_t offsetScaledLogVariance{ 0x0000 };
+	std::uint8_t clockAccuracy{ 0xff };
+	std::uint8_t priority2{ 0xff };
+	std::uint8_t domainNumber{ 0u };
+	std::uint8_t logSyncInterval{ 0u };
+	std::uint8_t logAnnounceInterval{ 0u };
+	std::uint8_t logPDelayInterval{ 0u };
 	UniqueIdentifier gptpGrandmasterID{};
 	std::uint8_t gptpDomainNumber{ 0u };
 	std::optional<AvbInterfaceInfo> avbInterfaceInfo{ std::nullopt };
@@ -129,6 +145,23 @@ struct ClockDomainNodeDynamicModel
 	AvdeccFixedString objectName{};
 	ClockSourceIndex clockSourceIndex{ ClockSourceIndex(0u) };
 	std::optional<ClockDomainCounters> counters{ std::nullopt };
+};
+
+struct TimingNodeDynamicModel
+{
+	AvdeccFixedString objectName{};
+};
+
+struct PtpInstanceNodeDynamicModel
+{
+	AvdeccFixedString objectName{};
+	// TODO: Add PTP_INSTANCE dynamic info - See GET_PTP_INSTANCE_INFO (7.4.82) and other PTP_INSTANCE commands
+};
+
+struct PtpPortNodeDynamicModel
+{
+	AvdeccFixedString objectName{};
+	// TODO: Add PTP_PORT dynamic info - See GET_PTP_PORT_INFO (7.4.95) and other PTP_PORT commands
 };
 
 struct ConfigurationNodeDynamicModel

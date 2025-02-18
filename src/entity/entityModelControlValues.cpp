@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -35,8 +35,9 @@ namespace entity
 {
 namespace model
 {
-static inline void createUnpackFullControlValuesDispatchTable(std::unordered_map<ControlValueType::Type, std::function<ControlValues(Deserializer&, std::uint16_t)>>& dispatchTable)
+static inline void createUnpackDynamicControlValuesDispatchTable(std::unordered_map<ControlValueType::Type, std::function<ControlValues(Deserializer&, std::uint16_t)>>& dispatchTable)
 {
+	/** Linear Values - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 	dispatchTable[ControlValueType::Type::ControlLinearInt8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlLinearInt8>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlLinearUInt8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlLinearUInt8>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlLinearInt16] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlLinearInt16>::unpackDynamicControlValues;
@@ -48,6 +49,20 @@ static inline void createUnpackFullControlValuesDispatchTable(std::unordered_map
 	dispatchTable[ControlValueType::Type::ControlLinearFloat] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlLinearFloat>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlLinearDouble] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlLinearDouble>::unpackDynamicControlValues;
 
+	/** Selector Value - IEEE1722.1-2013 Clause 7.3.5.2.2 */
+	dispatchTable[ControlValueType::Type::ControlSelectorInt8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorInt8>::unpackDynamicControlValues;
+	dispatchTable[ControlValueType::Type::ControlSelectorUInt8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorUInt8>::unpackDynamicControlValues;
+	dispatchTable[ControlValueType::Type::ControlSelectorInt16] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorInt16>::unpackDynamicControlValues;
+	dispatchTable[ControlValueType::Type::ControlSelectorUInt16] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorUInt16>::unpackDynamicControlValues;
+	dispatchTable[ControlValueType::Type::ControlSelectorInt32] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorInt32>::unpackDynamicControlValues;
+	dispatchTable[ControlValueType::Type::ControlSelectorUInt32] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorUInt32>::unpackDynamicControlValues;
+	dispatchTable[ControlValueType::Type::ControlSelectorInt64] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorInt64>::unpackDynamicControlValues;
+	dispatchTable[ControlValueType::Type::ControlSelectorUInt64] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorUInt64>::unpackDynamicControlValues;
+	dispatchTable[ControlValueType::Type::ControlSelectorFloat] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorFloat>::unpackDynamicControlValues;
+	dispatchTable[ControlValueType::Type::ControlSelectorDouble] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorDouble>::unpackDynamicControlValues;
+	dispatchTable[ControlValueType::Type::ControlSelectorString] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorString>::unpackDynamicControlValues;
+
+	/** Array Values - IEEE1722.1-2013 Clause 7.3.5.2.3 */
 	dispatchTable[ControlValueType::Type::ControlArrayInt8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlArrayInt8>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlArrayUInt8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlArrayUInt8>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlArrayInt16] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlArrayInt16>::unpackDynamicControlValues;
@@ -59,6 +74,7 @@ static inline void createUnpackFullControlValuesDispatchTable(std::unordered_map
 	dispatchTable[ControlValueType::Type::ControlArrayFloat] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlArrayFloat>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlArrayDouble] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlArrayDouble>::unpackDynamicControlValues;
 
+	/** UTF-8 String Value - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 	dispatchTable[ControlValueType::Type::ControlUtf8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlUtf8>::unpackDynamicControlValues;
 }
 
@@ -69,7 +85,7 @@ std::optional<ControlValues> LA_AVDECC_CALL_CONVENTION unpackDynamicControlValue
 	if (s_Dispatch.empty())
 	{
 		// Create the dispatch table
-		createUnpackFullControlValuesDispatchTable(s_Dispatch);
+		createUnpackDynamicControlValuesDispatchTable(s_Dispatch);
 	}
 
 	try
@@ -81,7 +97,9 @@ std::optional<ControlValues> LA_AVDECC_CALL_CONVENTION unpackDynamicControlValue
 		}
 		else
 		{
-			LOG_AEM_PAYLOAD_TRACE("unpackDynamicControlValues warning: Unsupported ControlValueType: {}", valueType);
+			LOG_AEM_PAYLOAD_TRACE("unpackDynamicControlValues warning: Unsupported ControlValueType: {}", controlValueTypeToString(valueType));
+			// We still want to return a ControlValues object, but it will be invalid (it's not the device's fault if the ControlValueType is not supported by the library)
+			return ControlValues{};
 		}
 	}
 	catch ([[maybe_unused]] std::exception const& e)
@@ -91,8 +109,9 @@ std::optional<ControlValues> LA_AVDECC_CALL_CONVENTION unpackDynamicControlValue
 	return {};
 }
 
-static inline void createValidateControlValuesDispatchTable(std::unordered_map<entity::model::ControlValueType::Type, std::function<std::optional<std::string>(entity::model::ControlValues const&, entity::model::ControlValues const&)>>& dispatchTable)
+static inline void createValidateControlValuesDispatchTable(std::unordered_map<entity::model::ControlValueType::Type, std::function<std::tuple<ControlValuesValidationResult, std::string>(entity::model::ControlValues const&, entity::model::ControlValues const&)>>& dispatchTable)
 {
+	/** Linear Values - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt8>::validateControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt8>::validateControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt16] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt16>::validateControlValues;
@@ -104,6 +123,20 @@ static inline void createValidateControlValuesDispatchTable(std::unordered_map<e
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearFloat] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearFloat>::validateControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearDouble] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearDouble>::validateControlValues;
 
+	/** Selector Value - IEEE1722.1-2013 Clause 7.3.5.2.2 */
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt8>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorUInt8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt8>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt16] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt16>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorUInt16] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt16>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt32] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt32>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorUInt32] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt32>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt64] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt64>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorUInt64] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt64>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorFloat] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorFloat>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorDouble] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorDouble>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorString] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorString>::validateControlValues;
+
+	/** Array Values - IEEE1722.1-2013 Clause 7.3.5.2.3 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt8>::validateControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt8>::validateControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt16] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt16>::validateControlValues;
@@ -115,12 +148,13 @@ static inline void createValidateControlValuesDispatchTable(std::unordered_map<e
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayFloat] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayFloat>::validateControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayDouble] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayDouble>::validateControlValues;
 
+	/** UTF-8 String Value - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlUtf8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlUtf8>::validateControlValues;
 }
 
-std::optional<std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(ControlValues const& staticValues, ControlValues const& dynamicValues) noexcept
+std::tuple<ControlValuesValidationResult, std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(ControlValues const& staticValues, ControlValues const& dynamicValues) noexcept
 {
-	static auto s_Dispatch = std::unordered_map<entity::model::ControlValueType::Type, std::function<std::optional<std::string>(entity::model::ControlValues const&, entity::model::ControlValues const&)>>{};
+	static auto s_Dispatch = std::unordered_map<entity::model::ControlValueType::Type, std::function<std::tuple<ControlValuesValidationResult, std::string>(entity::model::ControlValues const&, entity::model::ControlValues const&)>>{};
 
 	if (s_Dispatch.empty())
 	{
@@ -130,38 +164,38 @@ std::optional<std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(Contr
 
 	if (!staticValues)
 	{
-		return "StaticValues  are not initialized";
+		return std::make_tuple(ControlValuesValidationResult::NoStaticValues, "StaticValues are not initialized");
 	}
 
 	if (staticValues.areDynamicValues())
 	{
-		return "StaticValues are dynamic instead of static";
+		return std::make_tuple(ControlValuesValidationResult::WrongStaticValuesType, "StaticValues are dynamic instead of static");
 	}
 
 	if (!dynamicValues)
 	{
-		return "DynamicValues are not initialized";
+		return std::make_tuple(ControlValuesValidationResult::NoDynamicValues, "DynamicValues are not initialized");
 	}
 
 	if (!dynamicValues.areDynamicValues())
 	{
-		return "DynamicValues are static instead of dynamic";
+		return std::make_tuple(ControlValuesValidationResult::WrongDynamicValuesType, "DynamicValues are static instead of dynamic");
 	}
 
 	auto const valueType = staticValues.getType();
 	if (valueType != dynamicValues.getType())
 	{
-		return "DynamicValues type does not match StaticValues type";
+		return std::make_tuple(ControlValuesValidationResult::StaticDynamicTypeMismatch, "DynamicValues type does not match StaticValues type");
 	}
 
 	if (staticValues.countMustBeIdentical() != dynamicValues.countMustBeIdentical())
 	{
-		return "Values countMustBeIdentical() does not match (" + std::to_string(staticValues.countMustBeIdentical()) + " for static values, " + std::to_string(dynamicValues.countMustBeIdentical()) + " for dynamic ones)";
+		return std::make_tuple(ControlValuesValidationResult::StaticDynamicCountMismatch, "Values countMustBeIdentical() does not match (" + std::to_string(staticValues.countMustBeIdentical()) + " for static values, " + std::to_string(dynamicValues.countMustBeIdentical()) + " for dynamic ones)");
 	}
 
 	if (staticValues.countMustBeIdentical() && staticValues.size() != dynamicValues.size())
 	{
-		return "Values count does not match (" + std::to_string(staticValues.size()) + " static values, " + std::to_string(dynamicValues.size()) + " dynamic ones)";
+		return std::make_tuple(ControlValuesValidationResult::StaticDynamicCountMismatch, "Values count does not match (" + std::to_string(staticValues.size()) + " static values, " + std::to_string(dynamicValues.size()) + " dynamic ones)");
 	}
 
 	auto const& it = s_Dispatch.find(valueType);
@@ -171,7 +205,7 @@ std::optional<std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(Contr
 	}
 
 	// In case we don't handle this kind of ControlType, just validate the values
-	return std::nullopt;
+	return std::make_tuple(ControlValuesValidationResult::Valid, "");
 }
 
 } // namespace model

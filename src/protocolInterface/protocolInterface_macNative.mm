@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -22,6 +22,7 @@
 * @author Christophe Calmejane
 */
 
+#include "la/avdecc/executor.hpp"
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/internals/protocolVuAecpdu.hpp"
@@ -158,6 +159,7 @@ struct LockInformation
 - (la::avdecc::protocol::ProtocolInterface::Error)disableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity;
 - (BOOL)discoverRemoteEntities;
 - (BOOL)discoverRemoteEntity:(la::avdecc::UniqueIdentifier)entityID;
+- (BOOL)forgetRemoteEntity:(la::avdecc::UniqueIdentifier)entityID;
 - (la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult;
 - (la::avdecc::protocol::ProtocolInterface::Error)sendAecpResponse:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu;
 - (la::avdecc::protocol::ProtocolInterface::Error)sendAcmpCommand:(la::avdecc::protocol::Acmpdu::UniquePointer&&)acmpdu handler:(la::avdecc::protocol::ProtocolInterface::AcmpCommandResultHandler const&)onResult;
@@ -186,13 +188,13 @@ public:
 	using ProtocolInterfaceMacNative::getVendorUniqueDelegate;
 
 	/** Constructor */
-	ProtocolInterfaceMacNativeImpl(std::string const& networkInterfaceName)
-		: ProtocolInterfaceMacNative(networkInterfaceName)
+	ProtocolInterfaceMacNativeImpl(std::string const& networkInterfaceID, std::string const& executorName)
+		: ProtocolInterfaceMacNative(networkInterfaceID, executorName)
 	{
 		// Should not be there if the interface is not supported
 		AVDECC_ASSERT(isSupported(), "Should not be there if the interface is not supported");
 
-		auto* intName = [BridgeInterface getNSString:networkInterfaceName];
+		auto* intName = [BridgeInterface getNSString:networkInterfaceID];
 
 #if 0 // We don't need to check for AVB capability/enable on the interface, AVDECC do not require an AVB compatible interface \
 	// Check the interface is AVB enabled
@@ -418,6 +420,9 @@ private:
 			_stateMachineThread.join();
 		}
 
+		// Flush executor jobs
+		la::avdecc::ExecutorManager::getInstance().flush(getExecutorName());
+
 		// Destroy the bridge
 		if (_bridge != nullptr)
 		{
@@ -487,6 +492,16 @@ private:
 			return ProtocolInterface::Error::NoError;
 		}
 		return ProtocolInterface::Error::TransportError;
+	}
+
+	virtual Error forgetRemoteEntity(UniqueIdentifier const entityID) const noexcept override
+	{
+		// No need to call StateMachineManager, MacOSNative is using the native discovery state machines
+		if ([_bridge forgetRemoteEntity:entityID])
+		{
+			return ProtocolInterface::Error::NoError;
+		}
+		return ProtocolInterface::Error::UnknownRemoteEntity;
 	}
 
 	virtual Error setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) const noexcept override
@@ -749,8 +764,8 @@ private:
 	CommandEntities _commandEntities{};
 };
 
-ProtocolInterfaceMacNative::ProtocolInterfaceMacNative(std::string const& networkInterfaceName)
-	: ProtocolInterface(networkInterfaceName)
+ProtocolInterfaceMacNative::ProtocolInterfaceMacNative(std::string const& networkInterfaceID, std::string const& executorName)
+	: ProtocolInterface(networkInterfaceID, executorName)
 {
 }
 
@@ -759,9 +774,9 @@ bool ProtocolInterfaceMacNative::isSupported() noexcept
 	return [BridgeInterface isSupported];
 }
 
-ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfaceMacNative(std::string const& networkInterfaceName)
+ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfaceMacNative(std::string const& networkInterfaceID, std::string const& executorName)
 {
-	return new ProtocolInterfaceMacNativeImpl(networkInterfaceName);
+	return new ProtocolInterfaceMacNativeImpl(networkInterfaceID, executorName);
 }
 
 } // namespace protocol
@@ -1019,7 +1034,20 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 			case kIOReturnBadArgument:
 				return la::avdecc::protocol::ProtocolInterface::Error::InternalError;
 			default:
-				NSLog(@"Not handled IOReturn error code: %x\n", code);
+				NSLog(@"Not handled AVBErrorDomain error code: %x\n", code);
+				AVDECC_ASSERT(false, "Not handled error code");
+				return la::avdecc::protocol::ProtocolInterface::Error::TransportError;
+		}
+	}
+	else if ([[error domain] isEqualToString:@"IOErrorDomain"])
+	{
+		auto const code = IOReturn(error.code);
+		switch (code)
+		{
+			case kIOReturnOffline: // Code sometimes returned as IOErrorDomain if the NetworkInterface is not Connected (eg. cable not plugged)
+				return la::avdecc::protocol::ProtocolInterface::Error::UnknownLocalEntity;
+			default:
+				NSLog(@"Not handled IOErrorDomain error code: %x\n", code);
 				AVDECC_ASSERT(false, "Not handled error code");
 				return la::avdecc::protocol::ProtocolInterface::Error::TransportError;
 		}
@@ -1572,6 +1600,11 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 	return [self.interface.entityDiscovery discoverEntity:entityID];
 }
 
+- (BOOL)forgetRemoteEntity:(la::avdecc::UniqueIdentifier)entityID {
+	[self deinitEntity:entityID];
+	return [self removeRemoteEntity:entityID];
+}
+
 - (la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult {
 	auto const macAddr = aecpdu->getDestAddress(); // Make a copy of the target macAddress so it can safely be used inside the objC block
 	__block auto resultHandler = onResult; // Make a copy of the handler so it can safely be used inside the objC block. Declare it as __block so we can modify it from the block (to fix a bug that macOS sometimes call the completionHandler twice)
@@ -1853,6 +1886,31 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 	}
 }
 
+- (BOOL)removeRemoteEntity:(la::avdecc::UniqueIdentifier)entityID {
+	// Lock
+	auto const lg = std::lock_guard{ _lock };
+
+	// Check if we already know this entity
+	auto entityIt = _remoteEntities.find(entityID);
+
+	// Not found it in the list, return now
+	if (entityIt == _remoteEntities.end())
+	{
+		return FALSE;
+	}
+
+	// Remove from declared entities
+	_remoteEntities.erase(entityID);
+
+	// Clear entity from available index list
+	_lastAvailableIndex.erase(entityID);
+
+	// Notify observers
+	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOffline, _protocolInterface, entityID);
+
+	return TRUE;
+}
+
 // Notification of an arriving local computer entity
 - (void)didAddLocalEntity:(AVB17221Entity*)newEntity on17221EntityDiscovery:(AVB17221EntityDiscovery*)entityDiscovery {
 	auto const entityID = la::avdecc::UniqueIdentifier{ newEntity.entityID };
@@ -1953,18 +2011,7 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 - (void)didRemoveRemoteEntity:(AVB17221Entity*)oldEntity on17221EntityDiscovery:(AVB17221EntityDiscovery*)entityDiscovery {
 	auto const oldEntityID = la::avdecc::UniqueIdentifier{ oldEntity.entityID };
 	[self deinitEntity:oldEntityID];
-
-	// Lock
-	auto const lg = std::lock_guard{ _lock };
-
-	// Remove from declared entities
-	_remoteEntities.erase(oldEntityID);
-
-	// Clear entity from available index list
-	_lastAvailableIndex.erase(oldEntityID);
-
-	// Notify observers
-	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOffline, _protocolInterface, oldEntityID);
+	[self removeRemoteEntity:oldEntityID];
 }
 
 - (void)didRediscoverRemoteEntity:(AVB17221Entity*)entity on17221EntityDiscovery:(AVB17221EntityDiscovery*)entityDiscovery {
@@ -1984,11 +2031,18 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 - (void)didUpdateRemoteEntity:(AVB17221Entity*)entity changedProperties:(AVB17221EntityPropertyChanged)changedProperties on17221EntityDiscovery:(AVB17221EntityDiscovery*)entityDiscovery {
 	// Lock
 	auto const lg = std::lock_guard{ _lock };
+	auto const entityID = la::avdecc::UniqueIdentifier{ entity.entityID };
+
+	// First check if entity is unknown (maybe it was 'forget'), in which case we forward to didAddRemoteEntity
+	if (_remoteEntities.count(entityID) == 0)
+	{
+		[self didAddRemoteEntity:entity on17221EntityDiscovery:entityDiscovery];
+		return;
+	}
 
 	// Check for an invalid change in AvailableIndex
 	if ((changedProperties & AVB17221EntityPropertyChangedAvailableIndex) != 0)
 	{
-		auto const entityID = la::avdecc::UniqueIdentifier{ entity.entityID };
 		auto previousIndexIt = _lastAvailableIndex.find(entityID);
 		if (previousIndexIt == _lastAvailableIndex.end())
 		{
@@ -2003,7 +2057,7 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 			if (previousIndex >= entity.availableIndex)
 			{
 				auto e = [FromNative makeEntity:entity];
-				_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOffline, _protocolInterface, e.getEntityID());
+				_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOffline, _protocolInterface, entityID);
 				_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOnline, _protocolInterface, e);
 				return;
 			}
@@ -2018,12 +2072,12 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 	auto e = [FromNative makeEntity:entity];
 
 	// Update the entity
-	_remoteEntities.insert_or_assign(e.getEntityID(), e);
+	_remoteEntities.insert_or_assign(entityID, e);
 
 	// If a change occured in a forbidden flag, simulate offline/online for this entity
 	if ((changedProperties & AVB17221EntityPropertyImmutableMask) != 0)
 	{
-		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOffline, _protocolInterface, e.getEntityID());
+		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOffline, _protocolInterface, entityID);
 		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOnline, _protocolInterface, e);
 	}
 	else

@@ -1,6 +1,9 @@
 # Library CMake file
 
-cu_setup_project(la_avdecc ${LA_AVDECC_VERSION} "AVDECC Library")
+cu_setup_project(la_avdecc ${LA_AVDECC_VERSION} "AVDECC Library" MARKETING_VERSION_DIGITS ${MARKETING_VERSION_DIGITS} MARKETING_VERSION_POSTFIX ${MARKETING_VERSION_POSTFIX} MARKETING_VERSION ${MARKETING_VERSION})
+
+# Store la_avdecc project version for later use
+set(AVDECC_PROJECT_FRIENDLY_VERSION ${CU_PROJECT_FRIENDLY_VERSION} PARENT_SCOPE)
 
 # Configure file based on CMakeLists.txt
 configure_file(
@@ -145,6 +148,7 @@ set (HEADER_FILES_COMMON
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
 	endStationImpl.hpp
 	logHelper.hpp
+	utils.hpp
 )
 
 set (SOURCE_FILES_COMMON
@@ -301,7 +305,7 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(${PROJECT_NAME}_cxx PUBLIC nlohmann_json)
+		target_link_libraries(${PROJECT_NAME}_cxx PUBLIC nlohmann_json::nlohmann_json)
 	endif()
 
 	# Setup install (and signing)
@@ -335,7 +339,7 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(${PROJECT_NAME}_static PUBLIC nlohmann_json)
+		target_link_libraries(${PROJECT_NAME}_static PUBLIC nlohmann_json::nlohmann_json)
 	endif()
 
 	# Setup install (and signing)
@@ -349,5 +353,85 @@ endif()
 
 # Set installation rules
 if(INSTALL_AVDECC_HEADERS)
-	cu_setup_headers_install_rules("${PUBLIC_HEADER_FILES}" "${CU_ROOT_DIR}/include")
+	cu_setup_headers_install_rules("${PUBLIC_HEADER_FILES}" "${CU_ROOT_DIR}/include" CONFIGURATIONS Release Debug)
+endif()
+
+if(BUILD_AVDECC_BINDINGS_CSHARP)
+	include(${CU_BASE_DIR}/helpers/SetupSwig.cmake REQUIRED)
+
+	# avdecc entity model
+	set(NIH_NUGET_DEPENDENCY "la_networkInterfaceHelper:1.2.3")
+	set(AVDECC_ENTITY_MODEL_LIB_NAME ${PROJECT_NAME}EntityModel)
+	set(TARGET_PREFIX ${AVDECC_ENTITY_MODEL_LIB_NAME})
+	set(SWIG_INTERFACE_FILE "${CU_ROOT_DIR}/include/la/avdecc/internals/entityModel.i")
+	set(SWIG_FILE_DEPENDENCIES
+		"${CU_ROOT_DIR}/include/la/avdecc/utils.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/memoryBuffer.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/chrono.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/csharp_optional.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/optional.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/swig_foreach.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_function.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_tuple.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_unordered_map.i"
+	)
+	cu_setup_swig_target(VERSION 4.3 TARGET_NAME ${PROJECT_NAME}::shared INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES FILE_DEPENDENCIES ${SWIG_FILE_DEPENDENCIES} INSTALL_CONFIGURATIONS Release Debug OUTVAR_PREFIX_SUPPORT_FILES_FOLDER SUPPORT_FILES_FOLDER)
+
+	# Post process generated targets
+	foreach(SWIG_LANG ${AVDECC_SWIG_LANGUAGES})
+		set(SWIG_TARGET_NAME ${TARGET_PREFIX}-${SWIG_LANG})
+
+		# Add all public header files as dependency, so that wrapper files are re-generated whenever they change
+		set_property(TARGET ${SWIG_TARGET_NAME} PROPERTY SWIG_DEPENDS ${PUBLIC_HEADER_FILES})
+		# Setup common options like any other project
+		cu_setup_library_options(${SWIG_TARGET_NAME} ALIAS_NAME ${SWIG_LANG} NO_ALIAS_TARGET)
+		if(${SWIG_LANG} STREQUAL "csharp")
+			include(${CU_ROOT_DIR}/cmake/cmakeUtils/helpers/GenerateNugetTarget.cmake REQUIRED)
+			cu_generate_csharp_nuget_target(TARGET_NAME ${SWIG_TARGET_NAME} PACKAGE_NAME ${AVDECC_ENTITY_MODEL_LIB_NAME} NUGET_SOURCE_URL "${NUGET_PUBLISH_SOURCE_URL}" NUGET_API_KEY "${NUGET_PUBLISH_API_KEY}" CS_SOURCE_FOLDERS "${SUPPORT_FILES_FOLDER_csharp}" CS_PACKAGE_DEPENDENCIES "${NIH_NUGET_DEPENDENCY}")
+		elseif(${SWIG_LANG} STREQUAL "lua")
+			target_link_libraries(${SWIG_TARGET_NAME} PRIVATE liblua)
+		endif()
+
+		# Setup install (and signing)
+		cu_setup_deploy_library(${SWIG_TARGET_NAME} ${INSTALL_BINDINGS_FLAG} ${SIGN_FLAG})
+
+	endforeach()
+
+	# avdecc library
+	set(TARGET_PREFIX ${PROJECT_NAME})
+	set(SWIG_INTERFACE_FILE "${CU_ROOT_DIR}/include/la/avdecc/avdecc.i")
+	set(SWIG_FILE_DEPENDENCIES
+		"${CU_ROOT_DIR}/include/la/avdecc/utils.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/memoryBuffer.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/logger.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/chrono.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/csharp_optional.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/optional.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/swig_foreach.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_function.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_tuple.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_unordered_map.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/entityModel.i"
+	)
+	cu_setup_swig_target(VERSION 4.3 TARGET_NAME ${PROJECT_NAME}::shared INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES FILE_DEPENDENCIES ${SWIG_FILE_DEPENDENCIES} INSTALL_CONFIGURATIONS Release Debug OUTVAR_PREFIX_SUPPORT_FILES_FOLDER SUPPORT_FILES_FOLDER)
+
+	# Post process generated targets
+	foreach(SWIG_LANG ${AVDECC_SWIG_LANGUAGES})
+		set(SWIG_TARGET_NAME ${TARGET_PREFIX}-${SWIG_LANG})
+
+		# Add all public header files as dependency, so that wrapper files are re-generated whenever they change
+		set_property(TARGET ${SWIG_TARGET_NAME} PROPERTY SWIG_DEPENDS ${PUBLIC_HEADER_FILES})
+		# Setup common options like any other project
+		cu_setup_library_options(${SWIG_TARGET_NAME} ALIAS_NAME ${SWIG_LANG} NO_ALIAS_TARGET)
+		if(${SWIG_LANG} STREQUAL "csharp")
+			include(${CU_ROOT_DIR}/cmake/cmakeUtils/helpers/GenerateNugetTarget.cmake REQUIRED)
+			cu_generate_csharp_nuget_target(TARGET_NAME ${SWIG_TARGET_NAME} NUGET_SOURCE_URL "${NUGET_PUBLISH_SOURCE_URL}" NUGET_API_KEY "${NUGET_PUBLISH_API_KEY}" CS_SOURCE_FOLDERS "${SUPPORT_FILES_FOLDER_csharp}" CS_PACKAGE_DEPENDENCIES "${NIH_NUGET_DEPENDENCY}" "${AVDECC_ENTITY_MODEL_LIB_NAME}:${CU_PROJECT_FRIENDLY_VERSION}" NUGET_PACK_TARGET_DEPENDENCIES ${AVDECC_ENTITY_MODEL_LIB_NAME}-csharp-nuget-push)
+		elseif(${SWIG_LANG} STREQUAL "lua")
+			target_link_libraries(${SWIG_TARGET_NAME} PRIVATE liblua)
+		endif()
+
+		# Setup install (and signing)
+		cu_setup_deploy_library(${SWIG_TARGET_NAME} ${INSTALL_BINDINGS_FLAG} ${SIGN_FLAG})
+
+	endforeach()
 endif()

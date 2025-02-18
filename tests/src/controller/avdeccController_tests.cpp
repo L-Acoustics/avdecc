@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -23,6 +23,7 @@
 */
 
 // Public API
+#include <la/avdecc/executor.hpp>
 #include <la/avdecc/controller/avdeccController.hpp>
 #include <la/avdecc/internals/protocolAemAecpdu.hpp>
 #include <la/avdecc/internals/protocolAemPayloadSizes.hpp>
@@ -42,6 +43,8 @@
 #include <future>
 #include <vector>
 #include <cstdint>
+
+static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
 
 namespace
 {
@@ -124,6 +127,22 @@ private:
 		serializeNode(parent);
 		serializeNode(node);
 	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::JackInputNode const& node) noexcept override
+	{
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::JackOutputNode const& node) noexcept override
+	{
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::JackNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::AvbInterfaceNode const& node) noexcept override
 	{
 		serializeNode(parent);
@@ -150,7 +169,13 @@ private:
 		serializeNode(parent);
 		serializeNode(node);
 	}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const parent, la::avdecc::controller::model::StreamPortNode const& node) noexcept override
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const parent, la::avdecc::controller::model::StreamPortInputNode const& node) noexcept override
+	{
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const parent, la::avdecc::controller::model::StreamPortOutputNode const& node) noexcept override
 	{
 		serializeNode(grandParent);
 		serializeNode(parent);
@@ -166,6 +191,19 @@ private:
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::AudioUnitNode const* const grandParent, la::avdecc::controller::model::StreamPortNode const* const parent, la::avdecc::controller::model::AudioMapNode const& node) noexcept override
 	{
 		serializeNode(grandGrandParent);
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::AudioUnitNode const* const grandParent, la::avdecc::controller::model::StreamPortNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		serializeNode(grandGrandParent);
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
 		serializeNode(grandParent);
 		serializeNode(parent);
 		serializeNode(node);
@@ -186,18 +224,73 @@ private:
 		serializeNode(parent);
 		serializeNode(node);
 	}
-#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::RedundantStreamNode const& node) noexcept override
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::TimingNode const& node) noexcept override
 	{
 		serializeNode(parent);
 		serializeNode(node);
-		_serializedModel += "rsi";
-		for (auto const& streamKV : node.redundantStreams)
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::PtpInstanceNode const& node) noexcept override
+	{
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	// Virtual parenting to show PtpInstanceNode which have the specified TimingNode as parent
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::TimingNode const* const parent, la::avdecc::controller::model::PtpInstanceNode const& node) noexcept override
+	{
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::PtpPortNode const& node) noexcept override
+	{
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	// Virtual parenting to show ControlNode which have the specified TimingNode as grandParent and PtpInstanceNode as parent
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::TimingNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		serializeNode(grandGrandParent);
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	// Virtual parenting to show PtpPortNode which have the specified TimingNode as grandParent and PtpInstanceNode as parent
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::TimingNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::PtpPortNode const& node) noexcept override
+	{
+		serializeNode(grandGrandParent);
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::RedundantStreamInputNode const& node) noexcept override
+	{
+		serializeNode(parent);
+		serializeNode(node);
+		_serializedModel += "rsi" + std::to_string(node.primaryStreamIndex) + "+";
+		for (auto const streamIndex : node.redundantStreams)
 		{
-			auto const streamIndex = streamKV.first;
 			_serializedModel += std::to_string(streamIndex) + "+";
 		}
-		serializeNode(*node.primaryStream);
+		_serializedModel += ",";
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::RedundantStreamOutputNode const& node) noexcept override
+	{
+		serializeNode(parent);
+		serializeNode(node);
+		_serializedModel += "rso" + std::to_string(node.primaryStreamIndex) + "+";
+		for (auto const streamIndex : node.redundantStreams)
+		{
+			_serializedModel += std::to_string(streamIndex) + "+";
+		}
+		_serializedModel += ",";
 	}
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::RedundantStreamNode const* const parent, la::avdecc::controller::model::StreamInputNode const& node) noexcept override
 	{
@@ -299,7 +392,7 @@ TEST(Controller, RedundantStreams)
 		EntityModelVisitor serializer{};
 		entity.accept(&serializer);
 		auto const serialized = serializer.getSerializedModel();
-		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,vi0,rsi0+1+dt5,di0,pdt1,pdt5,dt5,di0,pdt1,pdt5,dt5,di1,", serialized.c_str());
+		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,vi0,rsi0+0+1+,pdt1,pdt5,dt5,di0,pdt1,pdt5,dt5,di1,", serialized.c_str());
 	}
 
 	// Valid redundant association (secondary stream declared first)
@@ -319,7 +412,7 @@ TEST(Controller, RedundantStreams)
 		EntityModelVisitor serializer{};
 		entity.accept(&serializer);
 		auto const serialized = serializer.getSerializedModel();
-		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,vi0,rsi0+1+dt5,di1,pdt1,pdt5,dt5,di0,pdt1,pdt5,dt5,di1,", serialized.c_str());
+		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,vi0,rsi1+0+1+,pdt1,pdt5,dt5,di0,pdt1,pdt5,dt5,di1,", serialized.c_str());
 	}
 
 	// Valid redundant association (single stream declared as well as redundant pair)
@@ -340,7 +433,7 @@ TEST(Controller, RedundantStreams)
 		EntityModelVisitor serializer{};
 		entity.accept(&serializer);
 		auto const serialized = serializer.getSerializedModel();
-		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,di2,pdt1,dt5,vi0,rsi1+2+dt5,di2,pdt1,pdt5,dt5,di1,pdt1,pdt5,dt5,di2,", serialized.c_str());
+		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,di2,pdt1,dt5,vi0,rsi2+1+2+,pdt1,pdt5,dt5,di1,pdt1,pdt5,dt5,di2,", serialized.c_str());
 	}
 }
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -349,7 +442,7 @@ TEST(Controller, DestroyWhileSending)
 {
 	static std::promise<void> commandResultPromise{};
 	{
-		auto pi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }));
+		auto pi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }, DefaultExecutorName));
 		auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
 		auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::networkInterface::MacAddress{ { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }, 31u, 0u, std::nullopt, std::nullopt } };
 		auto controllerGuard = std::make_unique<la::avdecc::entity::LocalEntityGuard<la::avdecc::entity::ControllerEntityImpl>>(pi.get(), commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, nullptr, nullptr);
@@ -401,7 +494,7 @@ class Controller_F : public ::testing::Test
 public:
 	virtual void SetUp() override
 	{
-		_controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr);
+		_controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
 	}
 
 	virtual void TearDown() override {}
@@ -430,6 +523,164 @@ TEST_F(Controller_F, VirtualEntityLoad)
 	// Wait for the handler to complete
 	//auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(1));
 	//ASSERT_NE(std::future_status::timeout, status);
+}
+
+TEST_F(Controller_F, VirtualEntityLoadUTF8)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	//static std::promise<void> commandResultPromise{};
+	{
+		auto& controller = getController();
+		auto const [error, message] = controller.loadVirtualEntityFromJson("data/テスト.json", flags);
+		EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+		EXPECT_STREQ("", message.c_str());
+	}
+
+	// Wait for the handler to complete
+	//auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(1));
+	//ASSERT_NE(std::future_status::timeout, status);
+}
+
+namespace
+{
+class Builder : public la::avdecc::controller::model::DefaultedVirtualEntityBuilder
+{
+public:
+	Builder(la::avdecc::controller::ControlledEntity::CompatibilityFlags const flags) noexcept
+		: _compatibilityFlags{ flags }
+	{
+	}
+
+	virtual void build(la::avdecc::entity::model::EntityTree const& entityTree, la::avdecc::entity::Entity::CommonInformation& commonInformation, la::avdecc::entity::Entity::InterfacesInformation& intfcInformation) noexcept override
+	{
+		auto const countInputStreams = [](la::avdecc::entity::model::EntityTree const& entityTree)
+		{
+			// Very crude and shouldn't be considered a good example
+			auto count = size_t{ 0u };
+			if (entityTree.configurationTrees.empty())
+			{
+				return count;
+			}
+			return entityTree.configurationTrees.begin()->second.streamInputModels.size();
+		};
+		commonInformation.entityID = la::avdecc::UniqueIdentifier{ 0x0102030405060708 };
+		//commonInformation.entityModelID = la::avdecc::UniqueIdentifier{ 0x1122334455667788 };
+		commonInformation.entityCapabilities = la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported };
+		//commonInformation.talkerStreamSources = 0u;
+		//commonInformation.talkerCapabilities = {};
+		commonInformation.listenerStreamSinks = static_cast<decltype(commonInformation.listenerStreamSinks)>(countInputStreams(entityTree));
+		commonInformation.listenerCapabilities = la::avdecc::entity::ListenerCapabilities{ la::avdecc::entity::ListenerCapability::Implemented };
+		//commonInformation.controllerCapabilities = {};
+		commonInformation.identifyControlIndex = la::avdecc::entity::model::ControlIndex{ 0u };
+		//commonInformation.associationID = std::nullopt;
+
+		auto const interfaceInfo = la::avdecc::entity::Entity::InterfaceInformation{ la::networkInterface::MacAddress{ 0x06, 0x05, 0x04, 0x03, 0x02, 0x01 }, 31u, 0u, std::nullopt, std::nullopt };
+		intfcInformation[la::avdecc::entity::Entity::GlobalAvbInterfaceIndex] = interfaceInfo;
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& compatibilityFlags) noexcept override
+	{
+		for (auto const f : _compatibilityFlags)
+		{
+			compatibilityFlags.set(f);
+		}
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::EntityNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::EntityNodeDynamicModel& dynamicModel) noexcept override
+	{
+		dynamicModel.entityName = la::avdecc::entity::model::AvdeccFixedString{ "Test entity" };
+		dynamicModel.currentConfiguration = ActiveConfigurationIndex;
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ConfigurationIndex const descriptorIndex, la::avdecc::entity::model::ConfigurationNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::ConfigurationNodeDynamicModel& dynamicModel) noexcept override
+	{
+		// Set active configuration
+		if (descriptorIndex == ActiveConfigurationIndex)
+		{
+			dynamicModel.isActiveConfiguration = true;
+		}
+		_isConfigurationActive = dynamicModel.isActiveConfiguration;
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AudioUnitIndex const /*descriptorIndex*/, la::avdecc::entity::model::AudioUnitNodeStaticModel const& staticModel, la::avdecc::entity::model::AudioUnitNodeDynamicModel& dynamicModel) noexcept override
+	{
+		// Only process active configuration
+		if (_isConfigurationActive)
+		{
+			// Choose the first sampling rate
+			dynamicModel.currentSamplingRate = staticModel.samplingRates.empty() ? la::avdecc::entity::model::SamplingRate{} : *staticModel.samplingRates.begin();
+		}
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*descriptorIndex*/, la::avdecc::entity::model::StreamNodeStaticModel const& staticModel, la::avdecc::entity::model::StreamInputNodeDynamicModel& dynamicModel) noexcept override
+	{
+		// Only process active configuration
+		if (_isConfigurationActive)
+		{
+			// Choose the first stream format
+			dynamicModel.streamFormat = staticModel.formats.empty() ? la::avdecc::entity::model::StreamFormat{} : *staticModel.formats.begin();
+		}
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*descriptorIndex*/, la::avdecc::entity::model::StreamNodeStaticModel const& staticModel, la::avdecc::entity::model::StreamOutputNodeDynamicModel& dynamicModel) noexcept override
+	{
+		// Only process active configuration
+		if (_isConfigurationActive)
+		{
+			// Choose the first stream format
+			dynamicModel.streamFormat = staticModel.formats.empty() ? la::avdecc::entity::model::StreamFormat{} : *staticModel.formats.begin();
+		}
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AvbInterfaceIndex const /*descriptorIndex*/, la::avdecc::entity::model::AvbInterfaceNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::AvbInterfaceNodeDynamicModel& dynamicModel) noexcept override
+	{
+		// Only process active configuration
+		if (_isConfigurationActive)
+		{
+			// Set the macAddress
+			dynamicModel.macAddress = la::networkInterface::MacAddress{ 0x06, 0x05, 0x04, 0x03, 0x02, 0x01 };
+		}
+	}
+	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ControlIndex const /*descriptorIndex*/, la::avdecc::entity::model::DescriptorType const /*attachedTo*/, la::avdecc::entity::model::ControlNodeStaticModel const& staticModel, la::avdecc::entity::model::ControlNodeDynamicModel& dynamicModel) noexcept override
+	{
+		// Only process active configuration
+		if (_isConfigurationActive)
+		{
+			// Identify control
+			if (staticModel.controlType == la::avdecc::UniqueIdentifier{ la::avdecc::utils::to_integral(la::avdecc::entity::model::StandardControlType::Identify) })
+			{
+				auto values = la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{};
+				values.addValue({ std::uint8_t{ 0x00 } });
+				dynamicModel.values = la::avdecc::entity::model::ControlValues{ values };
+			}
+		}
+	}
+
+private:
+	static auto constexpr ActiveConfigurationIndex = la::avdecc::entity::model::ConfigurationIndex{ 0u };
+	bool _isConfigurationActive{ false };
+	la::avdecc::controller::ControlledEntity::CompatibilityFlags _compatibilityFlags{};
+};
+} // namespace
+
+TEST_F(Controller_F, VirtualEntityFromEntityModelFile)
+{
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x0102030405060708 };
+	auto const compatibilityFlags = la::avdecc::controller::ControlledEntity::CompatibilityFlags{ la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221, la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan };
+	auto builder = Builder{ compatibilityFlags };
+	auto& controller = getController();
+	auto const [error, message] = controller.createVirtualEntityFromEntityModelFile("data/SimpleEntityModel.json", &builder, false);
+	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	// Validate entity
+	auto const entity = controller.getControlledEntityGuard(EntityID);
+	ASSERT_TRUE(!!entity);
+
+	// Check EntityID
+	EXPECT_EQ(EntityID, entity->getEntity().getEntityID());
+
+	// Check compatibility flags
+	EXPECT_EQ(compatibilityFlags, entity->getCompatibilityFlags());
+
+	// Serialize the virtual entity
+	{
+		auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDiagnostics /*, la::avdecc::entity::model::jsonSerializer::Flag::BinaryFormat*/ };
+		controller.serializeControlledEntityAsJson(EntityID, "OutputVirtualEntity.json", flags, "Discovery Example");
+	}
 }
 
 /*
@@ -579,11 +830,11 @@ TEST_F(Controller_F, BadArgumentsIfTooManyMappingsPassed)
 TEST(Controller, AdpduFromSameDeviceDifferentInterfaces)
 {
 	// Create a controller
-	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr);
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
 
 	auto const sendAdpAvailable = [gPTP = controller->getControllerEID()](auto const& entityID, auto const interfaceIndex)
 	{
-		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { static_cast<la::networkInterface::MacAddress::value_type>(interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }));
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { static_cast<la::networkInterface::MacAddress::value_type>(interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }, DefaultExecutorName));
 
 		// Build adpdu frame
 		auto adpdu = la::avdecc::protocol::Adpdu{};
@@ -635,7 +886,7 @@ TEST(Controller, AdpRedundantInterfaceNotifications)
 {
 	static auto s_CallOrder = std::vector<std::uint8_t>{};
 
-	class Obs final : public la::avdecc::controller::Controller::Observer
+	class Obs final : public la::avdecc::controller::Controller::DefaultedObserver
 	{
 	private:
 		virtual void onEntityOnline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity) noexcept override
@@ -674,7 +925,7 @@ TEST(Controller, AdpRedundantInterfaceNotifications)
 	};
 
 	// Create a controller
-	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr);
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
 
 	// Add an observer
 	auto obs = Obs{};
@@ -682,7 +933,7 @@ TEST(Controller, AdpRedundantInterfaceNotifications)
 
 	auto const sendAdpAvailable = [](auto const& entityID, auto const interfaceIndex, auto const validTime)
 	{
-		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { static_cast<la::networkInterface::MacAddress::value_type>(interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }));
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { static_cast<la::networkInterface::MacAddress::value_type>(interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }, DefaultExecutorName));
 
 		// Build adpdu frame
 		auto adpdu = la::avdecc::protocol::Adpdu{};
@@ -749,7 +1000,7 @@ TEST(Controller, ValidControlValues)
 {
 	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
 	// Load entity
-	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr);
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
 	auto const [error, message] = controller->loadVirtualEntityFromJson("data/SimpleEntity.json", flags);
 	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
 	EXPECT_STREQ("", message.c_str());
@@ -770,7 +1021,7 @@ TEST(Controller, ValidControlValues)
 	{
 		// Get ControlNode
 		auto const& controlNode = e.getControlNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, ControlIndex);
-		auto const& staticValues = controlNode.staticModel->values;
+		auto const& staticValues = controlNode.staticModel.values;
 
 		ASSERT_EQ(1u, staticValues.size()) << "VirtualEntity should have 1 value in its ControlNode";
 		ASSERT_EQ(la::avdecc::entity::model::ControlValueType::Type::ControlLinearUInt8, staticValues.getType()) << "VirtualEntity should have ControlLinearUInt8 type in its ControlNode";
@@ -778,10 +1029,10 @@ TEST(Controller, ValidControlValues)
 		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
 
 		// Expect to pass ControlValues validation with a value set to minimum
-		EXPECT_TRUE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 0u } } } }));
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::Valid, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 0u } } } }));
 
 		// Expect to pass ControlValues validation with a value set to maximum
-		EXPECT_TRUE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 255u } } } }));
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::Valid, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 255u } } } }));
 	}
 	catch (la::avdecc::controller::ControlledEntity::Exception const&)
 	{
@@ -793,13 +1044,12 @@ TEST(Controller, InvalidControlValues)
 {
 	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
 	// Load entity
-	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr);
-	auto const [error, message] = controller->loadVirtualEntityFromJson("data/SimpleEntity.json", flags);
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/ControlValueError.json", flags);
 	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
 	EXPECT_STREQ("", message.c_str());
 
 	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
-	auto constexpr ControlIndex = la::avdecc::entity::model::ControlIndex{ 0u };
 
 	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
 	auto& c = static_cast<la::avdecc::controller::ControllerImpl&>(*controller);
@@ -810,33 +1060,96 @@ TEST(Controller, InvalidControlValues)
 	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
 	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
 
+	// Get ControlNode.0 (Type: Identify)
 	try
 	{
-		// Get ControlNode
+		auto constexpr ControlIndex = la::avdecc::entity::model::ControlIndex{ 0u };
 		auto const& controlNode = e.getControlNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, ControlIndex);
-		auto const& staticValues = controlNode.staticModel->values;
+		ASSERT_EQ(la::avdecc::utils::to_integral(la::avdecc::entity::model::StandardControlType::Identify), controlNode.staticModel.controlType.getValue()) << "VirtualEntity should have Identify type in its ControlNode";
+		auto const& staticValues = controlNode.staticModel.values;
 
 		ASSERT_EQ(1u, staticValues.size()) << "VirtualEntity should have 1 value in its ControlNode";
 		ASSERT_EQ(la::avdecc::entity::model::ControlValueType::Type::ControlLinearUInt8, staticValues.getType()) << "VirtualEntity should have ControlLinearUInt8 type in its ControlNode";
 		ASSERT_TRUE(!!staticValues) << "VirtualEntity should have valid values in its ControlNode";
 		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
 
-		// Expect to not pass ControlValues validation with non-valid dynamic values
-		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues, {}));
+		// Expect to have InvalidValues validation result with non-initialized dynamic values (might be an unknown type of ControlValues)
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::InvalidValues, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, {}));
 
-		// Expect to not pass ControlValues validation with static values instead of dynamic values
-		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueStatic<std::uint8_t>>{} }));
+		// Expect to have InvalidValues validation result with static values instead of dynamic values
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::InvalidValues, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueStatic<std::uint8_t>>{} }));
 
-		// Expect to not pass ControlValues validation with a different type of dynamic values
-		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::int8_t>>{} }));
+		// Expect to have InvalidValues validation result with a different type of dynamic values
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::InvalidValues, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::int8_t>>{} }));
 
-		// Expect to not pass ControlValues validation with a different count of values
-		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{} }));
+		// Expect to have InvalidValues validation result with a different count of values
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::InvalidValues, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{} }));
 
-		// Expect to not pass ControlValues validation with a value not multiple of Step for LinearValues
-		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 1u } } } }));
+		// Expect to have InvalidValues validation result with a value not multiple of Step for LinearValues
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::InvalidValues, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 1u } } } }));
+	}
+	catch (la::avdecc::controller::ControlledEntity::Exception const&)
+	{
+		ASSERT_FALSE(true) << "ControlNode not found";
+	}
 
-		// Expect to not pass ControlValues validation with a value outside bounds // TODO: Cannot test with an IDENTIFY Control, have to create another Control
+	// Get ControlNode.1 (Type: FanStatus)
+	try
+	{
+		auto constexpr ControlIndex = la::avdecc::entity::model::ControlIndex{ 1u };
+		auto const& controlNode = e.getControlNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, ControlIndex);
+		ASSERT_EQ(la::avdecc::utils::to_integral(la::avdecc::entity::model::StandardControlType::FanStatus), controlNode.staticModel.controlType.getValue()) << "VirtualEntity should have Identify type in its ControlNode";
+		auto const& staticValues = controlNode.staticModel.values;
+
+		ASSERT_EQ(1u, staticValues.size()) << "VirtualEntity should have 1 value in its ControlNode";
+		ASSERT_EQ(la::avdecc::entity::model::ControlValueType::Type::ControlLinearUInt8, staticValues.getType()) << "VirtualEntity should have ControlLinearUInt8 type in its ControlNode";
+		ASSERT_TRUE(!!staticValues) << "VirtualEntity should have valid values in its ControlNode";
+		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
+
+		// Expect to have CurrentValueOutOfRange validation result with a value outside bounds
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::CurrentValueOutOfRange, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, controlNode.dynamicModel.values));
+	}
+	catch (la::avdecc::controller::ControlledEntity::Exception const&)
+	{
+		ASSERT_FALSE(true) << "ControlNode not found";
+	}
+
+	// Get ControlNode.2 (Type: VendorSpecific)
+	try
+	{
+		auto constexpr ControlIndex = la::avdecc::entity::model::ControlIndex{ 2u };
+		auto const& controlNode = e.getControlNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, ControlIndex);
+		ASSERT_EQ(la::avdecc::UniqueIdentifier{ 0x480BB2FFFED40000 }, controlNode.staticModel.controlType) << "VirtualEntity should have Identify type in its ControlNode";
+		auto const& staticValues = controlNode.staticModel.values;
+
+		ASSERT_EQ(1u, staticValues.size()) << "VirtualEntity should have 1 value in its ControlNode";
+		ASSERT_EQ(la::avdecc::entity::model::ControlValueType::Type::ControlArrayUInt8, staticValues.getType()) << "VirtualEntity should have ControlLinearUInt8 type in its ControlNode";
+		ASSERT_TRUE(!!staticValues) << "VirtualEntity should have valid values in its ControlNode";
+		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
+
+		// Expect to have CurrentValueOutOfRange validation result with a value outside bounds
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::CurrentValueOutOfRange, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, controlNode.dynamicModel.values));
+	}
+	catch (la::avdecc::controller::ControlledEntity::Exception const&)
+	{
+		ASSERT_FALSE(true) << "ControlNode not found";
+	}
+
+	// Get ControlNode.3 (Type: VendorSpecific, Subnode of AudioUnit)
+	try
+	{
+		auto constexpr ControlIndex = la::avdecc::entity::model::ControlIndex{ 3u };
+		auto const& controlNode = e.getControlNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, ControlIndex);
+		ASSERT_EQ(la::avdecc::UniqueIdentifier{ 0x480BB2FFFED40000 }, controlNode.staticModel.controlType) << "VirtualEntity should have Identify type in its ControlNode";
+		auto const& staticValues = controlNode.staticModel.values;
+
+		ASSERT_EQ(1u, staticValues.size()) << "VirtualEntity should have 1 value in its ControlNode";
+		ASSERT_EQ(la::avdecc::entity::model::ControlValueType::Type::ControlArrayUInt8, staticValues.getType()) << "VirtualEntity should have ControlLinearUInt8 type in its ControlNode";
+		ASSERT_TRUE(!!staticValues) << "VirtualEntity should have valid values in its ControlNode";
+		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
+
+		// Expect to have CurrentValueOutOfRange validation result with a value outside bounds
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::CurrentValueOutOfRange, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, controlNode.dynamicModel.values));
 	}
 	catch (la::avdecc::controller::ControlledEntity::Exception const&)
 	{
@@ -844,15 +1157,316 @@ TEST(Controller, InvalidControlValues)
 	}
 }
 
+TEST(Controller, IdentifyAdvertisedButNoSuchIndex)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/IdentifyAdvertisedButNoSuchIndex.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should not be IEEE17221 compatible because of the invalid ControlIndex in the ADP advertise
+	EXPECT_FALSE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should have a valid Identify Control Index, at index 0 (even though the Identify ControlIndex advertised in the ADP is invalid, there is a valid one at CONFIGURATION level)
+	ASSERT_TRUE(e.getIdentifyControlIndex().has_value());
+	EXPECT_EQ(la::avdecc::entity::model::ControlIndex{ 0u }, *e.getIdentifyControlIndex());
+}
+
+TEST(Controller, IdentifyAdvertisedButInvalid)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/IdentifyAdvertisedButInvalid.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should not be IEEE17221 compatible because of the invalid ControlIndex in the ADP advertise
+	EXPECT_FALSE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should not have a valid Identify Control Index
+	EXPECT_FALSE(e.getIdentifyControlIndex().has_value());
+}
+
+TEST(Controller, IdentifyAdvertisedInAudioUnit)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/IdentifyAdvertisedInAudioUnit.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should not be IEEE17221 compatible because of the invalid ControlIndex in the ADP advertise
+	EXPECT_FALSE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should not have a valid Identify Control Index
+	EXPECT_FALSE(e.getIdentifyControlIndex().has_value());
+}
+
+TEST(Controller, IdentifyAdvertisedInConfiguration)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/IdentifyAdvertisedInConfiguration.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should be IEEE17221 compatible
+	EXPECT_TRUE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should have a valid Identify Control Index
+	EXPECT_TRUE(e.getIdentifyControlIndex().has_value());
+}
+
+TEST(Controller, IdentifyAdvertisedInJack)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/IdentifyAdvertisedInJack.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should be IEEE17221 compatible
+	EXPECT_TRUE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should have a valid Identify Control Index
+	EXPECT_TRUE(e.getIdentifyControlIndex().has_value());
+}
+
+TEST(Controller, NotAdvertisedButFoundInConfiguration)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/NotAdvertisedButFoundInConfiguration.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should be IEEE17221 compatible
+	EXPECT_TRUE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should have a valid Identify Control Index, at index 0
+	ASSERT_TRUE(e.getIdentifyControlIndex().has_value());
+	EXPECT_EQ(la::avdecc::entity::model::ControlIndex{ 0u }, *e.getIdentifyControlIndex());
+}
+
+TEST(Controller, NotAdvertisedButFoundInJack)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/NotAdvertisedButFoundInJack.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should be IEEE17221 compatible
+	EXPECT_TRUE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should have a valid Identify Control Index, at index 1
+	ASSERT_TRUE(e.getIdentifyControlIndex().has_value());
+	EXPECT_EQ(la::avdecc::entity::model::ControlIndex{ 1u }, *e.getIdentifyControlIndex());
+}
+
+TEST(Controller, NotAdvertisedAndIncorrectlyFoundInAudioUnit)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/NotAdvertisedAndIncorrectlyFoundInAudioUnit.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should not be IEEE17221 compatible because of the invalid ControlIndex in the ADP advertise
+	EXPECT_FALSE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should not have a valid Identify Control Index
+	EXPECT_FALSE(e.getIdentifyControlIndex().has_value());
+}
+
+TEST(Controller, InvalidAdvertiseButFoundInConfiguration)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/InvalidAdvertiseButFoundInConfiguration.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should not be IEEE17221 compatible because of the invalid ControlIndex in the ADP advertise
+	EXPECT_FALSE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should have a valid Identify Control Index, at index 0
+	ASSERT_TRUE(e.getIdentifyControlIndex().has_value());
+	EXPECT_EQ(la::avdecc::entity::model::ControlIndex{ 0u }, *e.getIdentifyControlIndex());
+}
+
+TEST(Controller, InvalidAdvertiseButFoundInJack)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/InvalidAdvertiseButFoundInJack.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should not be IEEE17221 compatible because of the invalid ControlIndex in the ADP advertise
+	EXPECT_FALSE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should have a valid Identify Control Index, at index 1
+	ASSERT_TRUE(e.getIdentifyControlIndex().has_value());
+	EXPECT_EQ(la::avdecc::entity::model::ControlIndex{ 1u }, *e.getIdentifyControlIndex());
+}
+
+TEST(Controller, InvalidAdvertiseAndIncorrectlyFoundInAudioUnit)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/InvalidAdvertiseAndIncorrectlyFoundInAudioUnit.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should not be IEEE17221 compatible because of the invalid ControlIndex in the ADP advertise
+	EXPECT_FALSE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should not have a valid Identify Control Index
+	EXPECT_FALSE(e.getIdentifyControlIndex().has_value());
+}
 
 namespace
 {
-class MediaClockModel_F : public ::testing::Test, public la::avdecc::controller::Controller::Observer
+class MediaClockModel_F : public ::testing::Test, public la::avdecc::controller::Controller::DefaultedObserver
 {
 public:
 	virtual void SetUp() override
 	{
-		_controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr);
+		_controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
 	}
 
 	virtual void TearDown() override {}
@@ -905,6 +1519,11 @@ static auto constexpr Entity11 = la::avdecc::UniqueIdentifier{ 0x000000000000001
 static auto constexpr Entity12 = la::avdecc::UniqueIdentifier{ 0x0000000000000012 }; // No connections           // CD.0 on External
 static auto constexpr Entity13 = la::avdecc::UniqueIdentifier{ 0x0000000000000013 }; // SI.2 connected to E14.2  // CD.0 on SI.2
 static auto constexpr Entity14 = la::avdecc::UniqueIdentifier{ 0x0000000000000014 }; // SI.2 connected to E13.2  // CD.0 on Internal, CD.1 on SI.2 // SI.2, SO.2 on CD.1
+static auto constexpr Entity0A = la::avdecc::UniqueIdentifier{ 0x000000000000000A }; // CD.0 on Internal
+static auto constexpr Entity0B = la::avdecc::UniqueIdentifier{ 0x000000000000000B }; // CD.0 on Internal
+static auto constexpr Entity0C = la::avdecc::UniqueIdentifier{ 0x000000000000000C }; // CD.0 on SI.MCRF connected to E0A
+static auto constexpr Entity1C = la::avdecc::UniqueIdentifier{ 0x000000000000001C }; // CD.0 on SI.MCRF connected to E0B
+static auto constexpr Entity0D = la::avdecc::UniqueIdentifier{ 0x000000000000000D }; // SI.0 connected to E0C.0	 // CD.0 on SI.0
 
 // *****************************
 // Testing static state
@@ -2041,6 +2660,346 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchConnect)
 	}
 }
 
+TEST_F(MediaClockModel_F, StreamInput_ReplaceTalkerForSingleEntity)
+{
+	loadEntityFile("data/MediaClockModel/Entity_0x0A.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0B.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0C.json");
+
+	try
+	{
+		auto& c = getControllerImpl();
+		// Check initial state
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0C);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(2u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity0A, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+
+		// Expect Controller::Observer::onMediaClockChainChanged() to be called
+		registerMockObserver();
+		EXPECT_CALL(*this, onMediaClockChainChanged(::testing::_, c.getControlledEntityGuard(Entity0C).get(), la::avdecc::entity::model::ClockDomainIndex{ 0u }, ::testing::_));
+
+		// Replace connection of MCRF to entity 0B stream
+		c.handleListenerStreamStateNotification(la::avdecc::entity::model::StreamIdentification{ Entity0B, la::avdecc::entity::model::StreamIndex{ 2u } }, la::avdecc::entity::model::StreamIdentification{ Entity0C, la::avdecc::entity::model::StreamIndex{ 2u } }, true, la::avdecc::entity::ConnectionFlags{}, true);
+
+		// Validate chain has been updated
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0C);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(2u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity0B, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(MediaClockModel_F, StreamInput_ReplaceTalkerForMiddleChainEntity)
+{
+	/*	Initial state:
+			Entity C CS:CRF connected to SO:CRF from Entity A
+			Entity 1 CS:SI connected to SO:1 from Entity C
+		Then Replace Clock Source of Entity C with Entity B SO:CRF
+		Both entities C and D should reflect the Media clock change
+	*/
+
+	loadEntityFile("data/MediaClockModel/Entity_0x0A.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0B.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0C.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0D.json");
+
+	try
+	{
+		auto& c = getControllerImpl();
+		// Check initial state for Entity 0C
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0C);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(2u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity0A, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+
+		// Check initial state for Entity 0D
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0D);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(3u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0D, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity0C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[2];
+				EXPECT_EQ(Entity0A, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+
+		// Expect Controller::Observer::onMediaClockChainChanged() to be called
+		registerMockObserver();
+		EXPECT_CALL(*this, onMediaClockChainChanged(::testing::_, c.getControlledEntityGuard(Entity0D).get(), la::avdecc::entity::model::ClockDomainIndex{ 0u }, ::testing::_));
+		EXPECT_CALL(*this, onMediaClockChainChanged(::testing::_, c.getControlledEntityGuard(Entity0C).get(), la::avdecc::entity::model::ClockDomainIndex{ 0u }, ::testing::_));
+
+		// Replace connection of MCRF to entity 0B stream
+		c.handleListenerStreamStateNotification(la::avdecc::entity::model::StreamIdentification{ Entity0B, la::avdecc::entity::model::StreamIndex{ 2u } }, la::avdecc::entity::model::StreamIdentification{ Entity0C, la::avdecc::entity::model::StreamIndex{ 2u } }, true, la::avdecc::entity::ConnectionFlags{}, true);
+
+		// Validate chain has been updated for Entity 0C
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0C);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(2u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity0B, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+
+		// Validate chain has been updated for Entity 0D
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0D);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(3u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0D, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity0C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[2];
+				EXPECT_EQ(Entity0B, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(MediaClockModel_F, StreamInput_ReplaceTalkerForLastChainEntity)
+{
+	/*	Initial state:
+			Entity C CS:CRF connected to SO:CRF from Entity A
+			Entity 1C CS:CRF connected to SO:CRF from Entity B
+			Entity D CS:SI connected to SO:0 from Entity C
+		Then Replace Clock Source of Entity D with Entity 1C SO:0 from entity 1C
+	*/
+
+	loadEntityFile("data/MediaClockModel/Entity_0x0A.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0B.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0C.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x1C.json");
+	loadEntityFile("data/MediaClockModel/Entity_0x0D.json");
+
+	try
+	{
+		auto& c = getControllerImpl();
+		// Check initial state for Entity 0D
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0D);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(3u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0D, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity0C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[2];
+				EXPECT_EQ(Entity0A, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+
+		// Expect Controller::Observer::onMediaClockChainChanged() to be called
+		registerMockObserver();
+		EXPECT_CALL(*this, onMediaClockChainChanged(::testing::_, c.getControlledEntityGuard(Entity0D).get(), la::avdecc::entity::model::ClockDomainIndex{ 0u }, ::testing::_));
+
+		// Replace connection of SI to entity 1C stream
+		c.handleListenerStreamStateNotification(la::avdecc::entity::model::StreamIdentification{ Entity1C, la::avdecc::entity::model::StreamIndex{ 0u } }, la::avdecc::entity::model::StreamIdentification{ Entity0D, la::avdecc::entity::model::StreamIndex{ 0u } }, true, la::avdecc::entity::ConnectionFlags{}, true);
+
+		// Validate chain has been updated for Entity 0D
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity0D);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(3u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(Entity0D, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity1C, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[2];
+				EXPECT_EQ(Entity0B, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamOutputIndex);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
 TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchClockSource)
 {
 	loadEntityFile("data/MediaClockModel/Entity_0x01.json");
@@ -2080,7 +3039,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchClockSource)
 		EXPECT_CALL(*this, onMediaClockChainChanged(::testing::_, c.getControlledEntityGuard(Entity01).get(), la::avdecc::entity::model::ClockDomainIndex{ 0u }, ::testing::_));
 
 		// Change the clock source
-		c.updateClockSource(*c.getControlledEntityImplGuard(Entity01, true, false), la::avdecc::entity::model::ClockDomainIndex{ 0u }, la::avdecc::entity::model::ClockSourceIndex{ 1u });
+		c.updateClockSource(*c.getControlledEntityImplGuard(Entity01, true, false), la::avdecc::entity::model::ClockDomainIndex{ 0u }, la::avdecc::entity::model::ClockSourceIndex{ 1u }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::Throw);
 
 		// Validate chain has been updated
 		{
@@ -2161,12 +3120,22 @@ TEST_F(MediaClockModel_F, NotCrashing_Issue125)
 	}
 }
 
-TEST(Controller, HashEntityModel)
+TEST(Controller, HashEntityModelV1)
 {
 	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel };
 	auto const& [error, msg, controlledEntity] = la::avdecc::controller::Controller::deserializeControlledEntityFromJson("data/SimpleEntity.json", flags);
 	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
-	auto const checksum = la::avdecc::controller::Controller::computeEntityModelChecksum(*controlledEntity);
-	EXPECT_FALSE(checksum.empty());
-	EXPECT_EQ(64u, checksum.size());
+	auto const checksum = la::avdecc::controller::Controller::computeEntityModelChecksum(*controlledEntity, std::uint32_t{ 1u });
+	EXPECT_TRUE(checksum.has_value());
+	EXPECT_EQ(64u, checksum.value().size());
+}
+
+TEST(Controller, HashEntityModelV2)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel };
+	auto const& [error, msg, controlledEntity] = la::avdecc::controller::Controller::deserializeControlledEntityFromJson("data/SimpleEntity.json", flags);
+	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	auto const checksum = la::avdecc::controller::Controller::computeEntityModelChecksum(*controlledEntity, std::uint32_t{ 2u });
+	EXPECT_TRUE(checksum.has_value());
+	EXPECT_EQ(64u, checksum.value().size());
 }

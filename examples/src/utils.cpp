@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -111,7 +111,7 @@ la::networkInterface::Interface chooseNetworkInterface()
 		[&interfaces](la::networkInterface::Interface const& intfc)
 		{
 			// Only select connected, non virtual, ethernet interfaces
-			if (intfc.type == la::networkInterface::Interface::Type::Ethernet && intfc.isConnected && !intfc.isVirtual)
+			if (/*intfc.type == la::networkInterface::Interface::Type::Ethernet && */ intfc.isConnected && !intfc.isVirtual)
 				interfaces.push_back(intfc);
 		});
 

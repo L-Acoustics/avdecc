@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -33,12 +33,16 @@
 #include <future>
 #include <chrono>
 
+static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
+
 TEST(ProtocolInterfaceVirtual, InvalidName)
 {
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+
 	// Not using EXPECT_THROW, we want to check the error code inside our custom exception
 	try
 	{
-		std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }));
+		std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }, DefaultExecutorName));
 		EXPECT_FALSE(true); // We expect an exception to have been raised
 	}
 	catch (la::avdecc::protocol::ProtocolInterface::Exception const& e)
@@ -49,10 +53,12 @@ TEST(ProtocolInterfaceVirtual, InvalidName)
 
 TEST(ProtocolInterfaceVirtual, InvalidMac)
 {
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+
 	// Not using EXPECT_THROW, we want to check the error code inside our custom exception
 	try
 	{
-		std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("InvalidMac", {}));
+		std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("InvalidMac", {}, DefaultExecutorName));
 		EXPECT_FALSE(true); // We expect an exception to have been raised
 	}
 	catch (la::avdecc::protocol::ProtocolInterface::Exception const& e)
@@ -63,12 +69,14 @@ TEST(ProtocolInterfaceVirtual, InvalidMac)
 
 TEST(ProtocolInterfaceVirtual, ValidInterface)
 {
-	EXPECT_NO_THROW(std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("ValidInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } })););
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+
+	EXPECT_NO_THROW(std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("ValidInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }, DefaultExecutorName)););
 }
 
 TEST(ProtocolInterfaceVirtual, SendMessage)
 {
-	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
 	static std::promise<void> entityOnlinePromise;
 
 	class Observer : public la::avdecc::protocol::ProtocolInterface::Observer
@@ -82,8 +90,8 @@ TEST(ProtocolInterfaceVirtual, SendMessage)
 	};
 
 	Observer obs;
-	auto intfc1 = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }));
-	auto intfc2 = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b } }));
+	auto intfc1 = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }, DefaultExecutorName));
+	auto intfc2 = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b } }, DefaultExecutorName));
 	intfc2->registerObserver(&obs);
 
 	// Build adpdu frame
@@ -119,7 +127,7 @@ TEST(ProtocolInterfaceVirtual, SendMessage)
 
 TEST(ProtocolInterfaceVirtual, RegisterAfterDiscoveredEntities)
 {
-	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
 
 	class Observer : public la::avdecc::protocol::ProtocolInterface::Observer
 	{
@@ -137,8 +145,8 @@ TEST(ProtocolInterfaceVirtual, RegisterAfterDiscoveredEntities)
 		std::promise<void> _promise{};
 		DECLARE_AVDECC_OBSERVER_GUARD(Observer);
 	};
-	auto intfc1 = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }));
-	auto intfc2 = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b } }));
+	auto intfc1 = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }, DefaultExecutorName));
+	auto intfc2 = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b } }, DefaultExecutorName));
 
 	// Build adpdu frame
 	auto adpdu = la::avdecc::protocol::Adpdu{};
@@ -189,7 +197,7 @@ TEST(ProtocolInterfaceVirtual, RegisterAfterDiscoveredEntities)
 
 TEST(ProtocolInterfaceVirtual, InjectPacket)
 {
-	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
 	static std::promise<void> entityOnlinePromise;
 
 	class Observer : public la::avdecc::protocol::ProtocolInterface::Observer
@@ -203,7 +211,7 @@ TEST(ProtocolInterfaceVirtual, InjectPacket)
 	};
 
 	Observer obs;
-	auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }));
+	auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }, DefaultExecutorName));
 	intfc->registerObserver(&obs);
 
 	// Build adpdu frame

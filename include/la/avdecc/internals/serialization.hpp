@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -182,6 +182,13 @@ public:
 		return *this;
 	}
 
+	/** Serializes a MemoryBufferView (without changing endianess) */
+	Serializer& operator<<(MemoryBufferView const& v)
+	{
+		packBuffer(v.data(), v.size());
+		return *this;
+	}
+
 	/** Appends a raw buffer to the serialized buffer (without changing endianess) */
 	Serializer& packBuffer(void const* const ptr, size_t const size)
 	{
@@ -197,6 +204,14 @@ public:
 		// Advance data pointer
 		_pos += size;
 
+		return *this;
+	}
+
+	/** Append a serializer to this one (without changing endianess) */
+	template<size_t OtherMaximumSize>
+	Serializer& operator+=(Serializer<OtherMaximumSize> const& other)
+	{
+		packBuffer(other.data(), other.size());
 		return *this;
 	}
 
@@ -232,6 +247,12 @@ public:
 	}
 
 	Deserializer(MemoryBuffer const& buffer) noexcept
+		: _ptr{ buffer.data() }
+		, _size{ buffer.size() }
+	{
+	}
+
+	Deserializer(MemoryBufferView const& buffer) noexcept
 		: _ptr{ buffer.data() }
 		, _size{ buffer.size() }
 	{

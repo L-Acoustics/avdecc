@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -91,6 +91,11 @@ public:
 	virtual bool discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept override
 	{
 		return !_protocolInterface->discoverRemoteEntity(entityID);
+	}
+
+	virtual bool forgetRemoteEntity(UniqueIdentifier const entityID) const noexcept override
+	{
+		return !_protocolInterface->forgetRemoteEntity(entityID);
 	}
 
 	virtual void setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept override

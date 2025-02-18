@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -117,20 +117,20 @@ public:
 		return s_dispatcher;
 	}
 
-	void registerObserver(std::string const& networkInterfaceName, Observer* const observer) noexcept
+	void registerObserver(std::string const& networkInterfaceID, Observer* const observer) noexcept
 	{
 		std::lock_guard<decltype(_mutex)> const lg(_mutex);
 
-		auto interfaceIt = _interfaces.find(networkInterfaceName);
+		auto interfaceIt = _interfaces.find(networkInterfaceID);
 
 		// Virtual interface not created yet
 		if (interfaceIt == _interfaces.end())
 		{
 			auto intfc = std::make_unique<Interface>();
 			intfc->dispatchThread = std::thread(
-				[networkInterfaceName, intfc = intfc.get()]()
+				[networkInterfaceID, intfc = intfc.get()]()
 				{
-					utils::setCurrentThreadName("avdecc::VirtualInterface." + networkInterfaceName + "::Capture");
+					utils::setCurrentThreadName("avdecc::VirtualInterface." + networkInterfaceID + "::Capture");
 					while (!intfc->shouldTerminate)
 					{
 						MessagesList messagesToSend{};
@@ -184,7 +184,7 @@ public:
 						}
 					}
 				});
-			auto result = _interfaces.emplace(std::make_pair(networkInterfaceName, std::move(intfc)));
+			auto result = _interfaces.emplace(std::make_pair(networkInterfaceID, std::move(intfc)));
 			// Insertion failed
 			if (!result.second)
 				return;
@@ -202,11 +202,11 @@ public:
 		}
 	}
 
-	void unregisterObserver(std::string const& networkInterfaceName, Observer* const observer) noexcept
+	void unregisterObserver(std::string const& networkInterfaceID, Observer* const observer) noexcept
 	{
 		std::lock_guard<decltype(_mutex)> const lg(_mutex);
 
-		auto interfaceIt = _interfaces.find(networkInterfaceName);
+		auto interfaceIt = _interfaces.find(networkInterfaceID);
 
 		// Interface does not exist, ignore the message
 		if (interfaceIt == _interfaces.end())
@@ -229,11 +229,11 @@ public:
 		}
 	}
 
-	void push(std::string const& networkInterfaceName, SerializationBuffer message)
+	void push(std::string const& networkInterfaceID, SerializationBuffer message)
 	{
 		std::lock_guard<decltype(_mutex)> const lg(_mutex);
 
-		auto interfaceIt = _interfaces.find(networkInterfaceName);
+		auto interfaceIt = _interfaces.find(networkInterfaceID);
 
 		// Interface does not exist, ignore the message
 		if (interfaceIt == _interfaces.end())
@@ -277,7 +277,7 @@ public:
 	/* Public APIs                                                  */
 	/* ************************************************************ */
 	/** Constructor */
-	ProtocolInterfaceVirtualImpl(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress);
+	ProtocolInterfaceVirtualImpl(std::string const& networkInterfaceID, networkInterface::MacAddress const& macAddress, std::string const& executorName);
 
 	/** Destructor */
 	virtual ~ProtocolInterfaceVirtualImpl() noexcept;
@@ -306,6 +306,7 @@ private:
 	virtual Error disableEntityAdvertising(entity::LocalEntity const& entity) noexcept override;
 	virtual Error discoverRemoteEntities() const noexcept override;
 	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept override;
+	virtual Error forgetRemoteEntity(UniqueIdentifier const entityID) const noexcept override;
 	virtual Error setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) const noexcept override;
 	virtual bool isDirectMessageSupported() const noexcept override;
 	virtual Error sendAdpMessage(Adpdu const& adpdu) const noexcept override;
@@ -386,15 +387,15 @@ private:
 /* Public APIs                                                  */
 /* ************************************************************ */
 /** Constructor */
-ProtocolInterfaceVirtualImpl::ProtocolInterfaceVirtualImpl(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress)
-	: ProtocolInterfaceVirtual(networkInterfaceName, macAddress)
+ProtocolInterfaceVirtualImpl::ProtocolInterfaceVirtualImpl(std::string const& networkInterfaceID, networkInterface::MacAddress const& macAddress, std::string const& executorName)
+	: ProtocolInterfaceVirtual(networkInterfaceID, macAddress, executorName)
 {
 	// Should always be supported. Cannot create a Virtual ProtocolInterface if it's not supported.
 	AVDECC_ASSERT(isSupported(), "Should always be supported. Cannot create a Virtual ProtocolInterface if it's not supported");
 
 	// Register to the message dispatcher
 	auto& dispatcher = MessageDispatcher::getInstance();
-	dispatcher.registerObserver(networkInterfaceName, this);
+	dispatcher.registerObserver(networkInterfaceID, this);
 
 	// Start the state machines
 	_stateMachineManager.startStateMachines();
@@ -421,12 +422,15 @@ void ProtocolInterfaceVirtualImpl::shutdown() noexcept
 
 	// Unregister from the message dispatcher
 	auto& dispatcher = MessageDispatcher::getInstance();
-	dispatcher.unregisterObserver(_networkInterfaceName, this);
+	dispatcher.unregisterObserver(_networkInterfaceID, this);
+
+	// Flush executor jobs
+	la::avdecc::ExecutorManager::getInstance().flush(getExecutorName());
 }
 
 UniqueIdentifier ProtocolInterfaceVirtualImpl::getDynamicEID() const noexcept
 {
-	UniqueIdentifier::value_type eid{ 0u };
+	auto eid = UniqueIdentifier::value_type{ 0u };
 	auto const& macAddress = getMacAddress();
 	static auto s_CurrentProgID = std::uint16_t{ 0u };
 
@@ -435,14 +439,14 @@ UniqueIdentifier ProtocolInterfaceVirtualImpl::getDynamicEID() const noexcept
 	eid += macAddress[1];
 	eid <<= 8;
 	eid += macAddress[2];
-	eid <<= 16;
-	eid += ++s_CurrentProgID;
 	eid <<= 8;
 	eid += macAddress[3];
 	eid <<= 8;
 	eid += macAddress[4];
 	eid <<= 8;
 	eid += macAddress[5];
+	eid <<= 16;
+	eid += ++s_CurrentProgID;
 
 	return UniqueIdentifier{ eid };
 }
@@ -505,6 +509,11 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::discoverRemoteEntity(Uniq
 		_stateMachineManager.discoverMessageSent(); // Notify we are sending a discover message
 	}
 	return err;
+}
+
+ProtocolInterface::Error ProtocolInterfaceVirtualImpl::forgetRemoteEntity(UniqueIdentifier const entityID) const noexcept
+{
+	return _stateMachineManager.forgetRemoteEntity(entityID);
 }
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) const noexcept
@@ -870,7 +879,7 @@ void ProtocolInterfaceVirtualImpl::onObserverRegistered(observer_type* const obs
 /* ************************************************************ */
 void ProtocolInterfaceVirtualImpl::processRawPacket(la::avdecc::MemoryBuffer&& packet) const noexcept
 {
-	la::avdecc::ExecutorManager::getInstance().pushJob(DefaultExecutorName,
+	la::avdecc::ExecutorManager::getInstance().pushJob(getExecutorName(),
 		[this, msg = std::move(packet)]()
 		{
 			// Packet received, process it
@@ -916,7 +925,7 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendPacket(SerializationB
 	{
 		// Push the buffer to the message dispatcher
 		auto& dispatcher = MessageDispatcher::getInstance();
-		dispatcher.push(_networkInterfaceName, buffer);
+		dispatcher.push(_networkInterfaceID, buffer);
 		return Error::NoError;
 	}
 	catch (...)
@@ -925,8 +934,8 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendPacket(SerializationB
 	return Error::TransportError;
 }
 
-ProtocolInterfaceVirtual::ProtocolInterfaceVirtual(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress)
-	: ProtocolInterface(networkInterfaceName, macAddress)
+ProtocolInterfaceVirtual::ProtocolInterfaceVirtual(std::string const& networkInterfaceID, networkInterface::MacAddress const& macAddress, std::string const& executorName)
+	: ProtocolInterface(networkInterfaceID, macAddress, executorName)
 {
 }
 
@@ -935,9 +944,9 @@ bool ProtocolInterfaceVirtual::isSupported() noexcept
 	return true;
 }
 
-ProtocolInterfaceVirtual* ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress)
+ProtocolInterfaceVirtual* ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(std::string const& networkInterfaceID, networkInterface::MacAddress const& macAddress, std::string const& executorName)
 {
-	return new ProtocolInterfaceVirtualImpl(networkInterfaceName, macAddress);
+	return new ProtocolInterfaceVirtualImpl(networkInterfaceID, macAddress, executorName);
 }
 
 } // namespace protocol

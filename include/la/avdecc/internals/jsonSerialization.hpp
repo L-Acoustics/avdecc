@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -50,7 +50,7 @@ enum class SerializationError
 	UnknownEntity = 2, /**< Specified entityID unknown. */
 	InvalidDescriptorIndex = 3, /**< A descriptor index of the model has an invalid numbering. */
 	Incomplete = 4, /**< Serialization partially done (had errors but continued anyway). */
-	NotSupported = 98, /**< Serialization feature not supported by the library (was not compiled). */
+	NotSupported = 98, /**< Serialization feature not supported by the library. */
 	InternalError = 99, /**< Internal error, please report the issue. */
 };
 
@@ -59,7 +59,7 @@ enum class DeserializationError
 	NoError = 0,
 	AccessDenied = 1, /**< File access denied. */
 	FileReadError = 2, /**< Error reading file. */
-	UnsupportedDumpVersion = 3, /**< json dump version not supported. */
+	IncompatibleDumpVersion = 3, /**< json dump version not compatible with this version of the library. */
 	ParseError = 4, /**< Error during json parsing. */
 	MissingKey = 5, /**< A mandatory Key is missing from the json model. */
 	InvalidKey = 6, /**< Key couldn't be converted from json to field's expected data type. */
@@ -68,7 +68,8 @@ enum class DeserializationError
 	DuplicateEntityID = 9, /**< An Entity already exists with the same EntityID. */
 	NotCompliant = 10, /**< Model is not full compliant with IEEE1722.1 and IgnoreSanityChecks flag was not set. */
 	Incomplete = 11, /**< Deserialization partially done (had errors but continued anyway). */
-	NotSupported = 98, /**< Deserialization feature not supported by the library (was not compiled). */
+	MissingInformation = 12, /**< Missing information in the model. */
+	NotSupported = 98, /**< Deserialization feature not supported by the library. */
 	InternalError = 99, /**< Internal error, please report the issue. */
 };
 

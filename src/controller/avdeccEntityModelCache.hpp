@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include <la/avdecc/internals/entityModelTree.hpp>
+#include <la/avdecc/controller/internals/avdeccControlledEntityModel.hpp>
 
 #include "avdeccControllerLogHelper.hpp"
 
@@ -68,7 +68,7 @@ public:
 		_isEnabled = false;
 	}
 
-	std::optional<entity::model::EntityTree> getCachedEntityTree(UniqueIdentifier const entityModelID) const noexcept
+	std::optional<model::EntityNode> getCachedEntityModel(UniqueIdentifier const entityModelID) const noexcept
 	{
 		AVDECC_ASSERT(_isEnabled, "Should not call AEM cache if cache is not enabled");
 		AVDECC_ASSERT(entityModelID, "Should not call AEM cache if EntityModelID is invalid");
@@ -85,7 +85,7 @@ public:
 		return std::nullopt;
 	}
 
-	void cacheEntityTree(UniqueIdentifier const entityModelID, entity::model::EntityTree const& tree) noexcept
+	void cacheEntityModel(UniqueIdentifier const entityModelID, model::EntityNode&& model) noexcept
 	{
 		AVDECC_ASSERT(_isEnabled, "Should not call AEM cache if cache is not enabled");
 		AVDECC_ASSERT(entityModelID, "Should not call AEM cache if EntityModelID is invalid");
@@ -96,66 +96,8 @@ public:
 			// Cache the EntityModel but only if not already in cache
 			if (_modelCache.count(entityModelID) == 0)
 			{
-				// Make a copy of the passed tree as we want to remove all the dynamic part from it
-				auto cachedTree = tree;
-
-				// Wipe all the dynamic model
-				cachedTree.dynamicModel = {};
-				for (auto& configKV : cachedTree.configurationTrees)
-				{
-					auto& config = configKV.second;
-					config.dynamicModel = {};
-					for (auto& KV : config.audioUnitModels)
-					{
-						KV.second.dynamicModel = {};
-					}
-					for (auto& KV : config.streamInputModels)
-					{
-						KV.second.dynamicModel = {};
-					}
-					for (auto& KV : config.streamOutputModels)
-					{
-						KV.second.dynamicModel = {};
-					}
-					for (auto& KV : config.avbInterfaceModels)
-					{
-						KV.second.dynamicModel = {};
-					}
-					for (auto& KV : config.clockSourceModels)
-					{
-						KV.second.dynamicModel = {};
-					}
-					for (auto& KV : config.memoryObjectModels)
-					{
-						KV.second.dynamicModel = {};
-					}
-					// LocaleNodeModel doesn't have dynamic model
-					// StringsNodeModel doesn't have dynamic model
-					for (auto& KV : config.streamPortInputModels)
-					{
-						KV.second.dynamicModel = {};
-					}
-					for (auto& KV : config.streamPortOutputModels)
-					{
-						KV.second.dynamicModel = {};
-					}
-					for (auto& KV : config.audioClusterModels)
-					{
-						KV.second.dynamicModel = {};
-					}
-					// AudioMapNodeModel doesn't have dynamic model
-					for (auto& KV : config.controlModels)
-					{
-						KV.second.dynamicModel = {};
-					}
-					for (auto& KV : config.clockDomainModels)
-					{
-						KV.second.dynamicModel = {};
-					}
-				}
-
 				// Move it to the cache
-				_modelCache.insert(std::make_pair(entityModelID, std::move(cachedTree)));
+				_modelCache.emplace(entityModelID, std::move(model));
 			}
 		}
 	}
@@ -166,38 +108,56 @@ public:
 		return vendorID != 0x00000000 && vendorID != 0x00FFFFFF;
 	}
 
-	static inline bool isModelValidForConfiguration(entity::model::ConfigurationTree const& configTree) noexcept
+	static inline bool isModelValidForConfiguration(model::ConfigurationNode const& configNode) noexcept
 	{
 		// Check TOP LEVEL descriptors count. If the declared count does not match what is stored in the tree, it probably means we didn't have a valid tree for this configuration (model was only partially stored)
 		// Currently, we don't want to check more deeply as we trust both the AEM loader and the enumeration state machine to give us a valid model
-		auto const& descriptorCounts = configTree.staticModel.descriptorCounts;
-		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::AudioUnit, configTree.audioUnitModels))
+		auto const& descriptorCounts = configNode.staticModel.descriptorCounts;
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::AudioUnit, configNode.audioUnits))
 		{
 			return false;
 		}
-		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::StreamInput, configTree.streamInputModels))
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::StreamInput, configNode.streamInputs))
 		{
 			return false;
 		}
-		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::StreamOutput, configTree.streamOutputModels))
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::StreamOutput, configNode.streamOutputs))
 		{
 			return false;
 		}
-		// JACK_INPUT
-		// JACK_OUTPUT
-		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::AvbInterface, configTree.avbInterfaceModels))
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::JackInput, configNode.jackInputs))
 		{
 			return false;
 		}
-		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::ClockSource, configTree.clockSourceModels))
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::JackOutput, configNode.jackOutputs))
 		{
 			return false;
 		}
-		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::MemoryObject, configTree.memoryObjectModels))
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::AvbInterface, configNode.avbInterfaces))
 		{
 			return false;
 		}
-		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::Locale, configTree.localeModels))
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::ClockSource, configNode.clockSources))
+		{
+			return false;
+		}
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::MemoryObject, configNode.memoryObjects))
+		{
+			return false;
+		}
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::Control, configNode.controls))
+		{
+			return false;
+		}
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::ClockDomain, configNode.clockDomains))
+		{
+			return false;
+		}
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::Timing, configNode.timings))
+		{
+			return false;
+		}
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::PtpInstance, configNode.ptpInstances))
 		{
 			return false;
 		}
@@ -219,7 +179,7 @@ private:
 	}
 
 	mutable std::mutex _lock{};
-	std::unordered_map<UniqueIdentifier, entity::model::EntityTree, la::avdecc::UniqueIdentifier::hash> _modelCache{};
+	std::unordered_map<UniqueIdentifier, model::EntityNode, la::avdecc::UniqueIdentifier::hash> _modelCache{};
 	bool _isEnabled{ false };
 };
 

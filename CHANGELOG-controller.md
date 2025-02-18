@@ -4,6 +4,55 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2025-02-18
+### Added
+- Support for JACK_INPUT/JACK_OUTPUT descriptors
+- Support for CONTROL descriptors at AUDIO_UNIT, JACK, STREAM_PORT levels
+- *numberOfValues* field in the ControlNode
+- Detection of out-of-bounds MemoryObject length value
+- isValid() method to ControlledEntityGuard
+- Possibility to define a Proxy Interface to handle virtual entities
+- Boolean value in ControlledEntity to know if unsolicited notifications are supported by the entity
+- API to force refresh a entity (_reloadEntity(UniqueIdentifier)_)
+- Support for UTF8 file paths
+- New type of diagnostics: *controlCurrentValueOutOfBounds*
+- Detection of invalid *descriptor_counts* field in CONFIGURATION descriptor
+- [Support for TIMING descriptors](https://github.com/L-Acoustics/avdecc/issues/116)
+- [Support for PTP_INSTANCE/PTP_PORT descriptors](https://github.com/L-Acoustics/avdecc/issues/117)
+- Support for GET_DYNAMIC_INFO command (Fast enumeration)
+- Support for setMaxTransitTime command (as a replacement for setStreamInfo to change the presentation time)
+- [Support for read-only properties change for virtual entities](https://github.com/L-Acoustics/avdecc/issues/162)
+- la::avdecc::controller::Controller::createVirtualEntityFromEntityModelFile method
+- la::avdecc::entity::model::VirtualEntityBuilder class to help creating virtual entities from EntityModel files
+
+### Changed
+- Complete controller entity model refactoring to support descriptors at non-configuration level
+- EntityModelVisitor is now virtual pure, but a new derivated visitor (with all default implementation) has been added: DefaultedEntityModelVisitor
+- la::avdecc::controller::Controller::Observer is now virtual pure, but a new derivated visitor (with all default implementation) has been added: la::avdecc::controller::Controller::DefaultedObserver
+- [Executor name can be provided when creating a Controller](https://github.com/L-Acoustics/avdecc/issues/132)
+- Renamed la::avdecc::controller::Controller::loadEntityModelFile to la::avdecc::controller::Controller::cacheEntityModelFile
+
+### Removed
+- Direct access to ClockSource descriptors from the ClockDomain. Will still be enumerated correctly when using the model visitor
+
+### Fixed
+- Controller entity model no longer uses pointers to prevent dangling issues when making copies
+- Not flagging a device as non IEEE/Milan compatible, if the library cannot handle a CONTROL type if doesn't support
+- CONTROL values updated by the device itself didn't trigger an update notification
+- DynamicMappings were not being retrieved from the entities
+- [Not flagging some devices as non-1722.1 compatible due to a control value out of bounds](https://github.com/L-Acoustics/avdecc/issues/134)
+- [Detecting Identify Controls at JACK level](https://github.com/L-Acoustics/avdecc/issues/135)
+- [CONTROL descriptors not properly enumerated at JACK level](https://github.com/L-Acoustics/avdecc/issues/139)
+- [CONTROL descriptors not properly attached to the parent descriptor when loaded from file](https://github.com/L-Acoustics/avdecc/issues/140)
+- [Dynamic mappings incorrect when replaced without first being removed](https://github.com/L-Acoustics/avdecc/issues/146)
+- Updating StreamInfo data partially, in case endpoint doesn't send full update
+- isOverLatency diagnostics not properly set if msrpAccumulatedLatency is not set
+- _Media Clock Chain_ not recomputed when a connection changes without disconnecting first
+- [Crash when trying to access unknown localized string](https://github.com/L-Acoustics/avdecc/issues/153)
+- Locales from all configurations are loaded (if defined) for virtual entities
+- [Incorrect cached AEM](https://github.com/L-Acoustics/avdecc/issues/163)
+- Checksum of the AEM of a ControlledEntity was incorrectly using some fields that are not part of the AEM (in AVB_INTERFACE descriptor). Introduced checksum v3
+
 ## [3.4.1] - 2023-01-11
 ### Fixed
 - [Crash when trying to get a ControlledEntity during OnPreAdvertise events](https://github.com/L-Acoustics/avdecc/issues/125)

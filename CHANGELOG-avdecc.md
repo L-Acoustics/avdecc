@@ -4,6 +4,32 @@ All notable changes to the Avdecc Library will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2025-02-18
+### Added
+- Support for JACK_INPUT/JACK_OUTPUT descriptors
+- Support for CONTROL descriptors at AUDIO_UNIT, JACK, STREAM_PORT levels
+- [Support for CONTROL_SELECTOR type for CONTROL descriptors](https://github.com/L-Acoustics/avdecc/issues/128)
+- *numberOfValues* field in the CONTROL descriptor
+- Support for float special values in json dumps (ie. NaN, -inf, +inf)
+- Support for UTF8 file paths
+- [Support for TIMING descriptors](https://github.com/L-Acoustics/avdecc/issues/116)
+- [Support for PTP_INSTANCE/PTP_PORT descriptors](https://github.com/L-Acoustics/avdecc/issues/117)
+- Support for GET_DYNAMIC_INFO command
+- Support for SET/GET_MAX_TRANSIT_TIME command
+- Json schema AEM_Schema.json added to newly created resources/schemas directory
+
+### Changed
+- la::avdecc::entity::controller::Delegate is now virtual pure, but a new derivated visitor (with all default implementation) has been added: la::avdecc::entity::controller::DefaultedDelegate
+- [Executor name can be provided when creating an EndStation](https://github.com/L-Acoustics/avdecc/issues/132)
+- *entity::model::validateControlValues* now returns an enum value as well as an error message
+- Mechanism to refresh an entity (same for Configuration change) totally revamped to be more consistent
+- Moved some fields from AVB_INTERFACE.staticModel to AVB_INTERFACE.dynamicModel (fields that should not be part of the static model because they are not considered for entity_model_id)
+
+### Fixed
+- Crash when unpacking vendor specific control values
+- [Incorrect linkage for some C bindings methods](https://github.com/L-Acoustics/avdecc/issues/148)
+- [ProcotolInterface pcap getDynamicEID incorrect](https://github.com/L-Acoustics/avdecc/issues/154)
+
 ## [3.4.1] - 2023-01-11
 
 ## [3.4.0] - 2023-01-05

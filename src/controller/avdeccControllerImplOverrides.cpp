@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -25,6 +25,7 @@
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
+#include "virtualEntityModelVisitor.hpp"
 #ifdef ENABLE_AVDECC_FEATURE_JSON
 #	include "avdeccControllerJsonTypes.hpp"
 #	include "avdeccControlledEntityJsonSerializer.hpp"
@@ -35,6 +36,8 @@
 #endif // ENABLE_AVDECC_FEATURE_JSON
 #include <la/avdecc/internals/serialization.hpp>
 #include <la/avdecc/internals/protocolAemPayloadSizes.hpp>
+#include <la/avdecc/executor.hpp>
+#include <la/avdecc/utils.hpp>
 
 #include <cstdlib> // free / malloc
 #include <cstring> // strerror
@@ -54,13 +57,14 @@ namespace controller
 /* ************************************************************ */
 /* Controller overrides                                         */
 /* ************************************************************ */
-ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree)
+ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceID, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName, entity::controller::Interface const* const virtualEntityInterface)
 	: _preferedLocale(preferedLocale)
 {
 	try
 	{
-		_endStation = EndStation::create(protocolInterfaceType, interfaceName);
+		_endStation = EndStation::create(protocolInterfaceType, networkInterfaceID, executorName);
 		_controller = _endStation->addControllerEntity(progID, entityModelID, entityModelTree, this);
+		_controllerProxy = std::make_unique<ControllerVirtualProxy>(_endStation->getProtocolInterface(), _controller, virtualEntityInterface);
 	}
 	catch (EndStation::Exception const& e)
 	{
@@ -79,6 +83,10 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 				throw Exception(Error::DuplicateProgID, e.what());
 			case EndStation::Error::InvalidEntityModel:
 				throw Exception(Error::InvalidEntityModel, e.what());
+			case EndStation::Error::DuplicateExecutorName:
+				throw Exception(Error::DuplicateExecutorName, e.what());
+			case EndStation::Error::UnknownExecutorName:
+				throw Exception(Error::UnknownExecutorName, e.what());
 			case EndStation::Error::InternalError:
 				throw Exception(Error::InternalError, e.what());
 			default:
@@ -179,7 +187,7 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 
 						// Never lock the ControlledEntities before calling the controller
 						// Disable Identification
-						_controller->setControlValues(entityID, state.controlIndex, makeIdentifyControlValues(false),
+						_controllerProxy->setControlValues(entityID, state.controlIndex, makeIdentifyControlValues(false),
 							[this](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ControlIndex const controlIndex, MemoryBuffer const& packedControlValues)
 							{
 								// Take a "scoped locked" shared copy of the ControlledEntity
@@ -190,7 +198,7 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 									// Update source
 									if (!!status) // Only change the control values in case of success
 									{
-										updateControlValues(*controlledEntity, controlIndex, packedControlValues);
+										updateControlValues(*controlledEntity, controlIndex, packedControlValues, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 									}
 								}
 							});
@@ -357,18 +365,21 @@ ControllerImpl::~ControllerImpl()
 	for (auto const& [entityID, controlledEntity] : controlledEntities)
 	{
 		// Deregister from unsolicited notifications
-		_controller->unregisterUnsolicitedNotifications(entityID, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
+		_controllerProxy->unregisterUnsolicitedNotifications(entityID, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
 
 		// Try to release all acquired / locked entities by this controller
 		if (controlledEntity->isAcquired() || controlledEntity->isAcquireCommandInProgress())
 		{
-			_controller->releaseEntity(entityID, entity::model::DescriptorType::Entity, 0u, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
+			_controllerProxy->releaseEntity(entityID, entity::model::DescriptorType::Entity, 0u, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
 		}
 		if (controlledEntity->isLocked() || controlledEntity->isLockCommandInProgress())
 		{
-			_controller->unlockEntity(entityID, entity::model::DescriptorType::Entity, 0u, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
+			_controllerProxy->unlockEntity(entityID, entity::model::DescriptorType::Entity, 0u, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
 		}
 	}
+
+	// Destroy the controller proxy before the class is destroyed
+	_controllerProxy = nullptr;
 }
 
 void ControllerImpl::destroy() noexcept
@@ -407,6 +418,12 @@ bool ControllerImpl::discoverRemoteEntity(UniqueIdentifier const entityID) const
 	return _controller->discoverRemoteEntity(entityID);
 }
 
+bool ControllerImpl::forgetRemoteEntity(UniqueIdentifier const entityID) const noexcept
+{
+	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Requesting remote entity {} removal", utils::toHexString(entityID, true));
+	return _controller->forgetRemoteEntity(entityID);
+}
+
 void ControllerImpl::setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept
 {
 	_controller->setAutomaticDiscoveryDelay(delay);
@@ -442,12 +459,14 @@ void ControllerImpl::disableFullStaticEntityModelEnumeration() noexcept
 	_fullStaticModelEnumeration = false;
 }
 
-std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadEntityModelFile(std::string const& /*filePath*/) noexcept
+void ControllerImpl::enableFastEnumeration() noexcept
 {
-	// TODO:
-	//  - Call EndStation::deserializeEntityModelFromJson
-	//  - Feed the cache with the loaded model
-	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Not supported yet" };
+	_enablePackedGetDynamicInfo = true;
+}
+
+void ControllerImpl::disableFastEnumeration() noexcept
+{
+	_enablePackedGetDynamicInfo = false;
 }
 
 
@@ -484,7 +503,7 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 		controlledEntity->setAcquireState(model::AcquireState::AcquireInProgress);
 		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->acquireEntity(targetEntityID, isPersistent, descriptorType, descriptorIndex,
+		_controllerProxy->acquireEntity(targetEntityID, isPersistent, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User acquireEntityResult (OwningController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(owningEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
@@ -538,7 +557,7 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 		controlledEntity->setAcquireState(model::AcquireState::ReleaseInProgress);
 		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->releaseEntity(targetEntityID, descriptorType, descriptorIndex,
+		_controllerProxy->releaseEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User releaseEntity (OwningController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(owningEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
@@ -601,7 +620,7 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 		controlledEntity->setLockState(model::LockState::LockInProgress);
 		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->lockEntity(targetEntityID, descriptorType, descriptorIndex,
+		_controllerProxy->lockEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User lockEntityResult (LockingController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(lockingEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
@@ -655,7 +674,7 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 		controlledEntity->setLockState(model::LockState::UnlockInProgress);
 		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->unlockEntity(targetEntityID, descriptorType, descriptorIndex,
+		_controllerProxy->unlockEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User unlockEntity (LockingController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(lockingEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
@@ -695,7 +714,7 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setConfiguration (ConfigurationIndex={})", configurationIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setConfiguration(targetEntityID, configurationIndex,
+		_controllerProxy->setConfiguration(targetEntityID, configurationIndex,
 			[this, handler](entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setConfiguration (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
@@ -710,7 +729,7 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 					// Update configuration
 					if (!!status)
 					{
-						updateConfiguration(controller, *entity, configurationIndex);
+						updateConfiguration(controller, *entity, configurationIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -737,7 +756,7 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputFormat (StreamIndex={} streamFormat={})", streamIndex, utils::toHexString(streamFormat.getValue(), true));
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setStreamInputFormat(targetEntityID, streamIndex, streamFormat,
+		_controllerProxy->setStreamInputFormat(targetEntityID, streamIndex, streamFormat,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, utils::toHexString(streamFormat.getValue(), true), entity::ControllerEntity::statusToString(status));
@@ -752,7 +771,7 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 					// Update format
 					if (!!status)
 					{
-						updateStreamInputFormat(*entity, streamIndex, streamFormat);
+						updateStreamInputFormat(*entity, streamIndex, streamFormat, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -779,7 +798,7 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={})", streamIndex, utils::toHexString(streamFormat.getValue(), true));
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setStreamOutputFormat(targetEntityID, streamIndex, streamFormat,
+		_controllerProxy->setStreamOutputFormat(targetEntityID, streamIndex, streamFormat,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, utils::toHexString(streamFormat.getValue(), true), entity::ControllerEntity::statusToString(status));
@@ -794,7 +813,7 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 					// Update format
 					if (!!status)
 					{
-						updateStreamOutputFormat(*entity, streamIndex, streamFormat);
+						updateStreamOutputFormat(*entity, streamIndex, streamFormat, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -821,7 +840,7 @@ void ControllerImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, e
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputInfo (StreamIndex={})", streamIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setStreamInputInfo(targetEntityID, streamIndex, info,
+		_controllerProxy->setStreamInputInfo(targetEntityID, streamIndex, info,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputInfo (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
@@ -836,7 +855,7 @@ void ControllerImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, e
 					// Update info
 					if (!!status)
 					{
-						updateStreamInputInfo(*entity, streamIndex, info, false, false); // StreamFormat not required to be set in SetStreamInfo / Milan Extended Information not set in SetStreamInfo
+						updateStreamInputInfo(*entity, streamIndex, info, false, false, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull); // StreamFormat not required to be set in SetStreamInfo / Milan Extended Information not set in SetStreamInfo
 					}
 
 					// Invoke result handler
@@ -863,7 +882,7 @@ void ControllerImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, 
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputInfo (StreamIndex={})", streamIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setStreamOutputInfo(targetEntityID, streamIndex, info,
+		_controllerProxy->setStreamOutputInfo(targetEntityID, streamIndex, info,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputInfo (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
@@ -878,7 +897,7 @@ void ControllerImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, 
 					// Update info
 					if (!!status)
 					{
-						updateStreamOutputInfo(*entity, streamIndex, info, false, false); // StreamFormat not required to be set in SetStreamInfo / Milan Extended Information not set in SetStreamInfo
+						updateStreamOutputInfo(*entity, streamIndex, info, false, false, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull); // StreamFormat not required to be set in SetStreamInfo / Milan Extended Information not set in SetStreamInfo
 					}
 
 					// Invoke result handler
@@ -905,7 +924,7 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setEntityName (Name={})", name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setEntityName(targetEntityID, name,
+		_controllerProxy->setEntityName(targetEntityID, name,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvdeccFixedString const& entityName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setEntityName (): {}", entity::ControllerEntity::statusToString(status));
@@ -920,7 +939,7 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateEntityName(*entity, entityName);
+						updateEntityName(*entity, entityName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -947,7 +966,7 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setEntityGroupName (Name={})", name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setEntityGroupName(targetEntityID, name,
+		_controllerProxy->setEntityGroupName(targetEntityID, name,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvdeccFixedString const& entityGroupName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setEntityGroupName (): {}", entity::ControllerEntity::statusToString(status));
@@ -962,7 +981,7 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateEntityGroupName(*entity, entityGroupName);
+						updateEntityGroupName(*entity, entityGroupName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -989,7 +1008,7 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setConfigurationName (ConfigurationIndex={} Name={})", configurationIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setConfigurationName(targetEntityID, configurationIndex, name,
+		_controllerProxy->setConfigurationName(targetEntityID, configurationIndex, name,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setConfigurationName (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
@@ -1004,7 +1023,7 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateConfigurationName(*entity, configurationIndex, configurationName);
+						updateConfigurationName(*entity, configurationIndex, configurationName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1031,7 +1050,7 @@ void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, ent
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitName (ConfigurationIndex={} AudioUnitIndex={} Name={})", configurationIndex, audioUnitIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setAudioUnitName(targetEntityID, configurationIndex, audioUnitIndex, name,
+		_controllerProxy->setAudioUnitName(targetEntityID, configurationIndex, audioUnitIndex, name,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AvdeccFixedString const& audioUnitName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setAudioUnitName (ConfigurationIndex={} AudioUnitIndex={}): {}", configurationIndex, audioUnitIndex, entity::ControllerEntity::statusToString(status));
@@ -1046,7 +1065,7 @@ void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, ent
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateAudioUnitName(*entity, configurationIndex, audioUnitIndex, audioUnitName);
+						updateAudioUnitName(*entity, configurationIndex, audioUnitIndex, audioUnitName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1073,7 +1092,7 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputName (ConfigurationIndex={} StreamIndex={} Name={})", configurationIndex, streamIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setStreamInputName(targetEntityID, configurationIndex, streamIndex, name,
+		_controllerProxy->setStreamInputName(targetEntityID, configurationIndex, streamIndex, name,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamInputName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputName (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
@@ -1088,7 +1107,7 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateStreamInputName(*entity, configurationIndex, streamIndex, streamInputName);
+						updateStreamInputName(*entity, configurationIndex, streamIndex, streamInputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1115,7 +1134,7 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputName (ConfigurationIndex={} StreamIndex={} Name={})", configurationIndex, streamIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setStreamOutputName(targetEntityID, configurationIndex, streamIndex, name,
+		_controllerProxy->setStreamOutputName(targetEntityID, configurationIndex, streamIndex, name,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamOutputName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputName (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
@@ -1130,7 +1149,91 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateStreamOutputName(*entity, configurationIndex, streamIndex, streamOutputName);
+						updateStreamOutputName(*entity, configurationIndex, streamIndex, streamOutputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setJackInputName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& name, SetJackInputNameHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setJackInputName (ConfigurationIndex={} JackIndex={} Name={})", configurationIndex, jackIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controllerProxy->setJackInputName(targetEntityID, configurationIndex, jackIndex, name,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& jackInputName)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setJackInputName (ConfigurationIndex={} JackIndex={}): {}", configurationIndex, jackIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+
+					// Update name
+					if (!!status) // Only change the name in case of success
+					{
+						updateJackInputName(*entity, configurationIndex, jackIndex, jackInputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setJackOutputName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& name, SetJackOutputNameHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setJackOutputName (ConfigurationIndex={} JackIndex={} Name={})", configurationIndex, jackIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controllerProxy->setJackOutputName(targetEntityID, configurationIndex, jackIndex, name,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& jackOutputName)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setJackOutputName (ConfigurationIndex={} JackIndex={}): {}", configurationIndex, jackIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+
+					// Update name
+					if (!!status) // Only change the name in case of success
+					{
+						updateJackOutputName(*entity, configurationIndex, jackIndex, jackOutputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1157,7 +1260,7 @@ void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, 
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={} Name={})", configurationIndex, avbInterfaceIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setAvbInterfaceName(targetEntityID, configurationIndex, avbInterfaceIndex, name,
+		_controllerProxy->setAvbInterfaceName(targetEntityID, configurationIndex, avbInterfaceIndex, name,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& avbInterfaceName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={}): {}", configurationIndex, avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
@@ -1172,7 +1275,7 @@ void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, 
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateAvbInterfaceName(*entity, configurationIndex, avbInterfaceIndex, avbInterfaceName);
+						updateAvbInterfaceName(*entity, configurationIndex, avbInterfaceIndex, avbInterfaceName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1199,7 +1302,7 @@ void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, e
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockSourceName (ConfigurationIndex={} ClockSourceIndex={} Name={})", configurationIndex, clockSourceIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setClockSourceName(targetEntityID, configurationIndex, clockSourceIndex, name,
+		_controllerProxy->setClockSourceName(targetEntityID, configurationIndex, clockSourceIndex, name,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& clockSourceName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setClockSourceName (ConfigurationIndex={} ClockSourceIndex={}): {}", configurationIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
@@ -1214,7 +1317,7 @@ void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, e
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateClockSourceName(*entity, configurationIndex, clockSourceIndex, clockSourceName);
+						updateClockSourceName(*entity, configurationIndex, clockSourceIndex, clockSourceName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1241,7 +1344,7 @@ void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, 
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={} Name={})", configurationIndex, memoryObjectIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setMemoryObjectName(targetEntityID, configurationIndex, memoryObjectIndex, name,
+		_controllerProxy->setMemoryObjectName(targetEntityID, configurationIndex, memoryObjectIndex, name,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::AvdeccFixedString const& memoryObjectName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
@@ -1256,7 +1359,7 @@ void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, 
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateMemoryObjectName(*entity, configurationIndex, memoryObjectIndex, memoryObjectName);
+						updateMemoryObjectName(*entity, configurationIndex, memoryObjectIndex, memoryObjectName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1283,7 +1386,7 @@ void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, 
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioClusterName (ConfigurationIndex={} AudioClusterIndex={} Name={})", configurationIndex, audioClusterIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setAudioClusterName(targetEntityID, configurationIndex, audioClusterIndex, name,
+		_controllerProxy->setAudioClusterName(targetEntityID, configurationIndex, audioClusterIndex, name,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& audioClusterName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setAudioClusterName (ConfigurationIndex={} AudioClusterIndex={}): {}", configurationIndex, audioClusterIndex, entity::ControllerEntity::statusToString(status));
@@ -1298,7 +1401,7 @@ void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, 
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateAudioClusterName(*entity, configurationIndex, audioClusterIndex, audioClusterName);
+						updateAudioClusterName(*entity, configurationIndex, audioClusterIndex, audioClusterName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1325,7 +1428,7 @@ void ControllerImpl::setControlName(UniqueIdentifier const targetEntityID, entit
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setControlName (ConfigurationIndex={} ControlIndex={} Name={})", configurationIndex, controlIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setControlName(targetEntityID, configurationIndex, controlIndex, name,
+		_controllerProxy->setControlName(targetEntityID, configurationIndex, controlIndex, name,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex, entity::model::AvdeccFixedString const& controlName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setControlName (ConfigurationIndex={} ControlIndex={}): {}", configurationIndex, controlIndex, entity::ControllerEntity::statusToString(status));
@@ -1340,7 +1443,7 @@ void ControllerImpl::setControlName(UniqueIdentifier const targetEntityID, entit
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateControlName(*entity, configurationIndex, controlIndex, controlName);
+						updateControlName(*entity, configurationIndex, controlIndex, controlName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1367,7 +1470,7 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockDomainName (ConfigurationIndex={} ClockDomainIndex={} Name={})", configurationIndex, clockDomainIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, name,
+		_controllerProxy->setClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, name,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& clockDomainName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setClockDomainName (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, clockDomainIndex, entity::ControllerEntity::statusToString(status));
@@ -1382,7 +1485,133 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateClockDomainName(*entity, configurationIndex, clockDomainIndex, clockDomainName);
+						updateClockDomainName(*entity, configurationIndex, clockDomainIndex, clockDomainName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setTimingName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex, entity::model::AvdeccFixedString const& name, SetTimingNameHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setTimingName (ConfigurationIndex={} TimingIndex={} Name={})", configurationIndex, timingIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controllerProxy->setTimingName(targetEntityID, configurationIndex, timingIndex, name,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex, entity::model::AvdeccFixedString const& timingName)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setTimingName (ConfigurationIndex={} TimingIndex={}): {}", configurationIndex, timingIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+
+					// Update name
+					if (!!status) // Only change the name in case of success
+					{
+						updateTimingName(*entity, configurationIndex, timingIndex, timingName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setPtpInstanceName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex, entity::model::AvdeccFixedString const& name, SetPtpInstanceNameHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setPtpInstanceName (ConfigurationIndex={} PtpInstanceIndex={} Name={})", configurationIndex, ptpInstanceIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controllerProxy->setPtpInstanceName(targetEntityID, configurationIndex, ptpInstanceIndex, name,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex, entity::model::AvdeccFixedString const& ptpInstanceName)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setPtpInstanceName (ConfigurationIndex={} PtpInstanceIndex={}): {}", configurationIndex, ptpInstanceIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+
+					// Update name
+					if (!!status) // Only change the name in case of success
+					{
+						updatePtpInstanceName(*entity, configurationIndex, ptpInstanceIndex, ptpInstanceName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setPtpPortName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex, entity::model::AvdeccFixedString const& name, SetPtpPortNameHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setPtpPortName (ConfigurationIndex={} PtpPortIndex={} Name={})", configurationIndex, ptpPortIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controllerProxy->setPtpPortName(targetEntityID, configurationIndex, ptpPortIndex, name,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex, entity::model::AvdeccFixedString const& ptpPortName)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setPtpPortName (ConfigurationIndex={} PtpPortIndex={}): {}", configurationIndex, ptpPortIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+
+					// Update name
+					if (!!status) // Only change the name in case of success
+					{
+						updatePtpPortName(*entity, configurationIndex, ptpPortIndex, ptpPortName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1407,12 +1636,12 @@ void ControllerImpl::setAssociationID(UniqueIdentifier const targetEntityID, Uni
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User setAssociationID (AssociationID={})", associationID);
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setAssociationID (AssociationID={})", utils::toHexString(associationID));
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setAssociation(targetEntityID, associationID,
+		_controllerProxy->setAssociation(targetEntityID, associationID,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const associationID)
 			{
-				LOG_CONTROLLER_TRACE(entityID, "User setAssociationID (AssociationID={}): {}", associationID, entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(entityID, "User setAssociationID (AssociationID={}): {}", utils::toHexString(associationID), entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
 				auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -1424,7 +1653,7 @@ void ControllerImpl::setAssociationID(UniqueIdentifier const targetEntityID, Uni
 					// Update association
 					if (!!status) // Only change the Association ID in case of success
 					{
-						updateAssociationID(*entity, associationID);
+						updateAssociationID(*entity, associationID, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1449,12 +1678,12 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={})", audioUnitIndex, samplingRate);
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={})", audioUnitIndex, samplingRate.getNominalSampleRate());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setAudioUnitSamplingRate(targetEntityID, audioUnitIndex, samplingRate,
+		_controllerProxy->setAudioUnitSamplingRate(targetEntityID, audioUnitIndex, samplingRate,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate)
 			{
-				LOG_CONTROLLER_TRACE(entityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={}): {}", audioUnitIndex, samplingRate, entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(entityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={}): {}", audioUnitIndex, samplingRate.getNominalSampleRate(), entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
 				auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -1466,7 +1695,7 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 					// Update rate
 					if (!!status) // Only change the sampling rate in case of success
 					{
-						updateAudioUnitSamplingRate(*entity, audioUnitIndex, samplingRate);
+						updateAudioUnitSamplingRate(*entity, audioUnitIndex, samplingRate, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1493,7 +1722,7 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockSource (ClockDomainIndex={} ClockSourceIndex={})", clockDomainIndex, clockSourceIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setClockSource(targetEntityID, clockDomainIndex, clockSourceIndex,
+		_controllerProxy->setClockSource(targetEntityID, clockDomainIndex, clockSourceIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setClockSource (ClockDomainIndex={} ClockSourceIndex={}): {}", clockDomainIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
@@ -1508,7 +1737,7 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 					// Update source
 					if (!!status) // Only change the clock source in case of success
 					{
-						updateClockSource(*entity, clockDomainIndex, clockSourceIndex);
+						updateClockSource(*entity, clockDomainIndex, clockSourceIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1535,7 +1764,7 @@ void ControllerImpl::setControlValues(UniqueIdentifier const targetEntityID, ent
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setControlValues (ControlIndex={})", controlIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setControlValues(targetEntityID, controlIndex, controlValues,
+		_controllerProxy->setControlValues(targetEntityID, controlIndex, controlValues,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ControlIndex const controlIndex, MemoryBuffer const& packedControlValues)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setControlValues (ControlIndex={}): {}", controlIndex, entity::ControllerEntity::statusToString(status));
@@ -1551,7 +1780,7 @@ void ControllerImpl::setControlValues(UniqueIdentifier const targetEntityID, ent
 					auto st = status;
 					if (!!st) // Only change the control values in case of success
 					{
-						if (!updateControlValues(*entity, controlIndex, packedControlValues))
+						if (!updateControlValues(*entity, controlIndex, packedControlValues, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull))
 						{
 							st = entity::ControllerEntity::AemCommandStatus::ProtocolError;
 						}
@@ -1581,7 +1810,7 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User startStreamInput (StreamIndex={})", streamIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->startStreamInput(targetEntityID, streamIndex,
+		_controllerProxy->startStreamInput(targetEntityID, streamIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User startStreamInput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
@@ -1596,7 +1825,7 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 					// Update status
 					if (!!status) // Only change the running status in case of success
 					{
-						updateStreamInputRunningStatus(*entity, streamIndex, true);
+						updateStreamInputRunningStatus(*entity, streamIndex, true, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1623,7 +1852,7 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User stopStreamInput (StreamIndex={})", streamIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->stopStreamInput(targetEntityID, streamIndex,
+		_controllerProxy->stopStreamInput(targetEntityID, streamIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User stopStreamInput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
@@ -1638,7 +1867,7 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 					// Update status
 					if (!!status) // Only change the running status in case of success
 					{
-						updateStreamInputRunningStatus(*entity, streamIndex, false);
+						updateStreamInputRunningStatus(*entity, streamIndex, false, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1665,7 +1894,7 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User startStreamOutput (StreamIndex={})", streamIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->startStreamOutput(targetEntityID, streamIndex,
+		_controllerProxy->startStreamOutput(targetEntityID, streamIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User startStreamOutput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
@@ -1680,7 +1909,7 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 					// Update status
 					if (!!status) // Only change the running status in case of success
 					{
-						updateStreamOutputRunningStatus(*entity, streamIndex, true);
+						updateStreamOutputRunningStatus(*entity, streamIndex, true, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1707,7 +1936,7 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User stopStreamOutput (StreamIndex={})", streamIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->stopStreamOutput(targetEntityID, streamIndex,
+		_controllerProxy->stopStreamOutput(targetEntityID, streamIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User stopStreamOutput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
@@ -1722,7 +1951,7 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 					// Update status
 					if (!!status) // Only change the running status in case of success
 					{
-						updateStreamOutputRunningStatus(*entity, streamIndex, false);
+						updateStreamOutputRunningStatus(*entity, streamIndex, false, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1756,7 +1985,7 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User addStreamInputAudioMappings (StreamPortIndex={})", streamPortIndex); // TODO: Convert mappings to string and add to log
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->addStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings,
+		_controllerProxy->addStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User addStreamInputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
@@ -1771,7 +2000,7 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 					// Update mappings
 					if (!!status)
 					{
-						updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings);
+						updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1805,7 +2034,7 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User addStreamOutputAudioMappings (StreamPortIndex={})", streamPortIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->addStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings,
+		_controllerProxy->addStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User addStreamOutputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
@@ -1820,7 +2049,7 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 					// Update mappings
 					if (!!status)
 					{
-						updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings);
+						updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1854,7 +2083,7 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User removeStreamInputAudioMappings (StreamPortIndex={})", streamPortIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->removeStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings,
+		_controllerProxy->removeStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User removeStreamInputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
@@ -1869,7 +2098,7 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 					// Update mappings
 					if (!!status)
 					{
-						updateStreamPortInputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
+						updateStreamPortInputAudioMappingsRemoved(*entity, streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1903,7 +2132,7 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User removeStreamOutputAudioMappings (StreamPortIndex={})", streamPortIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->removeStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings,
+		_controllerProxy->removeStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User removeStreamOutputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
@@ -1918,7 +2147,7 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 					// Update mappings
 					if (!!status)
 					{
-						updateStreamPortOutputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
+						updateStreamPortOutputAudioMappingsRemoved(*entity, streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1945,7 +2174,7 @@ void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setMemoryObjectLength (ConfigurationIndex={} MemoryObjectIndex={} Length={})", configurationIndex, memoryObjectIndex, length);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setMemoryObjectLength(targetEntityID, configurationIndex, memoryObjectIndex, length,
+		_controllerProxy->setMemoryObjectLength(targetEntityID, configurationIndex, memoryObjectIndex, length,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setMemoryObjectLength (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
@@ -1960,7 +2189,7 @@ void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID
 					// Update length
 					if (!!status)
 					{
-						updateMemoryObjectLength(*entity, configurationIndex, memoryObjectIndex, length);
+						updateMemoryObjectLength(*entity, configurationIndex, memoryObjectIndex, length, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1996,7 +2225,7 @@ void ControllerImpl::identifyEntity(UniqueIdentifier const targetEntityID, std::
 		}
 
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->setControlValues(targetEntityID, *identifyIndexOpt, makeIdentifyControlValues(true),
+		_controllerProxy->setControlValues(targetEntityID, *identifyIndexOpt, makeIdentifyControlValues(true),
 			[this, handler, duration](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ControlIndex const controlIndex, MemoryBuffer const& packedControlValues)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User identifyEntity (): {}", entity::ControllerEntity::statusToString(status));
@@ -2011,7 +2240,7 @@ void ControllerImpl::identifyEntity(UniqueIdentifier const targetEntityID, std::
 					// Update source
 					if (!!status) // Only change the control values in case of success
 					{
-						updateControlValues(*entity, controlIndex, packedControlValues);
+						updateControlValues(*entity, controlIndex, packedControlValues, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 
 						// Register to the State Machine, if duration is not 0
 						if (duration != std::chrono::milliseconds{ 0 })
@@ -2024,6 +2253,48 @@ void ControllerImpl::identifyEntity(UniqueIdentifier const targetEntityID, std::
 
 							_controllerIdentifications[entityID] = ControllerIdentificationState{ currentTime + duration, controlIndex };
 						}
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setMaxTransitTime(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, SetMaxTransitTimeHandler const& handler) const noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setMaxTransitTime (StreamIndex={} MaxTransitTime={})", streamIndex, maxTransitTime.count());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controllerProxy->setMaxTransitTime(targetEntityID, streamIndex, maxTransitTime,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setMaxTransitTime (StreamIndex={} MaxTransitTime={}): {}", streamIndex, maxTransitTime.count(), entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+
+					// Update max transit time
+					if (!!status)
+					{
+						updateMaxTransitTime(*entity, streamIndex, maxTransitTime, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -2113,7 +2384,7 @@ void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetE
 			}
 			// Read next TLV
 			LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", utils::toHexString(baseAddress, true), length, tlv.getAddress() - baseAddress, tlv.size());
-			_controller->addressAccess(targetEntityID, { std::move(tlv) },
+			_controllerProxy->addressAccess(targetEntityID, { std::move(tlv) },
 				[this, baseAddress, length, progressHandler = std::move(progressHandler), completionHandler = std::move(completionHandler), memoryBuffer = std::move(memoryBuffer)](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
 				{
 					onUserReadDeviceMemoryResult(entityID, status, tlvs, baseAddress, length, std::move(progressHandler), std::move(completionHandler), std::move(memoryBuffer));
@@ -2162,7 +2433,7 @@ void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const target
 			// We are moving the tlv, so we have to get its size before that
 			auto const newSentSize = sentSize + tlv.size();
 			// Write next TLV
-			_controller->addressAccess(targetEntityID, { std::move(tlv) },
+			_controllerProxy->addressAccess(targetEntityID, { std::move(tlv) },
 				[this, baseAddress, sentSize = newSentSize, progressHandler = std::move(progressHandler), completionHandler = std::move(completionHandler), memoryBuffer = std::move(memoryBuffer)](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
 				{
 					onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(progressHandler), std::move(completionHandler), std::move(memoryBuffer));
@@ -2191,7 +2462,7 @@ void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std
 		{
 			LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", utils::toHexString(address, true), length, 0, tlv.size());
 			auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-			_controller->addressAccess(targetEntityID, { std::move(tlv) },
+			_controllerProxy->addressAccess(targetEntityID, { std::move(tlv) },
 				[this, baseAddress = address, length, progressHandlerCopy = progressHandler, completionHandlerCopy = completionHandler, memoryBuffer = std::move(memoryBuffer)](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
 				{
 					onUserReadDeviceMemoryResult(entityID, status, tlvs, baseAddress, length, std::move(progressHandlerCopy), std::move(completionHandlerCopy), std::move(memoryBuffer));
@@ -2218,7 +2489,7 @@ void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entit
 		LOG_CONTROLLER_TRACE(targetEntityID, "User startOperation (DescriptorType={}, DescriptorIndex={}, OperationType={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, static_cast<std::uint16_t>(operationType));
 
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->startOperation(targetEntityID, descriptorType, descriptorIndex, operationType, memoryBuffer,
+		_controllerProxy->startOperation(targetEntityID, descriptorType, descriptorIndex, operationType, memoryBuffer,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, la::avdecc::entity::model::OperationID const operationID, la::avdecc::entity::model::MemoryObjectOperationType const /*operationType*/, la::avdecc::MemoryBuffer const& memoryBuffer)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User startOperation (OperationID={}): {}", operationID, entity::ControllerEntity::statusToString(status));
@@ -2254,7 +2525,7 @@ void ControllerImpl::abortOperation(UniqueIdentifier const targetEntityID, entit
 		LOG_CONTROLLER_TRACE(targetEntityID, "User abortOperation (DescriptorType={}, DescriptorIndex={}, OperationID={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, operationID);
 
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->abortOperation(targetEntityID, descriptorType, descriptorIndex, operationID,
+		_controllerProxy->abortOperation(targetEntityID, descriptorType, descriptorIndex, operationID,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/, entity::model::OperationID const /*operationID*/)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User abortOperation (): {}", entity::ControllerEntity::statusToString(status));
@@ -2290,7 +2561,7 @@ void ControllerImpl::reboot(UniqueIdentifier const targetEntityID, RebootHandler
 		LOG_CONTROLLER_TRACE(targetEntityID, "User reboot ()");
 
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->reboot(targetEntityID,
+		_controllerProxy->reboot(targetEntityID,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User reboot (): {}", entity::ControllerEntity::statusToString(status));
@@ -2326,7 +2597,7 @@ void ControllerImpl::rebootToFirmware(UniqueIdentifier const targetEntityID, ent
 		LOG_CONTROLLER_TRACE(targetEntityID, "User rebootToFirmware (MemoryObjectIndex={})", memoryObjectIndex);
 
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->rebootToFirmware(targetEntityID, memoryObjectIndex,
+		_controllerProxy->rebootToFirmware(targetEntityID, memoryObjectIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::MemoryObjectIndex const /*memoryObjectIndex*/)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User rebootToFirmware (): {}", entity::ControllerEntity::statusToString(status));
@@ -2408,7 +2679,7 @@ void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, st
 			auto const guard = ControlledEntityUnlockerGuard{ *this };
 			// We are moving the tlv, so we have to get its size before that
 			auto const tlvSize = tlv.size();
-			_controller->addressAccess(targetEntityID, { std::move(tlv) },
+			_controllerProxy->addressAccess(targetEntityID, { std::move(tlv) },
 				[this, baseAddress = address, sentSize = tlvSize, progressHandlerCopy = progressHandler, completionHandlerCopy = completionHandler, memoryBuffer = std::move(memoryBuffer)](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
 				{
 					onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(progressHandlerCopy), std::move(completionHandlerCopy), std::move(memoryBuffer));
@@ -2434,7 +2705,7 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 	{
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->connectStream(talkerStream, listenerStream,
+		_controllerProxy->connectStream(talkerStream, listenerStream,
 			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
 				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
@@ -2468,7 +2739,7 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 	{
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->disconnectStream(talkerStream, listenerStream,
+		_controllerProxy->disconnectStream(talkerStream, listenerStream,
 			[this, handler](entity::controller::Interface const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
 				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
@@ -2489,7 +2760,7 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 					// In case of a disconnect we might get an error (forwarded from the talker) but the stream is actually disconnected.
 					// In that case, we have to query the listener stream state in order to know the actual connection state
 					// Also don't notify the result handler right now, wait for getListenerStreamState answer
-					_controller->getListenerStreamState(listenerStream,
+					_controllerProxy->getListenerStreamState(listenerStream,
 						[this, handler, disconnectStatus = status](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 						{
 							entity::ControllerEntity::ControlStatus controlStatus{ disconnectStatus };
@@ -2531,7 +2802,7 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 	{
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->disconnectTalkerStream(talkerStream, listenerStream,
+		_controllerProxy->disconnectTalkerStream(talkerStream, listenerStream,
 			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
 				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
@@ -2567,7 +2838,7 @@ void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification 
 	{
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (ListenerID={} ListenerIndex={})", utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controller->getListenerStreamState(listenerStream,
+		_controllerProxy->getListenerStreamState(listenerStream,
 			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
 				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
@@ -2723,7 +2994,7 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 
 	// Try to open the output file
 	auto const mode = std::ios::binary | std::ios::out;
-	auto ofs = std::ofstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+	auto ofs = std::ofstream{ utils::filePathFromUTF8String(filePath), mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
 
 	// Failed to open file to writting
 	if (!ofs.is_open())
@@ -2771,7 +3042,7 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 
 		// Try to open the output file
 		auto const mode = std::ios::binary | std::ios::out;
-		auto ofs = std::ofstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+		auto ofs = std::ofstream{ utils::filePathFromUTF8String(filePath), mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
 
 		// Failed to open file to writting
 		if (!ofs.is_open())
@@ -2884,9 +3155,94 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedCont
 #endif // ENABLE_AVDECC_FEATURE_JSON
 }
 
-bool ControllerImpl::unloadVirtualEntity(UniqueIdentifier const entityID) noexcept
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::cacheEntityModelFile(std::string const& filePath, bool const isBinaryFormat) noexcept
 {
-	// Check if entity is virtual
+#ifndef ENABLE_AVDECC_FEATURE_JSON
+	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)" };
+
+#else // ENABLE_AVDECC_FEATURE_JSON
+
+	auto [error, errorText, entityTree] = EndStation::deserializeEntityModelFromJson(filePath, false, isBinaryFormat);
+	if (!error)
+	{
+		// TODO: Feed the cache with the loaded model
+		return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Not supported yet" };
+	}
+	return { error, errorText };
+#endif // ENABLE_AVDECC_FEATURE_JSON
+}
+
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::createVirtualEntityFromEntityModelFile(std::string const& filePath, model::VirtualEntityBuilder* const builder, bool const isBinaryFormat) noexcept
+{
+#ifndef ENABLE_AVDECC_FEATURE_JSON
+	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)" };
+
+#else // ENABLE_AVDECC_FEATURE_JSON
+
+	try
+	{
+		auto [error, errorText, entityTree, entityModelID] = deserializeJsonEntityModel(filePath, isBinaryFormat);
+		if (!error)
+		{
+			auto commonInfo = entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), entityModelID };
+			auto intfcsInfo = entity::Entity::InterfacesInformation{};
+
+			// Build common and interfaces information
+			utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(entity::model::EntityTree const&, entity::Entity::CommonInformation&, entity::Entity::InterfacesInformation&)>(&model::VirtualEntityBuilder::build, builder, entityTree, commonInfo, intfcsInfo);
+
+			// Create the ControlledEntity
+			auto controlledEntity = std::make_shared<ControlledEntityImpl>(entity::Entity{ commonInfo, intfcsInfo }, _entitiesSharedLockInformation, true);
+
+			// Build EntityNode from EntityTree
+			controlledEntity->buildEntityModelGraph(entityTree);
+
+			// Build the dynamic part of the entity
+			auto aemVisitor = VirtualEntityModelVisitor{ controlledEntity.get(), builder };
+			controlledEntity->accept(&aemVisitor, true);
+
+			// Validate the dynamic build
+			aemVisitor.validate();
+
+			if (aemVisitor.isError())
+			{
+				return { avdecc::jsonSerializer::DeserializationError::MissingInformation, aemVisitor.getErrorMessage() };
+			}
+
+			// Choose a locale
+			if (controlledEntity->hasAnyConfiguration())
+			{
+				// Load locale for each configuration
+				try
+				{
+					auto const& entityNode = controlledEntity->getEntityNode();
+					for (auto const& [configurationIndex, configurationNode] : entityNode.configurations)
+					{
+						chooseLocale(controlledEntity.get(), configurationIndex, "en-US", nullptr);
+					}
+				}
+				catch (ControlledEntity::Exception const&)
+				{
+				}
+			}
+
+			// Register the virtual entity
+			return registerVirtualControlledEntity(std::move(controlledEntity));
+		}
+		else
+		{
+			return { error, errorText };
+		}
+	}
+	catch (la::avdecc::Exception const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::MissingInformation, e.what() };
+	}
+#endif // ENABLE_AVDECC_FEATURE_JSON
+}
+
+bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
+{
+	auto isVirtual = false;
 	{
 		// Lock to protect _controlledEntities
 		std::lock_guard<decltype(_lock)> const lg(_lock);
@@ -2897,16 +3253,149 @@ bool ControllerImpl::unloadVirtualEntity(UniqueIdentifier const entityID) noexce
 		{
 			return false;
 		}
-		// Entity is not virtual
-		if (!entityIt->second->isVirtual())
-		{
-			return false;
-		}
+		isVirtual = entityIt->second->isVirtual();
 	}
 
-	onEntityOffline(nullptr, entityID);
+	// Ready to remove using the network executor
+	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
+	ExecutorManager::getInstance().pushJob(exName,
+		[this, entityID, isVirtual]()
+		{
+			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
+
+			if (isVirtual)
+			{
+				// Deregister the ControlledEntity
+				auto sharedControlledEntity = deregisterVirtualControlledEntity(entityID);
+				// Re-register entity
+				registerVirtualControlledEntity(std::move(sharedControlledEntity));
+			}
+			else
+			{
+				forgetRemoteEntity(entityID);
+				discoverRemoteEntity(entityID);
+			}
+		});
+
+	// Flush executor to be sure everything is loaded before returning
+	ExecutorManager::getInstance().flush(exName);
+
 	return true;
 }
+
+bool ControllerImpl::unloadVirtualEntity(UniqueIdentifier const entityID) noexcept
+{
+	return !!deregisterVirtualControlledEntity(entityID);
+}
+
+/* ************************************************************ */
+/* VirtualControlledEntityInterface overrides                   */
+/* ************************************************************ */
+void ControllerImpl::setEntityCounters(UniqueIdentifier const targetEntityID, entity::model::EntityCounters const& counters) noexcept
+{
+	// Check if targetEntityID is a virtual entity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	if (controlledEntity && controlledEntity->isVirtual())
+	{
+		// Convert descriptor specific counters to generic descriptor counters
+		auto validCounters = entity::EntityCounterValidFlags{};
+		auto descriptorCounters = entity::model::DescriptorCounters{};
+
+		for (auto const [flag, counter] : counters)
+		{
+			validCounters.set(flag);
+			descriptorCounters[validCounters.getPosition(flag)] = counter;
+		}
+
+		// Use the "update**" method, there are many things to do
+		updateEntityCounters(*controlledEntity, validCounters, descriptorCounters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+	}
+}
+
+void ControllerImpl::setAvbInterfaceCounters(UniqueIdentifier const targetEntityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceCounters const& counters) noexcept
+{
+	// Check if targetEntityID is a virtual entity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	if (controlledEntity && controlledEntity->isVirtual())
+	{
+		// Convert descriptor specific counters to generic descriptor counters
+		auto validCounters = entity::AvbInterfaceCounterValidFlags{};
+		auto descriptorCounters = entity::model::DescriptorCounters{};
+
+		for (auto const [flag, counter] : counters)
+		{
+			validCounters.set(flag);
+			descriptorCounters[validCounters.getPosition(flag)] = counter;
+		}
+
+		// Use the "update**" method, there are many things to do
+		updateAvbInterfaceCounters(*controlledEntity, avbInterfaceIndex, validCounters, descriptorCounters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+	}
+}
+
+void ControllerImpl::setClockDomainCounters(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockDomainCounters const& counters) noexcept
+{
+	// Check if targetEntityID is a virtual entity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	if (controlledEntity && controlledEntity->isVirtual())
+	{
+		// Convert descriptor specific counters to generic descriptor counters
+		auto validCounters = entity::ClockDomainCounterValidFlags{};
+		auto descriptorCounters = entity::model::DescriptorCounters{};
+
+		for (auto const [flag, counter] : counters)
+		{
+			validCounters.set(flag);
+			descriptorCounters[validCounters.getPosition(flag)] = counter;
+		}
+
+		// Use the "update**" method, there are many things to do
+		updateClockDomainCounters(*controlledEntity, clockDomainIndex, validCounters, descriptorCounters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+	}
+}
+
+void ControllerImpl::setStreamInputCounters(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInputCounters const& counters) noexcept
+{
+	// Check if targetEntityID is a virtual entity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	if (controlledEntity && controlledEntity->isVirtual())
+	{
+		// Convert descriptor specific counters to generic descriptor counters
+		auto validCounters = entity::StreamInputCounterValidFlags{};
+		auto descriptorCounters = entity::model::DescriptorCounters{};
+
+		for (auto const [flag, counter] : counters)
+		{
+			validCounters.set(flag);
+			descriptorCounters[validCounters.getPosition(flag)] = counter;
+		}
+
+		// Use the "update**" method, there are many things to do
+		updateStreamInputCounters(*controlledEntity, streamIndex, validCounters, descriptorCounters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+	}
+}
+
+void ControllerImpl::setStreamOutputCounters(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamOutputCounters const& counters) noexcept
+{
+	// Check if targetEntityID is a virtual entity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	if (controlledEntity && controlledEntity->isVirtual())
+	{
+		// Convert descriptor specific counters to generic descriptor counters
+		auto validCounters = entity::StreamOutputCounterValidFlags{};
+		auto descriptorCounters = entity::model::DescriptorCounters{};
+
+		for (auto const [flag, counter] : counters)
+		{
+			validCounters.set(flag);
+			descriptorCounters[validCounters.getPosition(flag)] = counter;
+		}
+
+		// Use the "update**" method, there are many things to do
+		updateStreamOutputCounters(*controlledEntity, streamIndex, validCounters, descriptorCounters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+	}
+}
+
 
 } // namespace controller
 } // namespace avdecc

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -46,19 +46,20 @@ namespace avdecc
 {
 namespace protocol
 {
-// Throws an Exception if networkInterfaceName is not usable
-ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName)
-	: _networkInterfaceName(networkInterfaceName)
+// Throws an Exception if networkInterfaceID is not usable
+ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceID, std::string const& executorName)
+	: _networkInterfaceID(networkInterfaceID)
+	, _executorName{ executorName }
 {
-	// First check if the executor exists
-	if (!ExecutorManager::getInstance().isExecutorRegistered(DefaultExecutorName))
+	// Check if the executor exists
+	if (!ExecutorManager::getInstance().isExecutorRegistered(_executorName))
 	{
-		throw Exception(Error::ExecutorNotInitialized, "The receive executor '" + std::string{ DefaultExecutorName } + "' is not registered");
+		throw Exception(Error::ExecutorNotInitialized, "The receive executor '" + std::string{ _executorName } + "' is not registered");
 	}
 
 	try
 	{
-		auto const intfc = networkInterface::NetworkInterfaceHelper::getInstance().getInterfaceByName(networkInterfaceName);
+		auto const intfc = networkInterface::NetworkInterfaceHelper::getInstance().getInterfaceByName(networkInterfaceID);
 
 		// Check we have a valid mac address
 		if (!networkInterface::NetworkInterfaceHelper::isMacAddressValid(intfc.macAddress))
@@ -72,12 +73,19 @@ ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName)
 	}
 }
 
-ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress)
-	: _networkInterfaceName(networkInterfaceName)
+ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceID, networkInterface::MacAddress const& macAddress, std::string const& executorName)
+	: _networkInterfaceID(networkInterfaceID)
 	, _networkInterfaceMacAddress(macAddress)
+	, _executorName{ executorName }
 {
+	// Check if the executor exists
+	if (!ExecutorManager::getInstance().isExecutorRegistered(_executorName))
+	{
+		throw Exception(Error::ExecutorNotInitialized, "The receive executor '" + std::string{ _executorName } + "' is not registered");
+	}
+
 	// Check we have a valid name
-	if (networkInterfaceName.empty())
+	if (networkInterfaceID.empty())
 		throw Exception(Error::InvalidParameters, "Network interface name should not be empty");
 
 	// Check we have a valid mac address
@@ -85,6 +93,10 @@ ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName, ne
 		throw Exception(Error::InvalidParameters, "Network interface has an invalid mac address");
 }
 
+std::string const& LA_AVDECC_CALL_CONVENTION ProtocolInterface::getExecutorName() const noexcept
+{
+	return _executorName;
+}
 
 networkInterface::MacAddress const& LA_AVDECC_CALL_CONVENTION ProtocolInterface::getMacAddress() const noexcept
 {
@@ -160,7 +172,7 @@ ProtocolInterface::VendorUniqueDelegate* ProtocolInterface::getVendorUniqueDeleg
 	return vudIt->second;
 }
 
-ProtocolInterface* LA_AVDECC_CALL_CONVENTION ProtocolInterface::createRawProtocolInterface(Type const protocolInterfaceType, std::string const& networkInterfaceName)
+ProtocolInterface* LA_AVDECC_CALL_CONVENTION ProtocolInterface::createRawProtocolInterface(Type const protocolInterfaceType, std::string const& networkInterfaceID, std::string const& executorName)
 {
 	if (!isSupportedProtocolInterfaceType(protocolInterfaceType))
 		throw Exception(Error::InterfaceNotSupported, "Selected protocol interface type not supported");
@@ -169,11 +181,11 @@ ProtocolInterface* LA_AVDECC_CALL_CONVENTION ProtocolInterface::createRawProtoco
 	{
 #if defined(HAVE_PROTOCOL_INTERFACE_PCAP)
 		case Type::PCap:
-			return ProtocolInterfacePcap::createRawProtocolInterfacePcap(networkInterfaceName);
+			return ProtocolInterfacePcap::createRawProtocolInterfacePcap(networkInterfaceID, executorName);
 #endif // HAVE_PROTOCOL_INTERFACE_PCAP
 #if defined(HAVE_PROTOCOL_INTERFACE_MAC)
 		case Type::MacOSNative:
-			return ProtocolInterfaceMacNative::createRawProtocolInterfaceMacNative(networkInterfaceName);
+			return ProtocolInterfaceMacNative::createRawProtocolInterfaceMacNative(networkInterfaceID, executorName);
 #endif // HAVE_PROTOCOL_INTERFACE_MAC
 #if defined(HAVE_PROTOCOL_INTERFACE_PROXY)
 		case Type::Proxy:
@@ -182,7 +194,7 @@ ProtocolInterface* LA_AVDECC_CALL_CONVENTION ProtocolInterface::createRawProtoco
 #endif // HAVE_PROTOCOL_INTERFACE_PROXY
 #if defined(HAVE_PROTOCOL_INTERFACE_VIRTUAL)
 		case Type::Virtual:
-			return ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(networkInterfaceName, { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } });
+			return ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(networkInterfaceID, { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }, executorName);
 #endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
 		default:
 			break;

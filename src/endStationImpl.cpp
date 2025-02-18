@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -163,13 +163,18 @@ entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const 
 	return aggregatePtr;
 }
 
+protocol::ProtocolInterface const* EndStationImpl::getProtocolInterface() const noexcept
+{
+	return _protocolInterface.get();
+}
+
 /** Destroy method for COM-like interface */
 void EndStationImpl::destroy() noexcept
 {
 	delete this;
 }
 
-std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::model::EntityTree> LA_AVDECC_CALL_CONVENTION EndStation::deserializeEntityModelFromJson(std::string const& filePath, bool const processDynamicModel, bool const isBinaryFormat) noexcept
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::model::EntityTree> LA_AVDECC_CALL_CONVENTION EndStation::deserializeEntityModelFromJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] bool const processDynamicModel, [[maybe_unused]] bool const isBinaryFormat) noexcept
 {
 #ifndef ENABLE_AVDECC_FEATURE_JSON
 	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)", entity::model::EntityTree{} };
@@ -188,7 +193,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::mo
 
 	// Try to open the input file
 	auto const mode = std::ios::binary | std::ios::in;
-	auto ifs = std::ifstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+	auto ifs = std::ifstream{ utils::filePathFromUTF8String(filePath), mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
 
 	// Failed to open file for reading
 	if (!ifs.is_open())
@@ -261,13 +266,41 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::mo
 }
 
 /** EndStation Entry point */
-EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceName)
+EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceID, std::optional<std::string> const& executorName)
 {
 	try
 	{
-		// We must create the executor before creating ProtocolInterface (function parameters sequencing is still undefined in c++20, so we force creation in a preceding expression)
-		auto executorWrapper = ExecutorManager::getInstance().registerExecutor(protocol::ProtocolInterface::DefaultExecutorName, ExecutorWithDispatchQueue::create(protocol::ProtocolInterface::DefaultExecutorName, utils::ThreadPriority::Highest));
-		return new EndStationImpl(std::move(executorWrapper), protocol::ProtocolInterface::create(protocolInterfaceType, networkInterfaceName));
+		static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
+
+		auto executorWrapper = ExecutorManager::ExecutorWrapper::UniquePointer{ nullptr, nullptr };
+		auto exName = std::string{ DefaultExecutorName };
+
+		// If we are passed an executor name, check if it exists
+		if (executorName.has_value())
+		{
+			// Executor name was passed, check if it exists
+			if (!ExecutorManager::getInstance().isExecutorRegistered(*executorName))
+			{
+				// Executor does not exist
+				throw Exception(Error::UnknownExecutorName, "Executor not found");
+			}
+			// Executor exists, we can use it
+			exName = *executorName;
+		}
+		// Create the executor and manage it's lifetime
+		else
+		{
+			// First check if the executor already exists
+			if (ExecutorManager::getInstance().isExecutorRegistered(exName))
+			{
+				// Executor already exists, we can't create a new one
+				throw Exception(Error::DuplicateExecutorName, "Executor already exists");
+			}
+			// We can create a new executor
+			executorWrapper = ExecutorManager::getInstance().registerExecutor(exName, ExecutorWithDispatchQueue::create(exName, utils::ThreadPriority::Highest));
+		}
+
+		return new EndStationImpl(std::move(executorWrapper), protocol::ProtocolInterface::create(protocolInterfaceType, networkInterfaceID, exName));
 	}
 	catch (protocol::ProtocolInterface::Exception const& e)
 	{

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -36,7 +36,7 @@ namespace protocol
 /* Global protocol defines */
 std::uint16_t const AaAecpMaxSingleTlvMemoryDataLength{ Aecpdu::MaximumSendLength - Aecpdu::HeaderLength - AaAecpdu::HeaderLength - AaAecpdu::TlvHeaderLength }; /* Maximum individual TLV memory_data length in commands */
 
-/** ADP Message Type - Clause 6.2.1.5 */
+/** ADP Message Type - IEEE1722.1-2013 Clause 6.2.1.5 */
 AdpMessageType const AdpMessageType::EntityAvailable{ 0 };
 AdpMessageType const AdpMessageType::EntityDeparting{ 1 };
 AdpMessageType const AdpMessageType::EntityDiscover{ 2 };
@@ -56,7 +56,7 @@ AdpMessageType::operator std::string() const noexcept
 	return it->second;
 }
 
-/** AECP Message Type - Clause 9.2.1.1.5 */
+/** AECP Message Type - IEEE1722.1-2013 Clause 9.2.1.1.5 */
 AecpMessageType const AecpMessageType::AemCommand{ 0 };
 AecpMessageType const AecpMessageType::AemResponse{ 1 };
 AecpMessageType const AecpMessageType::AddressAccessCommand{ 2 };
@@ -94,12 +94,27 @@ AecpMessageType::operator std::string() const noexcept
 	return it->second;
 }
 
-/** AECP Status - Clause 9.2.1.1.6 */
+/** AECP Status - IEEE1722.1-2013 Clause 9.2.1.1.6 */
 AecpStatus const AecpStatus::Success{ 0 };
 AecpStatus const AecpStatus::NotImplemented{ 1 };
 /* 2-31 defined by message type */
 
-/** AEM AECP Status - Clause 7.4 */
+AecpStatus::operator std::string() const noexcept
+{
+	static std::unordered_map<AecpStatus::value_type, std::string> s_AecpStatusMapping = {
+		{ AecpStatus::Success.getValue(), "SUCCESS" },
+		{ AecpStatus::NotImplemented.getValue(), "NOT_IMPLEMENTED" },
+	};
+
+	auto const& it = s_AecpStatusMapping.find(getValue());
+	if (it == s_AecpStatusMapping.end())
+	{
+		return "INVALID_STATUS";
+	}
+	return it->second;
+}
+
+/** AEM AECP Status - IEEE1722.1-2013 Clause 7.4 */
 LA_AVDECC_API AemAecpStatus::AemAecpStatus(AecpStatus const status) noexcept
 	: AecpStatus{ status }
 {
@@ -118,7 +133,31 @@ AemAecpStatus const AemAecpStatus::NotSupported{ 11 };
 AemAecpStatus const AemAecpStatus::StreamIsRunning{ 12 };
 /* 13-31 reserved for future use */
 
-/** AEM Command Type - Clause 7.4 */
+AemAecpStatus::operator std::string() const noexcept
+{
+	static std::unordered_map<AemAecpStatus::value_type, std::string> s_AemAecpStatusMapping = {
+		{ AemAecpStatus::NoSuchDescriptor.getValue(), "NO_SUCH_DESCRIPTOR" },
+		{ AemAecpStatus::EntityLocked.getValue(), "ENTITY_LOCKED" },
+		{ AemAecpStatus::EntityAcquired.getValue(), "ENTITY_ACQUIRED" },
+		{ AemAecpStatus::NotAuthenticated.getValue(), "NOT_AUTHENTICATED" },
+		{ AemAecpStatus::AuthenticationDisabled.getValue(), "AUTHENTICATION_DISABLED" },
+		{ AemAecpStatus::BadArguments.getValue(), "BAD_ARGUMENTS" },
+		{ AemAecpStatus::NoResources.getValue(), "NO_RESOURCES" },
+		{ AemAecpStatus::InProgress.getValue(), "IN_PROGRESS" },
+		{ AemAecpStatus::EntityMisbehaving.getValue(), "ENTITY_MISBEHAVING" },
+		{ AemAecpStatus::NotSupported.getValue(), "NOT_SUPPORTED" },
+		{ AemAecpStatus::StreamIsRunning.getValue(), "STREAM_IS_RUNNING" },
+	};
+
+	auto const& it = s_AemAecpStatusMapping.find(getValue());
+	if (it == s_AemAecpStatusMapping.end())
+	{
+		return AecpStatus::operator std::string();
+	}
+	return it->second;
+}
+
+/** AEM Command Type - IEEE1722.1-2013 Clause 7.4 */
 AemCommandType const AemCommandType::AcquireEntity{ 0x0000 };
 AemCommandType const AemCommandType::LockEntity{ 0x0001 };
 AemCommandType const AemCommandType::EntityAvailable{ 0x0002 };
@@ -194,7 +233,10 @@ AemCommandType const AemCommandType::SetMemoryObjectLength{ 0x0047 };
 AemCommandType const AemCommandType::GetMemoryObjectLength{ 0x0048 };
 AemCommandType const AemCommandType::SetStreamBackup{ 0x0049 };
 AemCommandType const AemCommandType::GetStreamBackup{ 0x004a };
-/* 0x004b-0x7ffe reserved for future use */
+AemCommandType const AemCommandType::GetDynamicInfo{ 0x004b };
+AemCommandType const AemCommandType::SetMaxTransitTime{ 0x004c };
+AemCommandType const AemCommandType::GetMaxTransitTime{ 0x004d };
+/* 0x004c-0x7ffe reserved for future use */
 AemCommandType const AemCommandType::Expansion{ 0x7fff };
 
 AemCommandType const AemCommandType::InvalidCommandType{ 0xffff };
@@ -277,6 +319,7 @@ AemCommandType::operator std::string() const noexcept
 		{ AemCommandType::GetMemoryObjectLength.getValue(), "GET_MEMORY_OBJECT_LENGTH" },
 		{ AemCommandType::SetStreamBackup.getValue(), "SET_STREAM_BACKUP" },
 		{ AemCommandType::GetStreamBackup.getValue(), "GET_STREAM_BACKUP" },
+		{ AemCommandType::GetDynamicInfo.getValue(), "GET_DYNAMIC_INFO" },
 		{ AemCommandType::Expansion.getValue(), "EXPANSION" },
 		{ AemCommandType::InvalidCommandType.getValue(), "INVALID_COMMAND_TYPE" },
 	};
@@ -287,16 +330,43 @@ AemCommandType::operator std::string() const noexcept
 	return it->second;
 }
 
-/** AEM Acquire Entity Flags - Clause 7.4.1.1 */
+/** AEM Acquire Entity Flags - IEEE1722.1-2013 Clause 7.4.1.1 */
 AemAcquireEntityFlags const AemAcquireEntityFlags::None{ 0x00000000 };
 AemAcquireEntityFlags const AemAcquireEntityFlags::Persistent{ 0x00000001 };
 AemAcquireEntityFlags const AemAcquireEntityFlags::Release{ 0x80000000 };
 
-/** AEM Lock Entity Flags - Clause 7.4.2.1 */
+AemAcquireEntityFlags::operator std::string() const noexcept
+{
+	static std::unordered_map<AemAcquireEntityFlags::value_type, std::string> s_AemAcquireEntityFlagsMapping = {
+		{ AemAcquireEntityFlags::None.getValue(), "NONE" },
+		{ AemAcquireEntityFlags::Persistent.getValue(), "PERSISTENT" },
+		{ AemAcquireEntityFlags::Release.getValue(), "RELEASE" },
+	};
+
+	auto const& it = s_AemAcquireEntityFlagsMapping.find(getValue());
+	if (it == s_AemAcquireEntityFlagsMapping.end())
+		return "INVALID_FLAGS";
+	return it->second;
+}
+
+/** AEM Lock Entity Flags - IEEE1722.1-2013 Clause 7.4.2.1 */
 AemLockEntityFlags const AemLockEntityFlags::None{ 0x00000000 };
 AemLockEntityFlags const AemLockEntityFlags::Unlock{ 0x00000001 };
 
-/** Address Access Mode - Clause 9.2.1.3.3 */
+AemLockEntityFlags::operator std::string() const noexcept
+{
+	static std::unordered_map<AemLockEntityFlags::value_type, std::string> s_AemLockEntityFlagsMapping = {
+		{ AemLockEntityFlags::None.getValue(), "NONE" },
+		{ AemLockEntityFlags::Unlock.getValue(), "UNLOCK" },
+	};
+
+	auto const& it = s_AemLockEntityFlagsMapping.find(getValue());
+	if (it == s_AemLockEntityFlagsMapping.end())
+		return "INVALID_FLAGS";
+	return it->second;
+}
+
+/** Address Access Mode - IEEE1722.1-2013 Clause 9.2.1.3.3 */
 AaMode const AaMode::Read{ 0x0 };
 AaMode const AaMode::Write{ 0x1 };
 AaMode const AaMode::Execute{ 0x2 };
@@ -316,7 +386,7 @@ AaMode::operator std::string() const noexcept
 	return it->second;
 }
 
-/** Address Access AECP Status - Clause 9.2.1.3.4 */
+/** Address Access AECP Status - IEEE1722.1-2013 Clause 9.2.1.3.4 */
 AaAecpStatus const AaAecpStatus::AddressTooLow{ 2 };
 AaAecpStatus const AaAecpStatus::AddressTooHigh{ 3 };
 AaAecpStatus const AaAecpStatus::AddressInvalid{ 4 };
@@ -325,7 +395,42 @@ AaAecpStatus const AaAecpStatus::DataInvalid{ 6 };
 AaAecpStatus const AaAecpStatus::Unsupported{ 7 };
 /* 8-31 reserved for future use */
 
-/** Milan Vendor Unique Command Type - Milan Clause 7.2.2.3 */
+AaAecpStatus::operator std::string() const noexcept
+{
+	static std::unordered_map<AaAecpStatus::value_type, std::string> s_AaAecpStatusMapping = {
+		{ AaAecpStatus::AddressTooLow.getValue(), "ADDRESS_TOO_LOW" },
+		{ AaAecpStatus::AddressTooHigh.getValue(), "ADDRESS_TOO_HIGH" },
+		{ AaAecpStatus::AddressInvalid.getValue(), "ADDRESS_INVALID" },
+		{ AaAecpStatus::TlvInvalid.getValue(), "TLV_INVALID" },
+		{ AaAecpStatus::DataInvalid.getValue(), "DATA_INVALID" },
+		{ AaAecpStatus::Unsupported.getValue(), "UNSUPPORTED" },
+	};
+
+	auto const& it = s_AaAecpStatusMapping.find(getValue());
+	if (it == s_AaAecpStatusMapping.end())
+	{
+		return AecpStatus::operator std::string();
+	}
+	return it->second;
+}
+
+/** Milan Vendor Unique AECP Status - Milan-2019 Clause 7.2.3 */
+MvuAecpStatus::operator std::string() const noexcept
+{
+	static std::unordered_map<MvuAecpStatus::value_type, std::string> s_MvuAecpStatusMapping = {
+		{ MvuAecpStatus::Success.getValue(), "SUCCESS" },
+		{ MvuAecpStatus::NotImplemented.getValue(), "NOT_IMPLEMENTED" },
+	};
+
+	auto const& it = s_MvuAecpStatusMapping.find(getValue());
+	if (it == s_MvuAecpStatusMapping.end())
+	{
+		return AecpStatus::operator std::string();
+	}
+	return it->second;
+}
+
+/** Milan Vendor Unique Command Type - Milan-2019 Clause 7.2.2.3 */
 MvuCommandType const MvuCommandType::GetMilanInfo{ 0 };
 MvuCommandType const MvuCommandType::InvalidCommandType{ 0xffff };
 
@@ -342,7 +447,7 @@ MvuCommandType::operator std::string() const noexcept
 	return it->second;
 }
 
-/** ACMP Message Type - Clause 8.2.1.5 */
+/** ACMP Message Type - IEEE1722.1-2013 Clause 8.2.1.5 */
 AcmpMessageType const AcmpMessageType::ConnectTxCommand{ 0 };
 AcmpMessageType const AcmpMessageType::ConnectTxResponse{ 1 };
 AcmpMessageType const AcmpMessageType::DisconnectTxCommand{ 2 };
@@ -384,7 +489,7 @@ AcmpMessageType::operator std::string() const noexcept
 	return it->second;
 }
 
-/** ACMP Status - Clause 8.2.1.6 */
+/** ACMP Status - IEEE1722.1-2013 Clause 8.2.1.6 */
 AcmpStatus const AcmpStatus::Success{ 0 };
 AcmpStatus const AcmpStatus::ListenerUnknownID{ 1 };
 AcmpStatus const AcmpStatus::TalkerUnknownID{ 2 };

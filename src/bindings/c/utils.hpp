@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -97,6 +97,11 @@ public:
 	Objects const& getObjects() const noexcept
 	{
 		return _objects;
+	}
+
+	bool contains(Handle const handle) const noexcept
+	{
+		return _objects.find(handle) != _objects.end();
 	}
 
 private:

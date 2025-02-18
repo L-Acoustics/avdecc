@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2023, L-Acoustics and its contributors
+* Copyright (C) 2016-2025, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -512,6 +512,8 @@ inline void localEntity_test(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle)
 
 static int doJob()
 {
+	static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
+
 	auto const protocolInterfaceType = chooseProtocolInterfaceType();
 	auto intfc = chooseNetworkInterface();
 
@@ -523,7 +525,7 @@ static int doJob()
 	// Create an Executor
 	auto executorHandle = LA_AVDECC_INVALID_HANDLE;
 	{
-		auto const error = LA_AVDECC_Executor_createQueueExecutor(LA_AVDECC_ProtocolInterface_getDefaultExecutorName(), &executorHandle);
+		auto const error = LA_AVDECC_Executor_createQueueExecutor(DefaultExecutorName, &executorHandle);
 		if (error != avdecc_executor_error_no_error)
 		{
 			outputText("Error creating executor: " + std::to_string(error) + "\n");
@@ -537,7 +539,7 @@ static int doJob()
 		// Create a ProtocolInterface
 		auto protocolInterfaceHandle = LA_AVDECC_INVALID_HANDLE;
 		{
-			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc.id.c_str(), &protocolInterfaceHandle);
+			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc.id.c_str(), DefaultExecutorName, &protocolInterfaceHandle);
 			if (error != avdecc_protocol_interface_error_no_error)
 			{
 				outputText("Error creating protocol interface: " + std::to_string(error) + "\n");
@@ -554,7 +556,7 @@ static int doJob()
 		// Create a ProtocolInterface
 		auto protocolInterfaceHandle = LA_AVDECC_INVALID_HANDLE;
 		{
-			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc.id.c_str(), &protocolInterfaceHandle);
+			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc.id.c_str(), DefaultExecutorName, &protocolInterfaceHandle);
 			if (error != avdecc_protocol_interface_error_no_error)
 			{
 				outputText("Error creating protocol interface: " + std::to_string(error) + "\n");
@@ -571,7 +573,7 @@ static int doJob()
 		// Create a ProtocolInterface
 		auto protocolInterfaceHandle = LA_AVDECC_INVALID_HANDLE;
 		{
-			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc.id.c_str(), &protocolInterfaceHandle);
+			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc.id.c_str(), DefaultExecutorName, &protocolInterfaceHandle);
 			if (error != avdecc_protocol_interface_error_no_error)
 			{
 				outputText("Error creating protocol interface: " + std::to_string(error) + "\n");
@@ -588,7 +590,7 @@ static int doJob()
 		// Create a ProtocolInterface
 		auto protocolInterfaceHandle = LA_AVDECC_INVALID_HANDLE;
 		{
-			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc.id.c_str(), &protocolInterfaceHandle);
+			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc.id.c_str(), DefaultExecutorName, &protocolInterfaceHandle);
 			if (error != avdecc_protocol_interface_error_no_error)
 			{
 				outputText("Error creating protocol interface: " + std::to_string(error) + "\n");
