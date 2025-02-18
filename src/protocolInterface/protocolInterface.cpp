@@ -233,13 +233,13 @@ std::string LA_AVDECC_CALL_CONVENTION ProtocolInterface::typeToString(Type const
 		case Type::MacOSNative:
 			return "macOS native";
 		case Type::Proxy:
-			return "IEEE Std 1722.1 proxy";
+			return "IEEE Std 1722.1 network proxy";
 		case Type::Virtual:
-			return "Virtual interface";
+			return "Virtual loopback";
 		case Type::Serial:
-			return "Serial port interface";
+			return "Serial port";
 		case Type::Local:
-			return "Local domain socket interface";
+			return "Local domain socket";
 		default:
 			return "Unknown protocol interface type";
 	}
