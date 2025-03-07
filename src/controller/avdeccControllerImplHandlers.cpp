@@ -3197,7 +3197,7 @@ void ControllerImpl::onPtpPortNameResult(entity::controller::Interface const* co
 	}
 }
 
-void ControllerImpl::onGetSystemUniqueIDResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept
+void ControllerImpl::onGetSystemUniqueIDResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetSystemUniqueIDResult (SystemUniqueID={}): {}", systemUniqueID, entity::ControllerEntity::statusToString(status));
 
@@ -3233,7 +3233,7 @@ void ControllerImpl::onGetSystemUniqueIDResult(entity::controller::Interface con
 	}
 }
 
-void ControllerImpl::onGetMediaClockReferenceInfoResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& info) noexcept
+void ControllerImpl::onGetMediaClockReferenceInfoResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& info) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetMediaClockReferenceInfoResult (ClockDomainIndex={} DefaultPrio={}): {}", clockDomainIndex, utils::to_integral(defaultPriority), entity::ControllerEntity::statusToString(status));
 

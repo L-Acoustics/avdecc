@@ -1025,12 +1025,12 @@ void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entit
 	}
 }
 
-void ControllerImpl::onAemAecpUnsolicitedReceived(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept
+void ControllerImpl::onAemAecpUnsolicitedReceived(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept
 {
 	handleAecpUnsolicitedReceived(entityID, sequenceID, &ControlledEntityImpl::incrementAemAecpUnsolicitedCounter, &ControlledEntityImpl::incrementAemAecpUnsolicitedLossCounter, &ControlledEntityImpl::hasLostAemUnsolicitedNotification, &Controller::Observer::onAemAecpUnsolicitedCounterChanged, &Controller::Observer::onAemAecpUnsolicitedLossCounterChanged);
 }
 
-void ControllerImpl::onMvuAecpUnsolicitedReceived(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept
+void ControllerImpl::onMvuAecpUnsolicitedReceived(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept
 {
 	handleAecpUnsolicitedReceived(entityID, sequenceID, &ControlledEntityImpl::incrementMvuAecpUnsolicitedCounter, &ControlledEntityImpl::incrementMvuAecpUnsolicitedLossCounter, &ControlledEntityImpl::hasLostMvuUnsolicitedNotification, &Controller::Observer::onMvuAecpUnsolicitedCounterChanged, &Controller::Observer::onMvuAecpUnsolicitedLossCounterChanged);
 }
