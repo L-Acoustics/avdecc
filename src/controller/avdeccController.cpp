@@ -75,6 +75,9 @@ std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CALL_CONVENTION getCompileOp
 #ifdef IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS
 	options.emplace_back(CompileOptionInfo{ CompileOption::IgnoreNeitherStaticNorDynamicMappings, "INSNDM", "Ignore Neither Static Nor Dynamic Mappings" });
 #endif // IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS
+#ifdef CONTINUE_MISBEHAVE_AEM_RESPONSES
+	options.emplace_back(CompileOptionInfo{ CompileOption::ContinueMisbehaveAemResponses, "CMAR", "Continue Misbehave AEM Responses" });
+#endif // CONTINUE_MISBEHAVE_AEM_RESPONSES
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	options.emplace_back(CompileOptionInfo{ CompileOption::EnableRedundancy, "RDNCY", "Redundancy" });

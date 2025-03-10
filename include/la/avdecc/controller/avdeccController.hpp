@@ -88,6 +88,7 @@ enum class CompileOption : std::uint32_t
 {
 	None = 0,
 	IgnoreNeitherStaticNorDynamicMappings = 1u << 0,
+	ContinueMisbehaveAemResponses = 1u << 1,
 	EnableRedundancy = 1u << 15,
 	Strict2018Redundancy = 1u << 16,
 	EnableJsonSupport = 1u << 17,

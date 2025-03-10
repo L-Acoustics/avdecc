@@ -5279,7 +5279,11 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForAemCommandStatu
 		case entity::ControllerEntity::AemCommandStatus::UnknownEntity:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::EntityMisbehaving:
+#if defined(CONTINUE_MISBEHAVE_AEM_RESPONSES)
+			return FailureAction::MisbehaveContinue;
+#else // !CONTINUE_MISBEHAVE_AEM_RESPONSES
 			[[fallthrough]];
+#endif // CONTINUE_MISBEHAVE_AEM_RESPONSES
 		case entity::ControllerEntity::AemCommandStatus::NetworkError:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::InternalError:
