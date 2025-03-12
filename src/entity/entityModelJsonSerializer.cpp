@@ -1187,6 +1187,93 @@ EntityTree readEntityTree(json const& object, Flags const flags, std::uint32_t c
 	return entityTree;
 }
 
+inline bool convertModelToVersion2(json& entityDescriptor, Flags const flags)
+{
+	/* Differences btw version 1 and 2 are:
+		- AVB_INTERFACE_DESCRIPTOR:
+		 - Moved some fields from 'static' to 'dynamic' model
+	*/
+	// Process all AVB_INTERFACE_DESCRIPTOR in all configurations
+	if (auto const configurations = entityDescriptor.find(keyName::NodeName_ConfigurationDescriptors); configurations != entityDescriptor.end())
+	{
+		for (auto& configuration : *configurations)
+		{
+			if (auto const avbInterfaces = configuration.find(keyName::NodeName_AvbInterfaceDescriptors); avbInterfaces != configuration.end())
+			{
+				for (auto& avbInterface : *avbInterfaces)
+				{
+					// We need to get the 'static' model but it may not be present (we will check the conditions for it being an error right after)
+					auto const staticModelIt = avbInterface.find(keyName::Node_StaticInformation);
+
+					// If we are processing the 'dynamic' model, we need to move some fields from 'static' to 'dynamic' model
+					if (flags.test(Flag::ProcessDynamicModel))
+					{
+						// We need the 'static' model or we can't convert
+						if (staticModelIt == avbInterface.end())
+						{
+							return false;
+						}
+
+						// Get the 'dynamic' model
+						auto const dynamicModelIt = avbInterface.find(keyName::Node_DynamicInformation);
+						// If must be present or we can't convert
+						if (dynamicModelIt == avbInterface.end())
+						{
+							return false;
+						}
+
+						// Move fields from 'static' to 'dynamic' model
+						try
+						{
+							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_MacAddress, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_MacAddress));
+							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_ClockIdentity, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_ClockIdentity));
+							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_Priority1, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_Priority1));
+							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_ClockClass, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_ClockClass));
+							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_OffsetScaledLogVariance, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_OffsetScaledLogVariance));
+							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_ClockAccuracy, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_ClockAccuracy));
+							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_Priority2, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_Priority2));
+							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_DomainNumber, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_DomainNumber));
+							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_LogSyncInterval, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_LogSyncInterval));
+							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_LogAnnounceInterval, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_LogAnnounceInterval));
+							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_LogPdelayInterval, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_LogPdelayInterval));
+						}
+						catch (json::exception const&)
+						{
+							return false;
+						}
+					}
+
+					// If we are processing the 'static' model, we need to remove the fields that were moved to 'dynamic' model
+					if (flags.test(Flag::ProcessStaticModel))
+					{
+						// We need the 'static' model or we can't convert
+						if (staticModelIt == avbInterface.end())
+						{
+							return false;
+						}
+
+						// Remove fields from 'static' model
+						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_MacAddress);
+						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_ClockIdentity);
+						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_Priority1);
+						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_ClockClass);
+						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_OffsetScaledLogVariance);
+						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_ClockAccuracy);
+						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_Priority2);
+						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_DomainNumber);
+						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_LogSyncInterval);
+						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_LogAnnounceInterval);
+						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_LogPdelayInterval);
+					}
+				}
+			}
+		}
+	}
+
+	// Successfull conversion
+	return true;
+}
+
 EntityTree LA_AVDECC_CALL_CONVENTION createEntityTree(json const& object, Flags const flags)
 {
 	try
@@ -1208,6 +1295,16 @@ EntityTree LA_AVDECC_CALL_CONVENTION createEntityTree(json const& object, Flags 
 		// Get the EntityDescriptor (root node of the tree)
 		auto entityDescriptor = object.at(keyName::NodeName_EntityDescriptor);
 
+		// Check for hot format conversion
+		if (formatVersion == 1)
+		{
+			// Convert to version 2
+			if (convertModelToVersion2(entityDescriptor, flags))
+			{
+				// Update format version
+				formatVersion = 2u;
+			}
+		}
 		if (formatVersion != keyValue::Node_FormatVersion)
 		{
 			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::IncompatibleEntityModelVersion, std::string("Incompatible entity model version: ") + std::to_string(formatVersion) };
