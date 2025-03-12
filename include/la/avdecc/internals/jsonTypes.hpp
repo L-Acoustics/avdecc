@@ -866,6 +866,7 @@ constexpr auto Node_Informative_Index = "_index (informative)";
 constexpr auto Node_StaticInformation = "static";
 constexpr auto Node_DynamicInformation = "dynamic";
 constexpr auto Node_NotCompliant = "not_compliant";
+constexpr auto Node_FormatVersion = "aem_format_version";
 
 /* EntityNode */
 constexpr auto EntityNode_Static_VendorNameString = "vendor_name_string";
@@ -1125,6 +1126,13 @@ constexpr auto MilanInfo_Flags = "flags";
 constexpr auto MilanInfo_CertificationVersion = "certification_version";
 
 } // namespace keyName
+
+namespace keyValue
+{
+/* Entity Model Node */
+constexpr auto Node_FormatVersion = std::uint32_t{ 2u };
+
+} // namespace keyValue
 
 /* DescriptorType conversion */
 NLOHMANN_JSON_SERIALIZE_ENUM(DescriptorType, {

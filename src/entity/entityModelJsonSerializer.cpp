@@ -594,7 +594,12 @@ json LA_AVDECC_CALL_CONVENTION createJsonObject(EntityTree const& entityTree, Fl
 		auto object = json{};
 		auto gotSanityCheckError = false;
 
-		object[keyName::NodeName_EntityDescriptor] = dumpEntityTree(entityTree, flags, gotSanityCheckError);
+		// Dump AEM format version
+		auto const formatVersion = keyValue::Node_FormatVersion;
+		object[keyName::Node_FormatVersion] = formatVersion;
+
+		// Dump Entity Model
+		object[keyName::NodeName_EntityDescriptor] = dumpEntityTree(entityTree, flags, formatVersion, gotSanityCheckError);
 
 		// If sanity checks failed
 		if (gotSanityCheckError)
@@ -1186,6 +1191,10 @@ EntityTree LA_AVDECC_CALL_CONVENTION createEntityTree(json const& object, Flags 
 {
 	try
 	{
+		// Get format version (mandatory since version 2)
+		auto formatVersion = decltype(keyValue::Node_FormatVersion){ 1u };
+		get_optional_value(object, keyName::Node_FormatVersion, formatVersion);
+
 		// Check for compliance
 		{
 			auto notCompliant = false;
@@ -1196,7 +1205,15 @@ EntityTree LA_AVDECC_CALL_CONVENTION createEntityTree(json const& object, Flags 
 			}
 		}
 
-		return readEntityTree(object.at(keyName::NodeName_EntityDescriptor), flags);
+		// Get the EntityDescriptor (root node of the tree)
+		auto entityDescriptor = object.at(keyName::NodeName_EntityDescriptor);
+
+		if (formatVersion != keyValue::Node_FormatVersion)
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::IncompatibleEntityModelVersion, std::string("Incompatible entity model version: ") + std::to_string(formatVersion) };
+		}
+
+		return readEntityTree(entityDescriptor, flags, formatVersion);
 	}
 	catch (json::type_error const& e)
 	{
