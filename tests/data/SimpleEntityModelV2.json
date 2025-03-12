@@ -1,7 +1,8 @@
 {
-	"_dump_source (informative)": "Hive v1.3.0 using L-Acoustics AVDECC Controller v4.0.0-beta8",
+	"$schema": "https://raw.githubusercontent.com/L-Acoustics/avdecc/refs/heads/main/resources/schemas/AVE/v2/schema.json#",
 	"dump_version": 2,
 	"entity_model": {
+		"aem_format_version": 2,
 		"entity_descriptor": {
 			"configuration_descriptors": [
 				{
