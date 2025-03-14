@@ -29,7 +29,7 @@ cu_setup_deploy_runtime(SimpleController ${INSTALL_EXAMPLE_FLAG} ${SIGN_FLAG})
 add_custom_command(
 	TARGET SimpleController
 	POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/../data/SimpleControllerModel.json ${CMAKE_BINARY_DIR}/examples/src/SimpleControllerModel.json
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/../data/SimpleControllerModelV2.json ${CMAKE_BINARY_DIR}/examples/src/SimpleControllerModelV2.json
 	COMMENT "Copying Examples data to output folder"
 	VERBATIM
 )

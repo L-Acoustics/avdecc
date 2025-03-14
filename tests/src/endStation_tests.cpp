@@ -129,3 +129,11 @@ TEST(EndStation, ProvidedExecutor)
 		FAIL() << "Exception thrown";
 	}
 }
+
+TEST(EndStation, LoadEntityModel)
+{
+	auto [errorCode, errorMessage, entityModelTree] = la::avdecc::EndStation::deserializeEntityModelFromJson("data/SimpleControllerModelV2.json", true, false);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, errorCode);
+	EXPECT_TRUE(errorMessage.empty());
+	EXPECT_FALSE(entityModelTree.configurationTrees.empty());
+}

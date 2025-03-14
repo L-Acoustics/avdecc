@@ -117,7 +117,7 @@ public:
 	/** Returns the protocol interface used by this EndStation. */
 	virtual protocol::ProtocolInterface const* getProtocolInterface() const noexcept = 0;
 
-	/** Deserializes a JSON file representing an entity model, and returns the model without loading it. */
+	/** Deserializes a JSON file representing an entity model tree (.AEMT), and returns the model without loading it. */
 	static LA_AVDECC_API std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::model::EntityTree> LA_AVDECC_CALL_CONVENTION deserializeEntityModelFromJson(std::string const& filePath, bool const processDynamicModel, bool const isBinaryFormat) noexcept;
 
 	// Deleted compiler auto-generated methods

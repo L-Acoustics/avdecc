@@ -1,0 +1,29 @@
+{
+	"$schema": "http://json-schema.org/draft/2020-12/schema#",
+	"title": "AEM Files Schema",
+	"description": "JSON validation schema for ATDECC Entity Model files",
+	"type": "object",
+	"schema_version": "2025.03.11",
+	"properties": {
+		"_dump_source (informative)": {
+			"type": "string",
+			"description": "Name and Version of the tool used to generate the dump."
+		},
+		"dump_version": {
+			"type": "integer",
+			"minimum": 2,
+			"maximum": 2
+		},
+		"entity_model": {
+			"$ref": "../../AEM/v2/schema.json"
+		},
+		"entity_model_id": {
+			"$ref": "../../common/2025.03.11/schema.json#/$defs/uniqueIdentifier"
+		}
+	},
+	"required": [
+		"dump_version",
+		"entity_model",
+		"entity_model_id"
+	]
+}

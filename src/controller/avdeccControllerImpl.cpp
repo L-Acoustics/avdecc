@@ -6639,7 +6639,8 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 	{
 		// Read information of the dump itself
 		auto const dumpVersion = object.at(jsonSerializer::keyName::ControlledEntity_DumpVersion).get<decltype(jsonSerializer::keyValue::ControlledEntity_DumpVersion)>();
-		if (dumpVersion != jsonSerializer::keyValue::ControlledEntity_DumpVersion)
+		// Check dump version
+		if (dumpVersion > jsonSerializer::keyValue::ControlledEntity_DumpVersion)
 		{
 			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::IncompatibleDumpVersion, std::string("Incompatible dump version: ") + std::to_string(dumpVersion) };
 		}

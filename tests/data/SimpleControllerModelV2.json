@@ -1,0 +1,28 @@
+{
+	"$schema": "https://raw.githubusercontent.com/L-Acoustics/avdecc/refs/heads/main/resources/schemas/AEM/v2/schema.json#",
+	"aem_format_version": 2,
+	"entity_descriptor": {
+		"static": {
+			"model_name_string": null,
+			"vendor_name_string": null
+		},
+		"dynamic": {
+			"counters": {},
+			"current_configuration": 0,
+			"entity_name": "Simple Controller",
+			"firmware_version": "",
+			"group_name": "",
+			"serial_number": ""
+		},
+		"configuration_descriptors": [
+			{
+				"dynamic": {
+					"object_name": ""
+				},
+				"static": {
+					"localized_description": null
+				}
+			}
+		]
+	}
+}
