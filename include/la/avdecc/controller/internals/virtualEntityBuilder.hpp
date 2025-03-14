@@ -51,7 +51,7 @@ public:
 	virtual void build(la::avdecc::controller::model::LockState& lockState, la::avdecc::UniqueIdentifier& lockingController) noexcept = 0;
 	virtual void build(bool& unsolicitedNotificationsSupported, bool& subscribedToUnsolicitedNotifications) noexcept = 0;
 	virtual void build(std::uint64_t& aecpRetryCounter, std::uint64_t& aecpTimeoutCounter, std::uint64_t& aecpUnexpectedResponseCounter, std::chrono::milliseconds& aecpResponseAverageTime, std::uint64_t& aemAecpUnsolicitedCounter, std::uint64_t& aemAecpUnsolicitedLossCounter, std::chrono::milliseconds& enumerationTime) noexcept = 0;
-	virtual void build(la::avdecc::entity::model::MilanInfo& milanInfo) noexcept = 0;
+	virtual void build(la::avdecc::entity::model::MilanInfo& milanInfo, la::avdecc::entity::model::MilanDynamicState& milanDynamicState) noexcept = 0;
 	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& compatibilityFlags) noexcept = 0;
 
 	// EntityModel building
@@ -97,7 +97,7 @@ public:
 	virtual void build(la::avdecc::controller::model::LockState& /*lockState*/, la::avdecc::UniqueIdentifier& /*lockingController*/) noexcept override {}
 	virtual void build(bool& /*unsolicitedNotificationsSupported*/, bool& /*subscribedToUnsolicitedNotifications*/) noexcept override {}
 	virtual void build(std::uint64_t& /*aecpRetryCounter*/, std::uint64_t& /*aecpTimeoutCounter*/, std::uint64_t& /*aecpUnexpectedResponseCounter*/, std::chrono::milliseconds& /*aecpResponseAverageTime*/, std::uint64_t& /*aemAecpUnsolicitedCounter*/, std::uint64_t& /*aemAecpUnsolicitedLossCounter*/, std::chrono::milliseconds& /*enumerationTime*/) noexcept override {}
-	virtual void build(la::avdecc::entity::model::MilanInfo& /*milanInfo*/) noexcept override {}
+	virtual void build(la::avdecc::entity::model::MilanInfo& /*milanInfo*/, la::avdecc::entity::model::MilanDynamicState& /*milanDynamicState*/) noexcept override {}
 	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& /*compatibilityFlags*/) noexcept override {}
 
 	// EntityModel building

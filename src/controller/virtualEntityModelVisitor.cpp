@@ -178,12 +178,14 @@ VirtualEntityModelVisitor::VirtualEntityModelVisitor(ControlledEntityImpl* const
 	// MilanInfo
 	{
 		auto info = entity::model::MilanInfo{};
+		auto state = entity::model::MilanDynamicState{};
 
 		// Call the builder
-		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(entity::model::MilanInfo&)>(&model::VirtualEntityBuilder::build, _builder, info);
+		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(entity::model::MilanInfo&, entity::model::MilanDynamicState&)>(&model::VirtualEntityBuilder::build, _builder, info, state);
 
-		// Set the info
+		// Set the info and state
 		_controlledEntity->setMilanInfo(info);
+		_controlledEntity->setMilanDynamicState(state);
 	}
 }
 
