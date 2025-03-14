@@ -7222,7 +7222,7 @@ std::optional<std::string> LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::comp
 {
 	if (controlledEntity.isEntityModelValidForCaching())
 	{
-		auto visitor = ChecksumEntityModelVisitor{ checksumVersion };
+		auto visitor = ChecksumEntityModelVisitor{ checksumVersion, controlledEntity.getMilanInfo() };
 		controlledEntity.accept(&visitor, true);
 		return visitor.getHash();
 	}

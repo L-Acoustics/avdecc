@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - [Automatically converting AEM/AVE/ANS dumps from format v1 to format v2](https://github.com/L-Acoustics/avdecc/issues/172)
 - [Virtual Entity and Entity Model dumps reference the json schema directly from github](https://github.com/L-Acoustics/avdecc/issues/164)
+- [Include Milan static fields to AEM checksum computation](https://github.com/L-Acoustics/avdecc/issues/170)
 
 ### Fixed
 - [Added a compilation option to continue enumeration in case device returns MISBEHAVE status](https://github.com/L-Acoustics/avdecc/issues/156)

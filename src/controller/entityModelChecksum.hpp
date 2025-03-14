@@ -28,6 +28,7 @@
 
 #include <memory>
 #include <string>
+#include <optional>
 
 namespace la
 {
@@ -46,7 +47,7 @@ public:
 class ChecksumEntityModelVisitor : public model::EntityModelVisitor
 {
 public:
-	explicit ChecksumEntityModelVisitor(std::uint32_t const checksumVersion) noexcept;
+	explicit ChecksumEntityModelVisitor(std::uint32_t const checksumVersion, std::optional<entity::model::MilanInfo> const& milanInfo) noexcept;
 
 	std::string getHash() const noexcept;
 
