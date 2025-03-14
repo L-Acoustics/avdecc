@@ -1,7 +1,7 @@
 {
 	"$schema": "http://json-schema.org/draft/2020-12/schema#",
-	"title": "AEM Format Schema",
-	"description": "JSON validation schema for ATDECC Entity Model format",
+	"title": "AEM Tree Schema",
+	"description": "JSON validation schema for ATDECC Entity Model Tree",
 	"type": "object",
 	"schema_version": "2025.03.11",
 	"$aemFormat": {

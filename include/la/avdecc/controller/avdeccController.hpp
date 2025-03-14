@@ -641,13 +641,13 @@ public:
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadVirtualEntitiesFromJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept = 0;
 	/** Deserializes a JSON file representing an entity, and loads it as a virtual ControlledEntity. */
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadVirtualEntityFromJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept = 0;
-	/** Deserializes a JSON file representing a full network state, and returns the ControlledEntities without loading them. */
+	/** Deserializes a JSON file representing a full network state (.ANS), and returns the ControlledEntities without loading them. */
 	static LA_AVDECC_CONTROLLER_API std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<SharedControlledEntity>> LA_AVDECC_CONTROLLER_CALL_CONVENTION deserializeControlledEntitiesFromJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept;
-	/** Deserializes a JSON file representing an entity, and returns the ControlledEntity without loading it. */
+	/** Deserializes a JSON file representing an entity (.AVE), and returns the ControlledEntity without loading it. */
 	static LA_AVDECC_CONTROLLER_API std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedControlledEntity> LA_AVDECC_CONTROLLER_CALL_CONVENTION deserializeControlledEntityFromJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept;
-	/** Loads an EntityModel file and feed it to the EntityModel cache */
+	/** Loads an EntityModel file (.AEM) and feed it to the EntityModel cache */
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> cacheEntityModelFile(std::string const& filePath, bool const isBinaryFormat = true) noexcept = 0;
-	/** Loads an EntityModel file and create a virtual ControlledEntity from it. */
+	/** Loads an EntityModel file (.AEM) and create a virtual ControlledEntity from it. */
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> createVirtualEntityFromEntityModelFile(std::string const& filePath, model::VirtualEntityBuilder* const builder, bool const isBinaryFormat = true) noexcept = 0;
 
 	/* Other helpful methods */

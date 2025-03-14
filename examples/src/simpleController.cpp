@@ -443,7 +443,7 @@ int doJob()
 	}
 
 	// Try to load an entity model file
-	auto [errorCode, errorMessage, entityModelTree] = la::avdecc::EndStation::deserializeEntityModelFromJson("SimpleControllerModel.json", true, false);
+	auto [errorCode, errorMessage, entityModelTree] = la::avdecc::EndStation::deserializeEntityModelFromJson("SimpleControllerModelV2.json", true, false);
 	auto const* const entityModel = !errorCode ? &entityModelTree : nullptr;
 	// Override some values
 	if (entityModel != nullptr)
