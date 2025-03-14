@@ -3162,7 +3162,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 
 #else // ENABLE_AVDECC_FEATURE_JSON
 
-	auto [error, errorText, entityTree] = EndStation::deserializeEntityModelFromJson(filePath, false, isBinaryFormat);
+	auto [error, errorText, entityTree, entityModelID] = deserializeJsonEntityModel(filePath, isBinaryFormat);
 	if (!error)
 	{
 		// TODO: Feed the cache with the loaded model
