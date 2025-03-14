@@ -112,6 +112,7 @@ constexpr auto Controller_Informative_DumpSource = "_dump_source (informative)";
 
 /* ControlledEntity nodes */
 constexpr auto ControlledEntity_DumpVersion = "dump_version";
+constexpr auto ControlledEntity_Schema = "$schema";
 constexpr auto ControlledEntity_CompatibilityFlags = "compatibility_flags";
 constexpr auto ControlledEntity_AdpInformation = "adp_information";
 constexpr auto ControlledEntity_EntityModel = "entity_model";
@@ -130,6 +131,7 @@ constexpr auto Controller_DumpVersion = std::uint32_t{ 1 };
 
 /* ControlledEntity nodes */
 constexpr auto ControlledEntity_DumpVersion = std::uint32_t{ 2 };
+constexpr auto ControlledEntity_SchemaBaseURL = "https://raw.githubusercontent.com/L-Acoustics/avdecc/refs/heads/main/resources/schemas/AVE/";
 
 } // namespace keyValue
 } // namespace jsonSerializer

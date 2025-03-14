@@ -98,6 +98,8 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 			{
 				object[keyName::ControlledEntity_EntityModelID] = entity.getEntity().getEntityModelID();
 			}
+			// Dump schema information
+			object[keyName::ControlledEntity_Schema] = std::string{ keyValue::ControlledEntity_SchemaBaseURL } + "v" + std::to_string(keyValue::ControlledEntity_DumpVersion) + "/schema.json";
 		}
 
 		// Dump Milan information, if present
