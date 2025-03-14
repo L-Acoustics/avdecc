@@ -50,6 +50,11 @@ MvuAecpdu::MvuAecpdu(bool const isResponse) noexcept
 
 MvuAecpdu::~MvuAecpdu() noexcept {}
 
+void LA_AVDECC_CALL_CONVENTION MvuAecpdu::setUnsolicited(bool const unsolicited) noexcept
+{
+	_unsolicited = unsolicited;
+}
+
 void LA_AVDECC_CALL_CONVENTION MvuAecpdu::setCommandType(MvuCommandType const commandType) noexcept
 {
 	_commandType = commandType;
@@ -72,6 +77,11 @@ void LA_AVDECC_CALL_CONVENTION MvuAecpdu::setCommandSpecificData(void const* con
 	setAecpSpecificDataLength(VuAecpdu::HeaderLength + HeaderLength + commandSpecificDataLength);
 }
 
+bool LA_AVDECC_CALL_CONVENTION MvuAecpdu::getUnsolicited() const noexcept
+{
+	return _unsolicited;
+}
+
 MvuCommandType LA_AVDECC_CALL_CONVENTION MvuAecpdu::getCommandType() const noexcept
 {
 	return _commandType;
@@ -89,8 +99,7 @@ void LA_AVDECC_CALL_CONVENTION MvuAecpdu::serialize(SerializationBuffer& buffer)
 
 	auto const previousSize = buffer.size();
 
-	std::uint8_t reserved{ 0u };
-	buffer << static_cast<std::uint16_t>(((reserved << 15) & 0x8000) | (_commandType.getValue() & 0x7fff));
+	buffer << static_cast<std::uint16_t>(((_unsolicited << 15) & 0x8000) | (_commandType.getValue() & 0x7fff));
 
 	auto payloadLength = _commandSpecificDataLength;
 	// Clamp command specific buffer in case ControlDataLength exceeds maximum allowed value
@@ -121,11 +130,10 @@ void LA_AVDECC_CALL_CONVENTION MvuAecpdu::deserialize(DeserializationBuffer& buf
 	}
 
 	std::uint16_t u_ct;
-	std::uint8_t reserved{ 0u };
 
 	buffer >> u_ct;
 
-	reserved = ((u_ct & 0x8000) >> 15) != 0;
+	_unsolicited = ((u_ct & 0x8000) >> 15) != 0;
 	_commandType = static_cast<MvuCommandType>(u_ct & 0x7fff);
 
 	// Check if there are less advertised data than the required minimum (we can do it after we (tried) unpacked as it would have thrown in case the buffer was too small)
@@ -144,12 +152,6 @@ void LA_AVDECC_CALL_CONVENTION MvuAecpdu::deserialize(DeserializationBuffer& buf
 	else
 	{
 		_commandSpecificDataLength = _controlDataLength - minCDL;
-	}
-
-	// Check reserved bit
-	if (reserved != 0)
-	{
-		LOG_SERIALIZATION_WARN(_srcAddress, "MvuAecpdu::deserialize error: Reserved bit is not set to 0 for MvuCommandType " + std::string(_commandType) + " (" + utils::toHexString(_commandType.getValue()) + ")");
 	}
 
 	// Check if there is more advertised data than actual bytes in the buffer (not checking earlier since we want to get as much information as possible from the packet to display a proper log message)

@@ -2,7 +2,39 @@
 // AVDECC CONTROLLER LIBRARY SWIG file
 ////////////////////////////////////////
 
-%module(directors="1") avdeccController
+%module(directors="1", csbegin="#nullable enable\n") avdeccController
+
+// C# Specifics
+#if defined(SWIGCSHARP)
+// Optimize code generation by enabling RVO
+%typemap(out, optimal="1") SWIGTYPE
+%{
+	$result = new $1_ltype($1);
+%}
+#pragma SWIG nowarn=474
+// Marshal all std::string as UTF8Str
+%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
+// Expose internal constructor and methods publicly, some dependant modules may need it
+#	if !defined(SWIGIMPORTED)
+#	define PUBLIC_BUT_HIDDEN [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)] public
+	SWIG_CSBODY_PROXY(PUBLIC_BUT_HIDDEN, PUBLIC_BUT_HIDDEN, SWIGTYPE)
+#	endif
+// Use Nullable Reference Types for Optional (requires C# >= 8.0)
+#define SWIG_STD_OPTIONAL_USE_NULLABLE_REFERENCE_TYPES
+// Override default visibility for internal optional class (to make it accessible from other assemblies but not visible)
+#undef SWIG_STD_OPTIONAL_INTERNAL_CLASS_MODIFIER
+#define SWIG_STD_OPTIONAL_INTERNAL_CLASS_MODIFIER PUBLIC_BUT_HIDDEN
+#endif
+
+// Common for all languages
+// Use 64-bit size_t
+#if defined(USE_SIZE_T_64)
+%apply unsigned long long { size_t };
+%apply const unsigned long long & { const size_t & };
+#endif
+// Ignore warning %extend defined for an undeclared class 'name'.
+#pragma SWIG nowarn=303
+
 
 %include <stl.i>
 %include <std_string.i>
@@ -13,6 +45,7 @@
 %include <std_map.i>
 %include <windows.i>
 %include <std_unique_ptr.i>
+%include <std_optional.i>
 #ifdef SWIGCSHARP
 %include <arrays_csharp.i>
 #endif
@@ -22,18 +55,7 @@
 	#include <la/avdecc/controller/avdeccController.hpp>
 %}
 
-#if defined(USE_SIZE_T_64)
-// Use 64-bit size_t
-%apply unsigned long long { size_t };
-%apply const unsigned long long & { const size_t & };
-#endif
-
-// Optimize code generation by enabling RVO
-%typemap(out, optimal="1") SWIGTYPE
-%{
-	$result = new $1_ltype($1);
-%}
-
+// Force define AVDECC C/C++ API Macros to nothing
 #define LA_AVDECC_CONTROLLER_API
 #define LA_AVDECC_CONTROLLER_CALL_CONVENTION
 
@@ -66,13 +88,14 @@
 %enddef
 
 // Bind enums
-%nspace la::avdecc::controller::model::AcquireState;
-%nspace la::avdecc::controller::model::LockState;
-%nspace la::avdecc::controller::model::MediaClockChainNode::Type;
-%nspace la::avdecc::controller::model::MediaClockChainNode::Status;
+DEFINE_ENUM_CLASS(la::avdecc::controller::model::AcquireState, "byte")
+DEFINE_ENUM_CLASS(la::avdecc::controller::model::LockState, "byte")
+DEFINE_ENUM_CLASS(la::avdecc::controller::model::MediaClockChainNode::Type, "byte");
+DEFINE_ENUM_CLASS(la::avdecc::controller::model::MediaClockChainNode::Status, "byte");
 
 // Define optionals
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, MilanInfo, OptMilanInfo)
+%optional(la::avdecc::entity::model::MilanInfo)
+%optional(la::avdecc::entity::model::MilanDynamicState)
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -151,7 +174,7 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Entity)
 // AVDECC CONTROLLED ENTITY
 ////////////////////////////////////////
 // Bind enums
-DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity, CompatibilityFlag, "byte")
+DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity::CompatibilityFlag, "byte")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -291,9 +314,9 @@ private:
 %template("ControllerObserver") la::avdecc::utils::Observer<la::avdecc::controller::Controller>;
 
 // Bind enums
-DEFINE_ENUM_CLASS(la::avdecc::controller, CompileOption, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::controller::Controller, Error, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::controller::Controller, QueryCommandError, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::controller::CompileOption, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::controller::Controller::Error, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::controller::Controller::QueryCommandError, "uint")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -370,6 +393,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::controller::Controller::DefaultedObserver)
 %rename("%s") Handler_Entity_float;
 %rename("%s") Handler_Entity_AaCommandStatus_DeviceMemoryBuffer;
 %rename("%s") Handler_Entity_AaCommandStatus;
+%rename("%s") Handler_Entity_MvuCommandStatus;
 #if TYPED_DESCRIPTOR_INDEXES
 %rename("%s") Handler_Entity_Entity_StreamIndex_StreamIndex_ControlStatus;
 %rename("%s") Handler_Entity_Entity_StreamIndex_ControlStatus;
@@ -393,6 +417,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::controller::Controller::DefaultedObserver)
 %std_function(Handler_Entity_float, bool, la::avdecc::controller::ControlledEntity const* const entity, float const percentComplete);
 %std_function(Handler_Entity_AaCommandStatus_DeviceMemoryBuffer, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::AaCommandStatus const status, la::avdecc::controller::Controller::DeviceMemoryBuffer const& memoryBuffer);
 %std_function(Handler_Entity_AaCommandStatus, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::AaCommandStatus const status);
+%std_function(Handler_Entity_MvuCommandStatus, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::MvuCommandStatus const status);
 #if TYPED_DESCRIPTOR_INDEXES
 %std_function(Handler_Entity_Entity_StreamIndex_StreamIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const talkerStreamIndex, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);
 %std_function(Handler_Entity_StreamIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);
@@ -494,7 +519,7 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller, CompileOptions, CompileOption
 namespace la.avdecc.controller
 {
 	// la::avdecc::controller::ControlledEntity::Exception
-	class ControlledEntityException : global::System.ApplicationException
+	public class ControlledEntityException : global::System.ApplicationException
 	{
 		public enum Type
 		{
@@ -519,7 +544,7 @@ namespace la.avdecc.controller
 	}
 
 	// la::avdecc::controller::Controller::Exception
-	class ControllerException : global::System.ApplicationException
+	public class ControllerException : global::System.ApplicationException
 	{
 		public enum Error
 		{

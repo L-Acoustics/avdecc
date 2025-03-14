@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - [Automatically converting AEM/AVE/ANS dumps from format v1 to format v2](https://github.com/L-Acoustics/avdecc/issues/172)
 - [Virtual Entity and Entity Model dumps reference the json schema directly from github](https://github.com/L-Acoustics/avdecc/issues/164)
+- [Include Milan static fields to AEM checksum computation](https://github.com/L-Acoustics/avdecc/issues/170)
+- [MilanDynamicState to VirtualEntityBuilder](https://github.com/L-Acoustics/avdecc/issues/174)
+- [Support for Milan 1.2](https://github.com/L-Acoustics/avdecc/issues/169)
 
 ### Fixed
 - [Added a compilation option to continue enumeration in case device returns MISBEHAVE status](https://github.com/L-Acoustics/avdecc/issues/156)
@@ -32,6 +35,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [Support for read-only properties change for virtual entities](https://github.com/L-Acoustics/avdecc/issues/162)
 - la::avdecc::controller::Controller::createVirtualEntityFromEntityModelFile method
 - la::avdecc::entity::model::VirtualEntityBuilder class to help creating virtual entities from EntityModel files
+- Unsolicited notifications support for VendorUnique messages, with statistics counters
+- Milan 1.2 MVU commands:
+  - SET_SYSTEM_UNIQUE_ID
+  - GET_SYSTEM_UNIQUE_ID
+  - SET_MEDIA_CLOCK_REFERENCE_INFO
+  - GET_MEDIA_CLOCK_REFERENCE_INFO
 
 ### Changed
 - Complete controller entity model refactoring to support descriptors at non-configuration level

@@ -83,6 +83,8 @@ constexpr auto ControlledEntityStatistics_AecpUnexpectedResponseCounter = "aecp_
 constexpr auto ControlledEntityStatistics_AecpResponseAverageTime = "aecp_response_average_time";
 constexpr auto ControlledEntityStatistics_AemAecpUnsolicitedCounter = "aem_aecp_unsolicited_counter";
 constexpr auto ControlledEntityStatistics_AemAecpUnsolicitedLossCounter = "aem_aecp_unsolicited_loss_counter";
+constexpr auto ControlledEntityStatistics_MvuAecpUnsolicitedCounter = "mvu_aecp_unsolicited_counter";
+constexpr auto ControlledEntityStatistics_MvuAecpUnsolicitedLossCounter = "mvu_aecp_unsolicited_loss_counter";
 constexpr auto ControlledEntityStatistics_EnumerationTime = "enumeration_time";
 
 /* ControlledEntityDiagnostics */
@@ -96,6 +98,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ControlledEntity::CompatibilityFlag, {
 																																		{ ControlledEntity::CompatibilityFlag::None, "UNKNOWN" },
 																																		{ ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE17221" },
 																																		{ ControlledEntity::CompatibilityFlag::Milan, "MILAN" },
+																																		{ ControlledEntity::CompatibilityFlag::Milan1_2, "MILAN 1.2" },
 																																		{ ControlledEntity::CompatibilityFlag::IEEE17221Warning, "IEEE17221WARNING" },
 																																		{ ControlledEntity::CompatibilityFlag::MilanWarning, "MILANWARNING" },
 																																		{ ControlledEntity::CompatibilityFlag::Misbehaving, "MISBEHAVING" },
@@ -118,6 +121,7 @@ constexpr auto ControlledEntity_AdpInformation = "adp_information";
 constexpr auto ControlledEntity_EntityModel = "entity_model";
 constexpr auto ControlledEntity_EntityModelID = "entity_model_id";
 constexpr auto ControlledEntity_MilanInformation = "milan_information";
+constexpr auto ControlledEntity_MilanDynamicState = "milan_dynamic_state";
 constexpr auto ControlledEntity_EntityState = "state";
 constexpr auto ControlledEntity_Statistics = "statistics";
 constexpr auto ControlledEntity_Diagnostics = "diagnostics";

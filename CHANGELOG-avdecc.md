@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - [Support for SERIAL ProtocolInterface](https://github.com/L-Acoustics/avdecc/issues/150) (by Luke Howard)
 - [Support for LOCAL SOCKET ProtocolInterface](https://github.com/L-Acoustics/avdecc/issues/150) (by Luke Howard)
+- [Support for Milan 1.2](https://github.com/L-Acoustics/avdecc/issues/169)
 
 ## [4.0.0] - 2025-02-18
 ### Added
@@ -22,6 +23,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for GET_DYNAMIC_INFO command
 - Support for SET/GET_MAX_TRANSIT_TIME command
 - Json schema AEM_Schema.json added to newly created resources/schemas directory
+- Unsolicited notifications support for VendorUnique messages
+- Milan 1.2 MVU commands:
+  - SET_SYSTEM_UNIQUE_ID
+  - GET_SYSTEM_UNIQUE_ID
+  - SET_MEDIA_CLOCK_REFERENCE_INFO
+  - GET_MEDIA_CLOCK_REFERENCE_INFO
 
 ### Changed
 - la::avdecc::entity::controller::Delegate is now virtual pure, but a new derivated visitor (with all default implementation) has been added: la::avdecc::entity::controller::DefaultedDelegate

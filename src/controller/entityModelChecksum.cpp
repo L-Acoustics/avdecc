@@ -40,6 +40,7 @@ namespace avdecc
 {
 namespace controller
 {
+static constexpr auto StartMilanInfo = '&';
 static constexpr auto StartNode = '$';
 static constexpr auto StartVirtualNode = '*';
 static constexpr auto StartStaticModel = '|';
@@ -285,10 +286,20 @@ private:
 	size_t _blockPos{ 0u };
 };
 
-ChecksumEntityModelVisitor::ChecksumEntityModelVisitor(std::uint32_t const checksumVersion) noexcept
+ChecksumEntityModelVisitor::ChecksumEntityModelVisitor(std::uint32_t const checksumVersion, std::optional<entity::model::MilanInfo> const& milanInfo) noexcept
 	: _checksumVersion{ checksumVersion }
 	, _serializer{ std::make_unique<Sha256Serializer>() }
 {
+	if (_checksumVersion >= 4)
+	{
+		if (milanInfo)
+		{
+			static_cast<Sha256Serializer&>(*_serializer) << StartMilanInfo;
+			static_cast<Sha256Serializer&>(*_serializer) << milanInfo->protocolVersion;
+			static_cast<Sha256Serializer&>(*_serializer) << milanInfo->featuresFlags;
+			static_cast<Sha256Serializer&>(*_serializer) << milanInfo->certificationVersion;
+		}
+	}
 }
 
 std::string ChecksumEntityModelVisitor::getHash() const noexcept
@@ -745,6 +756,10 @@ void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/,
 		for (auto const& csi : node.staticModel.clockSources)
 		{
 			static_cast<Sha256Serializer&>(*_serializer) << csi;
+		}
+		if (_checksumVersion >= 4)
+		{
+			static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.defaultMediaClockPriority;
 		}
 	}
 }

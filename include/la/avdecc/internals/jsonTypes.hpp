@@ -780,6 +780,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlag, {
 NLOHMANN_JSON_SERIALIZE_ENUM(MilanInfoFeaturesFlag, {
 																											{ MilanInfoFeaturesFlag::None, "UNKNOWN" },
 																											{ MilanInfoFeaturesFlag::Redundancy, "REDUNDANCY" },
+																											{ MilanInfoFeaturesFlag::TalkerDynamicMappingsWhileRunning, "TALKER_DYNAMIC_MAPPINGS_WHILE_RUNNING" },
 																										});
 
 /* Entity::CommonInformation conversion */
@@ -1048,9 +1049,11 @@ constexpr auto ArrayValue_String = "string";
 /* ClockDomainNode */
 constexpr auto ClockDomainNode_Static_LocalizedDescription = "localized_description";
 constexpr auto ClockDomainNode_Static_ClockSources = "clock_sources";
+constexpr auto ClockDomainNode_Static_DefaultMediaClockPriority = "default_media_clock_priority";
 constexpr auto ClockDomainNode_Dynamic_ObjectName = "object_name";
 constexpr auto ClockDomainNode_Dynamic_ClockSourceIndex = "clock_source_index";
 constexpr auto ClockDomainNode_Dynamic_Counters = "counters";
+constexpr auto ClockDomainNode_Dynamic_MediaClockReferenceInfo = "media_clock_reference_info";
 
 /* TimingNode */
 constexpr auto TimingNode_Static_LocalizedDescription = "localized_description";
@@ -1124,6 +1127,13 @@ constexpr auto AvbInterfaceInfo_MsrpMappings = "msrp_mappings";
 constexpr auto MilanInfo_ProtocolVersion = "protocol_version";
 constexpr auto MilanInfo_Flags = "flags";
 constexpr auto MilanInfo_CertificationVersion = "certification_version";
+
+/* MilanDynamicState */
+constexpr auto MilanDynamicState_SystemUniqueID = "system_unique_id";
+
+/* MediaClockReferenceInfo */
+constexpr auto MediaClockReferenceInfo_UserMediaClockPriority = "user_media_clock_priority";
+constexpr auto MediaClockReferenceInfo_MediaClockDomainName = "media_clock_domain_name";
 
 } // namespace keyName
 
@@ -1558,7 +1568,7 @@ inline void to_json(json& j, StreamDynamicInfo const& info)
 		j[keyName::StreamDynamicInfo_MsrpFailureBridgeID] = utils::toHexString(*info.msrpFailureBridgeID, true, true);
 	}
 	j[keyName::StreamDynamicInfo_StreamVlanID] = info.streamVlanID;
-	// Milan additions
+	// Milan 1.0 additions
 	j[keyName::StreamDynamicInfo_FlagsEx] = info.streamInfoFlagsEx;
 	j[keyName::StreamDynamicInfo_ProbingStatus] = info.probingStatus;
 	j[keyName::StreamDynamicInfo_AcmpStatus] = info.acmpStatus;
@@ -1606,7 +1616,7 @@ inline void from_json(json const& j, StreamDynamicInfo& info)
 		}
 	}
 	get_optional_value(j, keyName::StreamDynamicInfo_StreamVlanID, info.streamVlanID);
-	// Milan additions
+	// Milan 1.0 additions
 	get_optional_value(j, keyName::StreamDynamicInfo_FlagsEx, info.streamInfoFlagsEx);
 	get_optional_value(j, keyName::StreamDynamicInfo_ProbingStatus, info.probingStatus);
 	get_optional_value(j, keyName::StreamDynamicInfo_AcmpStatus, info.acmpStatus);
@@ -1634,6 +1644,19 @@ inline void to_json(json& j, AsPath const& path)
 inline void from_json(json const& j, AsPath& path)
 {
 	j.get_to(path.sequence);
+}
+
+/* MediaClockReferenceInfo conversion */
+inline void to_json(json& j, MediaClockReferenceInfo const& info)
+{
+	j[keyName::MediaClockReferenceInfo_UserMediaClockPriority] = info.userMediaClockPriority;
+	j[keyName::MediaClockReferenceInfo_MediaClockDomainName] = info.mediaClockDomainName;
+}
+
+inline void from_json(json const& j, MediaClockReferenceInfo& info)
+{
+	get_optional_value(j, keyName::MediaClockReferenceInfo_UserMediaClockPriority, info.userMediaClockPriority);
+	get_optional_value(j, keyName::MediaClockReferenceInfo_MediaClockDomainName, info.mediaClockDomainName);
 }
 
 /* EntityNodeStaticModel conversion */
@@ -2585,11 +2608,15 @@ inline void to_json(json& j, ClockDomainNodeStaticModel const& s)
 {
 	j[keyName::ClockDomainNode_Static_LocalizedDescription] = s.localizedDescription;
 	j[keyName::ClockDomainNode_Static_ClockSources] = s.clockSources;
+	// Milan 1.2 additions
+	j[keyName::ClockDomainNode_Static_DefaultMediaClockPriority] = s.defaultMediaClockPriority;
 }
 inline void from_json(json const& j, ClockDomainNodeStaticModel& s)
 {
 	get_optional_value(j, keyName::ClockDomainNode_Static_LocalizedDescription, s.localizedDescription);
 	j.at(keyName::ClockDomainNode_Static_ClockSources).get_to(s.clockSources);
+	// Milan 1.2 additions
+	get_optional_value(j, keyName::ClockDomainNode_Static_DefaultMediaClockPriority, s.defaultMediaClockPriority);
 }
 
 /* ClockDomainNodeDynamicModel conversion */
@@ -2598,12 +2625,16 @@ inline void to_json(json& j, ClockDomainNodeDynamicModel const& d)
 	j[keyName::ClockDomainNode_Dynamic_ObjectName] = d.objectName;
 	j[keyName::ClockDomainNode_Dynamic_ClockSourceIndex] = d.clockSourceIndex;
 	j[keyName::ClockDomainNode_Dynamic_Counters] = d.counters;
+	// Milan 1.2 additions
+	j[keyName::ClockDomainNode_Dynamic_MediaClockReferenceInfo] = d.mediaClockReferenceInfo;
 }
 inline void from_json(json const& j, ClockDomainNodeDynamicModel& d)
 {
 	get_optional_value(j, keyName::ClockDomainNode_Dynamic_ObjectName, d.objectName);
 	j.at(keyName::ClockDomainNode_Dynamic_ClockSourceIndex).get_to(d.clockSourceIndex);
 	get_optional_value(j, keyName::ClockDomainNode_Dynamic_Counters, d.counters);
+	// Milan 1.2 additions
+	get_optional_value(j, keyName::ClockDomainNode_Dynamic_MediaClockReferenceInfo, d.mediaClockReferenceInfo);
 }
 
 /* TimingNodeStaticModel conversion */
@@ -2720,6 +2751,16 @@ inline void from_json(json const& j, MilanInfo& info)
 		}
 		info.certificationVersion = certificationVersion;
 	}
+}
+
+/* MilanDynamicState conversion */
+inline void to_json(json& j, MilanDynamicState const& state)
+{
+	j[keyName::MilanDynamicState_SystemUniqueID] = state.systemUniqueID;
+}
+inline void from_json(json const& j, MilanDynamicState& state)
+{
+	get_optional_value(j, keyName::MilanDynamicState_SystemUniqueID, state.systemUniqueID);
 }
 
 } // namespace model

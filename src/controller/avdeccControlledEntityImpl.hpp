@@ -137,8 +137,8 @@ public:
 	{
 		AcquiredState, // acquireEntity(ReleasedFlag)
 		LockedState, // lockEntity(ReleasedFlag)
-		InputStreamAudioMappings, // getStreamPortInputAudioMap (GET_AUDIO_MAP)
-		OutputStreamAudioMappings, // getStreamPortOutputAudioMap (GET_AUDIO_MAP)
+		InputStreamPortAudioMappings, // getStreamPortInputAudioMap (GET_AUDIO_MAP)
+		OutputStreamPortAudioMappings, // getStreamPortOutputAudioMap (GET_AUDIO_MAP)
 		InputStreamState, // getListenerStreamState (GET_RX_STATE)
 		OutputStreamState, // getTalkerStreamState (GET_TX_STATE)
 		OutputStreamConnection, // getTalkerStreamConnection (GET_TX_CONNECTION)
@@ -151,6 +151,8 @@ public:
 		GetClockDomainCounters, // getClockDomainCounters (GET_COUNTERS)
 		GetStreamInputCounters, // getStreamInputCounters (GET_COUNTERS)
 		GetStreamOutputCounters, // getStreamOutputCounters (GET_COUNTERS)
+		GetSystemUniqueID, // getSystemUniqueID (MVU GET_SYSTEM_UNIQUE_ID)
+		GetMediaClockReferenceInfo, // getMediaClockReferenceInfo (MVU GET_MEDIA_CLOCK_REFERENCE_INFO)
 	};
 
 	/** Dynamic information stored in descriptors. Only required to retrieve from entities when the static model is known (because it was in EntityModelID cache).  */
@@ -214,6 +216,7 @@ public:
 	virtual UniqueIdentifier getLockingControllerID() const noexcept override;
 	virtual entity::Entity const& getEntity() const noexcept override;
 	virtual std::optional<entity::model::MilanInfo> getMilanInfo() const noexcept override;
+	virtual std::optional<entity::model::MilanDynamicState> getMilanDynamicState() const noexcept override;
 	virtual std::optional<entity::model::ControlIndex> getIdentifyControlIndex() const noexcept override;
 	virtual bool isEntityModelValidForCaching() const noexcept override;
 	virtual bool isIdentifying() const noexcept override;
@@ -272,6 +275,8 @@ public:
 	virtual std::chrono::milliseconds const& getAecpResponseAverageTime() const noexcept override;
 	virtual std::uint64_t getAemAecpUnsolicitedCounter() const noexcept override;
 	virtual std::uint64_t getAemAecpUnsolicitedLossCounter() const noexcept override;
+	virtual std::uint64_t getMvuAecpUnsolicitedCounter() const noexcept override;
+	virtual std::uint64_t getMvuAecpUnsolicitedLossCounter() const noexcept override;
 	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept override;
 
 	// Diagnostics
@@ -330,6 +335,8 @@ public:
 	void setLockState(model::LockState const state) noexcept;
 	void setLockingController(UniqueIdentifier const controllerID) noexcept;
 	void setMilanInfo(entity::model::MilanInfo const& info) noexcept;
+	void setMilanDynamicState(entity::model::MilanDynamicState const& state) noexcept;
+	void setSystemUniqueID(entity::model::SystemUniqueIdentifier const uniqueID) noexcept;
 
 	// Setters of the Statistics
 	void setAecpRetryCounter(std::uint64_t const value) noexcept;
@@ -338,6 +345,8 @@ public:
 	void setAecpResponseAverageTime(std::chrono::milliseconds const& value) noexcept;
 	void setAemAecpUnsolicitedCounter(std::uint64_t const value) noexcept;
 	void setAemAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept;
+	void setMvuAecpUnsolicitedCounter(std::uint64_t const value) noexcept;
+	void setMvuAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept;
 	void setEnumerationTime(std::chrono::milliseconds const& value) noexcept;
 
 	// Setters of the Diagnostics
@@ -375,6 +384,8 @@ public:
 	std::chrono::milliseconds const& updateAecpResponseTimeAverage(std::chrono::milliseconds const& responseTime) noexcept;
 	std::uint64_t incrementAemAecpUnsolicitedCounter() noexcept;
 	std::uint64_t incrementAemAecpUnsolicitedLossCounter() noexcept;
+	std::uint64_t incrementMvuAecpUnsolicitedCounter() noexcept;
+	std::uint64_t incrementMvuAecpUnsolicitedLossCounter() noexcept;
 	void setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept;
 	void setEndEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& endTime) noexcept;
 
@@ -446,7 +457,8 @@ public:
 	bool isRedundantSecondaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	bool isRedundantSecondaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	Diagnostics& getDiagnostics() noexcept;
-	bool hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
+	bool hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
+	bool hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
 	entity::model::EntityTree const& getEntityModelTree() const noexcept;
 	void buildEntityModelGraph(entity::model::EntityTree const& entityTree) noexcept;
 
@@ -476,6 +488,7 @@ private:
 	void addOrFixStreamPortInputMapping(entity::model::AudioMappings& mappings, entity::model::AudioMapping const& mapping) const noexcept;
 	void fixStreamPortInputMappings(std::map<entity::model::StreamPortIndex, model::StreamPortInputNode>& streamPorts) noexcept;
 	void fixStreamPortMappings(model::ConfigurationNode& configNode) noexcept;
+	bool hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID) noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	void buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -512,9 +525,11 @@ private:
 	UniqueIdentifier _owningControllerID{}; // EID of the controller currently owning (who acquired) this entity
 	model::LockState _lockState{ model::LockState::Undefined };
 	UniqueIdentifier _lockingControllerID{}; // EID of the controller currently locking (who locked) this entity
-	std::optional<protocol::AecpSequenceID> _expectedSequenceID{ std::nullopt };
+	std::optional<protocol::AecpSequenceID> _expectedAemSequenceID{ std::nullopt };
+	std::optional<protocol::AecpSequenceID> _expectedMvuSequenceID{ std::nullopt };
 	// Milan specific information
 	std::optional<entity::model::MilanInfo> _milanInfo{ std::nullopt };
+	std::optional<entity::model::MilanDynamicState> _milanDynamicState{ std::nullopt };
 	// Entity variables
 	entity::Entity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model
@@ -540,6 +555,8 @@ private:
 	std::chrono::milliseconds _aecpResponseAverageTime{};
 	std::uint64_t _aemAecpUnsolicitedCounter{ 0ull };
 	std::uint64_t _aemAecpUnsolicitedLossCounter{ 0ull };
+	std::uint64_t _mvuAecpUnsolicitedCounter{ 0ull };
+	std::uint64_t _mvuAecpUnsolicitedLossCounter{ 0ull };
 	std::chrono::time_point<std::chrono::steady_clock> _enumerationStartTime{}; // Intermediate variable used by _enumerationTime
 	std::chrono::milliseconds _enumerationTime{};
 	// Diagnostics

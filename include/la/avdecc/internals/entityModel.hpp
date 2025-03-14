@@ -383,7 +383,7 @@ struct StreamInfo
 	MsrpFailureCode msrpFailureCode{ MsrpFailureCode::NoFailure };
 	BridgeIdentifier msrpFailureBridgeID{ 0u };
 	std::uint16_t streamVlanID{ 0u };
-	// Milan additions
+	// Milan 1.0 additions
 	std::optional<StreamInfoFlagsEx> streamInfoFlagsEx{ std::nullopt };
 	std::optional<ProbingStatus> probingStatus{ std::nullopt };
 	std::optional<protocol::AcmpStatus> acmpStatus{ std::nullopt };
@@ -435,7 +435,7 @@ inline bool operator!=(AsPath const& lhs, AsPath const& rhs) noexcept
 	return !(lhs == rhs);
 }
 
-/** GET_MILAN_INFO - Milan-2019 Clause 7.4.1 */
+/** GET_MILAN_INFO - Milan 1.2 Clause 5.4.4.1 */
 struct MilanInfo
 {
 	std::uint32_t protocolVersion{ 0u };
@@ -453,6 +453,39 @@ inline bool operator!=(MilanInfo const& lhs, MilanInfo const& rhs) noexcept
 	return !(lhs == rhs);
 }
 
+/** Milan Dynamic State - All Milan specific dynamic info */
+struct MilanDynamicState
+{
+	// Milan 1.2 additions
+	std::optional<SystemUniqueIdentifier> systemUniqueID{};
+};
+
+inline bool operator==(MilanDynamicState const& lhs, MilanDynamicState const& rhs) noexcept
+{
+	return lhs.systemUniqueID == rhs.systemUniqueID;
+}
+
+inline bool operator!=(MilanDynamicState const& lhs, MilanDynamicState const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
+/** GET_MEDIA_CLOCK_REFERENCE_INFO - Milan 1.2 Clause 5.4.4.5 */
+struct MediaClockReferenceInfo
+{
+	std::optional<MediaClockReferencePriority> userMediaClockPriority{ std::nullopt };
+	std::optional<AvdeccFixedString> mediaClockDomainName{ std::nullopt };
+};
+
+inline bool operator==(MediaClockReferenceInfo const& lhs, MediaClockReferenceInfo const& rhs) noexcept
+{
+	return (lhs.userMediaClockPriority == rhs.userMediaClockPriority) && (lhs.mediaClockDomainName == rhs.mediaClockDomainName);
+}
+
+inline bool operator!=(MediaClockReferenceInfo const& lhs, MediaClockReferenceInfo const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
 
 /**
 * @brief Make a UniqueIdentifier from vendorID, deviceID and modelID.

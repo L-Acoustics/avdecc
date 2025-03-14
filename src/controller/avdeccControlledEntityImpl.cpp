@@ -230,6 +230,11 @@ std::optional<entity::model::MilanInfo> ControlledEntityImpl::getMilanInfo() con
 	return _milanInfo;
 }
 
+std::optional<entity::model::MilanDynamicState> ControlledEntityImpl::getMilanDynamicState() const noexcept
+{
+	return _milanDynamicState;
+}
+
 std::optional<entity::model::ControlIndex> ControlledEntityImpl::getIdentifyControlIndex() const noexcept
 {
 	return _identifyControlIndex;
@@ -644,6 +649,16 @@ std::uint64_t ControlledEntityImpl::getAemAecpUnsolicitedCounter() const noexcep
 std::uint64_t ControlledEntityImpl::getAemAecpUnsolicitedLossCounter() const noexcept
 {
 	return _aemAecpUnsolicitedLossCounter;
+}
+
+std::uint64_t ControlledEntityImpl::getMvuAecpUnsolicitedCounter() const noexcept
+{
+	return _mvuAecpUnsolicitedCounter;
+}
+
+std::uint64_t ControlledEntityImpl::getMvuAecpUnsolicitedLossCounter() const noexcept
+{
+	return _mvuAecpUnsolicitedLossCounter;
 }
 
 std::chrono::milliseconds const& ControlledEntityImpl::getEnumerationTime() const noexcept
@@ -1567,6 +1582,20 @@ void ControlledEntityImpl::setMilanInfo(entity::model::MilanInfo const& info) no
 	_milanInfo = info;
 }
 
+void ControlledEntityImpl::setMilanDynamicState(entity::model::MilanDynamicState const& state) noexcept
+{
+	_milanDynamicState = state;
+}
+
+void ControlledEntityImpl::setSystemUniqueID(entity::model::SystemUniqueIdentifier const uniqueID) noexcept
+{
+	if (!_milanDynamicState)
+	{
+		_milanDynamicState = entity::model::MilanDynamicState{};
+	}
+	_milanDynamicState->systemUniqueID = uniqueID;
+}
+
 // Setters of the Statistics
 void ControlledEntityImpl::setAecpRetryCounter(std::uint64_t const value) noexcept
 {
@@ -1596,6 +1625,16 @@ void ControlledEntityImpl::setAemAecpUnsolicitedCounter(std::uint64_t const valu
 void ControlledEntityImpl::setAemAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept
 {
 	_aemAecpUnsolicitedLossCounter = value;
+}
+
+void ControlledEntityImpl::setMvuAecpUnsolicitedCounter(std::uint64_t const value) noexcept
+{
+	_mvuAecpUnsolicitedCounter = value;
+}
+
+void ControlledEntityImpl::setMvuAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept
+{
+	_mvuAecpUnsolicitedLossCounter = value;
 }
 
 void ControlledEntityImpl::setEnumerationTime(std::chrono::milliseconds const& value) noexcept
@@ -2283,6 +2322,18 @@ std::uint64_t ControlledEntityImpl::incrementAemAecpUnsolicitedLossCounter() noe
 	return _aemAecpUnsolicitedLossCounter;
 }
 
+std::uint64_t ControlledEntityImpl::incrementMvuAecpUnsolicitedCounter() noexcept
+{
+	++_mvuAecpUnsolicitedCounter;
+	return _mvuAecpUnsolicitedCounter;
+}
+
+std::uint64_t ControlledEntityImpl::incrementMvuAecpUnsolicitedLossCounter() noexcept
+{
+	++_mvuAecpUnsolicitedLossCounter;
+	return _mvuAecpUnsolicitedLossCounter;
+}
+
 void ControlledEntityImpl::setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept
 {
 	_enumerationStartTime = std::move(startTime);
@@ -2701,7 +2752,8 @@ void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const is
 	// If unsubscribing, reset the expected sequence id
 	if (!isSubscribed)
 	{
-		_expectedSequenceID = std::nullopt;
+		_expectedAemSequenceID = std::nullopt;
+		_expectedMvuSequenceID = std::nullopt;
 	}
 }
 
@@ -2777,22 +2829,32 @@ ControlledEntity::Diagnostics& ControlledEntityImpl::getDiagnostics() noexcept
 	return _diagnostics;
 }
 
-bool ControlledEntityImpl::hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept
+bool ControlledEntityImpl::hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID) noexcept
 {
 	auto unmatched = false;
-	if (_isSubscribedToUnsolicitedNotifications && _milanInfo && _milanInfo->protocolVersion == 1)
+	if (_isSubscribedToUnsolicitedNotifications && _milanInfo && _milanInfo->protocolVersion >= 1)
 	{
 		// Compare received sequenceID and expected one, if it's not the first one received.
 		// We don't expect 0 as first value, since the controller itself might restart (with the same entityID) without properly deregistering first,
 		// in which case the entity will send unsolicited continuing the previous sequence.
-		if (_expectedSequenceID.has_value())
+		if (expectedSequenceID.has_value())
 		{
-			unmatched = *_expectedSequenceID != sequenceID;
+			unmatched = *expectedSequenceID != sequenceID;
 		}
 		// Update next expected sequence ID
-		_expectedSequenceID = static_cast<protocol::AecpSequenceID>(sequenceID + 1u);
+		expectedSequenceID = static_cast<protocol::AecpSequenceID>(sequenceID + 1u);
 	}
 	return unmatched;
+}
+
+bool ControlledEntityImpl::hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept
+{
+	return hasLostUnsolicitedNotification(sequenceID, _expectedAemSequenceID);
+}
+
+bool ControlledEntityImpl::hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept
+{
+	return hasLostUnsolicitedNotification(sequenceID, _expectedMvuSequenceID);
 }
 
 // Static methods
@@ -2804,10 +2866,10 @@ std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const 
 			return protocol::AemCommandType::AcquireEntity;
 		case DynamicInfoType::LockedState:
 			return protocol::AemCommandType::LockEntity;
-		case DynamicInfoType::InputStreamAudioMappings:
-			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_INPUT)";
-		case DynamicInfoType::OutputStreamAudioMappings:
-			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_OUTPUT)";
+		case DynamicInfoType::InputStreamPortAudioMappings:
+			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_PORT_INPUT)";
+		case DynamicInfoType::OutputStreamPortAudioMappings:
+			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_PORT_OUTPUT)";
 		case DynamicInfoType::InputStreamState:
 			return protocol::AcmpMessageType::GetRxStateCommand;
 		case DynamicInfoType::OutputStreamState:
@@ -2832,6 +2894,10 @@ std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const 
 			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (STREAM_INPUT)";
 		case DynamicInfoType::GetStreamOutputCounters:
 			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (STREAM_OUTPUT)";
+		case DynamicInfoType::GetSystemUniqueID:
+			return protocol::MvuCommandType::GetSystemUniqueID;
+		case DynamicInfoType::GetMediaClockReferenceInfo:
+			return protocol::MvuCommandType::GetMediaClockReferenceInfo;
 		default:
 			return "Unknown DynamicInfoType";
 	}

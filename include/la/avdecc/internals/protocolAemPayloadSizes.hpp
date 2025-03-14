@@ -116,7 +116,7 @@ constexpr size_t AecpAemGetStreamInfoCommandPayloadSize = 4u;
 /** GET_STREAM_INFO Response - IEEE1722.1-2013 Clause 7.4.16.2 */
 constexpr size_t AecpAemGetStreamInfoResponsePayloadSize = 48u;
 
-/** GET_STREAM_INFO Response - Milan-2019 Clause 7.3.10 */
+/** GET_STREAM_INFO Response - Milan 1.0 Clause 7.3.10 */
 constexpr size_t AecpAemMilanGetStreamInfoResponsePayloadSize = 56u;
 
 /** SET_NAME Command and Response - IEEE1722.1-2013 Clause 7.4.17.1 */

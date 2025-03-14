@@ -2,7 +2,39 @@
 // AVDECC ENTITY MODEL SWIG file
 ////////////////////////////////////////
 
-%module avdeccEntityModel
+%module(csbegin="#nullable enable\n") avdeccEntityModel
+
+// C# Specifics
+#if defined(SWIGCSHARP)
+// Optimize code generation by enabling RVO
+%typemap(out, optimal="1") SWIGTYPE
+%{
+	$result = new $1_ltype($1);
+%}
+#pragma SWIG nowarn=474
+// Marshal all std::string as UTF8Str
+%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
+// Better debug display
+%typemap(csattributes) la::avdecc::entity::model::AvdeccFixedString "[System.Diagnostics.DebuggerDisplay(\"{toString()}\")]"
+// Expose internal constructor and methods publicly, some dependant modules may need it
+#	if !defined(SWIGIMPORTED)
+#	define PUBLIC_BUT_HIDDEN [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)] public
+	SWIG_CSBODY_PROXY(PUBLIC_BUT_HIDDEN, PUBLIC_BUT_HIDDEN, SWIGTYPE)
+#	endif
+// Use Nullable Reference Types for Optional (requires C# >= 8.0)
+#define SWIG_STD_OPTIONAL_USE_NULLABLE_REFERENCE_TYPES
+// Override default visibility for internal optional class (to make it accessible from other assemblies but not visible)
+#undef SWIG_STD_OPTIONAL_INTERNAL_CLASS_MODIFIER
+#define SWIG_STD_OPTIONAL_INTERNAL_CLASS_MODIFIER PUBLIC_BUT_HIDDEN
+#endif
+
+// Common for all languages
+// Use 64-bit size_t
+#if defined(USE_SIZE_T_64)
+%apply unsigned long long { size_t };
+%apply const unsigned long long & { const size_t & };
+#endif
+
 
 %include <stdint.i>
 %include <std_string.i>
@@ -10,32 +42,13 @@
 %include <std_vector.i>
 %include <std_array.i>
 %include <std_set.i>
+%include <std_optional.i>
 %include "la/avdecc/internals/std_unordered_map.i" // From https://github.com/microsoft/CNTK/blob/master/bindings/csharp/Swig/std_unordered_map.i and https://github.com/swig/swig/pull/2480
-%include "la/avdecc/internals/optional.i"
 
 // Generated wrapper file needs to include our header file
 %{
 		#include <la/avdecc/internals/entityModel.hpp>
 %}
-
-#if defined(USE_SIZE_T_64)
-// Use 64-bit size_t
-%apply unsigned long long { size_t };
-%apply const unsigned long long & { const size_t & };
-#endif
-
-// C# Specifics
-#if defined(SWIGCSHARP)
-// Optimize code generation by enabling RVO
-%typemap(out, optimal="1") SWIGTYPE
-%{
-    $result = new $1_ltype(($1_ltype const&)$1);
-%}
-// Marshal all std::string as UTF8Str
-%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
-// Better debug display
-%typemap(csattributes) la::avdecc::entity::model::AvdeccFixedString "[System.Diagnostics.DebuggerDisplay(\"{toString()}\")]"
-#endif
 
 // Force define AVDECC C/C++ API Macros to nothing
 #define LA_AVDECC_API
@@ -43,6 +56,7 @@
 
 // Other defines
 #define ENABLE_AVDECC_FEATURE_REDUNDANCY 1
+
 
 ////////////////////////////////////////
 // Utils
@@ -74,7 +88,6 @@
 #endif
 }
 
-
 // Include c++ declaration file
 %include "la/avdecc/internals/uniqueIdentifier.hpp"
 
@@ -85,7 +98,7 @@
 // Define some macros
 %define DEFINE_AEM_TYPES_ENUM_CLASS(name, type)
 	%nspace la::avdecc::entity::model::name;
-	%typemap(csbase) la::avdecc::entity::model::name type
+	%typemap(csbase, replace="1") la::avdecc::entity::model::name type // Required for C# to use the correct type (especially when 'enum class' is derived from an alias type)
 	%rename("isEqual") la::avdecc::entity::model::operator==(name const, name const); // Not put in a namespace https://github.com/swig/swig/issues/2459
 	%rename("$ignore") la::avdecc::entity::model::operator==(name const, std::underlying_type_t<name> const);
 %enddef
@@ -145,6 +158,7 @@ DEFINE_AEM_TYPES_ENUM_CLASS(PtpPortType, "ushort")
 DEFINE_AEM_TYPES_ENUM_CLASS(StandardControlType, "ulong")
 DEFINE_AEM_TYPES_ENUM_CLASS(ProbingStatus, "byte")
 DEFINE_AEM_TYPES_ENUM_CLASS(MsrpFailureCode, "byte")
+DEFINE_AEM_TYPES_ENUM_CLASS(DefaultMediaClockReferencePriority, "byte")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -185,9 +199,9 @@ DEFINE_AEM_TYPES_CLASS(SamplingRate);
 DEFINE_AEM_TYPES_CLASS(StreamFormat);
 DEFINE_AEM_TYPES_CLASS(LocalizedStringReference);
 DEFINE_AEM_TYPES_CLASS(ControlValueUnit);
-%typemap(csbase) la::avdecc::entity::model::ControlValueUnit::Unit "byte"
+// %typemap(csbase) la::avdecc::entity::model::ControlValueUnit::Unit "byte" // Not required anymore
 DEFINE_AEM_TYPES_CLASS(ControlValueType);
-%typemap(csbase) la::avdecc::entity::model::ControlValueType::Type "ushort"
+// %typemap(csbase) la::avdecc::entity::model::ControlValueType::Type "ushort" // Not required anymore
 DEFINE_AEM_TYPES_CLASS_BASE(ControlValues);
 %ignore la::avdecc::entity::model::ControlValues::operator bool() const noexcept;
 
@@ -209,28 +223,29 @@ DEFINE_AEM_TYPES_CLASS_BASE(ControlValues);
 // Entity Enums
 ////////////////////////////////////////
 // Bind enums
-DEFINE_ENUM_CLASS(la::avdecc::entity, EntityCapability, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::entity, TalkerCapability, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity, ListenerCapability, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity, ControllerCapability, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::entity, ConnectionFlag, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity, StreamFlag, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity, JackFlag, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity, AvbInterfaceFlag, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity, ClockSourceFlag, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity, PortFlag, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity, PtpInstanceFlag, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::entity, PtpPortFlag, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::entity, StreamInfoFlag, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::entity, StreamInfoFlagEx, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::entity, AvbInfoFlag, "byte")
-DEFINE_ENUM_CLASS(la::avdecc::entity, EntityCounterValidFlag, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::entity, AvbInterfaceCounterValidFlag, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::entity, ClockDomainCounterValidFlag, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::entity, StreamInputCounterValidFlag, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::entity, StreamOutputCounterValidFlag, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::entity, StreamOutputCounterValidFlag17221, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::entity, MilanInfoFeaturesFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::EntityCapability, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::TalkerCapability, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::ListenerCapability, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::ControllerCapability, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::ConnectionFlag, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::StreamFlag, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::JackFlag, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::AvbInterfaceFlag, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::ClockSourceFlag, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::PortFlag, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::PtpInstanceFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::PtpPortFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::StreamInfoFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::StreamInfoFlagEx, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::AvbInfoFlag, "byte")
+DEFINE_ENUM_CLASS(la::avdecc::entity::EntityCounterValidFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::AvbInterfaceCounterValidFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::ClockDomainCounterValidFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::StreamInputCounterValidFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::StreamOutputCounterValidFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::StreamOutputCounterValidFlag17221, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::MilanInfoFeaturesFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::MediaClockReferenceInfoFlag, "byte")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -262,6 +277,7 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamInputCounterValidFlags, Str
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlags, StreamOutputCounterValidFlag, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlags17221, StreamOutputCounterValidFlag17221, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MilanInfoFeaturesFlags, MilanInfoFeaturesFlag, std::uint32_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MediaClockReferenceInfoFlags, MediaClockReferenceInfoFlag, std::uint8_t)
 
 
 ////////////////////////////////////////
@@ -298,6 +314,7 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MilanInfoFeaturesFlags, MilanInfo
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
 // TODO: Would be easier to map these types to the underlying integer type (but how to do it?)
+%warnfilter(315) TypedDefine; // Hide warning about the TypedDefine template being undefined
 DEFINE_TYPED_PROTOCOL_CLASS(AdpMessageType, AdpMessageTypedDefine, std::uint8_t)
 DEFINE_TYPED_PROTOCOL_CLASS(AecpMessageType, AecpMessageTypedDefine, std::uint8_t)
 DEFINE_TYPED_PROTOCOL_CLASS(AecpStatus, AecpStatusTypedDefine, std::uint8_t)
@@ -316,9 +333,6 @@ DEFINE_TYPED_PROTOCOL_CLASS(AcmpStatus, AcmpStatusTypedDefine, std::uint8_t)
 // Include c++ declaration file
 %include "la/avdecc/internals/protocolDefines.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
-
-// Define templates
-%template(DescriptorCountMap) std::unordered_map<la::avdecc::entity::model::DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash>;
 
 
 ////////////////////////////////////////
@@ -361,9 +375,13 @@ DEFINE_TYPED_PROTOCOL_CLASS(AcmpStatus, AcmpStatusTypedDefine, std::uint8_t)
 %enddef
 
 // Define optionals
-DEFINE_OPTIONAL_SIMPLE(OptProbingStatus, la::avdecc::entity::model::ProbingStatus, la.avdecc.entity.model.ProbingStatus.Disabled)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity, StreamInfoFlagsEx, OptStreamInfoFlagsEx)
-DEFINE_OPTIONAL_CLASS(la::avdecc::protocol, AcmpStatus, OptAcmpStatus)
+//optional_arithmetic(la::avdecc::entity::model::DescriptorIndex, OptDescriptorIndex) // Currently we cannot define both OptUInt16 and OptDescriptorIndex (or they mix up). We'll define each Descriptor type once we use a TypedDefine
+%optional_arithmetic(std::uint8_t, OptUInt8)
+%optional_arithmetic(std::uint32_t, OptUInt32)
+%optional_arithmetic(la::avdecc::entity::model::ProbingStatus, OptProbingStatus)
+%optional(la::avdecc::entity::model::AvdeccFixedString)
+%optional(la::avdecc::entity::StreamInfoFlagsEx)
+%optional(la::avdecc::protocol::AcmpStatus)
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -392,6 +410,8 @@ DEFINE_AEM_STRUCT(StreamInfo);
 DEFINE_AEM_STRUCT(AvbInfo);
 DEFINE_AEM_STRUCT(AsPath);
 DEFINE_AEM_STRUCT(MilanInfo);
+DEFINE_AEM_STRUCT(MilanDynamicState);
+DEFINE_AEM_STRUCT(MediaClockReferenceInfo);
 
 // Some ignores
 %ignore la::avdecc::entity::model::makeEntityModelID; // Ignore, not needed

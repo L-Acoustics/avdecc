@@ -54,6 +54,7 @@ static model::AvbInfo const s_emptyAvbInfo{}; // Empty AvbInfo used by timeout c
 static model::AsPath const s_emptyAsPath{}; // Empty AsPath used by timeout callback (needs a ref to an AsPath)
 static model::AvdeccFixedString const s_emptyAvdeccFixedString{}; // Empty AvdeccFixedString used by timeout callback (needs a ref to a std::string)
 static model::MilanInfo const s_emptyMilanInfo{}; // Empty MilanInfo used by timeout callback (need a ref to a MilanInfo)
+static model::MediaClockReferenceInfo const s_emptyMediaClockReferenceInfo{}; // Empty MediaClockReferenceInfo used by timeout callback (need a ref to a MediaClockReferenceInfo)
 static DynamicInfoParameters const s_emptyDynamicInfoParameters{}; // Empty DynamicInfoParameters used by timeout callback (need a ref to a DynamicInfoParameters)
 
 /* ************************************************************************** */
@@ -2059,6 +2060,79 @@ void CapabilityDelegate::getMilanInfo(UniqueIdentifier const targetEntityID, Int
 	}
 }
 
+void CapabilityDelegate::setSystemUniqueID(UniqueIdentifier const targetEntityID, model::SystemUniqueIdentifier const systemUniqueID, Interface::SetSystemUniqueIDHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, model::SystemUniqueIdentifier{});
+	try
+	{
+		auto const ser = protocol::mvuPayload::serializeSetSystemUniqueIDCommand(systemUniqueID);
+		sendMvuAecpCommand(targetEntityID, protocol::MvuCommandType::SetSystemUniqueID, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setSystemUniqueID: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::MvuCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::getSystemUniqueID(UniqueIdentifier const targetEntityID, Interface::GetSystemUniqueIDHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, model::SystemUniqueIdentifier{});
+	try
+	{
+		auto const ser = protocol::mvuPayload::serializeGetSystemUniqueIDCommand();
+		sendMvuAecpCommand(targetEntityID, protocol::MvuCommandType::GetSystemUniqueID, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getSystemUniqueID: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::MvuCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::setMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, std::optional<model::MediaClockReferencePriority> const userPriority, std::optional<model::AvdeccFixedString> const& domainName, Interface::SetMediaClockReferenceInfoHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, clockDomainIndex, entity::model::DefaultMediaClockReferencePriority::Default, s_emptyMediaClockReferenceInfo);
+	try
+	{
+		auto const buildMediaClockReferenceInfoFlags = [](std::optional<model::MediaClockReferencePriority> const userPriority, std::optional<model::AvdeccFixedString> const& domainName)
+		{
+			auto flags = MediaClockReferenceInfoFlags{};
+			if (userPriority)
+			{
+				flags.set(MediaClockReferenceInfoFlag::UserMediaClockReferencePriorityValid);
+			}
+			if (domainName)
+			{
+				flags.set(MediaClockReferenceInfoFlag::MediaClockDomainNameValid);
+			}
+			return flags;
+		};
+		auto const ser = protocol::mvuPayload::serializeSetMediaClockReferenceInfoCommand(clockDomainIndex, buildMediaClockReferenceInfoFlags(userPriority, domainName), entity::model::DefaultMediaClockReferencePriority::Default /* Ignored */, userPriority ? *userPriority : utils::to_integral(entity::model::DefaultMediaClockReferencePriority::Default), domainName ? *domainName : model::AvdeccFixedString{});
+		sendMvuAecpCommand(targetEntityID, protocol::MvuCommandType::SetMediaClockReferenceInfo, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setMediaClockReferenceInfo: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::MvuCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::getMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, Interface::GetMediaClockReferenceInfoHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, clockDomainIndex, entity::model::DefaultMediaClockReferencePriority::Default, s_emptyMediaClockReferenceInfo);
+	try
+	{
+		auto const ser = protocol::mvuPayload::serializeGetMediaClockReferenceInfoCommand(clockDomainIndex);
+		sendMvuAecpCommand(targetEntityID, protocol::MvuCommandType::GetMediaClockReferenceInfo, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getMediaClockReferenceInfo: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::MvuCommandStatus::ProtocolError);
+	}
+}
+
 /* Connection Management Protocol (ACMP) */
 void CapabilityDelegate::connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, Interface::ConnectStreamHandler const& handler) const noexcept
 {
@@ -2291,6 +2365,31 @@ void CapabilityDelegate::onAecpAemIdentifyNotification(protocol::ProtocolInterfa
 {
 	// Forward the event
 	utils::invokeProtectedMethod(&controller::Delegate::onEntityIdentifyNotification, _controllerDelegate, &_controllerInterface, aecpdu.getTargetEntityID());
+}
+
+void CapabilityDelegate::onAecpVuUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& aecpdu) noexcept
+{
+	// Ignore messages not for me
+	if (_controllerID != aecpdu.getControllerEntityID())
+		return;
+
+	auto const messageType = aecpdu.getMessageType();
+
+	if (messageType == protocol::AecpMessageType::VendorUniqueResponse)
+	{
+		// Currently only handle MVU
+		if (AVDECC_ASSERT_WITH_RET(protocolIdentifier == protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!"))
+		{
+			auto const& mvu = static_cast<protocol::MvuAecpdu const&>(aecpdu);
+			if (AVDECC_ASSERT_WITH_RET(mvu.getUnsolicited(), "Should only be triggered for unsollicited notifications"))
+			{
+				// Process MVU message without any error or answer callbacks, it's not an expected response
+				processMvuAecpResponse(mvu.getCommandType(), &aecpdu, nullptr, {});
+				// Statistics
+				utils::invokeProtectedMethod(&controller::Delegate::onMvuAecpUnsolicitedReceived, _controllerDelegate, &_controllerInterface, aecpdu.getTargetEntityID(), aecpdu.getSequenceID());
+			}
+		}
+	}
 }
 
 /* **** ACMP notifications **** */
@@ -4519,6 +4618,12 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{
 			it->second(_controllerDelegate, &_controllerInterface, status, aem, answerCallback, protocolViolationCallback);
 		}
+		catch ([[maybe_unused]] protocol::aemPayload::NotImplementedException const& e)
+		{
+			LOG_CONTROLLER_ENTITY_DEBUG(aem.getTargetEntityID(), "Received a NOT_IMPLEMENTED AEM response ({}) from {}", std::string(responseCommandType), utils::toHexString(aem.getTargetEntityID(), true));
+			utils::invokeProtectedHandler(onErrorCallback, LocalEntity::AemCommandStatus::NotImplemented);
+			return;
+		}
 		catch (protocol::aemPayload::IncorrectPayloadSizeException const& e)
 		{
 			checkProcessInvalidNonSuccessResponse(e.what());
@@ -4554,6 +4659,21 @@ void CapabilityDelegate::processAaAecpResponse(protocol::Aecpdu const* const res
 	answerCallback.invoke<controller::Interface::AddressAccessHandler>(protocolViolationCallback, &_controllerInterface, targetID, status, aa.getTlvData());
 }
 
+static model::MediaClockReferenceInfo buildMediaClockReferenceInfo(MediaClockReferenceInfoFlags const flags, model::MediaClockReferencePriority const userMcrPrio, model::AvdeccFixedString const& domainName) noexcept
+{
+	auto mcrInfo = model::MediaClockReferenceInfo{};
+	if (flags.test(MediaClockReferenceInfoFlag::UserMediaClockReferencePriorityValid))
+	{
+		mcrInfo.userMediaClockPriority = userMcrPrio;
+	}
+	if (flags.test(MediaClockReferenceInfoFlag::MediaClockDomainNameValid))
+	{
+		mcrInfo.mediaClockDomainName = domainName;
+	}
+
+	return mcrInfo;
+}
+
 void CapabilityDelegate::processMvuAecpResponse(protocol::MvuCommandType const commandType, protocol::Aecpdu const* const response, LocalEntityImpl<>::OnMvuAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept
 {
 	auto const& mvu = static_cast<protocol::MvuAecpdu const&>(*response);
@@ -4575,32 +4695,94 @@ void CapabilityDelegate::processMvuAecpResponse(protocol::MvuCommandType const c
 		{ protocol::MvuCommandType::GetMilanInfo.getValue(),
 			[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
-				auto const [milanInfo] = protocol::mvuPayload::deserializeGetMilanInfoResponse(mvu.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::mvuPayload::deserializeGetMilanInfoResponse(mvu.getPayload());
-				entity::model::MilanInfo const milanInfo = std::get<0>(result);
-#endif // __cpp_structured_bindings
-
+				auto const [milanInfo] = protocol::mvuPayload::deserializeGetMilanInfoResponse(status, mvu.getPayload());
 				auto const targetID = mvu.getTargetEntityID();
 
+				// Notify handlers
 				answerCallback.invoke<controller::Interface::GetMilanInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, milanInfo);
+			} },
+		// Set System Unique ID
+		{ protocol::MvuCommandType::SetSystemUniqueID.getValue(),
+			[](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+			{
+				auto const [systemUniqueID] = protocol::mvuPayload::deserializeSetSystemUniqueIDResponse(status, mvu.getPayload());
+				auto const targetID = mvu.getTargetEntityID();
+
+				// Notify handlers
+				answerCallback.invoke<controller::Interface::SetSystemUniqueIDHandler>(protocolViolationCallback, controllerInterface, targetID, status, systemUniqueID);
+				if (mvu.getUnsolicited() && delegate && !!status)
+				{
+					utils::invokeProtectedMethod(&controller::Delegate::onSystemUniqueIDChanged, delegate, controllerInterface, targetID, systemUniqueID);
+				}
+			} },
+		// Get System Unique ID
+		{ protocol::MvuCommandType::GetSystemUniqueID.getValue(),
+			[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+			{
+				auto const [systemUniqueID] = protocol::mvuPayload::deserializeGetSystemUniqueIDResponse(status, mvu.getPayload());
+				auto const targetID = mvu.getTargetEntityID();
+
+				// Notify handlers
+				answerCallback.invoke<controller::Interface::GetSystemUniqueIDHandler>(protocolViolationCallback, controllerInterface, targetID, status, systemUniqueID);
+			} },
+		// Set Media Clock Reference Info
+		{ protocol::MvuCommandType::SetMediaClockReferenceInfo.getValue(),
+			[](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+			{
+				auto const [descriptorIndex, flags, defaultMcrPrio, userMcrPrio, domainName] = protocol::mvuPayload::deserializeSetMediaClockReferenceInfoResponse(status, mvu.getPayload());
+				auto const targetID = mvu.getTargetEntityID();
+
+				// Build MediaClockReferenceInfo from payload
+				auto mcrInfo = buildMediaClockReferenceInfo(flags, userMcrPrio, domainName);
+
+				// Notify handlers
+				answerCallback.invoke<controller::Interface::SetMediaClockReferenceInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, defaultMcrPrio, mcrInfo);
+				if (mvu.getUnsolicited() && delegate && !!status)
+				{
+					utils::invokeProtectedMethod(&controller::Delegate::onMediaClockReferenceInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, mcrInfo);
+				}
+			} },
+		// Get Media Clock Reference Info
+		{ protocol::MvuCommandType::GetMediaClockReferenceInfo.getValue(),
+			[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+			{
+				auto const [descriptorIndex, flags, defaultMcrPrio, userMcrPrio, domainName] = protocol::mvuPayload::deserializeGetMediaClockReferenceInfoResponse(status, mvu.getPayload());
+				auto const targetID = mvu.getTargetEntityID();
+
+				// Build MediaClockReferenceInfo from payload
+				auto mcrInfo = buildMediaClockReferenceInfo(flags, userMcrPrio, domainName);
+
+				// Notify handlers
+				answerCallback.invoke<controller::Interface::GetMediaClockReferenceInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, defaultMcrPrio, mcrInfo);
 			} },
 	};
 
 	auto const& it = s_Dispatch.find(responseCommandType.getValue());
 	if (it == s_Dispatch.end())
 	{
-		// It's an expected response, this is an internal error since we sent a command and didn't implement the code to handle the response
-		LOG_CONTROLLER_ENTITY_ERROR(mvu.getTargetEntityID(), "Failed to process MVU response: Unhandled command type {} ({})", std::string(responseCommandType), utils::toHexString(responseCommandType.getValue()));
-		utils::invokeProtectedHandler(onErrorCallback, LocalEntity::MvuCommandStatus::InternalError);
+		// If this is an unsolicited notification, simply log we do not handle the message
+		if (mvu.getUnsolicited())
+		{
+			LOG_CONTROLLER_ENTITY_DEBUG(mvu.getTargetEntityID(), "Unsolicited MVU response {} not handled ({})", std::string(responseCommandType), utils::toHexString(responseCommandType.getValue()));
+		}
+		// But if it's an expected response, this is an internal error since we sent a command and didn't implement the code to handle the response
+		else
+		{
+			LOG_CONTROLLER_ENTITY_ERROR(mvu.getTargetEntityID(), "Failed to process MVU response: Unhandled command type {} ({})", std::string(responseCommandType), utils::toHexString(responseCommandType.getValue()));
+			utils::invokeProtectedHandler(onErrorCallback, LocalEntity::MvuCommandStatus::InternalError);
+		}
 	}
 	else
 	{
 		try
 		{
 			it->second(_controllerDelegate, &_controllerInterface, status, mvu, answerCallback, protocolViolationCallback);
+		}
+		catch ([[maybe_unused]] protocol::mvuPayload::NotImplementedException const& e)
+		{
+			LOG_CONTROLLER_ENTITY_DEBUG(mvu.getTargetEntityID(), "Received a NOT_IMPLEMENTED MVU response ({}) from {}", std::string(responseCommandType), utils::toHexString(mvu.getTargetEntityID(), true));
+			utils::invokeProtectedHandler(onErrorCallback, LocalEntity::MvuCommandStatus::NotImplemented);
+			return;
 		}
 		catch ([[maybe_unused]] protocol::mvuPayload::IncorrectPayloadSizeException const& e)
 		{

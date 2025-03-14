@@ -112,6 +112,16 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 			}
 		}
 
+		// Dump Milan Dynamic State, if present
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessMilan) && flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel))
+		{
+			auto const milanDynamicState = entity.getMilanDynamicState();
+			if (milanDynamicState)
+			{
+				object[keyName::ControlledEntity_MilanDynamicState] = *milanDynamicState;
+			}
+		}
+
 		// Dump Entity State
 		if (flags.test(entity::model::jsonSerializer::Flag::ProcessState))
 		{
@@ -135,6 +145,8 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 			statistics[controller::keyName::ControlledEntityStatistics_AecpResponseAverageTime] = entity.getAecpResponseAverageTime();
 			statistics[controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedCounter] = entity.getAemAecpUnsolicitedCounter();
 			statistics[controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedLossCounter] = entity.getAemAecpUnsolicitedLossCounter();
+			statistics[controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedCounter] = entity.getMvuAecpUnsolicitedCounter();
+			statistics[controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedLossCounter] = entity.getMvuAecpUnsolicitedLossCounter();
 			statistics[controller::keyName::ControlledEntityStatistics_EnumerationTime] = entity.getEnumerationTime();
 		}
 
@@ -333,6 +345,20 @@ void setEntityStatistics(ControlledEntityImpl& entity, json const& object)
 			if (it != object.end())
 			{
 				entity.setAemAecpUnsolicitedLossCounter(it->get<std::uint64_t>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedCounter);
+			if (it != object.end())
+			{
+				entity.setMvuAecpUnsolicitedCounter(it->get<std::uint64_t>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedLossCounter);
+			if (it != object.end())
+			{
+				entity.setMvuAecpUnsolicitedLossCounter(it->get<std::uint64_t>());
 			}
 		}
 		{

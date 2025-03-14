@@ -135,7 +135,7 @@ enum class Flag : std::uint16_t
 	ProcessADP = 1u << 0, /**< READ/WRITE ADP information */
 	ProcessStaticModel = 1u << 1, /**< READ/WRITE AEM Static information */
 	ProcessDynamicModel = 1u << 2, /**< READ/WRITE AEM Dynamic information */
-	ProcessMilan = 1u << 3, /**< READ/WRITE Milan information */
+	ProcessMilan = 1u << 3, /**< READ/WRITE Milan global information */
 	ProcessState = 1u << 4, /**< READ/WRITE Global Entity State */
 	ProcessStatistics = 1u << 5, /**< READ/WRITE Global Entity Statistics */
 	ProcessCompatibility = 1u << 6, /**< READ/WRITE Entity Compatibility */

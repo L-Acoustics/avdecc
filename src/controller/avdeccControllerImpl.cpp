@@ -183,6 +183,19 @@ void ControllerImpl::addCompatibilityFlag(ControllerImpl const* const controller
 				}
 			}
 			break;
+		case ControlledEntity::CompatibilityFlag::Milan1_2:
+			if (!newFlags.test(ControlledEntity::CompatibilityFlag::Misbehaving))
+			{
+				newFlags.set(ControlledEntity::CompatibilityFlag::IEEE17221); // A Milan device is also an IEEE1722.1 compatible device
+				newFlags.set(ControlledEntity::CompatibilityFlag::Milan); // A Milan 1.2 device is also an Milan compatible device
+				newFlags.set(flag);
+				// If device was already with IEEE warning, also add MilanWarning flag
+				if (newFlags.test(ControlledEntity::CompatibilityFlag::IEEE17221Warning))
+				{
+					newFlags.set(ControlledEntity::CompatibilityFlag::MilanWarning);
+				}
+			}
+			break;
 		case ControlledEntity::CompatibilityFlag::IEEE17221Warning:
 			if (AVDECC_ASSERT_WITH_RET(newFlags.test(ControlledEntity::CompatibilityFlag::IEEE17221), "Adding IEEE17221Warning flag for a non IEEE17221 device"))
 			{
@@ -243,6 +256,7 @@ void ControllerImpl::removeCompatibilityFlag(ControllerImpl const* const control
 			{
 				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity not fully IEEE1722.1 compliant");
 				newFlags.reset(ControlledEntity::CompatibilityFlag::Milan); // A non compliant IEEE1722.1 device is not Milan compliant either
+				newFlags.reset(ControlledEntity::CompatibilityFlag::Milan1_2); // A non compliant Milan device is not Milan 1.2 compliant either
 				newFlags.reset(flag);
 			}
 			break;
@@ -251,6 +265,15 @@ void ControllerImpl::removeCompatibilityFlag(ControllerImpl const* const control
 			if (newFlags.test(ControlledEntity::CompatibilityFlag::Milan))
 			{
 				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity not fully Milan compliant");
+				newFlags.reset(ControlledEntity::CompatibilityFlag::Milan1_2); // A non compliant Milan device is not Milan 1.2 compliant either
+				newFlags.reset(flag);
+			}
+			break;
+		case ControlledEntity::CompatibilityFlag::Milan1_2:
+			// If device was Milan 1.2 compliant
+			if (newFlags.test(ControlledEntity::CompatibilityFlag::Milan1_2))
+			{
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity not fully Milan 1.2 compliant");
 				newFlags.reset(flag);
 			}
 			break;
@@ -490,7 +513,7 @@ static void updateStreamDynamicInfoData(entity::model::StreamNodeDynamicModel* c
 	{
 		dynamicInfo.streamVlanID = info.streamVlanID;
 	}
-	// Milan additions - Only replace if we have the extended info in the payload (otherwise we'll keep the previous value)
+	// Milan 1.0 additions - Only replace if we have the extended info in the payload (otherwise we'll keep the previous value)
 	if (info.streamInfoFlagsEx)
 	{
 		dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
@@ -639,7 +662,7 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 		{
 			dynamicInfo.streamVlanID = info.streamVlanID;
 		}
-		// Milan additions
+		// Milan 1.0 additions
 		dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
 		dynamicInfo.probingStatus = info.probingStatus;
 		dynamicInfo.acmpStatus = info.acmpStatus;
@@ -825,7 +848,7 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 		{
 			dynamicInfo.streamVlanID = info.streamVlanID;
 		}
-		// Milan additions
+		// Milan 1.0 additions
 		dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
 		dynamicInfo.probingStatus = info.probingStatus;
 		dynamicInfo.acmpStatus = info.acmpStatus;
@@ -1537,7 +1560,7 @@ void ControllerImpl::updateAvbInterfaceCounters(ControlledEntityImpl& controlled
 		// If Milan device, validate counters values
 		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 		{
-			// LinkDown should either be equal to LinkUp or be one more (Milan-2019 Clause 6.6.3)
+			// LinkDown should either be equal to LinkUp or be one more (Milan 1.2 Clause 5.3.6.3)
 			// We are safe to get those counters, check for their presence during first enumeration has already been done
 			auto const upValue = counters[validCounters.getPosition(entity::AvbInterfaceCounterValidFlag::LinkUp)];
 			auto const downValue = counters[validCounters.getPosition(entity::AvbInterfaceCounterValidFlag::LinkDown)];
@@ -1573,7 +1596,7 @@ void ControllerImpl::updateClockDomainCounters(ControlledEntityImpl& controlledE
 		// If Milan device, validate counters values
 		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 		{
-			// Unlocked should either be equal to Locked or be one more (Milan-2019 Clause 6.11.2)
+			// Unlocked should either be equal to Locked or be one more (Milan 1.2 Clause 5.3.11.2)
 			// We are safe to get those counters, check for their presence during first enumeration has already been done
 			auto const lockedValue = (*clockDomainCounters)[entity::ClockDomainCounterValidFlag::Locked];
 			auto const unlockedValue = (*clockDomainCounters)[entity::ClockDomainCounterValidFlag::Unlocked];
@@ -1609,7 +1632,7 @@ void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledE
 		// If Milan device, validate counters values
 		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 		{
-			// MediaUnlocked should either be equal to MediaLocked or be one more (Milan-2019 Clause 6.8.10)
+			// MediaUnlocked should either be equal to MediaLocked or be one more (Milan 1.2 Clause 5.3.8.10)
 			// We are safe to get those counters, check for their presence during first enumeration has already been done
 			auto const lockedValue = (*streamCounters)[entity::StreamInputCounterValidFlag::MediaLocked];
 			auto const unlockedValue = (*streamCounters)[entity::StreamInputCounterValidFlag::MediaUnlocked];
@@ -1645,7 +1668,7 @@ void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlled
 		// If Milan device, validate counters values
 		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 		{
-			// StreamStop should either be equal to StreamStart or be one more (Milan-2019 Clause 6.7.7)
+			// StreamStop should either be equal to StreamStart or be one more (Milan 1.2 Clause 5.3.7.7)
 			// We are safe to get those counters, check for their presence during first enumeration has already been done
 			auto const startValue = (*streamCounters)[entity::StreamOutputCounterValidFlag::StreamStart];
 			auto const stopValue = (*streamCounters)[entity::StreamOutputCounterValidFlag::StreamStop];
@@ -1889,6 +1912,54 @@ void ControllerImpl::updateStreamInputLatency(ControlledEntityImpl& controlledEn
 		}
 	}
 }
+
+void ControllerImpl::updateSystemUniqueID(ControlledEntityImpl& controlledEntity, entity::model::SystemUniqueIdentifier const uniqueID) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	controlledEntity.setSystemUniqueID(uniqueID);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onSystemUniqueIDChanged, this, &controlledEntity, uniqueID);
+	}
+}
+
+void ControllerImpl::updateMediaClockReferenceInfo(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& info, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (!currentConfigurationIndexOpt)
+	{
+		return;
+	}
+
+	auto* const domainNode = controlledEntity.getModelAccessStrategy().getClockDomainNode(*currentConfigurationIndexOpt, clockDomainIndex, notFoundBehavior);
+	if (domainNode)
+	{
+		// Info changed
+		if (domainNode->dynamicModel.mediaClockReferenceInfo != info)
+		{
+			domainNode->dynamicModel.mediaClockReferenceInfo = info;
+
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
+			{
+				// Check if defaultPriority has changed after the entity has been advertised this is a critical error from the device
+				if (domainNode->staticModel.defaultMediaClockPriority != defaultPriority)
+				{
+					LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Read-only 'DefaultMediaClockReferencePriority' value changed for CLOCK_DOMAIN:{} ({} -> {})", clockDomainIndex, utils::to_integral(domainNode->staticModel.defaultMediaClockPriority), utils::to_integral(defaultPriority));
+					ControllerImpl::removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan1_2);
+				}
+				// Notify observers
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onMediaClockReferenceInfoChanged, this, &controlledEntity, clockDomainIndex, info);
+			}
+		}
+	}
+}
+
 
 /* ************************************************************ */
 /* Private methods                                              */
@@ -2435,14 +2506,14 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 				controller->unlockEntity(entityID, entity::model::DescriptorType::Entity, 0u, std::bind(&ControllerImpl::onGetLockedStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 			};
 			break;
-		case ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings:
+		case ControlledEntityImpl::DynamicInfoType::InputStreamPortAudioMappings:
 			queryFunc = [this, entityID, configurationIndex, descriptorIndex, subIndex](entity::ControllerEntity* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getStreamPortInputAudioMap (StreamPortIndex={})", descriptorIndex);
 				controller->getStreamPortInputAudioMap(entityID, descriptorIndex, subIndex, std::bind(&ControllerImpl::onGetStreamPortInputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, configurationIndex));
 			};
 			break;
-		case ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings:
+		case ControlledEntityImpl::DynamicInfoType::OutputStreamPortAudioMappings:
 			queryFunc = [this, entityID, configurationIndex, descriptorIndex, subIndex](entity::ControllerEntity* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getStreamPortOutputAudioMap (StreamPortIndex={})", descriptorIndex);
@@ -2527,6 +2598,20 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getStreamOutputCounters (StreamIndex={})", descriptorIndex);
 				controller->getStreamOutputCounters(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetStreamOutputCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
+			};
+			break;
+		case ControlledEntityImpl::DynamicInfoType::GetSystemUniqueID:
+			queryFunc = [this, entityID](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getSystemUniqueID ()");
+				controller->getSystemUniqueID(entityID, std::bind(&ControllerImpl::onGetSystemUniqueIDResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+			};
+			break;
+		case ControlledEntityImpl::DynamicInfoType::GetMediaClockReferenceInfo:
+			queryFunc = [this, entityID, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getMediaClockReferenceInfo (MediaClockIndex={})", descriptorIndex);
+				controller->getMediaClockReferenceInfo(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetMediaClockReferenceInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		default:
@@ -2865,6 +2950,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			: _controller{ controller }
 			, _entity{ entity }
 			, _usePackedDynamicInfo{ _entity->isGetDynamicInfoSupported() }
+			, _isMilan1_2{ _entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan1_2) }
 		{
 		}
 
@@ -2905,6 +2991,13 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			else
 			{
 				_controller->queryInformation(_entity, 0u, ControlledEntityImpl::DynamicInfoType::GetEntityCounters, 0u);
+			}
+
+			// Get Milan global dynamic information (for Milan devices)
+			if (_isMilan1_2)
+			{
+				// Get SystemUniqueID
+				_controller->queryInformation(_entity, entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetSystemUniqueID, entity::model::getInvalidDescriptorIndex());
 			}
 		}
 		virtual void visit(ControlledEntity const* const /*entity*/, model::EntityNode const* const /*parent*/, model::ConfigurationNode const& node) noexcept override
@@ -2977,7 +3070,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			{
 				// AudioMappings
 				// TODO: IEEE1722.1-2013 Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
-				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, node.descriptorIndex);
+				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamPortAudioMappings, node.descriptorIndex);
 			}
 		}
 		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::AudioUnitNode const* const /*parent*/, model::StreamPortOutputNode const& node) noexcept override
@@ -2986,7 +3079,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			{
 				// AudioMappings
 				// TODO: IEEE1722.1-2013 Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
-				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, node.descriptorIndex);
+				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamPortAudioMappings, node.descriptorIndex);
 			}
 		}
 		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandGrandParent*/, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const /*parent*/, model::AudioClusterNode const& /*node*/) noexcept override {}
@@ -3004,6 +3097,11 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			else
 			{
 				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, node.descriptorIndex);
+			}
+			// MediaClockReferenceInfo
+			if (_isMilan1_2)
+			{
+				_controller->queryInformation(_entity, entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetMediaClockReferenceInfo, node.descriptorIndex);
 			}
 		}
 		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::ClockDomainNode const* const /*parent*/, model::ClockSourceNode const& /*node*/) noexcept override {}
@@ -3026,6 +3124,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 		ControlledEntityImpl* _entity{ nullptr };
 		entity::model::ConfigurationIndex _currentConfigurationIndex{ entity::model::getInvalidDescriptorIndex() };
 		bool _usePackedDynamicInfo{ false };
+		bool _isMilan1_2{ false };
 		entity::controller::DynamicInfoParameters _dynamicInfoParameters{};
 	};
 
@@ -3557,7 +3656,7 @@ void ControllerImpl::flushPackedDynamicInfoQueries(ControlledEntityImpl* const e
 		{ protocol::AemCommandType::GetStreamFormat, protocol::aemPayload::AecpAemGetStreamFormatResponsePayloadSize }, // GetStreamFormat
 		// GetVideoFormat
 		// GetSensorFormat
-		// { protocol::AemCommandType::GetStreamInfo, protocol::aemPayload::AecpAemGetStreamInfoResponsePayloadSize }, // GetStreamInfo // DO NOT USE, too many different payload sizes (1722.1-2013, 1722.1-2021, Milan-2019)
+		// { protocol::AemCommandType::GetStreamInfo, protocol::aemPayload::AecpAemGetStreamInfoResponsePayloadSize }, // GetStreamInfo // DO NOT USE, too many different payload sizes (1722.1-2013, 1722.1-2021, Milan 1.0)
 		{ protocol::AemCommandType::GetName, protocol::aemPayload::AecpAemGetNameResponsePayloadSize }, // GetName
 		{ protocol::AemCommandType::GetAssociationID, protocol::aemPayload::AecpAemGetAssociationIDResponsePayloadSize }, // GetAssociationID
 		{ protocol::AemCommandType::GetSamplingRate, protocol::aemPayload::AecpAemGetSamplingRateResponsePayloadSize }, // GetSamplingRate
@@ -4526,10 +4625,10 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 								break;
 						}
 					}
-					// [Milan-2019 Clause 6.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa
+					// [Milan 1.2 Clause 5.3.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa
 					if (streamHasAaf && streamHasCrf)
 					{
-						LOG_CONTROLLER_WARN(entityID, "[Milan-2019 Clause 6.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa");
+						LOG_CONTROLLER_WARN(entityID, "[Milan 1.2 Clause 5.3.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa");
 						// Remove "Milan compatibility"
 						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 					}
@@ -4619,17 +4718,17 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 					{
 						if (aafInputStreamsForDomain >= 2)
 						{
-							// [Milan-2019 Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input
+							// [Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input
 							if (crfInputStreamsForDomain == 0u)
 							{
-								LOG_CONTROLLER_WARN(entityID, "[Milan-2019 Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input");
+								LOG_CONTROLLER_WARN(entityID, "[Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input");
 								// Remove "Milan compatibility"
 								removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 							}
-							// [Milan-2019 Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output
+							// [Milan 1.2 Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output
 							if (crfOutputStreamsForDomain == 0u)
 							{
-								LOG_CONTROLLER_WARN(entityID, "[Milan-2019 Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output");
+								LOG_CONTROLLER_WARN(entityID, "[Milan 1.2 Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output");
 								// Remove "Milan compatibility"
 								removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 							}
@@ -4637,14 +4736,14 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 					}
 					if (isAafMediaTalker)
 					{
-						// [Milan-2019 Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input
+						// [Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input
 						if (crfInputStreamsForDomain == 0u)
 						{
-							LOG_CONTROLLER_WARN(entityID, "[Milan-2019 Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input");
+							LOG_CONTROLLER_WARN(entityID, "[Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input");
 							// Remove "Milan compatibility"
 							removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 						}
-						// [Milan-2019 Clause 7.2.3] For each supported clock domain, an AAF Media Talker capable of synchronizing to an external clock source (not an AVB stream) shall implement a CRF Media Clock Output
+						// [Milan 1.2 Clause 7.2.3] For each supported clock domain, an AAF Media Talker capable of synchronizing to an external clock source (not an AVB stream) shall implement a CRF Media Clock Output
 						// TODO
 					}
 				}
@@ -5598,8 +5697,8 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 	}
 }
 
-/* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetMilanModel (MVU) */
-bool ControllerImpl::processGetMilanModelFailureStatus(entity::ControllerEntity::MvuCommandStatus const status, ControlledEntityImpl* const entity, ControlledEntityImpl::MilanInfoType const milanInfoType, bool const optionalForMilan) noexcept
+/* This method handles non-success AemCommandStatus returned while getting EnumerationStep::GetMilanModel (MVU) */
+bool ControllerImpl::processGetMilanInfoFailureStatus(entity::ControllerEntity::MvuCommandStatus const status, ControlledEntityImpl* const entity, ControlledEntityImpl::MilanInfoType const milanInfoType, bool const optionalForMilan) noexcept
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
@@ -5677,7 +5776,7 @@ bool ControllerImpl::processGetMilanModelFailureStatus(entity::ControllerEntity:
 	}
 }
 
-/* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetStaticModel (AEM) */
+/* This method handles non-success AemCommandStatus returned while getting EnumerationStep::GetStaticModel (AEM) */
 bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
@@ -5760,7 +5859,7 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 	}
 }
 
-/* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDynamicInfo for AECP commands */
+/* This method handles non-success AemCommandStatus returned while getting EnumerationStep::GetDynamicInfo for AECP commands */
 bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
@@ -5849,7 +5948,74 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 	}
 }
 
-/* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands */
+/* This method handles non-success MvuCommandStatus returned while getting EnumerationStep::GetDynamicInfo for MVU commands */
+bool ControllerImpl::processGetMvuDynamicInfoFailureStatus(entity::ControllerEntity::MvuCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex, ControlledEntity::CompatibilityFlag const flagToRemoveIfUnsupported) noexcept
+{
+	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
+
+	auto const entityID = entity->getEntity().getEntityID();
+	auto const action = getFailureActionForMvuCommandStatus(status);
+	switch (action)
+	{
+		case FailureAction::MisbehaveContinue:
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			return true;
+		case FailureAction::NotAuthenticated:
+			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
+			return true;
+		case FailureAction::WarningContinue:
+			return true;
+		case FailureAction::ErrorContinue:
+			[[fallthrough]];
+		case FailureAction::BadArguments:
+			[[fallthrough]];
+		case FailureAction::NotSupported:
+			if (flagToRemoveIfUnsupported != ControlledEntity::CompatibilityFlag::None)
+			{
+				// Remove specified compatibility flag
+				if (entity->getCompatibilityFlags().test(flagToRemoveIfUnsupported))
+				{
+					LOG_CONTROLLER_WARN(entityID, "Milan mandatory dynamic info not supported by the entity: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+					removeCompatibilityFlag(this, *entity, flagToRemoveIfUnsupported);
+				}
+			}
+			return true;
+		case FailureAction::TimedOut:
+			[[fallthrough]];
+		case FailureAction::Busy:
+		{
+			auto const [shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
+			if (shouldRetry)
+			{
+				queryInformation(entity, configurationIndex, dynamicInfoType, descriptorIndex, subIndex, retryTimer);
+			}
+			else
+			{
+				// Too many retries, result depends on FailureAction and AemCommandStatus
+				if (action == FailureAction::TimedOut)
+				{
+					if (flagToRemoveIfUnsupported != ControlledEntity::CompatibilityFlag::None)
+					{
+						// Remove specified compatibility flag
+						if (entity->getCompatibilityFlags().test(flagToRemoveIfUnsupported))
+						{
+							LOG_CONTROLLER_WARN(entityID, "Too many timeouts for Milan mandatory dynamic info: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+							removeCompatibilityFlag(this, *entity, flagToRemoveIfUnsupported);
+						}
+					}
+				}
+			}
+			return true;
+		}
+		case FailureAction::ErrorFatal:
+			return false;
+		default:
+			return false;
+	}
+}
+
+/* This method handles non-success ControlStatus returned while getting EnumerationStep::GetDynamicInfo for ACMP commands */
 bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, bool const optionalForMilan) noexcept
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
@@ -5934,7 +6100,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 	}
 }
 
-/* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands with a connection index */
+/* This method handles non-success ControlStatus returned while getting EnumerationStep::GetDynamicInfo for ACMP commands with a connection index */
 bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::StreamIdentification const& talkerStream, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
@@ -6019,7 +6185,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 	}
 }
 
-/* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDescriptorDynamicInfo (AEM) */
+/* This method handles non-success AemCommandStatus returned while getting EnumerationStep::GetDescriptorDynamicInfo (AEM) */
 bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, bool const optionalForMilan) noexcept
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
@@ -6688,6 +6854,17 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 			}
 		}
 
+		// Read Milan Dynamic State, if present
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessMilan) && flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel))
+		{
+			auto milanDynamicState = std::optional<entity::model::MilanDynamicState>{};
+			get_optional_value(object, jsonSerializer::keyName::ControlledEntity_MilanDynamicState, milanDynamicState);
+			if (milanDynamicState)
+			{
+				entity.setMilanDynamicState(*milanDynamicState);
+			}
+		}
+
 		return controlledEntity;
 	}
 	catch (avdecc::Exception const& e)
@@ -7045,7 +7222,7 @@ std::optional<std::string> LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::comp
 {
 	if (controlledEntity.isEntityModelValidForCaching())
 	{
-		auto visitor = ChecksumEntityModelVisitor{ checksumVersion };
+		auto visitor = ChecksumEntityModelVisitor{ checksumVersion, controlledEntity.getMilanInfo() };
 		controlledEntity.accept(&visitor, true);
 		return visitor.getHash();
 	}

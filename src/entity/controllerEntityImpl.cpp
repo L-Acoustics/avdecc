@@ -664,6 +664,26 @@ void ControllerEntityImpl::getMilanInfo(UniqueIdentifier const targetEntityID, G
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMilanInfo(targetEntityID, handler);
 }
 
+void ControllerEntityImpl::setSystemUniqueID(UniqueIdentifier const targetEntityID, model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setSystemUniqueID(targetEntityID, systemUniqueID, handler);
+}
+
+void ControllerEntityImpl::getSystemUniqueID(UniqueIdentifier const targetEntityID, GetSystemUniqueIDHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getSystemUniqueID(targetEntityID, handler);
+}
+
+void ControllerEntityImpl::setMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, std::optional<model::MediaClockReferencePriority> const userPriority, std::optional<model::AvdeccFixedString> const& domainName, SetMediaClockReferenceInfoHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setMediaClockReferenceInfo(targetEntityID, clockDomainIndex, userPriority, domainName, handler);
+}
+
+void ControllerEntityImpl::getMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, GetMediaClockReferenceInfoHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMediaClockReferenceInfo(targetEntityID, clockDomainIndex, handler);
+}
+
 /* Connection Management Protocol (ACMP) */
 void ControllerEntityImpl::connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept
 {
@@ -784,6 +804,14 @@ void ControllerEntityImpl::onAecpUnexpectedResponse(protocol::ProtocolInterface*
 void ControllerEntityImpl::onAecpResponseTime(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).onAecpResponseTime(pi, entityID, responseTime);
+}
+
+/* ************************************************************************** */
+/* protocol::ProtocolInterface::VendorUniqueDelegate overrides                */
+/* ************************************************************************** */
+void ControllerEntityImpl::onVuAecpUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& aecpdu) noexcept
+{
+	_controllerCapabilityDelegate->onAecpVuUnsolicitedResponse(pi, protocolIdentifier, aecpdu);
 }
 
 /* ************************************************************************** */

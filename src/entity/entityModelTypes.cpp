@@ -784,6 +784,44 @@ std::string LA_AVDECC_CALL_CONVENTION msrpFailureCodeToString(MsrpFailureCode co
 	}
 }
 
+std::string LA_AVDECC_CALL_CONVENTION defaultMediaClockReferencePriorityToString(DefaultMediaClockReferencePriority const mcrPriority) noexcept
+{
+	switch (mcrPriority)
+	{
+		case DefaultMediaClockReferencePriority::Highest:
+			return "Highest priority";
+		case DefaultMediaClockReferencePriority::DedicatedGenerators:
+			return "Dedicated media clock reference generators";
+		case DefaultMediaClockReferencePriority::MatrixMixingDevices:
+			return "Matrix mixing devices, signal routers, network switches with central audio processing capability";
+		case DefaultMediaClockReferencePriority::MixingConsoles:
+			return "Mixing consoles";
+		case DefaultMediaClockReferencePriority::Stageboxes:
+			return "Stageboxes, audio interfaces";
+		case DefaultMediaClockReferencePriority::Processors:
+			return "Loudspeaker processors";
+		case DefaultMediaClockReferencePriority::Amplifiers:
+			return "Amplifiers, powered loudspeakers, in-ear transmitters";
+		case DefaultMediaClockReferencePriority::RecordingDevices:
+			return "Recording devices";
+		case DefaultMediaClockReferencePriority::Default:
+			return "Default priority";
+		case DefaultMediaClockReferencePriority::EffectProcessingDevices:
+			return "Effect processing devices";
+		case DefaultMediaClockReferencePriority::WirelessReceivers:
+			return "Wireless receivers";
+		case DefaultMediaClockReferencePriority::Microphones:
+			return "Microphones";
+		case DefaultMediaClockReferencePriority::Instruments:
+			return "Instruments";
+		case DefaultMediaClockReferencePriority::Lowest:
+			return "Lowest priority";
+		default:
+			AVDECC_ASSERT(false, "Not handled!");
+			return "Unknown priority";
+	}
+}
+
 } // namespace model
 } // namespace entity
 } // namespace avdecc
