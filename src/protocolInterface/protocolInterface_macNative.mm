@@ -2116,6 +2116,9 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 		return NO;
 
 	auto const aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress() withProtocolInterface:*_protocolInterface];
+    
+    if (!aecpdu)
+        return NO;
 
 	// Notify the observers
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAecpCommand, _protocolInterface, *aecpdu);
@@ -2130,6 +2133,10 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 	auto const lg = std::lock_guard{ _lock };
 
 	auto aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress() withProtocolInterface:*_protocolInterface];
+    
+    if (!aecpdu)
+        return NO;
+    
 	auto const controllerID = la::avdecc::UniqueIdentifier{ [message controllerEntityID] };
 	auto const isAemUnsolicitedResponse = [message messageType] == AVB17221AECPMessageTypeAEMResponse && [static_cast<AVB17221AECPAEMMessage*>(message) isUnsolicited];
 
