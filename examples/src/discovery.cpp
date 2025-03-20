@@ -468,7 +468,7 @@ int main()
 	if (!la::avdecc::isCompatibleWithInterfaceVersion(la::avdecc::InterfaceVersion))
 	{
 		outputText(std::string("Avdecc shared library interface version invalid:\nCompiled with interface ") + std::to_string(la::avdecc::InterfaceVersion) + " (v" + la::avdecc::getVersion() + "), but running interface " + std::to_string(la::avdecc::getInterfaceVersion()) + "\n");
-		getch();
+		getUserChoice();
 		return -1;
 	}
 
@@ -492,7 +492,7 @@ int main()
 	if (ret != 0)
 	{
 		outputText("\nTerminating with an error. Press any key to close\n");
-		getch();
+		getUserChoice();
 	}
 
 	deinitOutput();

@@ -28,10 +28,6 @@
 /** UTILS METHODS TO HANDLE CURSES/NON-CURSES I/O FOR CONSOLE SAMPLES        **/
 /** ************************************************************************ **/
 
-#if (defined(__APPLE__) || defined(__linux__)) && !defined(USE_CURSES)
-#	define USE_CURSES
-#endif // __APPLE__
-
 #include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
 
 #ifdef USE_BINDINGS_C
@@ -87,8 +83,8 @@ private:
 #if defined(USE_CURSES)
 #	include <curses.h>
 #else // !USE_CURSES
-#	include <conio.h>
 #	ifdef _WIN32
+#		include <conio.h>
 #		define getch _getch
 #	endif // _WIN32
 #endif // USE_CURSES
@@ -99,6 +95,7 @@ private:
 void initOutput();
 void deinitOutput();
 void outputText(std::string const& str) noexcept;
+int getUserChoice();
 la::networkInterface::Interface chooseNetworkInterface();
 #ifdef USE_BINDINGS_C
 avdecc_protocol_interface_type_t chooseProtocolInterfaceType();
