@@ -1692,7 +1692,15 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 													 else
 													 {
 														 auto aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress() withProtocolInterface:*_protocolInterface];
-														 la::avdecc::utils::invokeProtectedHandler(resultHandler, aecpdu.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
+														 if (aecpdu)
+														 {
+															la::avdecc::utils::invokeProtectedHandler(resultHandler, aecpdu.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
+														 }
+														 else
+														 {
+															LOG_PROTOCOL_INTERFACE_DEBUG(la::networkInterface::MacAddress{}, la::networkInterface::MacAddress{}, "Failed to convert AECP message to Aecpdu");
+															la::avdecc::utils::invokeProtectedHandler(resultHandler, nullptr, la::avdecc::protocol::ProtocolInterface::Error::InternalError);
+														 }
 													 }
 												 }
 												 else
@@ -2133,7 +2141,10 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 	auto const aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress() withProtocolInterface:*_protocolInterface];
 
 	if (!aecpdu)
+	{
+		LOG_PROTOCOL_INTERFACE_DEBUG([FromNative makeMacAddress:message.sourceMAC], _protocolInterface->getMacAddress(), std::string("Failed to create Aecpdu from AECP command message"));
 		return NO;
+	}
 
 	// Notify the observers
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAecpCommand, _protocolInterface, *aecpdu);
@@ -2177,7 +2188,10 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 	auto aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress() withProtocolInterface:*_protocolInterface];
 
 	if (!aecpdu)
+	{
+		LOG_PROTOCOL_INTERFACE_DEBUG([FromNative makeMacAddress:message.sourceMAC], _protocolInterface->getMacAddress(), std::string("Failed to create Aecpdu from AECP response message"));
 		return NO;
+	}
 
 	auto const controllerID = la::avdecc::UniqueIdentifier{ [message controllerEntityID] };
 	auto const isAemUnsolicitedResponse = [message messageType] == AVB17221AECPMessageTypeAEMResponse && [static_cast<AVB17221AECPAEMMessage*>(message) isUnsolicited];
