@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [Support for LOCAL SOCKET ProtocolInterface](https://github.com/L-Acoustics/avdecc/issues/150) (by Luke Howard)
 - [Support for Milan 1.2](https://github.com/L-Acoustics/avdecc/issues/169)
 
+### Fixed
+- [MacOS Native] Workarkound for macOS AVB Framework bug (VendorUnique messages altered from RESPONSE to COMMAND)
+
 ## [4.0.0] - 2025-02-18
 ### Added
 - Support for JACK_INPUT/JACK_OUTPUT descriptors
