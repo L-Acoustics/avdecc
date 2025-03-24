@@ -27,8 +27,10 @@
 #include <la/avdecc/internals/endStation.hpp>
 
 // Internal API
-
 #include <gtest/gtest.h>
+
+#include <optional>
+#include <string>
 
 TEST(EndStation, DefaultExecutor)
 {
@@ -136,4 +138,65 @@ TEST(EndStation, LoadEntityModel)
 	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, errorCode);
 	EXPECT_TRUE(errorMessage.empty());
 	EXPECT_FALSE(entityModelTree.configurationTrees.empty());
+}
+
+static std::optional<std::string> getFirstAvailableNetworkInterface()
+{
+	auto interfaceName = std::optional<std::string>{};
+	la::networkInterface::NetworkInterfaceHelper::getInstance().enumerateInterfaces(
+		[&interfaceName](la::networkInterface::Interface const& intfc)
+		{
+			if (intfc.isEnabled && intfc.isConnected && !intfc.isVirtual && (intfc.type == la::networkInterface::Interface::Type::Ethernet || intfc.type == la::networkInterface::Interface::Type::WiFi))
+			{
+				interfaceName = intfc.id;
+			}
+		});
+
+	return interfaceName;
+}
+
+static void destroyWhileMessageInflight(la::avdecc::protocol::ProtocolInterface::Type const interfaceType)
+{
+	// Check if the requested protocol interface is available
+	auto const interfaces = la::avdecc::protocol::ProtocolInterface::getSupportedProtocolInterfaceTypes();
+	if (interfaces.test(interfaceType))
+	{
+		auto const interfaceName = getFirstAvailableNetworkInterface();
+		if (interfaceName)
+		{
+			std::promise<void> commandResultPromise{};
+
+			// Create an EndStation
+			auto endStation = la::avdecc::EndStation::create(interfaceType, *interfaceName, std::nullopt);
+			ASSERT_TRUE(endStation);
+
+			// Add a controller
+			auto controller = endStation->addControllerEntity(1, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), nullptr, nullptr);
+
+			// Send a message that we know will not reach its destination (non-existant entityID) before we shutdown the EndStation
+			controller->getListenerStreamState(la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, 0 },
+				[&commandResultPromise](la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::entity::model::StreamIdentification const& /*talkerStream*/, la::avdecc::entity::model::StreamIdentification const& /*listenerStream*/, std::uint16_t const /*connectionCount*/, la::avdecc::entity::ConnectionFlags const /*flags*/, la::avdecc::entity::LocalEntity::ControlStatus const status)
+				{
+					EXPECT_EQ(la::avdecc::entity::LocalEntity::ControlStatus::UnknownEntity, status);
+					commandResultPromise.set_value();
+				});
+
+			// Destroy the EndStation while the message is inflight
+			endStation.reset();
+
+			// Wait for the command to complete
+			auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(10)); // Wait a bit longer than the default timeout (ACMP message timeout is 5s)
+			ASSERT_NE(std::future_status::timeout, status);
+		}
+	}
+}
+
+TEST(INTEGRATION_EndStation, DestroyWhileMessageInflight_macOSNative)
+{
+	destroyWhileMessageInflight(la::avdecc::protocol::ProtocolInterface::Type::MacOSNative);
+}
+
+TEST(INTEGRATION_EndStation, DestroyWhileMessageInflight_pcap)
+{
+	destroyWhileMessageInflight(la::avdecc::protocol::ProtocolInterface::Type::PCap);
 }
