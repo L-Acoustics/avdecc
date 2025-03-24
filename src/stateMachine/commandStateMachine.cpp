@@ -118,7 +118,7 @@ void CommandStateMachine::unregisterLocalEntity(entity::LocalEntity& entity) noe
 	}
 }
 
-void CommandStateMachine::discardEntityMessages(la::avdecc::UniqueIdentifier const& entityID) noexcept
+void CommandStateMachine::discardAECPCommandsTowardsEntity(la::avdecc::UniqueIdentifier const& entityID) noexcept
 {
 	// Lock
 	auto const lg = std::lock_guard{ *_manager };

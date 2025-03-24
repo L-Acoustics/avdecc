@@ -64,7 +64,7 @@ public:
 
 	void registerLocalEntity(entity::LocalEntity& entity) noexcept;
 	void unregisterLocalEntity(entity::LocalEntity& entity) noexcept;
-	void discardEntityMessages(la::avdecc::UniqueIdentifier const& entityID) noexcept;
+	void discardAECPCommandsTowardsEntity(la::avdecc::UniqueIdentifier const& entityID) noexcept;
 	void checkInflightCommandsTimeoutExpiracy() noexcept;
 	void handleAecpResponse(Aecpdu const& aecpdu) noexcept;
 	void handleAcmpResponse(Acmpdu const& acmpdu) noexcept;
