@@ -375,7 +375,23 @@ public:
 		// Lock
 		auto const lg = std::lock_guard{ *this };
 
-		_commandEntities.erase(entityID);
+		// Check if entity already registered
+		auto const infoIt = _commandEntities.find(entityID);
+		if (infoIt != _commandEntities.end())
+		{
+			// Cancel all inflight VendorUnique commands and trigger handlers
+			auto& localEntityInfo = infoIt->second;
+			for (auto const& [targetEntityID, inflightCommands] : localEntityInfo.inflightVendorUniqueCommands)
+			{
+				for (auto const& command : inflightCommands)
+				{
+					utils::invokeProtectedHandler(command.resultHandler, nullptr, ProtocolInterface::Error::UnknownLocalEntity);
+				}
+			}
+
+			// Unregister LocalEntity, preventing messages handled by the local StateMachine to be processed (VendorUnique messages)
+			_commandEntities.erase(infoIt);
+		}
 	}
 
 	virtual void lock() const noexcept override
@@ -714,7 +730,7 @@ private:
 		{
 			auto& localEntityInfo = localEntityInfoKV.second;
 
-			// Check AECP commands
+			// Check VendorUnique commands
 			for (auto& [targetEntityID, inflight] : localEntityInfo.inflightVendorUniqueCommands)
 			{
 				// Check all inflight timeouts
@@ -724,6 +740,10 @@ private:
 					if (now > command.timeoutTime)
 					{
 						auto error = ProtocolInterface::Error::NoError;
+						/*
+						 Note: As of this date, there is no API to send a direct message in AVBFramework API.
+						 We cannot retry sending a VendorUnique message for now.
+						 */
 						// Timeout expired, check if we retried yet
 						//						if (!command.retried)
 						//						{
