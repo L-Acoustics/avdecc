@@ -3214,7 +3214,7 @@ void ControllerImpl::onGetSystemUniqueIDResult(entity::controller::Interface con
 			}
 			else
 			{
-				if (!processGetMvuDynamicInfoFailureStatus(status, controlledEntity.get(), entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetSystemUniqueID, entity::model::getInvalidDescriptorIndex(), std::uint16_t{ 0u }, ControlledEntity::CompatibilityFlag::Milan1_2))
+				if (!processGetMvuDynamicInfoFailureStatus(status, controlledEntity.get(), entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetSystemUniqueID, entity::model::getInvalidDescriptorIndex(), std::uint16_t{ 0u }, ControlledEntity::CompatibilityFlag::None))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::GetSystemUniqueID);
@@ -3250,7 +3250,7 @@ void ControllerImpl::onGetMediaClockReferenceInfoResult(entity::controller::Inte
 			}
 			else
 			{
-				if (!processGetMvuDynamicInfoFailureStatus(status, controlledEntity.get(), entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetMediaClockReferenceInfo, clockDomainIndex, std::uint16_t{ 0u }, ControlledEntity::CompatibilityFlag::Milan1_2))
+				if (!processGetMvuDynamicInfoFailureStatus(status, controlledEntity.get(), entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetMediaClockReferenceInfo, clockDomainIndex, std::uint16_t{ 0u }, ControlledEntity::CompatibilityFlag::None))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::GetMediaClockReferenceInfo);
