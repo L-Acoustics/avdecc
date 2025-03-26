@@ -504,8 +504,8 @@ void Manager::notifyDiscoveredEntities(DiscoveryStateMachine::Delegate& delegate
 /* ************************************************************ */
 void Manager::onRemoteEntityOffline(UniqueIdentifier const entityID) noexcept
 {
-	// Discard messages related to this entity
-	_commandStateMachine.discardEntityMessages(entityID);
+	// Discard all AECP related commands to this entity
+	_commandStateMachine.discardAECPCommandsTowardsEntity(entityID);
 }
 
 

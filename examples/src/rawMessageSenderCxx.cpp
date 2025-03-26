@@ -52,6 +52,11 @@ static auto const s_TargetMacAddress = la::networkInterface::MacAddress{ 0x00, 0
 
 inline void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 {
+	if (!pi.isDirectMessageSupported())
+	{
+		outputText("Direct message sending is not supported by this ProtocolInterface\n");
+		return;
+	}
 	auto const controllerID = la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), s_ProgID, true);
 
 	// Send raw ADP message (Entity Available message)
@@ -80,7 +85,11 @@ inline void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		adpdu.setAssociationID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
 
 		// Send the message
-		pi.sendAdpMessage(adpdu);
+		auto const error = pi.sendAdpMessage(adpdu);
+		if (!!error)
+		{
+			outputText("Error sending ADP message: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+		}
 	}
 
 	// Send raw ACMP message (Connect Stream Command)
@@ -107,7 +116,11 @@ inline void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		acmpdu.setStreamVlanID(0u);
 
 		// Send the message
-		pi.sendAcmpMessage(acmpdu);
+		auto const error = pi.sendAcmpMessage(acmpdu);
+		if (!!error)
+		{
+			outputText("Error sending ACMP message: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+		}
 	}
 
 	// Send raw AEM AECP message (Acquire Command)
@@ -135,7 +148,11 @@ inline void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		}
 
 		// Send the message
-		pi.sendAecpMessage(aecpdu);
+		auto const error = pi.sendAecpMessage(aecpdu);
+		if (!!error)
+		{
+			outputText("Error sending AECP message: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+		}
 	}
 
 	// Send raw MVU AECP message (Get Milan Info)
@@ -162,7 +179,11 @@ inline void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		}
 
 		// Send the message
-		pi.sendAecpMessage(aecpdu);
+		auto const error = pi.sendAecpMessage(aecpdu);
+		if (!!error)
+		{
+			outputText("Error sending AECP message: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+		}
 	}
 }
 

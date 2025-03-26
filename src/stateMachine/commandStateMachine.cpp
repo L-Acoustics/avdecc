@@ -96,12 +96,29 @@ void CommandStateMachine::unregisterLocalEntity(entity::LocalEntity& entity) noe
 	auto const infoIt = _commandEntities.find(entityID);
 	if (infoIt != _commandEntities.end())
 	{
-		// Unregister LocalEntity
+		// Cancel all inflight commands (AECP and ACMP) and trigger handlers
+		auto& localEntityInfo = infoIt->second;
+		for (auto const& [targetEntityID, inflight] : localEntityInfo.inflightAecpCommands)
+		{
+			for (auto const& command : inflight.inflightCommands)
+			{
+				utils::invokeProtectedHandler(command.resultHandler, nullptr, ProtocolInterface::Error::UnknownLocalEntity);
+			}
+		}
+		for (auto const& [targetMacAddress, inflight] : localEntityInfo.inflightAcmpCommands)
+		{
+			for (auto const& command : inflight.inflightCommands)
+			{
+				utils::invokeProtectedHandler(command.resultHandler, nullptr, ProtocolInterface::Error::UnknownLocalEntity);
+			}
+		}
+
+		// Unregister LocalEntity (causing any arriving AECP/ACMP command to be discarded by the state machine)
 		_commandEntities.erase(infoIt);
 	}
 }
 
-void CommandStateMachine::discardEntityMessages(la::avdecc::UniqueIdentifier const& entityID) noexcept
+void CommandStateMachine::discardAECPCommandsTowardsEntity(la::avdecc::UniqueIdentifier const& entityID) noexcept
 {
 	// Lock
 	auto const lg = std::lock_guard{ *_manager };

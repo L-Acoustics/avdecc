@@ -290,7 +290,7 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 						outputText("Unit acquired: " + la::avdecc::utils::toHexString(entity->getEntity().getEntityID(), true) + "\n");
 					}
 				});
-			_controller->setSystemUniqueID(entity->getEntity().getEntityID(), la::avdecc::UniqueIdentifier{ 1 },
+			_controller->setSystemUniqueID(entity->getEntity().getEntityID(), la::avdecc::entity::model::SystemUniqueIdentifier{ 1 },
 				[](la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::ControllerEntity::MvuCommandStatus const status)
 				{
 					outputText("setSystemUniqueID response: " + la::avdecc::entity::ControllerEntity::statusToString(status) + "\n");
@@ -468,7 +468,7 @@ int main()
 	if (!la::avdecc::isCompatibleWithInterfaceVersion(la::avdecc::InterfaceVersion))
 	{
 		outputText(std::string("Avdecc shared library interface version invalid:\nCompiled with interface ") + std::to_string(la::avdecc::InterfaceVersion) + " (v" + la::avdecc::getVersion() + "), but running interface " + std::to_string(la::avdecc::getInterfaceVersion()) + "\n");
-		getch();
+		getUserChoice();
 		return -1;
 	}
 
@@ -492,7 +492,7 @@ int main()
 	if (ret != 0)
 	{
 		outputText("\nTerminating with an error. Press any key to close\n");
-		getch();
+		getUserChoice();
 	}
 
 	deinitOutput();

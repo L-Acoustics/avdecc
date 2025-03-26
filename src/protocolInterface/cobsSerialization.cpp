@@ -32,7 +32,6 @@ namespace protocol
 {
 namespace cobs
 {
-
 /**
  * COBS encodes a message
  * @param input [in] pointer to the raw message

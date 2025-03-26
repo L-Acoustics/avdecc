@@ -44,7 +44,7 @@ int getUserChoice()
 		return 0;
 	int c = wgetch(s_Window);
 #else
-	int c = getch();
+	int c = std::cin.get();
 #endif
 	c -= '0';
 	return c;
@@ -88,13 +88,13 @@ void outputText(std::string const& str) noexcept
 		static std::mutex mut;
 		std::lock_guard<decltype(mut)> const lg(mut);
 
-#ifdef _WIN32
-		std::cout << str;
-		std::flush(std::cout);
-#else // !_WIN32
+#if defined(USE_CURSES)
 		wprintw(s_Window, "%s", str.c_str());
 		wrefresh(s_Window);
-#endif // _WIN32
+#else // !USE_CURSES
+		std::cout << str;
+		std::flush(std::cout);
+#endif // !USE_CURSES
 	}
 	catch (...)
 	{

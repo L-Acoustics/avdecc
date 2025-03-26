@@ -375,7 +375,23 @@ public:
 		// Lock
 		auto const lg = std::lock_guard{ *this };
 
-		_commandEntities.erase(entityID);
+		// Check if entity already registered
+		auto const infoIt = _commandEntities.find(entityID);
+		if (infoIt != _commandEntities.end())
+		{
+			// Cancel all inflight VendorUnique commands and trigger handlers
+			auto& localEntityInfo = infoIt->second;
+			for (auto const& [targetEntityID, inflightCommands] : localEntityInfo.inflightVendorUniqueCommands)
+			{
+				for (auto const& command : inflightCommands)
+				{
+					utils::invokeProtectedHandler(command.resultHandler, nullptr, ProtocolInterface::Error::UnknownLocalEntity);
+				}
+			}
+
+			// Unregister LocalEntity, preventing messages handled by the local StateMachine to be processed (VendorUnique messages)
+			_commandEntities.erase(infoIt);
+		}
 	}
 
 	virtual void lock() const noexcept override
@@ -714,7 +730,7 @@ private:
 		{
 			auto& localEntityInfo = localEntityInfoKV.second;
 
-			// Check AECP commands
+			// Check VendorUnique commands
 			for (auto& [targetEntityID, inflight] : localEntityInfo.inflightVendorUniqueCommands)
 			{
 				// Check all inflight timeouts
@@ -724,6 +740,10 @@ private:
 					if (now > command.timeoutTime)
 					{
 						auto error = ProtocolInterface::Error::NoError;
+						/*
+						 Note: As of this date, there is no API to send a direct message in AVBFramework API.
+						 We cannot retry sending a VendorUnique message for now.
+						 */
 						// Timeout expired, check if we retried yet
 						//						if (!command.retried)
 						//						{
@@ -1692,7 +1712,15 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 													 else
 													 {
 														 auto aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress() withProtocolInterface:*_protocolInterface];
-														 la::avdecc::utils::invokeProtectedHandler(resultHandler, aecpdu.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
+														 if (aecpdu)
+														 {
+															la::avdecc::utils::invokeProtectedHandler(resultHandler, aecpdu.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
+														 }
+														 else
+														 {
+															LOG_PROTOCOL_INTERFACE_DEBUG(la::networkInterface::MacAddress{}, la::networkInterface::MacAddress{}, "Failed to convert AECP message to Aecpdu");
+															la::avdecc::utils::invokeProtectedHandler(resultHandler, nullptr, la::avdecc::protocol::ProtocolInterface::Error::InternalError);
+														 }
 													 }
 												 }
 												 else
@@ -2108,6 +2136,21 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 - (BOOL)AECPDidReceiveCommand:(AVB17221AECPMessage*)message onInterface:(AVB17221AECPInterface*)anInterface {
 	// This handler is called for all AECP commands targeting one of our registered Entities
 
+	// Sanity check for macOS framework (validate we only get COMMAND type messages)
+	switch (message.messageType)
+	{
+		case AVB17221AECPMessageTypeAEMResponse:
+			[[fallthrough]];
+		case AVB17221AECPMessageTypeAddressAccessResponse:
+			[[fallthrough]];
+		case AVB17221AECPMessageTypeVendorUniqueResponse:
+			// Log it and return
+			LOG_PROTOCOL_INTERFACE_WARN([FromNative makeMacAddress:message.sourceMAC], _protocolInterface->getMacAddress(), std::string("macOS Native framework error: AECPDidReceiveCommand passed an AECP response message instead of a command"));
+			return NO;
+		default:
+			break;
+	}
+
 	// Lock
 	auto const lg = std::lock_guard{ _lock };
 
@@ -2118,7 +2161,10 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 	auto const aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress() withProtocolInterface:*_protocolInterface];
 
 	if (!aecpdu)
+	{
+		LOG_PROTOCOL_INTERFACE_DEBUG([FromNative makeMacAddress:message.sourceMAC], _protocolInterface->getMacAddress(), std::string("Failed to create Aecpdu from AECP command message"));
 		return NO;
+	}
 
 	// Notify the observers
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAecpCommand, _protocolInterface, *aecpdu);
@@ -2129,13 +2175,43 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 - (BOOL)AECPDidReceiveResponse:(AVB17221AECPMessage*)message onInterface:(AVB17221AECPInterface*)anInterface {
 	// This handler is called for all AECP responses targeting one of our registered Entities, even the messages that are solicited responses and which will be handled by the block of aecp.sendCommand() method
 
+	// There is a bug in some versions of macOS where this method is called for COMMAND type messages instead of RESPONSE
+	switch (message.messageType)
+	{
+		case AVB17221AECPMessageTypeVendorUniqueCommand:
+		{
+			// This one is specifically known to happen when the status is not SUCCESS and we need to handle it
+			if (message.status != AVB17221AECPStatusSuccess)
+			{
+				// Convert it back to response and log it
+				message.messageType = AVB17221AECPMessageTypeVendorUniqueResponse;
+				LOG_PROTOCOL_INTERFACE_WARN([FromNative makeMacAddress:message.sourceMAC], _protocolInterface->getMacAddress(), std::string("macOS Native framework error: AECPDidReceiveResponse passed an AECP VendorUnique command message instead of a response (changing it back to response)"));
+				break;
+			}
+			[[fallthrough]];
+		}
+		case AVB17221AECPMessageTypeAEMCommand:
+			[[fallthrough]];
+		case AVB17221AECPMessageTypeAddressAccessCommand:
+			[[fallthrough]];
+		case AVB17221AECPMessageTypeLegacyAVCCommand:
+			// Log it and return
+			LOG_PROTOCOL_INTERFACE_WARN([FromNative makeMacAddress:message.sourceMAC], _protocolInterface->getMacAddress(), std::string("macOS Native framework error: AECPDidReceiveResponse passed an AECP command message instead of a response"));
+			return NO;
+		default:
+			break;
+	}
+
 	// Lock
 	auto const lg = std::lock_guard{ _lock };
 
 	auto aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress() withProtocolInterface:*_protocolInterface];
 
 	if (!aecpdu)
+	{
+		LOG_PROTOCOL_INTERFACE_DEBUG([FromNative makeMacAddress:message.sourceMAC], _protocolInterface->getMacAddress(), std::string("Failed to create Aecpdu from AECP response message"));
 		return NO;
+	}
 
 	auto const controllerID = la::avdecc::UniqueIdentifier{ [message controllerEntityID] };
 	auto const isAemUnsolicitedResponse = [message messageType] == AVB17221AECPMessageTypeAEMResponse && [static_cast<AVB17221AECPAEMMessage*>(message) isUnsolicited];
@@ -2170,7 +2246,7 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 	}
 
 	// Special case for VendorUnique messages:
-	//  It's up to the implementation to keep track of the message, the response, the timeout, the retry.
+	//  It's up to the implementation to keep track of the message, the response, the timeout, the retry, the unsolicited notifications.
 	if (message.messageType == AVB17221AECPMessageTypeVendorUniqueResponse)
 	{
 		return _protocolInterface->handleVendorUniqueResponseReceived(static_cast<la::avdecc::protocol::VuAecpdu const&>(*aecpdu));
