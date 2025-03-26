@@ -979,7 +979,7 @@ void ControllerImpl::onAecpResponseTime(entity::controller::Interface const* con
 	}
 }
 
-void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID, std::function<std::uint32_t(ControlledEntityImpl&)> const& incrementUnsolicitedCounter, std::function<std::uint32_t(ControlledEntityImpl&)> const& incrementUnsolicitedLossCounter, std::function<bool(ControlledEntityImpl&, la::avdecc::protocol::AecpSequenceID)> const& hasLostUnsolicitedNotification, void (Controller::Observer::*notifyUnsolicitedCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t), void (Controller::Observer::*notifyUnsolicitedLossCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t)) noexcept
+void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedCounter, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedLossCounter, std::function<bool(ControlledEntityImpl&, la::avdecc::protocol::AecpSequenceID)> const& hasLostUnsolicitedNotification, void (Controller::Observer::*notifyUnsolicitedCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t), void (Controller::Observer::*notifyUnsolicitedLossCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t)) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
