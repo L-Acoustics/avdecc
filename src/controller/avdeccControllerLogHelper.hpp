@@ -59,10 +59,10 @@ namespace logger
 {
 /** Template to format args if not using lib fmt */
 template<typename... Ts>
-inline std::string format(std::string&& message, Ts&&... /*params*/)
+inline std::string format(std::string const& message, Ts&&... /*params*/)
 {
 	// Right now, not formatting anything, just returning the message with untouched format specifiers - Please enable libfmt!
-	return std::move(message);
+	return message;
 }
 
 /** Template to remove at compile time some of the most time-consuming log messages (Trace and Debug) - Forward arguments to the Logger */
