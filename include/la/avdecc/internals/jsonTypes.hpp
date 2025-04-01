@@ -2725,7 +2725,7 @@ inline void to_json(json& j, MilanInfo const& info)
 	j[keyName::MilanInfo_ProtocolVersion] = info.protocolVersion;
 	j[keyName::MilanInfo_Flags] = info.featuresFlags;
 	{
-		j[keyName::MilanInfo_CertificationVersion] = std::to_string(info.certificationVersion >> 24 & 0xFF) + "." + std::to_string(info.certificationVersion >> 16 & 0xFF) + "." + std::to_string(info.certificationVersion >> 8 & 0xFF) + "." + std::to_string(info.certificationVersion & 0xFF);
+		j[keyName::MilanInfo_CertificationVersion] = static_cast<std::string>(info.certificationVersion);
 	}
 }
 inline void from_json(json const& j, MilanInfo& info)
@@ -2734,22 +2734,7 @@ inline void from_json(json const& j, MilanInfo& info)
 	j.at(keyName::MilanInfo_Flags).get_to(info.featuresFlags);
 	{
 		auto const str = j.at(keyName::MilanInfo_CertificationVersion).get<std::string>();
-		auto certificationVersion = decltype(info.certificationVersion){ 0u };
-		auto const tokens = utils::tokenizeString(str, '.', true);
-		if (tokens.size() != 4)
-		{
-			throw std::invalid_argument("Invalid Milan CertificationVersion string representation: " + str);
-		}
-		for (auto i = 0u; i < 4u; ++i)
-		{
-			auto const tokValue = utils::convertFromString<decltype(certificationVersion)>(tokens[i].c_str());
-			if (tokValue > 255)
-			{
-				throw std::invalid_argument("Invalid Milan CertificationVersion digit value (greater than 255): " + str);
-			}
-			certificationVersion += (tokValue & 0xFF) << (24 - i * 8);
-		}
-		info.certificationVersion = certificationVersion;
+		info.certificationVersion = MilanVersion{ str };
 	}
 }
 

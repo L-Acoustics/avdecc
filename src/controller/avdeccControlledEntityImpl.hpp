@@ -196,6 +196,7 @@ public:
 	// Getters
 	virtual bool isVirtual() const noexcept override;
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept override;
+	virtual entity::model::MilanVersion getMilanCompatibilityVersion() const noexcept override;
 	virtual bool isMilanRedundant() const noexcept override;
 	virtual bool gotFatalEnumerationError() const noexcept override;
 	virtual bool isGetDynamicInfoSupported() const noexcept override;
@@ -443,6 +444,7 @@ public:
 	void addEnumerationStep(EnumerationStep const step) noexcept;
 	void clearEnumerationStep(EnumerationStep const step) noexcept;
 	void setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept;
+	void setMilanCompatibilityVersion(entity::model::MilanVersion const version) noexcept;
 	void setMilanRedundant(bool const isMilanRedundant) noexcept;
 	void setGetFatalEnumerationError() noexcept;
 	void setGetDynamicInfoSupported(bool const isSupported) noexcept;
@@ -507,6 +509,7 @@ private:
 	std::uint16_t _queryDescriptorDynamicInfoRetryCount{ 0u };
 	EnumerationSteps _enumerationSteps{};
 	CompatibilityFlags _compatibilityFlags{ CompatibilityFlag::IEEE17221 }; // Entity is IEEE1722.1 compatible by default
+	entity::model::MilanVersion _milanCompatibilityVersion{};
 	bool _isMilanRedundant{ false }; // Current configuration has at least one redundant stream
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
 	bool _isGetDynamicInfoSupported{ false }; // Is the GET_DYNAMIC_INFO command supported

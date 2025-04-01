@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [Include Milan static fields to AEM checksum computation](https://github.com/L-Acoustics/avdecc/issues/170)
 - [MilanDynamicState to VirtualEntityBuilder](https://github.com/L-Acoustics/avdecc/issues/174)
 - [Support for Milan 1.2](https://github.com/L-Acoustics/avdecc/issues/169)
+- New `la::avdecc::controller::ControlledEntity::getMilanCompatibilityVersion()` method to differenciate between Milan versions
+
+### Changed
+- Renamed `la::avdecc::controller::Controller::Observer::onCompatibilityFlagsChanged` to `onCompatibilityChanged` (with additional parameter)
+- Added new parameter to `la::avdecc::controller::model::VirtualEntityBuilder::build(CompatibilityFlags)` to specify the Milan version
 
 ### Fixed
 - [Added a compilation option to continue enumeration in case device returns MISBEHAVE status](https://github.com/L-Acoustics/avdecc/issues/156)

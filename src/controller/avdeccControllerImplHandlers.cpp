@@ -43,7 +43,7 @@ static auto const s_MilanMandatoryClockDomainCounters = entity::ClockDomainCount
 /* Enumeration and Control Protocol (AECP) handlers */
 void ControllerImpl::onGetMilanInfoResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::MilanInfo const& info) noexcept
 {
-	LOG_CONTROLLER_TRACE(entityID, "onGetMilanInfoResult (ProtocolVersion={} FeaturesFlags={} CertificationVersion={}): {}", info.protocolVersion, utils::toHexString(utils::forceNumeric(info.featuresFlags.value())), info.certificationVersion, entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(entityID, "onGetMilanInfoResult (ProtocolVersion={} FeaturesFlags={} CertificationVersion={}): {}", info.protocolVersion, utils::toHexString(utils::forceNumeric(info.featuresFlags.value())), utils::toHexString(info.certificationVersion.getValue()), entity::ControllerEntity::statusToString(status));
 
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -58,8 +58,9 @@ void ControllerImpl::onGetMilanInfoResult(entity::controller::Interface const* c
 				if (info.protocolVersion >= 1)
 				{
 					addCompatibilityFlag(this, *controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
-					// Until we have a more flexible way to determine the Milan version implemented by the device, we assume it's the latest one
-					addCompatibilityFlag(this, *controlledEntity, ControlledEntity::CompatibilityFlag::Milan1_2);
+					// Up until Milan 1.3, we don't have a clear way to differentiate between Milan versions, assume it is Milan 1.2 compatible (will be retrograded if needed)
+					auto milanCompatibilityVersion = entity::model::MilanVersion{ 1, 2 };
+					controlledEntity->setMilanCompatibilityVersion(milanCompatibilityVersion);
 				}
 				// Warn if the protocolVersion is not supported by the library
 				if (info.protocolVersion > 1)
@@ -70,7 +71,7 @@ void ControllerImpl::onGetMilanInfoResult(entity::controller::Interface const* c
 			}
 			else
 			{
-				if (!processGetMilanInfoFailureStatus(status, controlledEntity.get(), ControlledEntityImpl::MilanInfoType::MilanInfo))
+				if (!processGetMilanInfoFailureStatus(status, controlledEntity.get(), ControlledEntityImpl::MilanInfoType::MilanInfo, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::GetMilanInfo);
@@ -614,7 +615,7 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 			}
 			else
 			{
-				if (!processRegisterUnsolFailureStatus(status, &entity))
+				if (!processRegisterUnsolFailureStatus(status, &entity, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &entity, QueryCommandError::RegisterUnsol);
@@ -1251,7 +1252,7 @@ void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interfac
 					}
 					else
 					{
-						if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceDescriptor, interfaceIndex, false))
+						if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceDescriptor, interfaceIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 						{
 							controlledEntity->setGetFatalEnumerationError();
 							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceDescriptor);
@@ -1875,7 +1876,7 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::controller::Interface co
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, streamIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, streamIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 }, entity::model::MilanVersion{ 1, 2 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ListenerStreamInfo);
@@ -1912,7 +1913,7 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::controller::Interface c
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, streamIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, streamIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 }, entity::model::MilanVersion{ 1, 2 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::TalkerStreamInfo);
@@ -1948,7 +1949,7 @@ void ControllerImpl::onGetAcquiredStateResult(entity::controller::Interface cons
 			// Could not determine the AcquiredState
 			if (acquireState == model::AcquireState::Undefined)
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u, 0u, true))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u, 0u, MilanRequirements{}))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AcquiredState);
@@ -1987,7 +1988,7 @@ void ControllerImpl::onGetLockedStateResult(entity::controller::Interface const*
 			// Could not determine the LockState
 			if (lockState == model::LockState::Undefined)
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::LockedState, 0u, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::LockedState, 0u, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::LockedState);
@@ -2044,7 +2045,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::controller::Inte
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamPortAudioMappings, streamPortIndex, mapIndex, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamPortAudioMappings, streamPortIndex, mapIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamInputAudioMap);
@@ -2107,7 +2108,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::controller::Int
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamPortAudioMappings, streamPortIndex, mapIndex, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamPortAudioMappings, streamPortIndex, mapIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamOutputAudioMap);
@@ -2154,7 +2155,7 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, avbInterfaceIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, avbInterfaceIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInfo);
@@ -2217,7 +2218,7 @@ void ControllerImpl::onGetAsPathResult(entity::controller::Interface const* cons
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAsPath, avbInterfaceIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAsPath, avbInterfaceIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AsPath);
@@ -2256,7 +2257,7 @@ void ControllerImpl::onGetEntityCountersResult(entity::controller::Interface con
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::GetEntityCounters, 0u, 0u, true))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::GetEntityCounters, 0u, 0u, MilanRequirements{}))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::EntityCounters);
@@ -2305,7 +2306,7 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interfa
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, avbInterfaceIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, avbInterfaceIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceCounters);
@@ -2354,7 +2355,7 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::controller::Interfac
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, clockDomainIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, clockDomainIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockDomainCounters);
@@ -2403,7 +2404,7 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interfac
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters, streamIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters, streamIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamInputCounters);
@@ -2452,7 +2453,7 @@ void ControllerImpl::onGetStreamOutputCountersResult(entity::controller::Interfa
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters, streamIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters, streamIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamOutputCounters);
@@ -2488,7 +2489,7 @@ void ControllerImpl::onConfigurationNameResult(entity::controller::Interface con
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName, 0u, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ConfigurationName);
@@ -2524,7 +2525,7 @@ void ControllerImpl::onAudioUnitNameResult(entity::controller::Interface const* 
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, audioUnitIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, audioUnitIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AudioUnitName);
@@ -2560,7 +2561,7 @@ void ControllerImpl::onAudioUnitSamplingRateResult(entity::controller::Interface
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, audioUnitIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, audioUnitIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AudioUnitSamplingRate);
@@ -2596,7 +2597,7 @@ void ControllerImpl::onInputStreamNameResult(entity::controller::Interface const
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, streamIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, streamIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::InputStreamName);
@@ -2633,7 +2634,7 @@ void ControllerImpl::onInputStreamFormatResult(entity::controller::Interface con
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, streamIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, streamIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::InputStreamFormat);
@@ -2669,7 +2670,7 @@ void ControllerImpl::onOutputStreamNameResult(entity::controller::Interface cons
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, streamIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, streamIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::OutputStreamName);
@@ -2706,7 +2707,7 @@ void ControllerImpl::onOutputStreamFormatResult(entity::controller::Interface co
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, streamIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, streamIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::OutputStreamFormat);
@@ -2742,7 +2743,7 @@ void ControllerImpl::onInputJackNameResult(entity::controller::Interface const* 
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName, jackIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName, jackIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::InputJackName);
@@ -2778,7 +2779,7 @@ void ControllerImpl::onOutputJackNameResult(entity::controller::Interface const*
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName, jackIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName, jackIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::OutputJackName);
@@ -2814,7 +2815,7 @@ void ControllerImpl::onClockSourceNameResult(entity::controller::Interface const
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, clockSourceIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, clockSourceIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockSourceName);
@@ -2850,7 +2851,7 @@ void ControllerImpl::onMemoryObjectNameResult(entity::controller::Interface cons
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, memoryObjectIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, memoryObjectIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::MemoryObjectName);
@@ -2886,7 +2887,7 @@ void ControllerImpl::onMemoryObjectLengthResult(entity::controller::Interface co
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, memoryObjectIndex, true))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, memoryObjectIndex, MilanRequirements{}))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::MemoryObjectLength);
@@ -2922,7 +2923,7 @@ void ControllerImpl::onAudioClusterNameResult(entity::controller::Interface cons
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, audioClusterIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, audioClusterIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AudioClusterName);
@@ -2958,7 +2959,7 @@ void ControllerImpl::onControlNameResult(entity::controller::Interface const* co
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlName, controlIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlName, controlIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ControlName);
@@ -2999,7 +3000,7 @@ void ControllerImpl::onControlValuesResult(entity::controller::Interface const* 
 				}
 			}
 
-			if (!st && !processGetDescriptorDynamicInfoFailureStatus(st, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlValues, controlIndex, false))
+			if (!st && !processGetDescriptorDynamicInfoFailureStatus(st, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlValues, controlIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 			{
 				controlledEntity->setGetFatalEnumerationError();
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ControlValues);
@@ -3034,7 +3035,7 @@ void ControllerImpl::onClockDomainNameResult(entity::controller::Interface const
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, clockDomainIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, clockDomainIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockDomainName);
@@ -3070,7 +3071,7 @@ void ControllerImpl::onClockDomainSourceIndexResult(entity::controller::Interfac
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, clockDomainIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, clockDomainIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockDomainSourceIndex);
@@ -3106,7 +3107,7 @@ void ControllerImpl::onTimingNameResult(entity::controller::Interface const* con
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::TimingName, timingIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::TimingName, timingIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 2 }, std::nullopt, entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::TimingName);
@@ -3142,7 +3143,7 @@ void ControllerImpl::onPtpInstanceNameResult(entity::controller::Interface const
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpInstanceName, ptpInstanceIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpInstanceName, ptpInstanceIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 2 }, std::nullopt, entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::PtpInstanceName);
@@ -3178,7 +3179,7 @@ void ControllerImpl::onPtpPortNameResult(entity::controller::Interface const* co
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpPortName, ptpPortIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpPortName, ptpPortIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 2 }, std::nullopt, entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::PtpPortName);
@@ -3214,7 +3215,7 @@ void ControllerImpl::onGetSystemUniqueIDResult(entity::controller::Interface con
 			}
 			else
 			{
-				if (!processGetMvuDynamicInfoFailureStatus(status, controlledEntity.get(), entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetSystemUniqueID, entity::model::getInvalidDescriptorIndex(), std::uint16_t{ 0u }, ControlledEntity::CompatibilityFlag::None))
+				if (!processGetMvuDynamicInfoFailureStatus(status, controlledEntity.get(), entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetSystemUniqueID, entity::model::getInvalidDescriptorIndex(), std::uint16_t{ 0u }, MilanRequirements{}))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::GetSystemUniqueID);
@@ -3250,7 +3251,7 @@ void ControllerImpl::onGetMediaClockReferenceInfoResult(entity::controller::Inte
 			}
 			else
 			{
-				if (!processGetMvuDynamicInfoFailureStatus(status, controlledEntity.get(), entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetMediaClockReferenceInfo, clockDomainIndex, std::uint16_t{ 0u }, ControlledEntity::CompatibilityFlag::None))
+				if (!processGetMvuDynamicInfoFailureStatus(status, controlledEntity.get(), entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetMediaClockReferenceInfo, clockDomainIndex, std::uint16_t{ 0u }, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 3 }, std::nullopt, entity::model::MilanVersion{ 1, 2 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::GetMediaClockReferenceInfo);
@@ -3314,7 +3315,9 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface 
 			}
 			else
 			{
-				if (!processGetAcmpDynamicInfoFailureStatus(status, &talker, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, talkerStream.streamIndex, false))
+				// Milan requirement depends on the presence of the MvuBinding feature flag
+				auto requiredVersions = MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } };
+				if (!processGetAcmpDynamicInfoFailureStatus(status, &talker, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, talkerStream.streamIndex, MilanRequirements{ requiredVersions }))
 				{
 					talker.setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &talker, QueryCommandError::TalkerStreamState);
@@ -3356,7 +3359,9 @@ void ControllerImpl::onGetListenerStreamStateResult(entity::controller::Interfac
 			}
 			else
 			{
-				if (!processGetAcmpDynamicInfoFailureStatus(status, listener.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, listenerStream.streamIndex, false))
+				// Milan requirement depends on the presence of the MvuBinding feature flag
+				auto requiredVersions = MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } };
+				if (!processGetAcmpDynamicInfoFailureStatus(status, listener.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, listenerStream.streamIndex, MilanRequirements{ requiredVersions }))
 				{
 					listener->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, listener.get(), QueryCommandError::ListenerStreamState);
@@ -3392,7 +3397,7 @@ void ControllerImpl::onGetTalkerStreamConnectionResult(entity::controller::Inter
 			}
 			else
 			{
-				if (!processGetAcmpDynamicInfoFailureStatus(status, talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream, connectionIndex, true))
+				if (!processGetAcmpDynamicInfoFailureStatus(status, talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream, connectionIndex, MilanRequirements{}))
 				{
 					talker->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, talker.get(), QueryCommandError::TalkerStreamConnection);

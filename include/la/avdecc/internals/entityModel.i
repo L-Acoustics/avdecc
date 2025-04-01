@@ -168,6 +168,12 @@ DEFINE_AEM_TYPES_STRUCT(MsrpMapping);
 DEFINE_AEM_TYPES_STRUCT(StreamIdentification);
 %rename("isLess") la::avdecc::entity::model::operator<(StreamIdentification const&, StreamIdentification const&); // Not put in a namespace https://github.com/swig/swig/issues/2459
 
+DEFINE_AEM_TYPES_CLASS(MilanVersion);
+%rename("isGreater") operator>(MilanVersion const& lhs, MilanVersion const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
+%rename("isLessOrEqual") operator<=(MilanVersion const& lhs, MilanVersion const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
+%rename("isGreaterOrEqual") operator>=(MilanVersion const& lhs, MilanVersion const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
+%rename("toString") la::avdecc::entity::model::MilanVersion::operator std::string;
+
 DEFINE_AEM_TYPES_CLASS_BASE(AvdeccFixedString);
 %ignore la::avdecc::entity::model::AvdeccFixedString::data(); // RIGHT NOW IGNORE IT AS WE NEED TO FIND A WAY TO MARSHALL THE RETURNED POINTER
 %ignore la::avdecc::entity::model::AvdeccFixedString::data() const; // RIGHT NOW IGNORE IT AS WE NEED TO FIND A WAY TO MARSHALL THE RETURNED POINTER
@@ -379,6 +385,7 @@ DEFINE_TYPED_PROTOCOL_CLASS(AcmpStatus, AcmpStatusTypedDefine, std::uint8_t)
 %optional_arithmetic(std::uint8_t, OptUInt8)
 %optional_arithmetic(std::uint32_t, OptUInt32)
 %optional_arithmetic(la::avdecc::entity::model::ProbingStatus, OptProbingStatus)
+%optional(la::avdecc::entity::model::MilanVersion)
 %optional(la::avdecc::entity::model::AvdeccFixedString)
 %optional(la::avdecc::entity::StreamInfoFlagsEx)
 %optional(la::avdecc::protocol::AcmpStatus)

@@ -546,8 +546,9 @@ namespace
 class Builder : public la::avdecc::controller::model::DefaultedVirtualEntityBuilder
 {
 public:
-	Builder(la::avdecc::controller::ControlledEntity::CompatibilityFlags const flags) noexcept
+	Builder(la::avdecc::controller::ControlledEntity::CompatibilityFlags const flags, la::avdecc::entity::model::MilanVersion const& milanCompatibilityVersion) noexcept
 		: _compatibilityFlags{ flags }
+		, _milanCompatibilityVersion{ milanCompatibilityVersion }
 	{
 	}
 
@@ -577,12 +578,13 @@ public:
 		auto const interfaceInfo = la::avdecc::entity::Entity::InterfaceInformation{ la::networkInterface::MacAddress{ 0x06, 0x05, 0x04, 0x03, 0x02, 0x01 }, 31u, 0u, std::nullopt, std::nullopt };
 		intfcInformation[la::avdecc::entity::Entity::GlobalAvbInterfaceIndex] = interfaceInfo;
 	}
-	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& compatibilityFlags) noexcept override
+	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& compatibilityFlags, la::avdecc::entity::model::MilanVersion& milanCompatibilityVersion) noexcept override
 	{
 		for (auto const f : _compatibilityFlags)
 		{
 			compatibilityFlags.set(f);
 		}
+		milanCompatibilityVersion = _milanCompatibilityVersion;
 	}
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::EntityNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::EntityNodeDynamicModel& dynamicModel) noexcept override
 	{
@@ -653,6 +655,7 @@ private:
 	static auto constexpr ActiveConfigurationIndex = la::avdecc::entity::model::ConfigurationIndex{ 0u };
 	bool _isConfigurationActive{ false };
 	la::avdecc::controller::ControlledEntity::CompatibilityFlags _compatibilityFlags{};
+	la::avdecc::entity::model::MilanVersion _milanCompatibilityVersion{};
 };
 } // namespace
 
@@ -660,7 +663,7 @@ inline void doVirtualEntityFromEntityModelFile(Controller_F* self, std::string c
 {
 	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x0102030405060708 };
 	auto const compatibilityFlags = la::avdecc::controller::ControlledEntity::CompatibilityFlags{ la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221, la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan };
-	auto builder = Builder{ compatibilityFlags };
+	auto builder = Builder{ compatibilityFlags, la::avdecc::entity::model::MilanVersion{ 1, 0 } };
 	auto& controller = self->getController();
 	auto const [error, message] = controller.createVirtualEntityFromEntityModelFile(fileName, &builder, false);
 	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);

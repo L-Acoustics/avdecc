@@ -98,7 +98,6 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ControlledEntity::CompatibilityFlag, {
 																																		{ ControlledEntity::CompatibilityFlag::None, "UNKNOWN" },
 																																		{ ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE17221" },
 																																		{ ControlledEntity::CompatibilityFlag::Milan, "MILAN" },
-																																		{ ControlledEntity::CompatibilityFlag::Milan1_2, "MILAN 1.2" },
 																																		{ ControlledEntity::CompatibilityFlag::IEEE17221Warning, "IEEE17221WARNING" },
 																																		{ ControlledEntity::CompatibilityFlag::MilanWarning, "MILANWARNING" },
 																																		{ ControlledEntity::CompatibilityFlag::Misbehaving, "MISBEHAVING" },
@@ -117,6 +116,7 @@ constexpr auto Controller_Informative_DumpSource = "_dump_source (informative)";
 constexpr auto ControlledEntity_DumpVersion = "dump_version";
 constexpr auto ControlledEntity_Schema = "$schema";
 constexpr auto ControlledEntity_CompatibilityFlags = "compatibility_flags";
+constexpr auto ControlledEntity_MilanCompatibilityVersion = "milan_compatibility_version";
 constexpr auto ControlledEntity_AdpInformation = "adp_information";
 constexpr auto ControlledEntity_EntityModel = "entity_model";
 constexpr auto ControlledEntity_EntityModelID = "entity_model_id";

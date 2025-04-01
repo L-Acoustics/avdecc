@@ -80,10 +80,11 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 			adp[entity::keyName::Entity_InterfaceInformation_Node] = intfcs;
 		}
 
-		// Dump device compatibility flags
+		// Dump device compatibility
 		if (flags.test(entity::model::jsonSerializer::Flag::ProcessCompatibility))
 		{
 			object[keyName::ControlledEntity_CompatibilityFlags] = entity.getCompatibilityFlags();
+			object[keyName::ControlledEntity_MilanCompatibilityVersion] = static_cast<std::string>(entity.getMilanCompatibilityVersion());
 		}
 
 		// Dump AEM if supported

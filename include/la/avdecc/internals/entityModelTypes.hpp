@@ -35,6 +35,7 @@
 #include <string>
 #include <array>
 #include <vector>
+#include <stdexcept> // invalid_argument
 #include <iostream>
 #include <optional>
 #include <cstring> // std::memcpy
@@ -1534,6 +1535,138 @@ constexpr bool operator<(StreamIdentification const& lhs, StreamIdentification c
 {
 	return (lhs.entityID.getValue() < rhs.entityID.getValue()) || (lhs.entityID == rhs.entityID && lhs.streamIndex < rhs.streamIndex);
 }
+
+/** Milan Version - Milan 1.3 Clause 5.4.4.1 */
+class MilanVersion final
+{
+	constexpr static std::size_t MaxDigits = 4u;
+
+public:
+	using value_type = std::uint32_t;
+	using digit_type = std::uint8_t;
+
+	MilanVersion() noexcept = default;
+	explicit MilanVersion(value_type const version) noexcept
+		: _version{ version }
+	{
+	}
+
+	MilanVersion(digit_type const majorVersion, digit_type const minorVersion, digit_type const patchVersion = 0u, digit_type const buildVersion = 0u) noexcept
+		: _version{ (static_cast<value_type>(majorVersion) << (sizeof(digit_type) * 8 * 3)) | (static_cast<value_type>(minorVersion) << (sizeof(digit_type) * 8 * 2)) | (static_cast<value_type>(patchVersion) << (sizeof(digit_type) * 8 * 1)) | static_cast<value_type>(buildVersion) }
+	{
+	}
+
+	explicit MilanVersion(std::string const& version)
+	{
+		auto value = value_type{ 0u };
+		auto const tokens = utils::tokenizeString(version, '.', true);
+		if (tokens.size() != MaxDigits)
+		{
+			throw std::invalid_argument("Invalid MilanVersion string representation (expected " + std::to_string(MaxDigits) + " digits separated by dots)");
+		}
+		for (auto i = 0u; i < MaxDigits; ++i)
+		{
+			auto const tokValue = utils::convertFromString<value_type>(tokens[i].c_str()); // convertFromString doesn't accept single byte types, so we use a larger type then check max value
+			if (tokValue > std::numeric_limits<digit_type>::max())
+			{
+				throw std::invalid_argument("Invalid MilanVersion string representation (digit value out of range, must be 0-" + std::to_string(std::numeric_limits<digit_type>::max()) + ")");
+			}
+			value |= (tokValue << (sizeof(digit_type) * 8 * (3 - i)));
+		}
+		_version = value;
+	}
+
+	constexpr void setValue(value_type const version) noexcept
+	{
+		_version = version;
+	}
+
+	constexpr value_type getValue() const noexcept
+	{
+		return _version;
+	}
+
+	digit_type getMajorVersion() const noexcept
+	{
+		return static_cast<digit_type>((_version >> (sizeof(digit_type) * 8 * 3)) & std::numeric_limits<digit_type>::max());
+	}
+
+	digit_type getMinorVersion() const noexcept
+	{
+		return static_cast<digit_type>((_version >> (sizeof(digit_type) * 8 * 2)) & std::numeric_limits<digit_type>::max());
+	}
+
+	digit_type getPatchVersion() const noexcept
+	{
+		return static_cast<digit_type>((_version >> (sizeof(digit_type) * 8 * 1)) & std::numeric_limits<digit_type>::max());
+	}
+
+	digit_type getBuildVersion() const noexcept
+	{
+		return static_cast<digit_type>(_version & std::numeric_limits<digit_type>::max());
+	}
+
+	// Comparison operators
+	constexpr friend bool operator==(MilanVersion const& lhs, MilanVersion const& rhs) noexcept
+	{
+		return lhs._version == rhs._version;
+	}
+	constexpr friend bool operator!=(MilanVersion const& lhs, MilanVersion const& rhs) noexcept
+	{
+		return !(lhs == rhs);
+	}
+	constexpr friend bool operator<(MilanVersion const& lhs, MilanVersion const& rhs) noexcept
+	{
+		return lhs._version < rhs._version;
+	}
+	constexpr friend bool operator>(MilanVersion const& lhs, MilanVersion const& rhs) noexcept
+	{
+		return rhs < lhs;
+	}
+	constexpr friend bool operator<=(MilanVersion const& lhs, MilanVersion const& rhs) noexcept
+	{
+		return !(lhs > rhs);
+	}
+	constexpr friend bool operator>=(MilanVersion const& lhs, MilanVersion const& rhs) noexcept
+	{
+		return !(lhs < rhs);
+	}
+
+	/** Convert to string representation, with specified number of digits (from major to build). */
+	std::string to_string(std::size_t const digits = MaxDigits) const
+	{
+		auto versionString = std::string{};
+		if (digits < 1 || digits > MaxDigits)
+		{
+			throw std::invalid_argument("Invalid MilanVersion string representation (number of digits must be between 1 and " + std::to_string(MaxDigits) + ")");
+		}
+		versionString.reserve(digits * 2 + (digits - 1)); // N digits, (N-1) dots
+		for (auto i = 0u; i < digits; ++i)
+		{
+			if (i > 0)
+			{
+				versionString += '.';
+			}
+			versionString += std::to_string(((_version >> (sizeof(digit_type) * 8 * (3 - i))) & std::numeric_limits<digit_type>::max()));
+		}
+		return versionString;
+	}
+
+	// String operator
+	operator std::string() const noexcept
+	{
+		return to_string();
+	}
+
+	// Defaulted compiler auto-generated methods
+	MilanVersion(MilanVersion const&) = default;
+	MilanVersion(MilanVersion&&) = default;
+	MilanVersion& operator=(MilanVersion const&) = default;
+	MilanVersion& operator=(MilanVersion&&) = default;
+
+private:
+	value_type _version{ 0u };
+};
 
 /** Probing Status - Milan 1.2 Clause 5.3.8.6 */
 enum class ProbingStatus : std::uint8_t

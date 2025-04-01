@@ -103,9 +103,15 @@ bool ControlledEntityImpl::isVirtual() const noexcept
 {
 	return _isVirtual;
 }
+
 ControlledEntity::CompatibilityFlags ControlledEntityImpl::getCompatibilityFlags() const noexcept
 {
 	return _compatibilityFlags;
+}
+
+entity::model::MilanVersion ControlledEntityImpl::getMilanCompatibilityVersion() const noexcept
+{
+	return _milanCompatibilityVersion;
 }
 
 bool ControlledEntityImpl::isMilanRedundant() const noexcept
@@ -2727,6 +2733,11 @@ void ControlledEntityImpl::clearEnumerationStep(EnumerationStep const step) noex
 void ControlledEntityImpl::setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept
 {
 	_compatibilityFlags = compatibilityFlags;
+}
+
+void ControlledEntityImpl::setMilanCompatibilityVersion(entity::model::MilanVersion const version) noexcept
+{
+	_milanCompatibilityVersion = version;
 }
 
 void ControlledEntityImpl::setMilanRedundant(bool const isMilanRedundant) noexcept

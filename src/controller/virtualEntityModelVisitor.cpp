@@ -165,15 +165,17 @@ VirtualEntityModelVisitor::VirtualEntityModelVisitor(ControlledEntityImpl* const
 		_controlledEntity->setEnumerationTime(enumerationTime);
 	}
 	// Diagnostics should be computed automatically
-	// CompatibilityFlags
+	// CompatibilityFlags & MilanCompatibilityVersion
 	{
 		auto flags = ControlledEntity::CompatibilityFlags{};
+		auto milanCompatibilityVersion = entity::model::MilanVersion{};
 
 		// Call the builder
-		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity::CompatibilityFlags&)>(&model::VirtualEntityBuilder::build, _builder, flags);
+		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity::CompatibilityFlags&, entity::model::MilanVersion&)>(&model::VirtualEntityBuilder::build, _builder, flags, milanCompatibilityVersion);
 
-		// Set the flags
+		// Set the flags and compatibility version
 		_controlledEntity->setCompatibilityFlags(flags);
+		_controlledEntity->setMilanCompatibilityVersion(milanCompatibilityVersion);
 	}
 	// MilanInfo
 	{
