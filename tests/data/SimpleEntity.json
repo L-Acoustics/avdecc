@@ -662,6 +662,7 @@
 	},
 	"milan_information": {
 		"certification_version": "1.0.0.0",
+		"specification_version": "1.3.0.0",
 		"flags": null,
 		"protocol_version": 1
 	},

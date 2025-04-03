@@ -302,6 +302,10 @@ ChecksumEntityModelVisitor::ChecksumEntityModelVisitor(std::uint32_t const check
 			static_cast<Sha256Serializer&>(*_serializer) << milanInfo->protocolVersion;
 			static_cast<Sha256Serializer&>(*_serializer) << milanInfo->featuresFlags;
 			static_cast<Sha256Serializer&>(*_serializer) << milanInfo->certificationVersion.getValue();
+			if (_checksumVersion >= 5)
+			{
+				static_cast<Sha256Serializer&>(*_serializer) << milanInfo->specificationVersion.getValue();
+			}
 		}
 	}
 }

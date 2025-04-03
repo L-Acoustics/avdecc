@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - New API to ControlledEntity to retrieve compatibility change events: `getCompatibilityChangedEvents()`
 - Support for Milan 1.3
   - Extended GET_MILAN_INFO command
+  - Introduced checksum v5 to include `specification_version` field from `MilanInfo`
 
 ### Changed
 - [StreamOutputNode has a new field: `presentationTimeOffset` to replace the `msrpAccumulatedLatency` field (which was in StreamDynamicInfo struct)](https://github.com/L-Acoustics/avdecc/issues/147)

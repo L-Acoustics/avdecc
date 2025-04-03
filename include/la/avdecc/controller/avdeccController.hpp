@@ -128,7 +128,7 @@ class Controller : public la::avdecc::utils::Subject<Controller, std::recursive_
 public:
 	using UniquePointer = std::unique_ptr<Controller, void (*)(Controller*)>;
 	using DeviceMemoryBuffer = MemoryBuffer;
-	static std::uint32_t constexpr ChecksumVersion = 4u;
+	static std::uint32_t constexpr ChecksumVersion = 5u;
 
 	enum class Error
 	{
