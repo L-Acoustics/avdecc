@@ -3290,3 +3290,14 @@ TEST(Controller, HashEntityModelV4)
 	EXPECT_EQ(64u, checksum.value().size());
 	EXPECT_STREQ("98343B6A0540080461F83F6EE99FA973C552E98C4FA9AFE4F047F733C858B7F5", checksum.value().c_str());
 }
+
+TEST(Controller, HashEntityModelV5)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan };
+	auto const& [error, msg, controlledEntity] = la::avdecc::controller::Controller::deserializeControlledEntityFromJson("data/SimpleEntity.json", flags);
+	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	auto const checksum = la::avdecc::controller::Controller::computeEntityModelChecksum(*controlledEntity, std::uint32_t{ 5u });
+	EXPECT_TRUE(checksum.has_value());
+	EXPECT_EQ(64u, checksum.value().size());
+	EXPECT_STREQ("068D4565E93A67323C3D83A23ABC407FBCF7ED2FE7CFF6D29766938A3264F30D", checksum.value().c_str());
+}
