@@ -2487,6 +2487,45 @@ void ControllerVirtualProxy::getMediaClockReferenceInfo(UniqueIdentifier const t
 	}
 }
 
+void ControllerVirtualProxy::bindStream(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& talkerStream, entity::BindStreamFlags const flags, BindStreamHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, streamIndex, talkerStream, flags, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->bindStream(targetEntityID, streamIndex, talkerStream, flags, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->bindStream(targetEntityID, streamIndex, talkerStream, flags, handler);
+	}
+}
+void ControllerVirtualProxy::unbindStream(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, UnbindStreamHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, streamIndex, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->unbindStream(targetEntityID, streamIndex, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->unbindStream(targetEntityID, streamIndex, handler);
+	}
+}
+
 void ControllerVirtualProxy::connectStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept
 {
 	auto const isVirtual = isVirtualEntity(listenerStream.entityID);
