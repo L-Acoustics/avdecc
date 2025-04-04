@@ -2181,7 +2181,7 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 		case AVB17221AECPMessageTypeVendorUniqueCommand:
 		{
 			// This one is specifically known to happen when the status is not SUCCESS and we need to handle it
-			if (message.status != AVB17221AECPStatusSuccess)
+			//if (message.status != AVB17221AECPStatusSuccess) // Actually it looks like it also happen for SUCCESS messages
 			{
 				// Convert it back to response and log it
 				message.messageType = AVB17221AECPMessageTypeVendorUniqueResponse;
