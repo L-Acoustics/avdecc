@@ -910,6 +910,23 @@ void ControllerImpl::onMediaClockReferenceInfoChanged(entity::controller::Interf
 	}
 }
 
+void ControllerImpl::onBindStream(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& talkerStream, entity::BindStreamFlags const flags) noexcept
+{
+	auto connectionFlags = entity::ConnectionFlags{};
+	if (flags.test(entity::BindStreamFlag::StreamingWait))
+	{
+		connectionFlags.set(entity::ConnectionFlag::StreamingWait);
+	}
+	// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
+	handleListenerStreamStateNotification(talkerStream, entity::model::StreamIdentification{ entityID, streamIndex }, true, connectionFlags, true);
+}
+
+void ControllerImpl::onUnbindStream(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept
+{
+	// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
+	handleListenerStreamStateNotification({}, entity::model::StreamIdentification{ entityID, streamIndex }, false, entity::ConnectionFlags{}, true);
+}
+
 /* Identification notifications */
 void ControllerImpl::onEntityIdentifyNotification(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID) noexcept
 {

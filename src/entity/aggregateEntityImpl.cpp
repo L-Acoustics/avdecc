@@ -1062,6 +1062,22 @@ void AggregateEntityImpl::getMediaClockReferenceInfo(UniqueIdentifier const targ
 	}
 }
 
+void AggregateEntityImpl::bindStream(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamIdentification const& talkerStream, BindStreamFlags const flags, BindStreamHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).bindStream(targetEntityID, streamIndex, talkerStream, flags, handler);
+	}
+}
+
+void AggregateEntityImpl::unbindStream(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, UnbindStreamHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).unbindStream(targetEntityID, streamIndex, handler);
+	}
+}
+
 /* Connection Management Protocol (ACMP) */
 void AggregateEntityImpl::connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept
 {

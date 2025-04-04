@@ -72,6 +72,18 @@ constexpr size_t AecpMvuGetMediaClockReferenceInfoCommandPayloadSize = 2u;
 /** GET_MEDIA_CLOCK_REFERENCE_INFO Response - Milan 1.2 Clause 5.4.4.5 */
 constexpr size_t AecpMvuGetMediaClockReferenceInfoResponsePayloadSize = 74u;
 
+/** BIND_STREAM Command - Milan 1.3 Clause 5.4.4.6 */
+constexpr size_t AecpMvuBindStreamCommandPayloadSize = 18u;
+
+/** BIND_STREAM Response - Milan 1.3 Clause 5.4.4.6 */
+constexpr size_t AecpMvuBindStreamResponsePayloadSize = 18u;
+
+/** UNBIND_STREAM Command - Milan 1.3 Clause 5.4.4.7 */
+constexpr size_t AecpMvuUnbindStreamCommandPayloadSize = 6u;
+
+/** UNBIND_STREAM Response - Milan 1.3 Clause 5.4.4.7 */
+constexpr size_t AecpMvuUnbindStreamResponsePayloadSize = 6u;
+
 } // namespace mvuPayload
 } // namespace protocol
 } // namespace avdecc

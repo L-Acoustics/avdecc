@@ -98,4 +98,20 @@ std::tuple<entity::model::ClockDomainIndex> deserializeGetMediaClockReferenceInf
 Serializer<AecpMvuGetMediaClockReferenceInfoResponsePayloadSize> serializeGetMediaClockReferenceInfoResponse(entity::model::ClockDomainIndex const clockDomainIndex, entity::MediaClockReferenceInfoFlags const flags, entity::model::DefaultMediaClockReferencePriority const defaultMcrPrio, entity::model::MediaClockReferencePriority const userMcrPrio, entity::model::AvdeccFixedString const& domainName);
 std::tuple<entity::model::ClockDomainIndex, entity::MediaClockReferenceInfoFlags, entity::model::DefaultMediaClockReferencePriority, entity::model::MediaClockReferencePriority, entity::model::AvdeccFixedString> deserializeGetMediaClockReferenceInfoResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload);
 
+/** BIND_STREAM Command - Milan 1.3 Clause 5.4.4.6 */
+Serializer<AecpMvuBindStreamCommandPayloadSize> serializeBindStreamCommand(entity::BindStreamFlags const flags, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, UniqueIdentifier const talkerEntityID, entity::model::DescriptorIndex talkerStreamIndex);
+std::tuple<entity::BindStreamFlags, entity::model::DescriptorType, entity::model::DescriptorIndex, UniqueIdentifier, entity::model::DescriptorIndex> deserializeBindStreamCommand(MvuAecpdu::Payload const& payload);
+
+/** BIND_STREAM Response - Milan 1.3 Clause 5.4.4.6 */
+Serializer<AecpMvuBindStreamResponsePayloadSize> serializeBindStreamResponse(entity::BindStreamFlags const flags, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, UniqueIdentifier const talkerEntityID, entity::model::DescriptorIndex talkerStreamIndex);
+std::tuple<entity::BindStreamFlags, entity::model::DescriptorType, entity::model::DescriptorIndex, UniqueIdentifier, entity::model::DescriptorIndex> deserializeBindStreamResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload);
+
+/** UNBIND_STREAM Command - Milan 1.3 Clause 5.4.4.7 */
+Serializer<AecpMvuUnbindStreamCommandPayloadSize> serializeUnbindStreamCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeUnbindStreamCommand(MvuAecpdu::Payload const& payload);
+
+/** UNBIND_STREAM Response - Milan 1.3 Clause 5.4.4.7 */
+Serializer<AecpMvuUnbindStreamResponsePayloadSize> serializeUnbindStreamResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeUnbindStreamResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload);
+
 } // namespace la::avdecc::protocol::mvuPayload

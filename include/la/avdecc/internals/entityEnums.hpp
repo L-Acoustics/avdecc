@@ -472,6 +472,15 @@ enum class LA_AVDECC_API MediaClockReferenceInfoFlag : std::uint8_t
 };
 using MediaClockReferenceInfoFlags = utils::EnumBitfield<MediaClockReferenceInfoFlag>;
 
+/** BindStreamFlags - Milan 1.3 Clause 5.4.4.6 */
+enum class LA_AVDECC_API BindStreamFlag : std::uint16_t
+{
+	None = 0u,
+	StreamingWait = 1u << 0, /**< The AVDECC Talker does not start streaming until explicitly being told to by the control protocol. */
+	/* Bits 0 to 14 reserved for future use */
+};
+using BindStreamFlags = utils::EnumBitfield<BindStreamFlag>;
+
 } // namespace entity
 } // namespace avdecc
 } // namespace la

@@ -56,6 +56,7 @@ static model::AvdeccFixedString const s_emptyAvdeccFixedString{}; // Empty Avdec
 static model::MilanInfo const s_emptyMilanInfo{}; // Empty MilanInfo used by timeout callback (need a ref to a MilanInfo)
 static model::MediaClockReferenceInfo const s_emptyMediaClockReferenceInfo{}; // Empty MediaClockReferenceInfo used by timeout callback (need a ref to a MediaClockReferenceInfo)
 static DynamicInfoParameters const s_emptyDynamicInfoParameters{}; // Empty DynamicInfoParameters used by timeout callback (need a ref to a DynamicInfoParameters)
+static model::StreamIdentification const s_emptyStreamIdentification{}; // Empty StreamIdentification used by timeout callback
 
 /* ************************************************************************** */
 /* Exceptions                                                                 */
@@ -2132,6 +2133,37 @@ void CapabilityDelegate::getMediaClockReferenceInfo(UniqueIdentifier const targe
 		utils::invokeProtectedHandler(errorCallback, LocalEntity::MvuCommandStatus::ProtocolError);
 	}
 }
+
+void CapabilityDelegate::bindStream(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamIdentification const& talkerStream, BindStreamFlags const flags, Interface::BindStreamHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamIdentification, BindStreamFlags{});
+	try
+	{
+		auto const ser = protocol::mvuPayload::serializeBindStreamCommand(flags, entity::model::DescriptorType::StreamInput, streamIndex, talkerStream.entityID, talkerStream.streamIndex);
+		sendMvuAecpCommand(targetEntityID, protocol::MvuCommandType::BindStream, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize bindStream: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::MvuCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::unbindStream(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, Interface::UnbindStreamHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex);
+	try
+	{
+		auto const ser = protocol::mvuPayload::serializeUnbindStreamCommand(entity::model::DescriptorType::StreamInput, streamIndex);
+		sendMvuAecpCommand(targetEntityID, protocol::MvuCommandType::UnbindStream, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize unbindStream: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::MvuCommandStatus::ProtocolError);
+	}
+}
+
 
 /* Connection Management Protocol (ACMP) */
 void CapabilityDelegate::connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, Interface::ConnectStreamHandler const& handler) const noexcept
@@ -4753,6 +4785,46 @@ void CapabilityDelegate::processMvuAecpResponse(protocol::MvuCommandType const c
 
 				// Notify handlers
 				answerCallback.invoke<controller::Interface::GetMediaClockReferenceInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, defaultMcrPrio, mcrInfo);
+			} },
+		// Bind Stream
+		{ protocol::MvuCommandType::BindStream.getValue(),
+			[](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+			{
+				auto const [flags, descriptorType, descriptorIndex, talkerEntityID, talkerStreamIndex] = protocol::mvuPayload::deserializeBindStreamResponse(status, mvu.getPayload());
+				auto const targetID = mvu.getTargetEntityID();
+
+				// Validate values
+				if (descriptorType != model::DescriptorType::StreamInput)
+				{
+						throw InvalidDescriptorTypeException();
+				}
+
+				// Notify handlers
+				answerCallback.invoke<controller::Interface::BindStreamHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, flags);
+				if (mvu.getUnsolicited() && delegate && !!status)
+				{
+					utils::invokeProtectedMethod(&controller::Delegate::onBindStream, delegate, controllerInterface, targetID, descriptorIndex, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, flags);
+				}
+			} },
+		// Unbind Stream
+		{ protocol::MvuCommandType::UnbindStream.getValue(),
+			[](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+			{
+				auto const [descriptorType, descriptorIndex] = protocol::mvuPayload::deserializeUnbindStreamResponse(status, mvu.getPayload());
+				auto const targetID = mvu.getTargetEntityID();
+
+				// Validate values
+				if (descriptorType != model::DescriptorType::StreamInput)
+				{
+						throw InvalidDescriptorTypeException();
+				}
+
+				// Notify handlers
+				answerCallback.invoke<controller::Interface::UnbindStreamHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex);
+				if (mvu.getUnsolicited() && delegate && !!status)
+				{
+					utils::invokeProtectedMethod(&controller::Delegate::onUnbindStream, delegate, controllerInterface, targetID, descriptorIndex);
+				}
 			} },
 	};
 

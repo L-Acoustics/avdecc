@@ -286,6 +286,8 @@ public:
 	static LA_AVDECC_API MvuCommandType const GetSystemUniqueID;
 	static LA_AVDECC_API MvuCommandType const SetMediaClockReferenceInfo;
 	static LA_AVDECC_API MvuCommandType const GetMediaClockReferenceInfo;
+	static LA_AVDECC_API MvuCommandType const BindStream;
+	static LA_AVDECC_API MvuCommandType const UnbindStream;
 
 	static LA_AVDECC_API MvuCommandType const InvalidCommandType;
 

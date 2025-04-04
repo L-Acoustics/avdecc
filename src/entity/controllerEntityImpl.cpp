@@ -684,6 +684,16 @@ void ControllerEntityImpl::getMediaClockReferenceInfo(UniqueIdentifier const tar
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMediaClockReferenceInfo(targetEntityID, clockDomainIndex, handler);
 }
 
+void ControllerEntityImpl::bindStream(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamIdentification const& talkerStream, BindStreamFlags const flags, BindStreamHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).bindStream(targetEntityID, streamIndex, talkerStream, flags, handler);
+}
+
+void ControllerEntityImpl::unbindStream(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, UnbindStreamHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).unbindStream(targetEntityID, streamIndex, handler);
+}
+
 /* Connection Management Protocol (ACMP) */
 void ControllerEntityImpl::connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept
 {

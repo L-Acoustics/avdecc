@@ -433,11 +433,13 @@ MvuAecpStatus::operator std::string() const noexcept
 }
 
 /** Milan Vendor Unique Command Type - Milan 1.2 Clause 5.4.3.2.3 */
-MvuCommandType const MvuCommandType::GetMilanInfo{ 0 };
-MvuCommandType const MvuCommandType::SetSystemUniqueID{ 1 };
-MvuCommandType const MvuCommandType::GetSystemUniqueID{ 2 };
-MvuCommandType const MvuCommandType::SetMediaClockReferenceInfo{ 3 };
-MvuCommandType const MvuCommandType::GetMediaClockReferenceInfo{ 4 };
+MvuCommandType const MvuCommandType::GetMilanInfo{ 0x0000 };
+MvuCommandType const MvuCommandType::SetSystemUniqueID{ 0x0001 };
+MvuCommandType const MvuCommandType::GetSystemUniqueID{ 0x0002 };
+MvuCommandType const MvuCommandType::SetMediaClockReferenceInfo{ 0x0003 };
+MvuCommandType const MvuCommandType::GetMediaClockReferenceInfo{ 0x0004 };
+MvuCommandType const MvuCommandType::BindStream{ 0x0005 };
+MvuCommandType const MvuCommandType::UnbindStream{ 0x0006 };
 
 MvuCommandType const MvuCommandType::InvalidCommandType{ 0xffff };
 
@@ -449,6 +451,8 @@ MvuCommandType::operator std::string() const noexcept
 		{ MvuCommandType::GetSystemUniqueID.getValue(), "GET_SYSTEM_UNIQUE_ID" },
 		{ MvuCommandType::SetMediaClockReferenceInfo.getValue(), "SET_MEDIA_CLOCK_REFERENCE_INFO" },
 		{ MvuCommandType::GetMediaClockReferenceInfo.getValue(), "GET_MEDIA_CLOCK_REFERENCE_INFO" },
+		{ MvuCommandType::BindStream.getValue(), "BIND_STREAM" },
+		{ MvuCommandType::UnbindStream.getValue(), "UNBIND_STREAM" },
 		{ MvuCommandType::InvalidCommandType.getValue(), "INVALID_COMMAND_TYPE" },
 	};
 
