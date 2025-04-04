@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for Milan 1.3
   - Extended GET_MILAN_INFO command
   - Introduced checksum v5 to include `specification_version` field from `MilanInfo`
+  - connectStream and disconnectStream methods automatically choose MVU Bind mechanism if available
 
 ### Changed
 - [StreamOutputNode has a new field: `presentationTimeOffset` to replace the `msrpAccumulatedLatency` field (which was in StreamDynamicInfo struct)](https://github.com/L-Acoustics/avdecc/issues/147)
@@ -32,7 +33,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [Support for Milan 1.2](https://github.com/L-Acoustics/avdecc/issues/169)
 - New `la::avdecc::controller::ControlledEntity::getMilanCompatibilityVersion()` method to differenciate between Milan versions
 - New `la::avdecc::controller::ControlledEntity::isPackedDynamicInfoSupported()` method to know if the entity supports packed dynamic info
-- New `la::avdecc::controller::ControlledEntity::isUsingCachedEntityModel()` method to know if the entity is using a cached entity model
 
 ### Changed
 - Renamed `la::avdecc::controller::Controller::Observer::onCompatibilityFlagsChanged` to `onCompatibilityChanged` (with additional parameter)
