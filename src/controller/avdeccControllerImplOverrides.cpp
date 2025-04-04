@@ -2272,8 +2272,8 @@ void ControllerImpl::identifyEntity(UniqueIdentifier const targetEntityID, std::
 
 void ControllerImpl::setMaxTransitTime(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, SetMaxTransitTimeHandler const& handler) const noexcept
 {
-	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -2521,7 +2521,7 @@ void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entit
 
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controllerProxy->startOperation(targetEntityID, descriptorType, descriptorIndex, operationType, memoryBuffer,
-			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, la::avdecc::entity::model::OperationID const operationID, la::avdecc::entity::model::MemoryObjectOperationType const /*operationType*/, la::avdecc::MemoryBuffer const& memoryBuffer)
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/, entity::model::OperationID const operationID, entity::model::MemoryObjectOperationType const /*operationType*/, MemoryBuffer const& memoryBuffer)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User startOperation (OperationID={}): {}", operationID, entity::ControllerEntity::statusToString(status));
 
@@ -2696,8 +2696,8 @@ void ControllerImpl::startUploadMemoryObjectOperation(UniqueIdentifier const tar
 
 void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryProgressHandler const& progressHandler, WriteDeviceMemoryCompletionHandler const& completionHandler) const noexcept
 {
-	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -3012,7 +3012,7 @@ void ControllerImpl::requestExclusiveAccess(UniqueIdentifier const entityID, Exc
 		}
 
 		// Notify handler
-		la::avdecc::utils::invokeProtectedHandler(handler, entity, status, std::move(token));
+		utils::invokeProtectedHandler(handler, entity, status, std::move(token));
 	};
 
 	// Request exclusive access based on specified type
@@ -3039,7 +3039,7 @@ void ControllerImpl::requestExclusiveAccess(UniqueIdentifier const entityID, Exc
 		}
 		default:
 			AVDECC_ASSERT(false, "Unknown AccessType");
-			onResult(nullptr, la::avdecc::entity::ControllerEntity::AemCommandStatus::InternalError);
+			onResult(nullptr, entity::ControllerEntity::AemCommandStatus::InternalError);
 			break;
 	}
 }
@@ -3301,7 +3301,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 		auto [error, errorText, entityTree, entityModelID] = deserializeJsonEntityModel(filePath, isBinaryFormat);
 		if (!error)
 		{
-			auto commonInfo = entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), entityModelID };
+			auto commonInfo = entity::Entity::CommonInformation{ UniqueIdentifier::getNullUniqueIdentifier(), entityModelID };
 			auto intfcsInfo = entity::Entity::InterfacesInformation{};
 
 			// Build common and interfaces information
