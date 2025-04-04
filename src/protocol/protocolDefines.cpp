@@ -416,12 +416,17 @@ AaAecpStatus::operator std::string() const noexcept
 	return it->second;
 }
 
-/** Milan Vendor Unique AECP Status - Milan 1.2 Clause 5.4.3.3 */
+/** Milan Vendor Unique AECP Status - Milan 1.3 Clause 5.4.3.3 */
+MvuAecpStatus const MvuAecpStatus::PayloadError{ 2 };
+MvuAecpStatus const MvuAecpStatus::BadArguments{ 3 };
+
 MvuAecpStatus::operator std::string() const noexcept
 {
 	static std::unordered_map<MvuAecpStatus::value_type, std::string> s_MvuAecpStatusMapping = {
 		{ MvuAecpStatus::Success.getValue(), "SUCCESS" },
 		{ MvuAecpStatus::NotImplemented.getValue(), "NOT_IMPLEMENTED" },
+		{ MvuAecpStatus::PayloadError.getValue(), "PAYLOAD_ERROR" },
+		{ MvuAecpStatus::BadArguments.getValue(), "BAD_ARGUMENTS" },
 	};
 
 	auto const& it = s_MvuAecpStatusMapping.find(getValue());

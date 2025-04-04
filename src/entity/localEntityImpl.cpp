@@ -142,7 +142,11 @@ std::string LA_AVDECC_CALL_CONVENTION LocalEntity::statusToString(MvuCommandStat
 		case MvuCommandStatus::Success:
 			return "Success.";
 		case MvuCommandStatus::NotImplemented:
-			return "The AVDECC Entity does not support the command type.";
+			return "The PAAD-AE does not support the command type.";
+		case MvuCommandStatus::PayloadError:
+			return "The payload of the received command has not the correct format.";
+		case MvuCommandStatus::BadArguments:
+			return "One or more of the values in the fields of the frame were deemed to be bad by the AVDECC Entity (unsupported, incorrect combination, etc.).";
 		// Library Error Codes
 		case MvuCommandStatus::BaseProtocolViolation:
 			return "The entity sent a message that violates the base protocol.";

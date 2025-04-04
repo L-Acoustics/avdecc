@@ -272,6 +272,9 @@ class MvuAecpStatus : public AecpStatus
 public:
 	using AecpStatus::AecpStatus;
 
+	static LA_AVDECC_API MvuAecpStatus const PayloadError;
+	static LA_AVDECC_API MvuAecpStatus const BadArguments;
+
 	LA_AVDECC_API operator std::string() const noexcept;
 };
 

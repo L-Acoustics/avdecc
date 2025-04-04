@@ -384,8 +384,10 @@ public:
 	enum class MvuCommandStatus : std::uint16_t
 	{
 		// Milan Vendor Unique Protocol Error Codes
-		Success = 0,
-		NotImplemented = 1,
+		Success = 0, /**< The PAAD-AE successfully performed the command and has valid results. */
+		NotImplemented = 1, /**< The PAAD-AE does not support the command type. */
+		PayloadError = 2, /**< The payload of the received command has not the correct format. */
+		BadArguments = 3, /**< One or more of the values in the fields of the frame were deemed to be bad by the AVDECC Entity (unsupported, incorrect combination, etc.). */
 		// Library Error Codes
 		BaseProtocolViolation = 991, /**< The entity sent a message that violates the base protocol */
 		PartialImplementation = 992, /**< The library does not fully implement this command, please report this */
