@@ -212,6 +212,11 @@ void ControllerImpl::onListenerDisconnectResponseSniffed(entity::controller::Int
 	// We don't care about sniffed errors
 }
 
+void ControllerImpl::onGetTalkerStreamStateResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& /*talkerStream*/, entity::model::StreamIdentification const& /*listenerStream*/, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const /*flags*/, entity::LocalEntity::ControlStatus const /*status*/) noexcept
+{
+	// No need to handle this, as we are not interested in the GET_TX_STATE_RESPONSE message
+}
+
 void ControllerImpl::onGetListenerStreamStateResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
 {
 	if (!!status)
@@ -625,6 +630,20 @@ void ControllerImpl::onAudioUnitSamplingRateChanged(entity::controller::Interfac
 	}
 }
 
+void ControllerImpl::onVideoClusterSamplingRateChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ClusterIndex const /*videoClusterIndex*/, entity::model::SamplingRate const /*samplingRate*/) noexcept
+{
+	// Not implemented
+	(void)entityID;
+	LOG_CONTROLLER_DEBUG(entityID, "onVideoClusterSamplingRateChanged: Not implemented");
+}
+
+void ControllerImpl::onSensorClusterSamplingRateChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ClusterIndex const /*sensorClusterIndex*/, entity::model::SamplingRate const /*samplingRate*/) noexcept
+{
+	// Not implemented
+	(void)entityID;
+	LOG_CONTROLLER_DEBUG(entityID, "onSensorClusterSamplingRateChanged: Not implemented");
+}
+
 void ControllerImpl::onClockSourceChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
@@ -862,6 +881,30 @@ void ControllerImpl::onMaxTransitTimeChanged(entity::controller::Interface const
 	{
 		auto& entity = *controlledEntity;
 		updateMaxTransitTime(entity, streamIndex, maxTransitTime, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	}
+}
+
+void ControllerImpl::onSystemUniqueIDChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updateSystemUniqueID(entity, systemUniqueID);
+	}
+}
+
+void ControllerImpl::onMediaClockReferenceInfoChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::MediaClockReferenceInfo const& mcrInfo) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updateMediaClockReferenceInfo(entity, clockDomainIndex, mcrInfo, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 

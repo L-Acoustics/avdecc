@@ -55,7 +55,7 @@ class ExclusiveAccessTokenImpl;
 /* ************************************************************************** */
 /* ControllerImpl class definition                                            */
 /* ************************************************************************** */
-class ControllerImpl final : public Controller, private entity::controller::DefaultedDelegate
+class ControllerImpl final : public Controller, private entity::controller::Delegate
 {
 public:
 	using SharedControlledEntityImpl = std::shared_ptr<ControlledEntityImpl>;
@@ -266,6 +266,7 @@ private:
 	virtual void onControllerDisconnectResponseSniffed(entity::controller::Interface const* const controller, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept override;
 	virtual void onListenerConnectResponseSniffed(entity::controller::Interface const* const controller, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept override;
 	virtual void onListenerDisconnectResponseSniffed(entity::controller::Interface const* const controller, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept override;
+	virtual void onGetTalkerStreamStateResponseSniffed(entity::controller::Interface const* const controller, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::LocalEntity::ControlStatus const status) noexcept override;
 	virtual void onGetListenerStreamStateResponseSniffed(entity::controller::Interface const* const controller, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept override;
 	/* Unsolicited notifications (not triggered for our own commands, the command's 'result' method will be called in that case) and only if command has no error */
 	virtual void onDeregisteredFromUnsolicitedNotifications(entity::controller::Interface const* const controller, UniqueIdentifier const entityID) noexcept override;
@@ -299,8 +300,8 @@ private:
 	virtual void onPtpPortNameChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex, entity::model::AvdeccFixedString const& ptpPortName) noexcept override;
 	virtual void onAssociationIDChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, UniqueIdentifier const associationID) noexcept override;
 	virtual void onAudioUnitSamplingRateChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) noexcept override;
-	// onVideoClusterSamplingRateChanged
-	// onSensorClusterSamplingRateChanged
+	virtual void onVideoClusterSamplingRateChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::ClusterIndex const videoClusterIndex, entity::model::SamplingRate const samplingRate) noexcept override;
+	virtual void onSensorClusterSamplingRateChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::ClusterIndex const sensorClusterIndex, entity::model::SamplingRate const samplingRate) noexcept override;
 	virtual void onClockSourceChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex) noexcept override;
 	virtual void onControlValuesChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, MemoryBuffer const& packedControlValues) noexcept override;
 	virtual void onStreamInputStarted(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
@@ -321,6 +322,8 @@ private:
 	virtual void onMemoryObjectLengthChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept override;
 	virtual void onOperationStatus(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete) noexcept override;
 	virtual void onMaxTransitTimeChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime) noexcept override;
+	virtual void onSystemUniqueIDChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept override;
+	virtual void onMediaClockReferenceInfoChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::MediaClockReferenceInfo const& mcrInfo) noexcept override;
 	/* Identification notifications */
 	virtual void onEntityIdentifyNotification(entity::controller::Interface const* const controller, UniqueIdentifier const entityID) noexcept override;
 	/* **** Statistics **** */
@@ -399,7 +402,8 @@ private:
 	static void updateControlCurrentValueOutOfBounds(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ControlIndex const controlIndex, bool const isOutOfBounds) noexcept;
 	void updateStreamInputLatency(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isOverLatency) const noexcept;
 	void updateSystemUniqueID(ControlledEntityImpl& controlledEntity, entity::model::SystemUniqueIdentifier const uniqueID) const noexcept;
-	void updateMediaClockReferenceInfo(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& info, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept;
+	void validateDefaultMediaClockReferencePriority(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept;
+	void updateMediaClockReferenceInfo(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::MediaClockReferenceInfo const& info, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept;
 
 	/* ************************************************************ */
 	/* Private classes                                              */
