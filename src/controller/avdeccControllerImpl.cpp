@@ -5365,12 +5365,6 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForMvuCommandStatu
 			return FailureAction::ErrorContinue;
 		}
 
-		// Case inbetween NotSupported and actual device error that shoud not happen
-		case entity::ControllerEntity::MvuCommandStatus::BadArguments:
-		{
-			return FailureAction::BadArguments;
-		}
-
 		// Cases the caller should decide whether to continue enumeration or not
 		case entity::ControllerEntity::MvuCommandStatus::NotImplemented:
 		{
