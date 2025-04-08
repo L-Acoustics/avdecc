@@ -311,7 +311,7 @@ public:
 		virtual void onOperationCompleted(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID, bool const failed) noexcept = 0;
 		virtual void onMediaClockChainChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::controller::model::MediaClockChain const& mcChain) noexcept = 0;
 		virtual void onMaxTransitTimeChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime) noexcept = 0;
-		virtual void onSystemUniqueIDChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept = 0;
+		virtual void onSystemUniqueIDChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::UniqueIdentifier const systemUniqueID, la::avdecc::entity::model::AvdeccFixedString const& systemName) noexcept = 0;
 		virtual void onMediaClockReferenceInfoChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::MediaClockReferenceInfo const& mcrInfo) noexcept = 0;
 
 		// Statistics
@@ -410,7 +410,7 @@ public:
 		virtual void onOperationCompleted(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, la::avdecc::entity::model::OperationID const /*operationID*/, bool const /*failed*/) noexcept override {}
 		virtual void onMediaClockChainChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ClockDomainIndex const /*clockDomainIndex*/, la::avdecc::controller::model::MediaClockChain const& /*mcChain*/) noexcept override {}
 		virtual void onMaxTransitTimeChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*streamIndex*/, std::chrono::nanoseconds const& /*maxTransitTime*/) noexcept override {}
-		virtual void onSystemUniqueIDChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::SystemUniqueIdentifier const /*systemUniqueID*/) noexcept override {}
+		virtual void onSystemUniqueIDChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::UniqueIdentifier const /*systemUniqueID*/, la::avdecc::entity::model::AvdeccFixedString const& /*systemName*/) noexcept override {}
 		virtual void onMediaClockReferenceInfoChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ClockDomainIndex const /*clockDomainIndex*/, la::avdecc::entity::model::MediaClockReferenceInfo const& /*mcrInfo*/) noexcept override {}
 
 		// Statistics
@@ -633,7 +633,7 @@ public:
 	virtual void writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, controller::Controller::DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryProgressHandler const& progressHandler, WriteDeviceMemoryCompletionHandler const& completionHandler) const noexcept = 0;
 
 	/* Milan extention. WARNING: The 'entity' parameter might be nullptr even if 'status' is AemCommandStatus::Success, in case the unit goes offline right after processing our command. */
-	virtual void setSystemUniqueID(UniqueIdentifier const targetEntityID, entity::model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept = 0;
+	virtual void setSystemUniqueID(UniqueIdentifier const targetEntityID, UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName, SetSystemUniqueIDHandler const& handler) const noexcept = 0;
 	virtual void setMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, std::optional<entity::model::MediaClockReferencePriority> const userPriority, std::optional<entity::model::AvdeccFixedString> const& domainName, SetMediaClockReferenceInfoHandler const& handler) const noexcept = 0;
 
 	/* Connection management. */

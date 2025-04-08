@@ -2727,18 +2727,18 @@ void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, st
 	}
 }
 
-void ControllerImpl::setSystemUniqueID(UniqueIdentifier const targetEntityID, entity::model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept
+void ControllerImpl::setSystemUniqueID(UniqueIdentifier const targetEntityID, UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName, SetSystemUniqueIDHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
 	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User setSystemUniqueID (SystemUniqueID={})", systemUniqueID);
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setSystemUniqueID (SystemUniqueID={} SystemName={})", utils::toHexString(systemUniqueID, true), systemName.str());
 
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controllerProxy->setSystemUniqueID(targetEntityID, systemUniqueID,
-			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::SystemUniqueIdentifier const systemUniqueID)
+		_controllerProxy->setSystemUniqueID(targetEntityID, systemUniqueID, systemName,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setSystemUniqueID (): {}", entity::ControllerEntity::statusToString(status));
 
@@ -2752,7 +2752,7 @@ void ControllerImpl::setSystemUniqueID(UniqueIdentifier const targetEntityID, en
 					// Update system unique ID
 					if (!!status)
 					{
-						updateSystemUniqueID(*entity, systemUniqueID);
+						updateSystemUniqueID(*entity, systemUniqueID, systemName);
 					}
 
 					// Invoke result handler

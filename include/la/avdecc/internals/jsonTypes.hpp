@@ -1239,6 +1239,7 @@ constexpr auto MilanInfo_SpecificationVersion = "specification_version";
 
 /* MilanDynamicState */
 constexpr auto MilanDynamicState_SystemUniqueID = "system_unique_id";
+constexpr auto MilanDynamicState_SystemName = "system_name";
 
 /* MediaClockReferenceInfo */
 constexpr auto MediaClockReferenceInfo_UserMediaClockPriority = "user_media_clock_priority";
@@ -2865,10 +2866,12 @@ inline void from_json(json const& j, MilanInfo& info)
 inline void to_json(json& j, MilanDynamicState const& state)
 {
 	j[keyName::MilanDynamicState_SystemUniqueID] = state.systemUniqueID;
+	j[keyName::MilanDynamicState_SystemName] = state.systemName;
 }
 inline void from_json(json const& j, MilanDynamicState& state)
 {
 	get_optional_value(j, keyName::MilanDynamicState_SystemUniqueID, state.systemUniqueID);
+	get_optional_value(j, keyName::MilanDynamicState_SystemName, state.systemName);
 }
 
 } // namespace model

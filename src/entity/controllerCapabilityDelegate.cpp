@@ -2061,12 +2061,12 @@ void CapabilityDelegate::getMilanInfo(UniqueIdentifier const targetEntityID, Int
 	}
 }
 
-void CapabilityDelegate::setSystemUniqueID(UniqueIdentifier const targetEntityID, model::SystemUniqueIdentifier const systemUniqueID, Interface::SetSystemUniqueIDHandler const& handler) const noexcept
+void CapabilityDelegate::setSystemUniqueID(UniqueIdentifier const targetEntityID, UniqueIdentifier const systemUniqueID, model::AvdeccFixedString const& systemName, Interface::SetSystemUniqueIDHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, model::SystemUniqueIdentifier{});
+	auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, UniqueIdentifier{}, s_emptyAvdeccFixedString);
 	try
 	{
-		auto const ser = protocol::mvuPayload::serializeSetSystemUniqueIDCommand(systemUniqueID);
+		auto const ser = protocol::mvuPayload::serializeSetSystemUniqueIDCommand(systemUniqueID, systemName);
 		sendMvuAecpCommand(targetEntityID, protocol::MvuCommandType::SetSystemUniqueID, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
@@ -2078,7 +2078,7 @@ void CapabilityDelegate::setSystemUniqueID(UniqueIdentifier const targetEntityID
 
 void CapabilityDelegate::getSystemUniqueID(UniqueIdentifier const targetEntityID, Interface::GetSystemUniqueIDHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, model::SystemUniqueIdentifier{});
+	auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, UniqueIdentifier{}, s_emptyAvdeccFixedString);
 	try
 	{
 		auto const ser = protocol::mvuPayload::serializeGetSystemUniqueIDCommand();
@@ -4736,25 +4736,25 @@ void CapabilityDelegate::processMvuAecpResponse(protocol::MvuCommandType const c
 		{ protocol::MvuCommandType::SetSystemUniqueID.getValue(),
 			[](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
-				auto const [systemUniqueID] = protocol::mvuPayload::deserializeSetSystemUniqueIDResponse(status, mvu.getPayload());
+				auto const [systemUniqueID, systemName] = protocol::mvuPayload::deserializeSetSystemUniqueIDResponse(status, mvu.getPayload());
 				auto const targetID = mvu.getTargetEntityID();
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::SetSystemUniqueIDHandler>(protocolViolationCallback, controllerInterface, targetID, status, systemUniqueID);
+				answerCallback.invoke<controller::Interface::SetSystemUniqueIDHandler>(protocolViolationCallback, controllerInterface, targetID, status, systemUniqueID, systemName);
 				if (mvu.getUnsolicited() && delegate && !!status)
 				{
-					utils::invokeProtectedMethod(&controller::Delegate::onSystemUniqueIDChanged, delegate, controllerInterface, targetID, systemUniqueID);
+					utils::invokeProtectedMethod(&controller::Delegate::onSystemUniqueIDChanged, delegate, controllerInterface, targetID, systemUniqueID, systemName);
 				}
 			} },
 		// Get System Unique ID
 		{ protocol::MvuCommandType::GetSystemUniqueID.getValue(),
 			[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
-				auto const [systemUniqueID] = protocol::mvuPayload::deserializeGetSystemUniqueIDResponse(status, mvu.getPayload());
+				auto const [systemUniqueID, systemName] = protocol::mvuPayload::deserializeGetSystemUniqueIDResponse(status, mvu.getPayload());
 				auto const targetID = mvu.getTargetEntityID();
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::GetSystemUniqueIDHandler>(protocolViolationCallback, controllerInterface, targetID, status, systemUniqueID);
+				answerCallback.invoke<controller::Interface::GetSystemUniqueIDHandler>(protocolViolationCallback, controllerInterface, targetID, status, systemUniqueID, systemName);
 			} },
 		// Set Media Clock Reference Info
 		{ protocol::MvuCommandType::SetMediaClockReferenceInfo.getValue(),

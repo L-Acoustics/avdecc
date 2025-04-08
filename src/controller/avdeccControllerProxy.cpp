@@ -2407,23 +2407,23 @@ void ControllerVirtualProxy::getMilanInfo(UniqueIdentifier const targetEntityID,
 	}
 }
 
-void ControllerVirtualProxy::setSystemUniqueID(UniqueIdentifier const targetEntityID, entity::model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept
+void ControllerVirtualProxy::setSystemUniqueID(UniqueIdentifier const targetEntityID, UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName, SetSystemUniqueIDHandler const& handler) const noexcept
 {
 	auto const isVirtual = isVirtualEntity(targetEntityID);
 	if (isVirtual && _virtualInterface)
 	{
 		// Forward call to the virtual interface
 		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
-			[this, targetEntityID, systemUniqueID, handler]()
+			[this, targetEntityID, systemUniqueID, systemName, handler]()
 			{
 				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
-				_virtualInterface->setSystemUniqueID(targetEntityID, systemUniqueID, handler);
+				_virtualInterface->setSystemUniqueID(targetEntityID, systemUniqueID, systemName, handler);
 			});
 	}
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setSystemUniqueID(targetEntityID, systemUniqueID, handler);
+		_realInterface->setSystemUniqueID(targetEntityID, systemUniqueID, systemName, handler);
 	}
 }
 

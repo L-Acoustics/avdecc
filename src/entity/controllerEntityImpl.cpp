@@ -664,9 +664,9 @@ void ControllerEntityImpl::getMilanInfo(UniqueIdentifier const targetEntityID, G
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMilanInfo(targetEntityID, handler);
 }
 
-void ControllerEntityImpl::setSystemUniqueID(UniqueIdentifier const targetEntityID, model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept
+void ControllerEntityImpl::setSystemUniqueID(UniqueIdentifier const targetEntityID, UniqueIdentifier const systemUniqueID, model::AvdeccFixedString const& systemName, SetSystemUniqueIDHandler const& handler) const noexcept
 {
-	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setSystemUniqueID(targetEntityID, systemUniqueID, handler);
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setSystemUniqueID(targetEntityID, systemUniqueID, systemName, handler);
 }
 
 void ControllerEntityImpl::getSystemUniqueID(UniqueIdentifier const targetEntityID, GetSystemUniqueIDHandler const& handler) const noexcept

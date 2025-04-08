@@ -66,21 +66,21 @@ void deserializeGetMilanInfoCommand(MvuAecpdu::Payload const& payload);
 Serializer<AecpMvuGetMilanInfoResponsePayloadMaxSize> serializeGetMilanInfoResponse(entity::model::MilanInfo const& info);
 std::tuple<entity::model::MilanInfo> deserializeGetMilanInfoResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload);
 
-/** SET_SYSTEM_UNIQUE_ID Command - Milan 1.2 Clause 5.4.4.2 */
-Serializer<AecpMvuSetSystemUniqueIDCommandPayloadSize> serializeSetSystemUniqueIDCommand(entity::model::SystemUniqueIdentifier const systemUniqueID);
-std::tuple<entity::model::SystemUniqueIdentifier> deserializeSetSystemUniqueIDCommand(MvuAecpdu::Payload const& payload);
+/** SET_SYSTEM_UNIQUE_ID Command - Milan 1.3 Clause 5.4.4.2 */
+Serializer<AecpMvuSetSystemUniqueIDCommandPayloadMaxSize> serializeSetSystemUniqueIDCommand(UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName);
+std::tuple<UniqueIdentifier, entity::model::AvdeccFixedString> deserializeSetSystemUniqueIDCommand(MvuAecpdu::Payload const& payload);
 
-/** SET_SYSTEM_UNIQUE_ID Response - Milan 1.2 Clause 5.4.4.2 */
-Serializer<AecpMvuSetSystemUniqueIDResponsePayloadSize> serializeSetSystemUniqueIDResponse(entity::model::SystemUniqueIdentifier const systemUniqueID);
-std::tuple<entity::model::SystemUniqueIdentifier> deserializeSetSystemUniqueIDResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload);
+/** SET_SYSTEM_UNIQUE_ID Response - Milan 1.3 Clause 5.4.4.2 */
+Serializer<AecpMvuSetSystemUniqueIDResponsePayloadMaxSize> serializeSetSystemUniqueIDResponse(UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName);
+std::tuple<UniqueIdentifier, entity::model::AvdeccFixedString> deserializeSetSystemUniqueIDResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload);
 
-/** GET_SYSTEM_UNIQUE_ID Command - Milan 1.2 Clause 5.4.4.3 */
+/** GET_SYSTEM_UNIQUE_ID Command - Milan 1.3 Clause 5.4.4.3 */
 Serializer<AecpMvuGetSystemUniqueIDCommandPayloadSize> serializeGetSystemUniqueIDCommand();
 //void deserializeGetSystemUniqueIDCommand(MvuAecpdu::Payload const& payload); // No payload
 
-/** GET_SYSTEM_UNIQUE_ID Response - Milan 1.2 Clause 5.4.4.3 */
-Serializer<AecpMvuGetSystemUniqueIDResponsePayloadSize> serializeGetSystemUniqueIDResponse(entity::model::SystemUniqueIdentifier const systemUniqueID);
-std::tuple<entity::model::SystemUniqueIdentifier> deserializeGetSystemUniqueIDResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload);
+/** GET_SYSTEM_UNIQUE_ID Response - Milan 1.3 Clause 5.4.4.3 */
+Serializer<AecpMvuGetSystemUniqueIDResponsePayloadMaxSize> serializeGetSystemUniqueIDResponse(UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName);
+std::tuple<UniqueIdentifier, entity::model::AvdeccFixedString> deserializeGetSystemUniqueIDResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload);
 
 /** SET_MEDIA_CLOCK_REFERENCE_INFO Command - Milan 1.3 Clause 5.4.4.4 */
 Serializer<AecpMvuSetMediaClockReferenceInfoCommandPayloadSize> serializeSetMediaClockReferenceInfoCommand(entity::model::ClockDomainIndex const clockDomainIndex, entity::MediaClockReferenceInfoFlags const flags, entity::model::DefaultMediaClockReferencePriority const defaultMcrPrio, entity::model::MediaClockReferencePriority const userMcrPrio, entity::model::AvdeccFixedString const& domainName);

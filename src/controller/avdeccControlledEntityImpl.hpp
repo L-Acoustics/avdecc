@@ -340,7 +340,7 @@ public:
 	void setLockingController(UniqueIdentifier const controllerID) noexcept;
 	void setMilanInfo(entity::model::MilanInfo const& info) noexcept;
 	void setMilanDynamicState(entity::model::MilanDynamicState const& state) noexcept;
-	void setSystemUniqueID(entity::model::SystemUniqueIdentifier const uniqueID) noexcept;
+	void setSystemUniqueID(UniqueIdentifier const uniqueID, entity::model::AvdeccFixedString const& systemName) noexcept;
 
 	// Setters of the Statistics
 	void setAecpRetryCounter(std::uint64_t const value) noexcept;

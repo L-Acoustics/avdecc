@@ -886,7 +886,7 @@ void ControllerImpl::onMaxTransitTimeChanged(entity::controller::Interface const
 	}
 }
 
-void ControllerImpl::onSystemUniqueIDChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept
+void ControllerImpl::onSystemUniqueIDChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -894,7 +894,7 @@ void ControllerImpl::onSystemUniqueIDChanged(entity::controller::Interface const
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateSystemUniqueID(entity, systemUniqueID);
+		updateSystemUniqueID(entity, systemUniqueID, systemName);
 	}
 }
 

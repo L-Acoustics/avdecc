@@ -135,26 +135,27 @@ std::tuple<entity::model::MilanInfo> deserializeGetMilanInfoResponse(entity::Loc
 	return std::make_tuple(info);
 }
 
-/** SET_SYSTEM_UNIQUE_ID Command - Milan 1.2 Clause 5.4.4.2 */
-Serializer<AecpMvuSetSystemUniqueIDCommandPayloadSize> serializeSetSystemUniqueIDCommand(entity::model::SystemUniqueIdentifier const systemUniqueID)
+/** SET_SYSTEM_UNIQUE_ID Command - Milan 1.3 Clause 5.4.4.2 */
+Serializer<AecpMvuSetSystemUniqueIDCommandPayloadMaxSize> serializeSetSystemUniqueIDCommand(UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName)
 {
-	auto ser = Serializer<AecpMvuSetSystemUniqueIDCommandPayloadSize>{};
+	auto ser = Serializer<AecpMvuSetSystemUniqueIDCommandPayloadMaxSize>{};
 	auto const reserved16 = std::uint16_t{ 0u };
 
 	ser << reserved16;
 	ser << systemUniqueID;
+	ser << systemName;
 
 	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
 
 	return ser;
 }
 
-std::tuple<entity::model::SystemUniqueIdentifier> deserializeSetSystemUniqueIDCommand(MvuAecpdu::Payload const& payload)
+std::tuple<UniqueIdentifier, entity::model::AvdeccFixedString> deserializeSetSystemUniqueIDCommand(MvuAecpdu::Payload const& payload)
 {
 	auto* const commandPayload = payload.first;
 	auto const commandPayloadLength = payload.second;
 
-	if (commandPayload == nullptr || commandPayloadLength < AecpMvuSetSystemUniqueIDCommandPayloadSize) // Malformed packet
+	if (commandPayload == nullptr || commandPayloadLength < AecpMvuSetSystemUniqueIDCommandPayloadMinSize) // Malformed packet
 	{
 		throw IncorrectPayloadSizeException();
 	}
@@ -162,29 +163,45 @@ std::tuple<entity::model::SystemUniqueIdentifier> deserializeSetSystemUniqueIDCo
 	// Check payload
 	auto des = Deserializer{ commandPayload, commandPayloadLength };
 	auto reserved16 = std::uint16_t{ 0u };
-	auto systemUniqueID = entity::model::SystemUniqueIdentifier{};
+	auto systemUniqueID = UniqueIdentifier{};
+	auto systemName = entity::model::AvdeccFixedString{};
 
 	des >> reserved16;
-	des >> systemUniqueID;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpMvuSetSystemUniqueIDCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
+	// If payload size is Milan 1.2 size, unpack the lower part of the SystemUniqueID (that went from 32 bits to 64 bits)
+	if (commandPayloadLength == AecpMvuSetSystemUniqueID12CommandPayloadSize)
+	{
+		auto systemUniqueID_milan12 = std::uint32_t{ 0u };
+		des >> systemUniqueID_milan12;
+		systemUniqueID = UniqueIdentifier{ systemUniqueID_milan12 };
 
-	return std::make_tuple(systemUniqueID);
+		AVDECC_ASSERT(des.usedBytes() == AecpMvuSetSystemUniqueID12CommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
+	}
+	// Otherwise if the payload is at least Milan 1.3
+	else if (commandPayloadLength >= AecpMvuSetSystemUniqueID13CommandPayloadSize)
+	{
+		des >> systemUniqueID;
+		des >> systemName;
+
+		AVDECC_ASSERT(des.usedBytes() == AecpMvuSetSystemUniqueID13CommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
+	}
+
+	return std::make_tuple(systemUniqueID, systemName);
 }
 
 /** SET_SYSTEM_UNIQUE_ID Response - Milan 1.2 Clause 5.4.4.2 */
-Serializer<AecpMvuSetSystemUniqueIDResponsePayloadSize> serializeSetSystemUniqueIDResponse(entity::model::SystemUniqueIdentifier const systemUniqueID)
+Serializer<AecpMvuSetSystemUniqueIDResponsePayloadMaxSize> serializeSetSystemUniqueIDResponse(UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName)
 {
 	// Same as SET_SYSTEM_UNIQUE_ID Command
-	static_assert(AecpMvuSetSystemUniqueIDResponsePayloadSize == AecpMvuSetSystemUniqueIDCommandPayloadSize, "SET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
-	return serializeSetSystemUniqueIDCommand(systemUniqueID);
+	static_assert(AecpMvuSetSystemUniqueIDResponsePayloadMaxSize == AecpMvuSetSystemUniqueIDCommandPayloadMaxSize, "SET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
+	return serializeSetSystemUniqueIDCommand(systemUniqueID, systemName);
 }
 
-std::tuple<entity::model::SystemUniqueIdentifier> deserializeSetSystemUniqueIDResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload)
+std::tuple<UniqueIdentifier, entity::model::AvdeccFixedString> deserializeSetSystemUniqueIDResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload)
 {
 	// Same as SET_SYSTEM_UNIQUE_ID Command
-	static_assert(AecpMvuSetSystemUniqueIDResponsePayloadSize == AecpMvuSetSystemUniqueIDCommandPayloadSize, "SET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
-	checkResponsePayload(payload, status, AecpMvuSetSystemUniqueIDCommandPayloadSize, AecpMvuSetSystemUniqueIDResponsePayloadSize);
+	static_assert(AecpMvuSetSystemUniqueIDResponsePayloadMaxSize == AecpMvuSetSystemUniqueIDCommandPayloadMaxSize, "SET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
+	checkResponsePayload(payload, status, AecpMvuSetSystemUniqueIDCommandPayloadMinSize, AecpMvuSetSystemUniqueIDResponsePayloadMinSize);
 	return deserializeSetSystemUniqueIDCommand(payload);
 }
 
@@ -204,18 +221,18 @@ Serializer<AecpMvuGetSystemUniqueIDCommandPayloadSize> serializeGetSystemUniqueI
 // No payload to deserialize
 
 /** GET_SYSTEM_UNIQUE_ID Response - Milan 1.2 Clause 5.4.4.3 */
-Serializer<AecpMvuGetSystemUniqueIDResponsePayloadSize> serializeGetSystemUniqueIDResponse(entity::model::SystemUniqueIdentifier const systemUniqueID)
+Serializer<AecpMvuGetSystemUniqueIDResponsePayloadMaxSize> serializeGetSystemUniqueIDResponse(UniqueIdentifier const systemUniqueID, la::avdecc::entity::model::AvdeccFixedString const& systemName)
 {
 	// Same as SET_SYSTEM_UNIQUE_ID Command
-	static_assert(AecpMvuGetSystemUniqueIDResponsePayloadSize == AecpMvuSetSystemUniqueIDCommandPayloadSize, "GET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
-	return serializeSetSystemUniqueIDCommand(systemUniqueID);
+	static_assert(AecpMvuGetSystemUniqueIDResponsePayloadMaxSize == AecpMvuSetSystemUniqueIDCommandPayloadMaxSize, "GET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
+	return serializeSetSystemUniqueIDCommand(systemUniqueID, systemName);
 }
 
-std::tuple<entity::model::SystemUniqueIdentifier> deserializeGetSystemUniqueIDResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload)
+std::tuple<UniqueIdentifier, entity::model::AvdeccFixedString> deserializeGetSystemUniqueIDResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload)
 {
 	// Same as SET_SYSTEM_UNIQUE_ID Command
-	static_assert(AecpMvuGetSystemUniqueIDResponsePayloadSize == AecpMvuSetSystemUniqueIDCommandPayloadSize, "GET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
-	checkResponsePayload(payload, status, AecpMvuGetSystemUniqueIDCommandPayloadSize, AecpMvuGetSystemUniqueIDResponsePayloadSize);
+	static_assert(AecpMvuGetSystemUniqueIDResponsePayloadMaxSize == AecpMvuSetSystemUniqueIDCommandPayloadMaxSize, "GET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
+	checkResponsePayload(payload, status, AecpMvuGetSystemUniqueIDCommandPayloadSize, AecpMvuGetSystemUniqueIDResponsePayloadMinSize);
 	return deserializeSetSystemUniqueIDCommand(payload);
 }
 

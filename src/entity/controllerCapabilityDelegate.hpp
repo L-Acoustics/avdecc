@@ -173,7 +173,7 @@ public:
 	void addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, Interface::AddressAccessHandler const& handler) const noexcept;
 	/* Enumeration and Control Protocol (AECP) MVU (Milan Vendor Unique) */
 	void getMilanInfo(UniqueIdentifier const targetEntityID, Interface::GetMilanInfoHandler const& handler) const noexcept;
-	void setSystemUniqueID(UniqueIdentifier const targetEntityID, model::SystemUniqueIdentifier const systemUniqueID, Interface::SetSystemUniqueIDHandler const& handler) const noexcept;
+	void setSystemUniqueID(UniqueIdentifier const targetEntityID, UniqueIdentifier const systemUniqueID, model::AvdeccFixedString const& systemName, Interface::SetSystemUniqueIDHandler const& handler) const noexcept;
 	void getSystemUniqueID(UniqueIdentifier const targetEntityID, Interface::GetSystemUniqueIDHandler const& handler) const noexcept;
 	void setMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, std::optional<model::MediaClockReferencePriority> const userPriority, std::optional<model::AvdeccFixedString> const& domainName, Interface::SetMediaClockReferenceInfoHandler const& handler) const noexcept;
 	void getMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, Interface::GetMediaClockReferenceInfoHandler const& handler) const noexcept;

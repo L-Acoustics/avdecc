@@ -184,7 +184,7 @@ private:
 	virtual void addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept override;
 	/* Enumeration and Control Protocol (AECP) MVU (Milan Vendor Unique) */
 	virtual void getMilanInfo(UniqueIdentifier const targetEntityID, GetMilanInfoHandler const& handler) const noexcept override;
-	virtual void setSystemUniqueID(UniqueIdentifier const targetEntityID, model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept override;
+	virtual void setSystemUniqueID(UniqueIdentifier const targetEntityID, UniqueIdentifier const systemUniqueID, model::AvdeccFixedString const& systemName, SetSystemUniqueIDHandler const& handler) const noexcept override;
 	virtual void getSystemUniqueID(UniqueIdentifier const targetEntityID, GetSystemUniqueIDHandler const& handler) const noexcept override;
 	virtual void setMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, std::optional<model::MediaClockReferencePriority> const userPriority, std::optional<model::AvdeccFixedString> const& domainName, SetMediaClockReferenceInfoHandler const& handler) const noexcept override;
 	virtual void getMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, GetMediaClockReferenceInfoHandler const& handler) const noexcept override;

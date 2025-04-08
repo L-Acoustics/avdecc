@@ -457,8 +457,9 @@ inline bool operator!=(MilanInfo const& lhs, MilanInfo const& rhs) noexcept
 /** Milan Dynamic State - All Milan specific dynamic info */
 struct MilanDynamicState
 {
-	// Milan 1.2 additions
-	std::optional<SystemUniqueIdentifier> systemUniqueID{};
+	// Milan 1.3 additions
+	std::optional<UniqueIdentifier> systemUniqueID{};
+	std::optional<la::avdecc::entity::model::AvdeccFixedString> systemName{};
 };
 
 inline bool operator==(MilanDynamicState const& lhs, MilanDynamicState const& rhs) noexcept

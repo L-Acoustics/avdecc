@@ -1603,13 +1603,14 @@ void ControlledEntityImpl::setMilanDynamicState(entity::model::MilanDynamicState
 	_milanDynamicState = state;
 }
 
-void ControlledEntityImpl::setSystemUniqueID(entity::model::SystemUniqueIdentifier const uniqueID) noexcept
+void ControlledEntityImpl::setSystemUniqueID(UniqueIdentifier const uniqueID, entity::model::AvdeccFixedString const& systemName) noexcept
 {
 	if (!_milanDynamicState)
 	{
 		_milanDynamicState = entity::model::MilanDynamicState{};
 	}
 	_milanDynamicState->systemUniqueID = uniqueID;
+	_milanDynamicState->systemName = systemName;
 }
 
 // Setters of the Statistics

@@ -1799,16 +1799,16 @@ void ControllerImpl::updateStreamInputLatency(ControlledEntityImpl& controlledEn
 	}
 }
 
-void ControllerImpl::updateSystemUniqueID(ControlledEntityImpl& controlledEntity, entity::model::SystemUniqueIdentifier const uniqueID) const noexcept
+void ControllerImpl::updateSystemUniqueID(ControlledEntityImpl& controlledEntity, UniqueIdentifier const uniqueID, entity::model::AvdeccFixedString const& systemName) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setSystemUniqueID(uniqueID);
+	controlledEntity.setSystemUniqueID(uniqueID, systemName);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
 	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onSystemUniqueIDChanged, this, &controlledEntity, uniqueID);
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onSystemUniqueIDChanged, this, &controlledEntity, uniqueID, systemName);
 	}
 }
 
@@ -2504,7 +2504,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			queryFunc = [this, entityID](entity::ControllerEntity* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getSystemUniqueID ()");
-				controller->getSystemUniqueID(entityID, std::bind(&ControllerImpl::onGetSystemUniqueIDResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+				controller->getSystemUniqueID(entityID, std::bind(&ControllerImpl::onGetSystemUniqueIDResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::GetMediaClockReferenceInfo:

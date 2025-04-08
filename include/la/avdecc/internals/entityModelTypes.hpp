@@ -82,7 +82,6 @@ using DescriptorCounterValidFlag = std::uint32_t; /** Counters valid flag - IEEE
 using DescriptorCounter = std::uint32_t; /** Counter - IEEE1722.1-2013 Clause 7.4.42 */
 using OperationID = std::uint16_t; /** OperationID for OPERATIONS returned by an entity to a controller - IEEE1722.1-2013 Clause 7.4.53 */
 using BridgeIdentifier = std::uint64_t;
-using SystemUniqueIdentifier = std::uint32_t; /** System Unique Identifier - Milan 1.2 Clause 5.4.4.2 */
 using MediaClockReferencePriority = std::uint8_t; /** Media Clock Reference Priority - Milan 1.3 Clause 5.4.4.4 */
 
 constexpr DescriptorIndex getInvalidDescriptorIndex() noexcept

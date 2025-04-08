@@ -49,16 +49,32 @@ constexpr size_t AecpMvuGetMilanInfoResponsePayloadMinSize = std::min(AecpMvuGet
 constexpr size_t AecpMvuGetMilanInfoResponsePayloadMaxSize = std::max(AecpMvuGetMilanInfo12ResponsePayloadSize, AecpMvuGetMilanInfo13ResponsePayloadSize);
 
 /** SET_SYSTEM_UNIQUE_ID Command - Milan 1.2 Clause 5.4.4.2 */
-constexpr size_t AecpMvuSetSystemUniqueIDCommandPayloadSize = 6u;
+constexpr size_t AecpMvuSetSystemUniqueID12CommandPayloadSize = 6u;
+
+/** SET_SYSTEM_UNIQUE_ID Command - Milan 1.3 Clause 5.4.4.2 */
+constexpr size_t AecpMvuSetSystemUniqueID13CommandPayloadSize = 74u;
 
 /** SET_SYSTEM_UNIQUE_ID Response - Milan 1.2 Clause 5.4.4.2 */
-constexpr size_t AecpMvuSetSystemUniqueIDResponsePayloadSize = 6u;
+constexpr size_t AecpMvuSetSystemUniqueID12ResponsePayloadSize = 6u;
 
-/** GET_SYSTEM_UNIQUE_ID Command - Milan 1.2 Clause 5.4.4.3 */
+/** SET_SYSTEM_UNIQUE_ID Response - Milan 1.3 Clause 5.4.4.2 */
+constexpr size_t AecpMvuSetSystemUniqueID13ResponsePayloadSize = 74u;
+
+/** GET_SYSTEM_UNIQUE_ID Command - Milan 1.3 Clause 5.4.4.3 */
 constexpr size_t AecpMvuGetSystemUniqueIDCommandPayloadSize = 2u;
 
 /** GET_SYSTEM_UNIQUE_ID Response - Milan 1.2 Clause 5.4.4.3 */
-constexpr size_t AecpMvuGetSystemUniqueIDResponsePayloadSize = 6u;
+constexpr size_t AecpMvuGetSystemUniqueID12ResponsePayloadSize = 6u;
+
+/** GET_SYSTEM_UNIQUE_ID Response - Milan 1.3 Clause 5.4.4.3 */
+constexpr size_t AecpMvuGetSystemUniqueID13ResponsePayloadSize = 74u;
+
+constexpr size_t AecpMvuSetSystemUniqueIDCommandPayloadMinSize = std::min(AecpMvuSetSystemUniqueID12CommandPayloadSize, AecpMvuSetSystemUniqueID13CommandPayloadSize);
+constexpr size_t AecpMvuSetSystemUniqueIDCommandPayloadMaxSize = std::max(AecpMvuSetSystemUniqueID12CommandPayloadSize, AecpMvuSetSystemUniqueID13CommandPayloadSize);
+constexpr size_t AecpMvuSetSystemUniqueIDResponsePayloadMinSize = std::min(AecpMvuSetSystemUniqueID12ResponsePayloadSize, AecpMvuSetSystemUniqueID13ResponsePayloadSize);
+constexpr size_t AecpMvuSetSystemUniqueIDResponsePayloadMaxSize = std::max(AecpMvuSetSystemUniqueID12ResponsePayloadSize, AecpMvuSetSystemUniqueID13ResponsePayloadSize);
+constexpr size_t AecpMvuGetSystemUniqueIDResponsePayloadMinSize = std::min(AecpMvuGetSystemUniqueID12ResponsePayloadSize, AecpMvuGetSystemUniqueID13ResponsePayloadSize);
+constexpr size_t AecpMvuGetSystemUniqueIDResponsePayloadMaxSize = std::max(AecpMvuGetSystemUniqueID12ResponsePayloadSize, AecpMvuGetSystemUniqueID13ResponsePayloadSize);
 
 /** SET_MEDIA_CLOCK_REFERENCE_INFO Command - Milan 1.3 Clause 5.4.4.4 */
 constexpr size_t AecpMvuSetMediaClockReferenceInfoCommandPayloadSize = 74u;

@@ -150,7 +150,7 @@ private:
 	virtual void writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryProgressHandler const& progressHandler, WriteDeviceMemoryCompletionHandler const& completionHandler) const noexcept override;
 
 	/* Enumeration and Control Protocol (AECP) MVU handlers (Milan Vendor Unique). WARNING: The 'entity' parameter might be nullptr even if 'status' is AemCommandStatus::Success, in case the unit goes offline right after processing our command. */
-	virtual void setSystemUniqueID(UniqueIdentifier const targetEntityID, entity::model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept override;
+	virtual void setSystemUniqueID(UniqueIdentifier const targetEntityID, UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName, SetSystemUniqueIDHandler const& handler) const noexcept override;
 	virtual void setMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, std::optional<entity::model::MediaClockReferencePriority> const userPriority, std::optional<entity::model::AvdeccFixedString> const& domainName, SetMediaClockReferenceInfoHandler const& handler) const noexcept override;
 
 	/* Connection Management Protocol (ACMP) */
@@ -243,7 +243,7 @@ private:
 	void onPtpInstanceNameResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex, entity::model::AvdeccFixedString const& ptpInstanceName) noexcept;
 	void onPtpPortNameResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex, entity::model::AvdeccFixedString const& ptpPortName) noexcept;
 	void onGetMaxTransitTimeResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, entity::model::ConfigurationIndex const configurationIndex) noexcept;
-	void onGetSystemUniqueIDResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept;
+	void onGetSystemUniqueIDResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName) noexcept;
 	void onGetMediaClockReferenceInfoResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& info) noexcept;
 
 	/* Connection Management Protocol (ACMP) handlers */
@@ -323,7 +323,7 @@ private:
 	virtual void onMemoryObjectLengthChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept override;
 	virtual void onOperationStatus(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete) noexcept override;
 	virtual void onMaxTransitTimeChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime) noexcept override;
-	virtual void onSystemUniqueIDChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept override;
+	virtual void onSystemUniqueIDChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName) noexcept override;
 	virtual void onMediaClockReferenceInfoChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& mcrInfo) noexcept override;
 	virtual void onBindStream(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& talkerStream, entity::BindStreamFlags const flags) noexcept override;
 	virtual void onUnbindStream(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
@@ -408,7 +408,7 @@ private:
 	static void updateRedundancyWarning(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, bool const isWarning) noexcept;
 	static void updateControlCurrentValueOutOfBounds(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ControlIndex const controlIndex, bool const isOutOfBounds) noexcept;
 	void updateStreamInputLatency(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isOverLatency) const noexcept;
-	void updateSystemUniqueID(ControlledEntityImpl& controlledEntity, entity::model::SystemUniqueIdentifier const uniqueID) const noexcept;
+	void updateSystemUniqueID(ControlledEntityImpl& controlledEntity, UniqueIdentifier const uniqueID, entity::model::AvdeccFixedString const& systemName) const noexcept;
 	void updateMediaClockReferenceInfo(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& info, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept;
 
 	/* ************************************************************ */

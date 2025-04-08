@@ -1030,11 +1030,11 @@ void AggregateEntityImpl::getMilanInfo(UniqueIdentifier const targetEntityID, Ge
 	}
 }
 
-void AggregateEntityImpl::setSystemUniqueID(UniqueIdentifier const targetEntityID, model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept
+void AggregateEntityImpl::setSystemUniqueID(UniqueIdentifier const targetEntityID, UniqueIdentifier const systemUniqueID, model::AvdeccFixedString const& systemName, SetSystemUniqueIDHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
-		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setSystemUniqueID(targetEntityID, systemUniqueID, handler);
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setSystemUniqueID(targetEntityID, systemUniqueID, systemName, handler);
 	}
 }
 
