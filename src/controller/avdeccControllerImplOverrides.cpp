@@ -2880,7 +2880,7 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 		{
 			LOG_CONTROLLER_TRACE(listenerStream.entityID, "User bindStream (TalkerID={} TalkerIndex={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, listenerStream.streamIndex);
 			_controllerProxy->bindStream(listenerStream.entityID, listenerStream.streamIndex, talkerStream, entity::BindStreamFlags{},
-				[this, handler](entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::LocalEntity::MvuCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& talkerStream, entity::BindStreamFlags const flags)
+				[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::LocalEntity::MvuCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& talkerStream, entity::BindStreamFlags const flags)
 				{
 					LOG_CONTROLLER_TRACE(entityID, "User bindStream (TalkerID={} TalkerIndex={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
@@ -2923,7 +2923,6 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 		else
 		{
 			LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
-			auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 			_controllerProxy->connectStream(talkerStream, listenerStream,
 				[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 				{
@@ -2966,7 +2965,7 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 		{
 			LOG_CONTROLLER_TRACE(listenerStream.entityID, "User unbindStream (ListenerIndex={})", listenerStream.streamIndex);
 			_controllerProxy->unbindStream(listenerStream.entityID, listenerStream.streamIndex,
-				[this, handler](entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::LocalEntity::MvuCommandStatus const status, entity::model::StreamIndex const streamIndex)
+				[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::LocalEntity::MvuCommandStatus const status, entity::model::StreamIndex const streamIndex)
 				{
 					LOG_CONTROLLER_TRACE(entityID, "User unbindStream (ListenerIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
@@ -3003,7 +3002,6 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 		else
 		{
 			LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
-			auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 			_controllerProxy->disconnectStream(talkerStream, listenerStream,
 				[this, handler](entity::controller::Interface const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 				{
