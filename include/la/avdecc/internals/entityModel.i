@@ -255,6 +255,7 @@ DEFINE_ENUM_CLASS(la::avdecc::entity::StreamOutputCounterValidFlagMilan12, "uint
 DEFINE_ENUM_CLASS(la::avdecc::entity::StreamOutputCounterValidFlag17221, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity::MilanInfoFeaturesFlag, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity::MediaClockReferenceInfoFlag, "byte")
+DEFINE_ENUM_CLASS(la::avdecc::entity::BindStreamFlag, "ushort")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -291,6 +292,7 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlagsMila
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlags17221, StreamOutputCounterValidFlag17221, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MilanInfoFeaturesFlags, MilanInfoFeaturesFlag, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MediaClockReferenceInfoFlags, MediaClockReferenceInfoFlag, std::uint8_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, BindStreamFlags, BindStreamFlag, std::uint16_t)
 
 
 ////////////////////////////////////////
@@ -390,6 +392,7 @@ DEFINE_TYPED_PROTOCOL_CLASS(AcmpStatus, AcmpStatusTypedDefine, std::uint8_t)
 %optional_arithmetic(std::uint8_t, OptUInt8)
 %optional_arithmetic(std::uint32_t, OptUInt32)
 %optional_arithmetic(la::avdecc::entity::model::ProbingStatus, OptProbingStatus)
+%optional(la::avdecc::UniqueIdentifier)
 %optional(la::avdecc::entity::model::MilanVersion)
 %optional(la::avdecc::entity::model::AvdeccFixedString)
 %optional(la::avdecc::entity::StreamInfoFlagsEx)
