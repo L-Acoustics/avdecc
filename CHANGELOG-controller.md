@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - [Added a compilation option to continue enumeration in case device returns MISBEHAVE status](https://github.com/L-Acoustics/avdecc/issues/156)
+- [macOS] Device not properly enumerated if `Fast Enumeration` is enabled
 
 ## [4.0.0] - 2025-02-18
 ### Added

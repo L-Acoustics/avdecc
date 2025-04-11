@@ -567,12 +567,14 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 				}
 				catch (std::bad_any_cast const&)
 				{
+					updatedStatus = entity::ControllerEntity::AemCommandStatus::ProtocolError;
 					gotError = true;
 				}
 			}
 
 			if (gotError)
 			{
+				LOG_CONTROLLER_TRACE(entityID, "onGetDynamicInfoResult updated status: {}", entity::ControllerEntity::statusToString(updatedStatus));
 				if (!processGetDynamicInfoFailureStatus(updatedStatus, &entity, sentParameters, packetID, step))
 				{
 					controlledEntity->setGetFatalEnumerationError();
