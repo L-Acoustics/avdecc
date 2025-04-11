@@ -45,7 +45,6 @@ LocalEntity::AemCommandStatus LocalEntityImpl<SuperClass>::convertErrorToAemComm
 		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
 			return LocalEntity::AemCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
-			AVDECC_ASSERT(false, "Trying to sendAemAecpCommand from a non-existing local entity");
 			return LocalEntity::AemCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::InvalidEntityType:
 			AVDECC_ASSERT(false, "Trying to sendAemAecpCommand from a non-controller entity");
@@ -72,7 +71,6 @@ LocalEntity::AaCommandStatus LocalEntityImpl<SuperClass>::convertErrorToAaComman
 		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
 			return LocalEntity::AaCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
-			AVDECC_ASSERT(false, "Trying to sendAaAecpCommand from a non-existing local entity");
 			return LocalEntity::AaCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::InvalidEntityType:
 			AVDECC_ASSERT(false, "Trying to sendAaAecpCommand from a non-controller entity");
@@ -99,7 +97,6 @@ LocalEntity::MvuCommandStatus LocalEntityImpl<SuperClass>::convertErrorToMvuComm
 		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
 			return LocalEntity::MvuCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
-			AVDECC_ASSERT(false, "Trying to sendMvuAecpCommand from a non-existing local entity");
 			return LocalEntity::MvuCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::InvalidEntityType:
 			AVDECC_ASSERT(false, "Trying to sendMvuAecpCommand from a non-controller entity");
@@ -129,7 +126,6 @@ LocalEntity::ControlStatus LocalEntityImpl<SuperClass>::convertErrorToControlSta
 		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
 			return LocalEntity::ControlStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
-			AVDECC_ASSERT(false, "Trying to sendAcmpCommand from a non-existing local entity");
 			return LocalEntity::ControlStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::InvalidEntityType:
 			return LocalEntity::ControlStatus::InternalError;
