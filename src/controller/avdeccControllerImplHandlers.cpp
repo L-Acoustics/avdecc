@@ -109,7 +109,7 @@ void ControllerImpl::onEmptyGetDynamicInfoResult(entity::controller::Interface c
 			}
 			else
 			{
-				if (!processEmptyGetDynamicInfoFailureStatus(status, &entity))
+				if (!processEmptyGetDynamicInfoFailureStatus(status, &entity, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 2 }, std::nullopt, entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &entity, QueryCommandError::CheckDynamicInfoSupported);
@@ -575,7 +575,7 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 			if (gotError)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "onGetDynamicInfoResult updated status: {}", entity::ControllerEntity::statusToString(updatedStatus));
-				if (!processGetDynamicInfoFailureStatus(updatedStatus, &entity, sentParameters, packetID, step))
+				if (!processGetDynamicInfoFailureStatus(updatedStatus, &entity, sentParameters, packetID, step, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 2 }, std::nullopt, entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &entity, QueryCommandError::GetDynamicInfo);

@@ -4042,7 +4042,7 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const controlle
 		getMilanInfo(controlledEntity);
 		return;
 	}
-	// Then check if dynamic information is supported
+	// Then check if GET_DYNAMIC_INFO command is supported (required for fast enumeration)
 	if (steps.test(ControlledEntityImpl::EnumerationStep::CheckDynamicInfoSupported))
 	{
 		checkDynamicInfoSupported(controlledEntity);
@@ -5558,7 +5558,7 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForControlStatus(e
 }
 
 /* This method handles non-success AemCommandStatus returned while trying to check if GET_DYNAMIC_INFO command is supported */
-bool ControllerImpl::processEmptyGetDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity) noexcept
+bool ControllerImpl::processEmptyGetDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, MilanRequirements const& milanRequirements) noexcept
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
@@ -5580,6 +5580,7 @@ bool ControllerImpl::processEmptyGetDynamicInfoFailureStatus(entity::ControllerE
 		case FailureAction::WarningContinue:
 			return true;
 		case FailureAction::NotSupported:
+			checkMilanRequirements(entity, milanRequirements, "Milan mandatory command not supported by the entity: GET_DYNAMIC_INFO");
 			return true;
 		case FailureAction::TimedOut:
 			[[fallthrough]];
@@ -5595,7 +5596,7 @@ bool ControllerImpl::processEmptyGetDynamicInfoFailureStatus(entity::ControllerE
 				// Too many retries, result depends on FailureAction and AemCommandStatus
 				if (action == FailureAction::TimedOut)
 				{
-					// Don't care, we won't use that command
+					checkMilanRequirements(entity, milanRequirements, "Too many timeouts for Milan mandatory command: GET_DYNAMIC_INFO");
 				}
 				else if (action == FailureAction::Busy)
 				{
@@ -5625,27 +5626,27 @@ bool ControllerImpl::processEmptyGetDynamicInfoFailureStatus(entity::ControllerE
 }
 
 /* This method handles non-success AemCommandStatus returned while using GET_DYNAMIC_INFO commands */
-bool ControllerImpl::processGetDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::controller::DynamicInfoParameters const& dynamicInfoParameters, std::uint16_t const packetID, ControlledEntityImpl::EnumerationStep const step) noexcept
+bool ControllerImpl::processGetDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::controller::DynamicInfoParameters const& dynamicInfoParameters, std::uint16_t const packetID, ControlledEntityImpl::EnumerationStep const step, MilanRequirements const& milanRequirements) noexcept
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
 	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForAemCommandStatus(status);
 	auto checkScheduleRetry = false;
-	auto fallbackStaticModelEnumeration = false;
+	auto fallbackEnumerationMode = false;
 
 	switch (action)
 	{
 		case FailureAction::MisbehaveContinue:
 			// Flag the entity as "Misbehaving"
 			addCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Misbehaving);
-			fallbackStaticModelEnumeration = true;
+			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::BadArguments:
-			fallbackStaticModelEnumeration = true;
+			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::ErrorContinue:
-			fallbackStaticModelEnumeration = true;
+			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::NotAuthenticated:
 			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
@@ -5653,16 +5654,18 @@ bool ControllerImpl::processGetDynamicInfoFailureStatus(entity::ControllerEntity
 		case FailureAction::WarningContinue:
 			return true;
 		case FailureAction::NotSupported:
-			fallbackStaticModelEnumeration = true;
+			checkMilanRequirements(entity, milanRequirements, "Milan mandatory command not supported by the entity: GET_DYNAMIC_INFO");
+			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::TimedOut:
-			checkScheduleRetry = true;
-			fallbackStaticModelEnumeration = true;
-			break;
+			[[fallthrough]];
 		case FailureAction::Busy:
+		{
+			// Check if we should retry the command, if not we'll fallback to default enumeration
 			checkScheduleRetry = true;
-			fallbackStaticModelEnumeration = true;
+			fallbackEnumerationMode = true;
 			break;
+		}
 		case FailureAction::ErrorFatal:
 			return false;
 		default:
@@ -5677,14 +5680,40 @@ bool ControllerImpl::processGetDynamicInfoFailureStatus(entity::ControllerEntity
 			queryInformation(entity, dynamicInfoParameters, packetID, step, retryTimer);
 			return true;
 		}
+		else
+		{
+			// Too many retries, result depends on FailureAction and AemCommandStatus
+			if (action == FailureAction::TimedOut)
+			{
+				checkMilanRequirements(entity, milanRequirements, "Too many timeouts for Milan mandatory command: GET_DYNAMIC_INFO");
+			}
+			else if (action == FailureAction::Busy)
+			{
+				switch (status)
+				{
+					case entity::ControllerEntity::AemCommandStatus::LockedByOther: // Should not happen for a read operation but some devices are bugged
+						[[fallthrough]];
+					case entity::ControllerEntity::AemCommandStatus::AcquiredByOther: // Should not happen for a read operation but some devices are bugged
+					{
+						LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for AEM command: GET_DYNAMIC_INFO ({})", entity::LocalEntity::statusToString(status));
+						// Flag the entity as "Not fully IEEE1722.1 compliant"
+						removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+						break;
+					}
+					default:
+						break;
+				}
+			}
+		}
+		// Do not return now, we want to check if we should fallback to default enumeration
 	}
 
-	if (fallbackStaticModelEnumeration)
+	if (fallbackEnumerationMode)
 	{
+		entity->setGetDynamicInfoSupported(false);
 		// Fallback to full DescriptorDynamicInfo enumeration
 		// We also need to reset currently inflight DescriptorDynamicInfo queries since the condition to run checkEnumerationSteps requires both GetDynamicInfo and DescriptorDynamicInfo to be cleared
 		// (we don't care about getting early DescriptorDynamicInfo answers in this case, it will still be processed and the newly created one will just be unexpected with no consequence)
-		entity->setGetDynamicInfoSupported(false);
 		entity->clearAllExpectedDescriptorDynamicInfo();
 		entity->clearAllExpectedGetDynamicInfo();
 		entity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -6183,20 +6212,20 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForAemCommandStatus(status);
 	auto checkScheduleRetry = false;
-	auto fallbackStaticModelEnumeration = false;
+	auto fallbackEnumerationMode = false;
 
 	switch (action)
 	{
 		case FailureAction::MisbehaveContinue:
 			// Flag the entity as "Misbehaving"
 			addCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Misbehaving);
-			fallbackStaticModelEnumeration = true;
+			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
 			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 descriptor dynamic info ({}): {}", ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType), entity::LocalEntity::statusToString(status));
 			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
-			fallbackStaticModelEnumeration = true;
+			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::NotAuthenticated:
 			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
@@ -6205,15 +6234,15 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 			return true;
 		case FailureAction::TimedOut:
 			checkScheduleRetry = true;
-			fallbackStaticModelEnumeration = true;
+			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::Busy:
 			checkScheduleRetry = true;
-			fallbackStaticModelEnumeration = true;
+			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::NotSupported:
 			checkMilanRequirements(entity, milanRequirements, "Milan mandatory AECP command not supported by the entity: " + ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType));
-			fallbackStaticModelEnumeration = true;
+			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::ErrorFatal:
 			return false;
@@ -6231,7 +6260,7 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 		}
 	}
 
-	if (fallbackStaticModelEnumeration)
+	if (fallbackEnumerationMode)
 	{
 		// Failed to retrieve single DescriptorDynamicInformation, retrieve the corresponding descriptor instead if possible, otherwise switch back to full StaticModel enumeration
 		auto const success = fetchCorrespondingDescriptor(entity, configurationIndex, descriptorDynamicInfoType, descriptorIndex);
