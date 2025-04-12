@@ -39,7 +39,7 @@ namespace avdecc
 namespace entity
 {
 /** ADP Entity Capabilities - IEEE1722.1-2021 Clause 6.2.2.9 */
-enum class EntityCapability : std::uint32_t
+enum class LA_AVDECC_API EntityCapability : std::uint32_t
 {
 	None = 0u,
 	EfuMode = 1u << 0, /**< Entity Firmware Upgrade mode is enabled on the AVDECC Entity. When this flag is set, the AVDECC Entity is in the mode to perform an AVDECC Entity firmware upgrade. */
@@ -65,7 +65,7 @@ enum class EntityCapability : std::uint32_t
 using EntityCapabilities = utils::EnumBitfield<EntityCapability>;
 
 /** ADP Talker Capabilities - IEEE1722.1-2021 Clause 6.2.2.11 */
-enum class TalkerCapability : std::uint16_t
+enum class LA_AVDECC_API TalkerCapability : std::uint16_t
 {
 	None = 0u,
 	Implemented = 1u << 0, /**< Implements an AVDECC Talker. */
@@ -81,7 +81,7 @@ enum class TalkerCapability : std::uint16_t
 using TalkerCapabilities = utils::EnumBitfield<TalkerCapability>;
 
 /** ADP Listener Capabilities - IEEE1722.1-2021 Clause 6.2.2.13 */
-enum class ListenerCapability : std::uint16_t
+enum class LA_AVDECC_API ListenerCapability : std::uint16_t
 {
 	None = 0u,
 	Implemented = 1u << 0, /**< Implements an AVDECC Listener. */
@@ -97,7 +97,7 @@ enum class ListenerCapability : std::uint16_t
 using ListenerCapabilities = utils::EnumBitfield<ListenerCapability>;
 
 /** ADP Controller Capabilities - IEEE1722.1-2021 Clause 6.2.2.14 */
-enum class ControllerCapability : std::uint32_t
+enum class LA_AVDECC_API ControllerCapability : std::uint32_t
 {
 	None = 0u,
 	Implemented = 1u << 0, /**< Implements an AVDECC Controller. */
@@ -106,7 +106,7 @@ enum class ControllerCapability : std::uint32_t
 using ControllerCapabilities = utils::EnumBitfield<ControllerCapability>;
 
 /** ConnectionFlags - IEEE1722.1-2021 Clause 8.2.1.16 */
-enum class ConnectionFlag : std::uint16_t
+enum class LA_AVDECC_API ConnectionFlag : std::uint16_t
 {
 	None = 0u,
 	ClassB = 1u << 0, /**< Indicates that the Stream is Class B instead of Class A (default 0 is class A). */
@@ -125,7 +125,7 @@ enum class ConnectionFlag : std::uint16_t
 using ConnectionFlags = utils::EnumBitfield<ConnectionFlag>;
 
 /** StreamFlags - IEEE1722.1-2021 Clause 7.2.6.1 */
-enum class StreamFlag : std::uint16_t
+enum class LA_AVDECC_API StreamFlag : std::uint16_t
 {
 	None = 0u,
 	ClockSyncSource = 1u << 0, /**< Indicates that the Stream can be used as a clock synchronization source. */
@@ -148,7 +148,7 @@ enum class StreamFlag : std::uint16_t
 using StreamFlags = utils::EnumBitfield<StreamFlag>;
 
 /** JackFlags - IEEE1722.1-2021 Clause 7.2.7.1 */
-enum class JackFlag : std::uint16_t
+enum class LA_AVDECC_API JackFlag : std::uint16_t
 {
 	None = 0u,
 	ClockSyncSource = 1u << 0, /**< Indicates that the Jack can be used as a clock synchronization source. */
@@ -158,7 +158,7 @@ enum class JackFlag : std::uint16_t
 using JackFlags = utils::EnumBitfield<JackFlag>;
 
 /** AvbInterfaceFlags - IEEE1722.1-2021 Clause 7.2.8.1 */
-enum class AvbInterfaceFlag : std::uint16_t
+enum class LA_AVDECC_API AvbInterfaceFlag : std::uint16_t
 {
 	None = 0u,
 	GptpGrandmasterSupported = 1u << 0, /**< Indicates that the interface supports the IEEE Std 802.1AS-2011 grandmaster functionality. */
@@ -173,7 +173,7 @@ enum class AvbInterfaceFlag : std::uint16_t
 using AvbInterfaceFlags = utils::EnumBitfield<AvbInterfaceFlag>;
 
 /** ClockSourceFlags - IEEE1722.1-2021 Clause 7.2.9.1 */
-enum class ClockSourceFlag : std::uint16_t
+enum class LA_AVDECC_API ClockSourceFlag : std::uint16_t
 {
 	None = 0u,
 	StreamID = 1u << 0, /**< The INPUT_STREAM Clock Source is identified by the stream_id. */
@@ -183,7 +183,7 @@ enum class ClockSourceFlag : std::uint16_t
 using ClockSourceFlags = utils::EnumBitfield<ClockSourceFlag>;
 
 /** PortFlags - IEEE1722.1-2021 Clause 7.2.13.1 */
-enum class PortFlag : std::uint16_t
+enum class LA_AVDECC_API PortFlag : std::uint16_t
 {
 	None = 0u,
 	ClockSyncSource = 1u << 0, /**< Indicates that the Port can be used as a clock synchronization source. */
@@ -194,7 +194,7 @@ enum class PortFlag : std::uint16_t
 using PortFlags = utils::EnumBitfield<PortFlag>;
 
 /** PtpInstanceFlags - IEEE1722.1-2021 Clause 7.2.35.1 */
-enum class PtpInstanceFlag : std::uint32_t
+enum class LA_AVDECC_API PtpInstanceFlag : std::uint32_t
 {
 	None = 0u,
 	CanSetInstanceEnable = 1u << 0,
@@ -211,7 +211,7 @@ enum class PtpInstanceFlag : std::uint32_t
 using PtpInstanceFlags = utils::EnumBitfield<PtpInstanceFlag>;
 
 /** PtpPortFlags - IEEE1722.1-2021 Clause 7.2.36.2 */
-enum class PtpPortFlag : std::uint32_t
+enum class LA_AVDECC_API PtpPortFlag : std::uint32_t
 {
 	None = 0u,
 	CanSetEnable = 1u << 0,
@@ -236,7 +236,7 @@ enum class PtpPortFlag : std::uint32_t
 using PtpPortFlags = utils::EnumBitfield<PtpPortFlag>;
 
 /** StreamInfo Flags - IEEE1722.1-2021 Clause 7.4.15.1 */
-enum class StreamInfoFlag : std::uint32_t
+enum class LA_AVDECC_API StreamInfoFlag : std::uint32_t
 {
 	None = 0u,
 	ClassB = 1u << 0, /**< Indicates that the Stream is Class B instead of Class A (default 0 is class A). */
@@ -266,7 +266,7 @@ enum class StreamInfoFlag : std::uint32_t
 using StreamInfoFlags = utils::EnumBitfield<StreamInfoFlag>;
 
 /** StreamInfoEx Flags - Milan 1.0 Clause 7.3.10 */
-enum class StreamInfoFlagEx : std::uint32_t
+enum class LA_AVDECC_API StreamInfoFlagEx : std::uint32_t
 {
 	None = 0u,
 	Registering = 1u << 0, /**< StreamInput: Registering either a matching Talker Advertise or a matching Talker Failed attribute. StreamOutput: Declaring a Talker Advertise or a Talker Failed attribute and registering a matching Listener attribute. */
@@ -275,7 +275,7 @@ enum class StreamInfoFlagEx : std::uint32_t
 using StreamInfoFlagsEx = utils::EnumBitfield<StreamInfoFlagEx>;
 
 /** AvbInfo Flags - IEEE1722.1-2021 Clause 7.4.40.2 */
-enum class AvbInfoFlag : std::uint8_t
+enum class LA_AVDECC_API AvbInfoFlag : std::uint8_t
 {
 	None = 0u,
 	AsCapable = 1u << 0, /**< The IEEE Std 802.1AS-2011 variable asCapable is set on this interface. */
@@ -288,7 +288,7 @@ enum class AvbInfoFlag : std::uint8_t
 using AvbInfoFlags = utils::EnumBitfield<AvbInfoFlag>;
 
 /* ENTITY Counters - IEEE1722.1-2021 Clause 7.4.42.2.1 */
-enum class EntityCounterValidFlag : model::DescriptorCounterValidFlag
+enum class LA_AVDECC_API EntityCounterValidFlag : model::DescriptorCounterValidFlag
 {
 	None = 0u,
 	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */
@@ -303,7 +303,7 @@ enum class EntityCounterValidFlag : model::DescriptorCounterValidFlag
 using EntityCounterValidFlags = utils::EnumBitfield<EntityCounterValidFlag>;
 
 /* AVB_INTERFACE Counters - IEEE1722.1-2021 Clause 7.4.42.2.2 */
-enum class AvbInterfaceCounterValidFlag : model::DescriptorCounterValidFlag
+enum class LA_AVDECC_API AvbInterfaceCounterValidFlag : model::DescriptorCounterValidFlag
 {
 	None = 0u,
 	LinkUp = 1u << 0, /**< Total number of network link up events. */
@@ -324,7 +324,7 @@ enum class AvbInterfaceCounterValidFlag : model::DescriptorCounterValidFlag
 using AvbInterfaceCounterValidFlags = utils::EnumBitfield<AvbInterfaceCounterValidFlag>;
 
 /* CLOCK_DOMAIN Counters - IEEE1722.1-2021 Clause 7.4.42.2.3 */
-enum class ClockDomainCounterValidFlag : model::DescriptorCounterValidFlag
+enum class LA_AVDECC_API ClockDomainCounterValidFlag : model::DescriptorCounterValidFlag
 {
 	None = 0u,
 	Locked = 1u << 0, /**< Increments on a clock locking event. */
@@ -341,7 +341,7 @@ enum class ClockDomainCounterValidFlag : model::DescriptorCounterValidFlag
 using ClockDomainCounterValidFlags = utils::EnumBitfield<ClockDomainCounterValidFlag>;
 
 /* STREAM_INPUT Counters - IEEE1722.1-2021 Clause 7.4.42.2.4 / Milan 1.2 Clause 5.3.8.10 */
-enum class StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
+enum class LA_AVDECC_API StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
 {
 	None = 0u,
 	MediaLocked = 1u << 0, /**< Increments on a Stream media clock locking. */
@@ -370,7 +370,7 @@ enum class StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
 using StreamInputCounterValidFlags = utils::EnumBitfield<StreamInputCounterValidFlag>;
 
 /* STREAM_OUTPUT Counters - Milan 1.2 Clause 5.3.7.7 */
-enum class StreamOutputCounterValidFlag : model::DescriptorCounterValidFlag
+enum class LA_AVDECC_API StreamOutputCounterValidFlag : model::DescriptorCounterValidFlag
 {
 	None = 0u,
 	StreamStart = 1u << 0, /**< Incremented each time the Talker starts streaming. */
@@ -382,7 +382,7 @@ enum class StreamOutputCounterValidFlag : model::DescriptorCounterValidFlag
 using StreamOutputCounterValidFlags = utils::EnumBitfield<StreamOutputCounterValidFlag>;
 
 /* STREAM_OUTPUT Counters - IEEE1722.1-2021 Clause 7.4.42.2.5 */
-enum class StreamOutputCounterValidFlag17221 : model::DescriptorCounterValidFlag
+enum class LA_AVDECC_API StreamOutputCounterValidFlag17221 : model::DescriptorCounterValidFlag
 {
 	None = 0u,
 	StreamStart = 1u << 0, /**< Incremented when a stream is started. */
@@ -397,7 +397,7 @@ enum class StreamOutputCounterValidFlag17221 : model::DescriptorCounterValidFlag
 using StreamOutputCounterValidFlags17221 = utils::EnumBitfield<StreamOutputCounterValidFlag17221>;
 
 /** Milan Info Features Flags - Milan 1.2 Clause 5.4.4.1 */
-enum class MilanInfoFeaturesFlag : std::uint32_t
+enum class LA_AVDECC_API MilanInfoFeaturesFlag : std::uint32_t
 {
 	None = 0u,
 	Redundancy = 1u << 0, /**< The entity supports the milan redundancy scheme. */
@@ -406,7 +406,7 @@ enum class MilanInfoFeaturesFlag : std::uint32_t
 using MilanInfoFeaturesFlags = utils::EnumBitfield<MilanInfoFeaturesFlag>;
 
 /** Media Clock Reference Info Flags - Milan 1.2 Clause 5.4.4.4 */
-enum class MediaClockReferenceInfoFlag : std::uint8_t
+enum class LA_AVDECC_API MediaClockReferenceInfoFlag : std::uint8_t
 {
 	None = 0u,
 	UserMediaClockReferencePriorityValid = 1u << 0, /**< The value in the user_media_clock_reference_priority field is valid. */

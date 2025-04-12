@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - [MacOS Native] Workarkound for macOS AVB Framework bug (VendorUnique messages altered from RESPONSE to COMMAND)
+- Missing symbol exports for macOS
 
 ## [4.0.0] - 2025-02-18
 ### Added
