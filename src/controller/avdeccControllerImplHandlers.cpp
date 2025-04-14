@@ -105,7 +105,7 @@ void ControllerImpl::onEmptyGetDynamicInfoResult(entity::controller::Interface c
 		{
 			if (!!status)
 			{
-				entity.setGetDynamicInfoSupported(true);
+				entity.setPackedDynamicInfoSupported(true);
 			}
 			else
 			{
@@ -121,7 +121,7 @@ void ControllerImpl::onEmptyGetDynamicInfoResult(entity::controller::Interface c
 			if (entity.gotExpectedCheckDynamicInfoSupported())
 			{
 				// Clear this enumeration step and check for next one
-				entity.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::CheckDynamicInfoSupported);
+				entity.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::CheckPackedDynamicInfoSupported);
 				checkEnumerationSteps(&entity);
 			}
 		}
@@ -139,7 +139,7 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 	{
 		auto& entity = *controlledEntity;
 
-		if (entity.checkAndClearExpectedGetDynamicInfo(packetID))
+		if (entity.checkAndClearExpectedPackedDynamicInfo(packetID))
 		{
 			auto updatedStatus = status;
 
@@ -572,10 +572,12 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 				}
 			}
 
+			auto action = ControllerImpl::PackedDynamicInfoFailureAction::Continue;
 			if (gotError)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "onGetDynamicInfoResult updated status: {}", entity::ControllerEntity::statusToString(updatedStatus));
-				if (!processGetDynamicInfoFailureStatus(updatedStatus, &entity, sentParameters, packetID, step, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 2 }, std::nullopt, entity::model::MilanVersion{ 1, 0 } } }))
+				action = processGetDynamicInfoFailureStatus(updatedStatus, &entity, sentParameters, packetID, step, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 2 }, std::nullopt, entity::model::MilanVersion{ 1, 0 } } });
+				if (action == ControllerImpl::PackedDynamicInfoFailureAction::Fatal)
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &entity, QueryCommandError::GetDynamicInfo);
@@ -583,13 +585,16 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 				}
 			}
 
-			// Got all expected dynamic information (either descriptor dynamic information or dynamic information, because GET_DYNAMIC_INFO contains both)
-			if (entity.gotAllExpectedGetDynamicInfo())
+			// Got all expected dynamic information (either descriptor dynamic information or dynamic information, because GET_DYNAMIC_INFO is used for both)
+			if (entity.gotAllExpectedPackedDynamicInfo())
 			{
 				if ((step == ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo && entity.gotAllExpectedDescriptorDynamicInfo()) || (step == ControlledEntityImpl::EnumerationStep::GetDynamicInfo && entity.gotAllExpectedDynamicInfo()))
 				{
-					// Clear this enumeration step and check for next one
-					controlledEntity->clearEnumerationStep(step);
+					if (action == ControllerImpl::PackedDynamicInfoFailureAction::Continue)
+					{
+						// Clear this enumeration step and check for next one
+						controlledEntity->clearEnumerationStep(step);
+					}
 					checkEnumerationSteps(&entity);
 				}
 			}
@@ -1262,7 +1267,7 @@ void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interfac
 						}
 					}
 					// Got all expected descriptor dynamic information
-					if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+					if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 					{
 						// Clear this enumeration step and check for next one
 						controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -1887,7 +1892,7 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::controller::Interface co
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1924,7 +1929,7 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::controller::Interface c
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1963,7 +1968,7 @@ void ControllerImpl::onGetAcquiredStateResult(entity::controller::Interface cons
 			updateAcquiredState(entity, acquireState, owningController);
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2002,7 +2007,7 @@ void ControllerImpl::onGetLockedStateResult(entity::controller::Interface const*
 			updateLockedState(entity, lockState, lockingController);
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2065,7 +2070,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::controller::Inte
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2128,7 +2133,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::controller::Int
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2193,7 +2198,7 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2229,7 +2234,7 @@ void ControllerImpl::onGetAsPathResult(entity::controller::Interface const* cons
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2268,7 +2273,7 @@ void ControllerImpl::onGetEntityCountersResult(entity::controller::Interface con
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2317,7 +2322,7 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interfa
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2366,7 +2371,7 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::controller::Interfac
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2415,7 +2420,7 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interfac
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2464,7 +2469,7 @@ void ControllerImpl::onGetStreamOutputCountersResult(entity::controller::Interfa
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2500,7 +2505,7 @@ void ControllerImpl::onConfigurationNameResult(entity::controller::Interface con
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2536,7 +2541,7 @@ void ControllerImpl::onAudioUnitNameResult(entity::controller::Interface const* 
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2572,7 +2577,7 @@ void ControllerImpl::onAudioUnitSamplingRateResult(entity::controller::Interface
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2608,7 +2613,7 @@ void ControllerImpl::onInputStreamNameResult(entity::controller::Interface const
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2645,7 +2650,7 @@ void ControllerImpl::onInputStreamFormatResult(entity::controller::Interface con
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2681,7 +2686,7 @@ void ControllerImpl::onOutputStreamNameResult(entity::controller::Interface cons
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2718,7 +2723,7 @@ void ControllerImpl::onOutputStreamFormatResult(entity::controller::Interface co
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2754,7 +2759,7 @@ void ControllerImpl::onInputJackNameResult(entity::controller::Interface const* 
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2790,7 +2795,7 @@ void ControllerImpl::onOutputJackNameResult(entity::controller::Interface const*
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2826,7 +2831,7 @@ void ControllerImpl::onClockSourceNameResult(entity::controller::Interface const
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2862,7 +2867,7 @@ void ControllerImpl::onMemoryObjectNameResult(entity::controller::Interface cons
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2898,7 +2903,7 @@ void ControllerImpl::onMemoryObjectLengthResult(entity::controller::Interface co
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2934,7 +2939,7 @@ void ControllerImpl::onAudioClusterNameResult(entity::controller::Interface cons
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2970,7 +2975,7 @@ void ControllerImpl::onControlNameResult(entity::controller::Interface const* co
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -3010,7 +3015,7 @@ void ControllerImpl::onControlValuesResult(entity::controller::Interface const* 
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -3046,7 +3051,7 @@ void ControllerImpl::onClockDomainNameResult(entity::controller::Interface const
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -3082,7 +3087,7 @@ void ControllerImpl::onClockDomainSourceIndexResult(entity::controller::Interfac
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -3118,7 +3123,7 @@ void ControllerImpl::onTimingNameResult(entity::controller::Interface const* con
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -3154,7 +3159,7 @@ void ControllerImpl::onPtpInstanceNameResult(entity::controller::Interface const
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -3190,7 +3195,7 @@ void ControllerImpl::onPtpPortNameResult(entity::controller::Interface const* co
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -3226,7 +3231,7 @@ void ControllerImpl::onGetSystemUniqueIDResult(entity::controller::Interface con
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -3263,7 +3268,7 @@ void ControllerImpl::onGetMediaClockReferenceInfoResult(entity::controller::Inte
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -3329,7 +3334,7 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface 
 			}
 
 			// Got all expected dynamic information
-			if (talker.gotAllExpectedGetDynamicInfo() && talker.gotAllExpectedDynamicInfo())
+			if (talker.gotAllExpectedPackedDynamicInfo() && talker.gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				talker.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -3373,7 +3378,7 @@ void ControllerImpl::onGetListenerStreamStateResult(entity::controller::Interfac
 			}
 
 			// Got all expected dynamic information
-			if (listener->gotAllExpectedGetDynamicInfo() && listener->gotAllExpectedDynamicInfo())
+			if (listener->gotAllExpectedPackedDynamicInfo() && listener->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				listener->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -3409,7 +3414,7 @@ void ControllerImpl::onGetTalkerStreamConnectionResult(entity::controller::Inter
 			}
 
 			// Got all expected dynamic information
-			if (talker->gotAllExpectedGetDynamicInfo() && talker->gotAllExpectedDynamicInfo())
+			if (talker->gotAllExpectedPackedDynamicInfo() && talker->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				talker->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);

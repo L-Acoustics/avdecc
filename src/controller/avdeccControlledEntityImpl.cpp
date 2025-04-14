@@ -124,9 +124,9 @@ bool ControlledEntityImpl::gotFatalEnumerationError() const noexcept
 	return _gotFatalEnumerateError;
 }
 
-bool ControlledEntityImpl::isGetDynamicInfoSupported() const noexcept
+bool ControlledEntityImpl::isPackedDynamicInfoSupported() const noexcept
 {
-	return _isGetDynamicInfoSupported;
+	return _isPackedDynamicInfoSupported;
 }
 
 bool ControlledEntityImpl::isSubscribedToUnsolicitedNotifications() const noexcept
@@ -2429,7 +2429,7 @@ std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getRegisterUnso
 }
 
 // Expected GetDynamicInfo query methods
-bool ControlledEntityImpl::checkAndClearExpectedGetDynamicInfo(std::uint16_t const packetID) noexcept
+bool ControlledEntityImpl::checkAndClearExpectedPackedDynamicInfo(std::uint16_t const packetID) noexcept
 {
 	AVDECC_ASSERT(_sharedLock->_lockedCount > 0, "ControlledEntity should be locked");
 
@@ -2437,28 +2437,28 @@ bool ControlledEntityImpl::checkAndClearExpectedGetDynamicInfo(std::uint16_t con
 	if (_gotFatalEnumerateError)
 		return false;
 
-	return _expectedGetDynamicInfo.erase(packetID) == 1;
+	return _expectedPackedDynamicInfo.erase(packetID) == 1;
 }
 
-void ControlledEntityImpl::setGetDynamicInfoExpected(std::uint16_t const packetID) noexcept
+void ControlledEntityImpl::setPackedDynamicInfoExpected(std::uint16_t const packetID) noexcept
 {
 	AVDECC_ASSERT(_sharedLock->_lockedCount > 0, "ControlledEntity should be locked");
 
-	_expectedGetDynamicInfo.insert(packetID);
+	_expectedPackedDynamicInfo.insert(packetID);
 }
 
-void ControlledEntityImpl::clearAllExpectedGetDynamicInfo() noexcept
+void ControlledEntityImpl::clearAllExpectedPackedDynamicInfo() noexcept
 {
 	AVDECC_ASSERT(_sharedLock->_lockedCount > 0, "ControlledEntity should be locked");
 
-	_expectedGetDynamicInfo.clear();
+	_expectedPackedDynamicInfo.clear();
 }
 
-bool ControlledEntityImpl::gotAllExpectedGetDynamicInfo() const noexcept
+bool ControlledEntityImpl::gotAllExpectedPackedDynamicInfo() const noexcept
 {
 	AVDECC_ASSERT(_sharedLock->_lockedCount > 0, "ControlledEntity should be locked");
 
-	return _expectedGetDynamicInfo.empty();
+	return _expectedPackedDynamicInfo.empty();
 }
 
 std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getGetDynamicInfoRetryTimer() noexcept
@@ -2751,9 +2751,9 @@ void ControlledEntityImpl::setGetFatalEnumerationError() noexcept
 	_gotFatalEnumerateError = true;
 }
 
-void ControlledEntityImpl::setGetDynamicInfoSupported(bool const isSupported) noexcept
+void ControlledEntityImpl::setPackedDynamicInfoSupported(bool const isSupported) noexcept
 {
-	_isGetDynamicInfoSupported = isSupported;
+	_isPackedDynamicInfoSupported = isSupported;
 }
 
 void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept

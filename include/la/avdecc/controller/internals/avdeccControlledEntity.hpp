@@ -121,7 +121,7 @@ public:
 	virtual entity::model::MilanVersion getMilanCompatibilityVersion() const noexcept = 0;
 	virtual bool isMilanRedundant() const noexcept = 0; // True if the entity is currently in Milan Redundancy mode (ie. current configuration has at least one redundant stream)
 	virtual bool gotFatalEnumerationError() const noexcept = 0; // True if the controller had a fatal error during entity information retrieval (leading to Exception::Type::EnumerationError if any throwing method is called).
-	virtual bool isGetDynamicInfoSupported() const noexcept = 0; // True if the entity supports GET_DYNAMIC_INFO
+	virtual bool isPackedDynamicInfoSupported() const noexcept = 0; // True if the entity supports GET_DYNAMIC_INFO
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept = 0;
 	virtual bool areUnsolicitedNotificationsSupported() const noexcept = 0;
 	virtual bool isAcquired() const noexcept = 0; // Is entity acquired by the controller it's attached to

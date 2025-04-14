@@ -2877,7 +2877,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity::controller::DynamicInfoParameters const& dynamicInfoParameters, std::uint16_t const packetID, ControlledEntityImpl::EnumerationStep const step, std::chrono::milliseconds const delayQuery) noexcept
 {
 	// Immediately set as expected
-	entity->setGetDynamicInfoExpected(packetID);
+	entity->setPackedDynamicInfoExpected(packetID);
 
 	auto const entityID = entity->getEntity().getEntityID();
 	std::function<void(entity::ControllerEntity*)> queryFunc{};
@@ -2981,7 +2981,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 		explicit DynamicInfoVisitor(ControllerImpl* const controller, ControlledEntityImpl* const entity) noexcept
 			: _controller{ controller }
 			, _entity{ entity }
-			, _usePackedDynamicInfo{ _entity->isGetDynamicInfoSupported() }
+			, _usePackedDynamicInfo{ _entity->isPackedDynamicInfoSupported() }
 			, _milanVersion{ _entity->getMilanCompatibilityVersion() }
 		{
 		}
@@ -3187,7 +3187,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 			DynamicInfoModelVisitor(ControllerImpl* const controller, ControlledEntityImpl* const entity) noexcept
 				: _controller{ controller }
 				, _entity{ entity }
-				, _usePackedDynamicInfo{ _entity->isGetDynamicInfoSupported() }
+				, _usePackedDynamicInfo{ _entity->isPackedDynamicInfoSupported() }
 			{
 			}
 
@@ -4043,7 +4043,7 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const controlle
 		return;
 	}
 	// Then check if GET_DYNAMIC_INFO command is supported (required for fast enumeration)
-	if (steps.test(ControlledEntityImpl::EnumerationStep::CheckDynamicInfoSupported))
+	if (steps.test(ControlledEntityImpl::EnumerationStep::CheckPackedDynamicInfoSupported))
 	{
 		checkDynamicInfoSupported(controlledEntity);
 		return;
@@ -5626,7 +5626,7 @@ bool ControllerImpl::processEmptyGetDynamicInfoFailureStatus(entity::ControllerE
 }
 
 /* This method handles non-success AemCommandStatus returned while using GET_DYNAMIC_INFO commands */
-bool ControllerImpl::processGetDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::controller::DynamicInfoParameters const& dynamicInfoParameters, std::uint16_t const packetID, ControlledEntityImpl::EnumerationStep const step, MilanRequirements const& milanRequirements) noexcept
+ControllerImpl::PackedDynamicInfoFailureAction ControllerImpl::processGetDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::controller::DynamicInfoParameters const& dynamicInfoParameters, std::uint16_t const packetID, ControlledEntityImpl::EnumerationStep const step, MilanRequirements const& milanRequirements) noexcept
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
@@ -5650,9 +5650,9 @@ bool ControllerImpl::processGetDynamicInfoFailureStatus(entity::ControllerEntity
 			break;
 		case FailureAction::NotAuthenticated:
 			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
-			return true;
+			return PackedDynamicInfoFailureAction::Continue;
 		case FailureAction::WarningContinue:
-			return true;
+			return PackedDynamicInfoFailureAction::Continue;
 		case FailureAction::NotSupported:
 			checkMilanRequirements(entity, milanRequirements, "Milan mandatory command not supported by the entity: GET_DYNAMIC_INFO");
 			fallbackEnumerationMode = true;
@@ -5667,9 +5667,9 @@ bool ControllerImpl::processGetDynamicInfoFailureStatus(entity::ControllerEntity
 			break;
 		}
 		case FailureAction::ErrorFatal:
-			return false;
+			return PackedDynamicInfoFailureAction::Fatal;
 		default:
-			return false;
+			return PackedDynamicInfoFailureAction::Fatal;
 	}
 
 	if (checkScheduleRetry)
@@ -5678,7 +5678,7 @@ bool ControllerImpl::processGetDynamicInfoFailureStatus(entity::ControllerEntity
 		if (shouldRetry)
 		{
 			queryInformation(entity, dynamicInfoParameters, packetID, step, retryTimer);
-			return true;
+			return PackedDynamicInfoFailureAction::Continue;
 		}
 		else
 		{
@@ -5718,10 +5718,10 @@ bool ControllerImpl::processGetDynamicInfoFailureStatus(entity::ControllerEntity
 		entity->clearAllExpectedGetDynamicInfo();
 		entity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 		LOG_CONTROLLER_ERROR(entityID, "Failed to use cached EntityModel (too many DescriptorDynamic query retries), falling back to full StaticModel enumeration");
-		return true;
+		return PackedDynamicInfoFailureAction::RestartStep;
 	}
 
-	return false;
+	return PackedDynamicInfoFailureAction::Fatal;
 }
 
 /* This method handles non-success AemCommandStatus returned while trying to RegisterUnsolicitedNotifications */

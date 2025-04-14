@@ -117,12 +117,12 @@ public:
 
 	enum class EnumerationStep : std::uint16_t
 	{
-		GetMilanInfo = 1u << 0,
-		CheckDynamicInfoSupported = 1u << 1,
-		RegisterUnsol = 1u << 2,
-		GetStaticModel = 1u << 3,
-		GetDescriptorDynamicInfo = 1u << 4, /** DescriptorDynamicInfoType */
-		GetDynamicInfo = 1u << 5, /** DynamicInfoType */
+		GetMilanInfo = 1u << 0, /** To get MilanInfo from MVU */
+		CheckPackedDynamicInfoSupported = 1u << 1, /** To check if GET_DYNAMIC_INFO command is supported */
+		RegisterUnsol = 1u << 2, /** To register for unsolicited notifications */
+		GetStaticModel = 1u << 3, /** To get the static model (at least always retrieve the ENTITY_DESCRIPTOR) */
+		GetDescriptorDynamicInfo = 1u << 4, /** To get descriptor dynamic information in case we used a cached version of the static model */
+		GetDynamicInfo = 1u << 5, /** To get all other dynamic information (not directly contained in descriptors) */
 	};
 	using EnumerationSteps = utils::EnumBitfield<EnumerationStep>;
 
@@ -199,7 +199,7 @@ public:
 	virtual entity::model::MilanVersion getMilanCompatibilityVersion() const noexcept override;
 	virtual bool isMilanRedundant() const noexcept override;
 	virtual bool gotFatalEnumerationError() const noexcept override;
-	virtual bool isGetDynamicInfoSupported() const noexcept override;
+	virtual bool isPackedDynamicInfoSupported() const noexcept override;
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept override;
 	virtual bool areUnsolicitedNotificationsSupported() const noexcept override;
 	virtual bool isAcquired() const noexcept override;
@@ -396,11 +396,11 @@ public:
 	bool gotExpectedCheckDynamicInfoSupported() const noexcept;
 	std::pair<bool, std::chrono::milliseconds> getCheckDynamicInfoSupportedRetryTimer() noexcept;
 
-	// Expected GetDynamicInfo query methods
-	bool checkAndClearExpectedGetDynamicInfo(std::uint16_t const packetID) noexcept;
-	void setGetDynamicInfoExpected(std::uint16_t const packetID) noexcept;
-	void clearAllExpectedGetDynamicInfo() noexcept;
-	bool gotAllExpectedGetDynamicInfo() const noexcept;
+	// Expected GetDynamicInfo (packed version of dynamic info) query methods
+	bool checkAndClearExpectedPackedDynamicInfo(std::uint16_t const packetID) noexcept;
+	void setPackedDynamicInfoExpected(std::uint16_t const packetID) noexcept;
+	void clearAllExpectedPackedDynamicInfo() noexcept;
+	bool gotAllExpectedPackedDynamicInfo() const noexcept;
 	std::pair<bool, std::chrono::milliseconds> getGetDynamicInfoRetryTimer() noexcept;
 
 	// Expected RegisterUnsol query methods
@@ -447,7 +447,7 @@ public:
 	void setMilanCompatibilityVersion(entity::model::MilanVersion const version) noexcept;
 	void setMilanRedundant(bool const isMilanRedundant) noexcept;
 	void setGetFatalEnumerationError() noexcept;
-	void setGetDynamicInfoSupported(bool const isSupported) noexcept;
+	void setPackedDynamicInfoSupported(bool const isSupported) noexcept;
 	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
 	void setUnsolicitedNotificationsSupported(bool const isSupported) noexcept;
 	bool wasAdvertised() const noexcept;
@@ -512,13 +512,13 @@ private:
 	entity::model::MilanVersion _milanCompatibilityVersion{};
 	bool _isMilanRedundant{ false }; // Current configuration has at least one redundant stream
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
-	bool _isGetDynamicInfoSupported{ false }; // Is the GET_DYNAMIC_INFO command supported
+	bool _isPackedDynamicInfoSupported{ false }; // Is the GET_DYNAMIC_INFO command supported
 	bool _isSubscribedToUnsolicitedNotifications{ false }; // Are we subscribed to unsolicited notifications
 	bool _areUnsolicitedNotificationsSupported{ false }; // Are unsolicited notifications supported
 	bool _advertised{ false }; // Has the entity been advertised to the observers
 	bool _expectedCheckDynamicInfoSupported{ false };
 	bool _expectedRegisterUnsol{ false };
-	std::unordered_set<std::uint16_t> _expectedGetDynamicInfo{};
+	std::unordered_set<std::uint16_t> _expectedPackedDynamicInfo{};
 	std::unordered_set<MilanInfoKey> _expectedMilanInfo{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorKey>> _expectedDescriptors{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DynamicInfoKey>> _expectedDynamicInfo{};

@@ -93,7 +93,7 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 			}
 			if (_enablePackedGetDynamicInfo)
 			{
-				steps.set(ControlledEntityImpl::EnumerationStep::CheckDynamicInfoSupported);
+				steps.set(ControlledEntityImpl::EnumerationStep::CheckPackedDynamicInfoSupported);
 			}
 			steps.set(ControlledEntityImpl::EnumerationStep::RegisterUnsol);
 			steps.set(ControlledEntityImpl::EnumerationStep::GetStaticModel);
