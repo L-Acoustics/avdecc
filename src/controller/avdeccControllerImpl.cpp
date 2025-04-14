@@ -2927,17 +2927,6 @@ void ControllerImpl::checkDynamicInfoSupported(ControlledEntityImpl* const entit
 	//auto const caps = entity->getEntity().getEntityCapabilities();
 	auto const entityID = entity->getEntity().getEntityID();
 
-#if 0
-	// TODO: No need to check if Milan version is X.Y.Z, it must be supported
-	if (...)
-	{
-		// Clear this enumeration step and check for next one
-		entity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::CheckDynamicInfoSupported);
-		checkEnumerationSteps(entity);
-		return;
-	}
-#endif
-
 	// Immediately set as expected
 	entity->setCheckDynamicInfoSupportedExpected();
 
@@ -5710,14 +5699,38 @@ ControllerImpl::PackedDynamicInfoFailureAction ControllerImpl::processGetDynamic
 
 	if (fallbackEnumerationMode)
 	{
-		entity->setGetDynamicInfoSupported(false);
-		// Fallback to full DescriptorDynamicInfo enumeration
-		// We also need to reset currently inflight DescriptorDynamicInfo queries since the condition to run checkEnumerationSteps requires both GetDynamicInfo and DescriptorDynamicInfo to be cleared
-		// (we don't care about getting early DescriptorDynamicInfo answers in this case, it will still be processed and the newly created one will just be unexpected with no consequence)
-		entity->clearAllExpectedDescriptorDynamicInfo();
-		entity->clearAllExpectedGetDynamicInfo();
-		entity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
-		LOG_CONTROLLER_ERROR(entityID, "Failed to use cached EntityModel (too many DescriptorDynamic query retries), falling back to full StaticModel enumeration");
+		// Disable fast enumeration mode
+		entity->setPackedDynamicInfoSupported(false);
+		// Clear all inflight queries
+		entity->clearAllExpectedPackedDynamicInfo();
+
+		// If we are in the middle of the GetDescriptorDynamicInfo step
+		if (step == ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo)
+		{
+			// Clear all DescriptorDynamicInfo queries
+			entity->clearAllExpectedDescriptorDynamicInfo();
+			// Fallback to full DescriptorDynamicInfo enumeration by restarting the enumeration
+			entity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+			AVDECC_ASSERT(entity->getEnumerationSteps().test(ControlledEntityImpl::EnumerationStep::GetDynamicInfo), "GetDynamicInfo step should be set");
+			LOG_CONTROLLER_ERROR(entityID, "Failed to use cached EntityModel (too many DescriptorDynamic query retries), falling back to full StaticModel enumeration");
+		}
+		else if (step == ControlledEntityImpl::EnumerationStep::GetDynamicInfo)
+		{
+			// Clear all DynamicInfo queries
+			entity->clearAllExpectedDynamicInfo();
+			// Restart GetDynamicInfo enumeration without using fast enumeration mode
+			entity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
+			LOG_CONTROLLER_ERROR(entityID, "Error getting DynamicInfo using fast enumeration mode, falling back to normal enumeration mode");
+			AVDECC_ASSERT(!entity->getEnumerationSteps().test(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo), "GetDescriptorDynamicInfo step should not be set");
+		}
+		else
+		{
+			entity->clearAllExpectedDescriptorDynamicInfo();
+			entity->clearAllExpectedPackedDynamicInfo();
+			entity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+			entity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
+			AVDECC_ASSERT(false, "Unexpected enumeration step");
+		}
 		return PackedDynamicInfoFailureAction::RestartStep;
 	}
 

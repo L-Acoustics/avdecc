@@ -2604,6 +2604,13 @@ void ControlledEntityImpl::setDynamicInfoExpected(entity::model::ConfigurationIn
 	conf.insert(key);
 }
 
+void ControlledEntityImpl::clearAllExpectedDynamicInfo() noexcept
+{
+	AVDECC_ASSERT(_sharedLock->_lockedCount > 0, "ControlledEntity should be locked");
+
+	_expectedDynamicInfo.clear();
+}
+
 bool ControlledEntityImpl::gotAllExpectedDynamicInfo() const noexcept
 {
 	AVDECC_ASSERT(_sharedLock->_lockedCount > 0, "ControlledEntity should be locked");
