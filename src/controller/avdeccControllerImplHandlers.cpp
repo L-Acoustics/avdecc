@@ -117,7 +117,7 @@ void ControllerImpl::onEmptyGetDynamicInfoResult(entity::controller::Interface c
 				}
 			}
 
-			// Got all expected "descriptors"check dynamic info supported"
+			// Got all expected "check dynamic info supported"
 			if (entity.gotExpectedCheckDynamicInfoSupported())
 			{
 				// Clear this enumeration step and check for next one

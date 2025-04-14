@@ -86,7 +86,7 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 		// The entity supports AEM, also get information related to AEM
 		if (caps.test(entity::EntityCapability::AemSupported))
 		{
-			// Only get MilanInfo if the Entity supports VendorUnique
+			// Only try to get MilanInfo if the Entity supports VendorUnique
 			if (caps.test(entity::EntityCapability::VendorUniqueSupported))
 			{
 				steps.set(ControlledEntityImpl::EnumerationStep::GetMilanInfo);
