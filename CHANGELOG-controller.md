@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Fast enumeration didn't properly fallback during dynamic info retrieval
 - Missing dynamic model information when using cached entity model
   - CLOCK_SOURCE descriptor fields: clock_source_identifier, clock_source_flags
+  - LOCALE and STRINGS descriptor missing for non-active configuration
 
 ## [4.0.0] - 2025-02-18
 ### Added

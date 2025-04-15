@@ -537,7 +537,6 @@ private:
 	// Entity variables
 	entity::Entity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model
-	//entity::model::EntityTree _entityTree{}; // Tree of the model as represented by the AVDECC protocol
 	model::EntityNode _entityNode{}; // Model as represented by the ControlledEntity (tree of references to the model::EntityStaticTree and model::EntityDynamicTree)
 	// Entity Model Tree Access Strategy
 	friend class TreeModelAccessTraverseStrategy;

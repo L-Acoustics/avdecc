@@ -4085,7 +4085,7 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const controlle
 				{
 					// Create a copy of the static part of EntityModel
 					auto visitor = CreateCachedModelVisitor{};
-					controlledEntity->accept(&visitor);
+					controlledEntity->accept(&visitor, true); // Always visit all configurations, we need to retrieve the locales/strings from all configurations regardless of full static model enumeration
 
 					// Store EntityModel in the cache for later usevisitor
 					entityModelCache.cacheEntityModel(entityModelID, visitor.getModel());
