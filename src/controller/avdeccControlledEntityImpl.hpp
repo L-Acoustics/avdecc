@@ -168,7 +168,7 @@ public:
 		InputJackName, // JACK_INPUT.object_name -> GET_NAME (7.4.18)
 		OutputJackName, // JACK_OUTPUT.object_name -> GET_NAME (7.4.18)
 		AvbInterfaceDescriptor, // AVB_INTERFACE -> GET_DESCRIPTOR // Special case due to dynamic values that can only be retrieved from the descriptor
-		ClockSourceName, // CLOCK_SOURCE.object_name -> GET_NAME (7.4.18)
+		ClockSourceDescriptor, // CLOCK_SOURCE -> GET_DESCRIPTOR // Special case due to dynamic values that can only be retrieved from the descriptor
 		MemoryObjectName, // MEMORY_OBJECT.object_name -> GET_NAME (7.4.18)
 		MemoryObjectLength, // MEMORY_OBJECT.length -> GET_MEMORY_OBJECT_LENGTH (7.4.73)
 		AudioClusterName, // AUDIO_CLUSTER.object_name -> GET_NAME (7.4.18)

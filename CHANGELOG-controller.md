@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [macOS] Device not properly enumerated if `Fast Enumeration` is enabled
 - [[macOS] bad_any_cast exceptions when receiving GET_DYNAMIC_INFO](https://github.com/L-Acoustics/avdecc/issues/143)
 - Fast enumeration didn't properly fallback during dynamic info retrieval
+- Missing dynamic model information when using cached entity model
+  - CLOCK_SOURCE descriptor fields: clock_source_identifier, clock_source_flags
 
 ## [4.0.0] - 2025-02-18
 ### Added

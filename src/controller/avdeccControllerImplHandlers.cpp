@@ -1283,7 +1283,7 @@ void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interfac
 	}
 }
 
-void ControllerImpl::onClockSourceDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockIndex, entity::model::ClockSourceDescriptor const& descriptor) noexcept
+void ControllerImpl::onClockSourceDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockIndex, entity::model::ClockSourceDescriptor const& descriptor, ControlledEntityImpl::EnumerationStep const step) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onClockSourceDescriptorResult (ConfigurationIndex={} ClockIndex={}): {}", configurationIndex, clockIndex, entity::ControllerEntity::statusToString(status));
 
@@ -1292,29 +1292,69 @@ void ControllerImpl::onClockSourceDescriptorResult(entity::controller::Interface
 
 	if (controlledEntity)
 	{
-		if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::ClockSource, clockIndex))
+		auto const processSuccessHandler = [&descriptor, configurationIndex, clockIndex, &controlledEntity]()
 		{
-			if (!!status)
+			controlledEntity->setClockSourceDescriptor(descriptor, configurationIndex, clockIndex);
+		};
+		switch (step)
+		{
+			case ControlledEntityImpl::EnumerationStep::GetStaticModel:
 			{
-				controlledEntity->setClockSourceDescriptor(descriptor, configurationIndex, clockIndex);
-			}
-			else
-			{
-				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockSource, clockIndex))
+				if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::ClockSource, clockIndex))
 				{
-					controlledEntity->setGetFatalEnumerationError();
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockSourceDescriptor);
-					return;
+					if (!!status)
+					{
+						processSuccessHandler();
+					}
+					else
+					{
+						if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockSource, clockIndex))
+						{
+							controlledEntity->setGetFatalEnumerationError();
+							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockSourceDescriptor);
+							return;
+						}
+					}
+					// Got all expected descriptors
+					if (controlledEntity->gotAllExpectedDescriptors())
+					{
+						// Clear this enumeration step and check for next one
+						controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
+						checkEnumerationSteps(controlledEntity.get());
+					}
 				}
+				break;
 			}
-
-			// Got all expected descriptors
-			if (controlledEntity->gotAllExpectedDescriptors())
+			case ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo:
 			{
-				// Clear this enumeration step and check for next one
-				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
-				checkEnumerationSteps(controlledEntity.get());
+				if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceDescriptor, clockIndex))
+				{
+					if (!!status)
+					{
+						processSuccessHandler();
+					}
+					else
+					{
+						if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceDescriptor, clockIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
+						{
+							controlledEntity->setGetFatalEnumerationError();
+							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockSourceDescriptor);
+							return;
+						}
+					}
+					// Got all expected descriptor dynamic information
+					if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+					{
+						// Clear this enumeration step and check for next one
+						controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+						checkEnumerationSteps(controlledEntity.get());
+					}
+				}
+				break;
 			}
+			default:
+				AVDECC_ASSERT(false, "Invalid EnumerationStep");
+				break;
 		}
 	}
 }
@@ -2790,42 +2830,6 @@ void ControllerImpl::onOutputJackNameResult(entity::controller::Interface const*
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::OutputJackName);
-					return;
-				}
-			}
-
-			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
-			{
-				// Clear this enumeration step and check for next one
-				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
-				checkEnumerationSteps(controlledEntity.get());
-			}
-		}
-	}
-}
-
-void ControllerImpl::onClockSourceNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& clockSourceName) noexcept
-{
-	LOG_CONTROLLER_TRACE(entityID, "onClockSourceNameResult (ConfigurationIndex={} ClockSourceIndex={}): {}", configurationIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
-
-	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto controlledEntity = getControlledEntityImplGuard(entityID);
-
-	if (controlledEntity)
-	{
-		if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, clockSourceIndex))
-		{
-			if (!!status)
-			{
-				updateClockSourceName(*controlledEntity, configurationIndex, clockSourceIndex, clockSourceName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-			}
-			else
-			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, clockSourceIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
-				{
-					controlledEntity->setGetFatalEnumerationError();
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockSourceName);
 					return;
 				}
 			}

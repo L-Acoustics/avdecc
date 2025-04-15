@@ -2943,10 +2943,10 @@ std::string ControlledEntityImpl::descriptorDynamicInfoTypeToString(DescriptorDy
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (JACK_INPUT)";
 		case DescriptorDynamicInfoType::OutputJackName:
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (JACK_OUTPUT)";
-		/*case DescriptorDynamicInfoType::AvbInterfaceName: // Never used, we always have to query the whole descriptor
-			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (AVB_INTERFACE)";*/
-		case DescriptorDynamicInfoType::ClockSourceName:
-			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (CLOCK_SOURCE)";
+		case DescriptorDynamicInfoType::AvbInterfaceDescriptor:
+			return static_cast<std::string>(protocol::AemCommandType::ReadDescriptor) + " (AVB_INTERFACE)";
+		case DescriptorDynamicInfoType::ClockSourceDescriptor:
+			return static_cast<std::string>(protocol::AemCommandType::ReadDescriptor) + " (CLOCK_SOURCE)";
 		case DescriptorDynamicInfoType::MemoryObjectName:
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (MEMORY_OBJECT)";
 		case DescriptorDynamicInfoType::MemoryObjectLength:

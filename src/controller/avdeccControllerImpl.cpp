@@ -2404,7 +2404,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readClockSourceDescriptor (ConfigurationIndex={} ClockSourceIndex={})", configurationIndex, descriptorIndex);
-				controller->readClockSourceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onClockSourceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+				controller->readClockSourceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onClockSourceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, ControlledEntityImpl::EnumerationStep::GetStaticModel));
 			};
 			break;
 		case entity::model::DescriptorType::MemoryObject:
@@ -2778,11 +2778,11 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 				controller->readAvbInterfaceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo));
 			};
 			break;
-		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName:
+		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceDescriptor:
 			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
 			{
-				LOG_CONTROLLER_TRACE(entityID, "getClockSourceName (ConfigurationIndex={} ClockSourceIndex={})", configurationIndex, descriptorIndex);
-				controller->getClockSourceName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onClockSourceNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+				LOG_CONTROLLER_TRACE(entityID, "readClockSourceDescriptor (ConfigurationIndex={} ClockSourceIndex={})", configurationIndex, descriptorIndex);
+				controller->readClockSourceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onClockSourceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName:
@@ -3389,22 +3389,11 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::ClockSourceNode const& node) noexcept override
 			{
+				// CLOCK_SOURCE descriptor contains 'dynamic' fields (not part of the static model) that cannot be retrieved through a simple command, we have to query the whole descriptor
 				auto const configurationIndex = parent->descriptorIndex;
 				auto const clockSourceIndex = node.descriptorIndex;
 
-				// Only for active configuration
-				if (configurationIndex == _currentConfigurationIndex)
-				{
-					// Get ClockSourceName
-					if (_usePackedDynamicInfo)
-					{
-						_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetName, { configurationIndex, entity::model::DescriptorType::ClockSource, clockSourceIndex, std::uint16_t{ 0u } } });
-					}
-					else
-					{
-						_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, clockSourceIndex);
-					}
-				}
+				_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceDescriptor, clockSourceIndex);
 			}
 			virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::MemoryObjectNode const& node) noexcept override
 			{
@@ -6340,9 +6329,6 @@ bool ControllerImpl::fetchCorrespondingDescriptor(ControlledEntityImpl* const en
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName:
 			descriptorType = entity::model::DescriptorType::JackOutput;
-			break;
-		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName:
-			descriptorType = entity::model::DescriptorType::ClockSource;
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName:
 			descriptorType = entity::model::DescriptorType::MemoryObject;
