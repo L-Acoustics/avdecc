@@ -4087,8 +4087,8 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const controlle
 					auto visitor = CreateCachedModelVisitor{};
 					controlledEntity->accept(&visitor, true); // Always visit all configurations, we need to retrieve the locales/strings from all configurations regardless of full static model enumeration
 
-					// Store EntityModel in the cache for later usevisitor
-					entityModelCache.cacheEntityModel(entityModelID, visitor.getModel());
+					// Store EntityModel in the cache for later use
+					entityModelCache.cacheEntityModel(entityModelID, visitor.getModel(), _fullStaticModelEnumeration);
 					LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Cached model for EntityModelID {}", utils::toHexString(entityModelID, true, false));
 				}
 				else
