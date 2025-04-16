@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [MilanDynamicState to VirtualEntityBuilder](https://github.com/L-Acoustics/avdecc/issues/174)
 - [Support for Milan 1.2](https://github.com/L-Acoustics/avdecc/issues/169)
 - New `la::avdecc::controller::ControlledEntity::getMilanCompatibilityVersion()` method to differenciate between Milan versions
+- New `la::avdecc::controller::ControlledEntity::isPackedDynamicInfoSupported()` method to know if the entity supports packed dynamic info
+- New `la::avdecc::controller::ControlledEntity::isUsingCachedEntityModel()` method to know if the entity is using a cached entity model
 
 ### Changed
 - Renamed `la::avdecc::controller::Controller::Observer::onCompatibilityFlagsChanged` to `onCompatibilityChanged` (with additional parameter)

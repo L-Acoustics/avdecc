@@ -129,6 +129,11 @@ bool ControlledEntityImpl::isPackedDynamicInfoSupported() const noexcept
 	return _isPackedDynamicInfoSupported;
 }
 
+bool ControlledEntityImpl::isUsingCachedEntityModel() const noexcept
+{
+	return _isUsingCachedEntityModel;
+}
+
 bool ControlledEntityImpl::isSubscribedToUnsolicitedNotifications() const noexcept
 {
 	return _isSubscribedToUnsolicitedNotifications;
@@ -1695,6 +1700,9 @@ bool ControlledEntityImpl::setCachedEntityNode(model::EntityNode&& cachedNode, e
 	// And override with the EntityDescriptor so this entity's specific fields are copied
 	setEntityDescriptor(descriptor);
 
+	// Set the entity as using the cached model
+	_isUsingCachedEntityModel = true;
+
 	return true;
 }
 
@@ -2761,6 +2769,11 @@ void ControlledEntityImpl::setGetFatalEnumerationError() noexcept
 void ControlledEntityImpl::setPackedDynamicInfoSupported(bool const isSupported) noexcept
 {
 	_isPackedDynamicInfoSupported = isSupported;
+}
+
+void ControlledEntityImpl::setNotUsingCachedEntityModel() noexcept
+{
+	_isUsingCachedEntityModel = false;
 }
 
 void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept

@@ -200,6 +200,7 @@ public:
 	virtual bool isMilanRedundant() const noexcept override;
 	virtual bool gotFatalEnumerationError() const noexcept override;
 	virtual bool isPackedDynamicInfoSupported() const noexcept override;
+	virtual bool isUsingCachedEntityModel() const noexcept override;
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept override;
 	virtual bool areUnsolicitedNotificationsSupported() const noexcept override;
 	virtual bool isAcquired() const noexcept override;
@@ -449,6 +450,7 @@ public:
 	void setMilanRedundant(bool const isMilanRedundant) noexcept;
 	void setGetFatalEnumerationError() noexcept;
 	void setPackedDynamicInfoSupported(bool const isSupported) noexcept;
+	void setNotUsingCachedEntityModel() noexcept;
 	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
 	void setUnsolicitedNotificationsSupported(bool const isSupported) noexcept;
 	bool wasAdvertised() const noexcept;
@@ -514,6 +516,7 @@ private:
 	bool _isMilanRedundant{ false }; // Current configuration has at least one redundant stream
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
 	bool _isPackedDynamicInfoSupported{ false }; // Is the GET_DYNAMIC_INFO command supported
+	bool _isUsingCachedEntityModel{ false }; // Is the entity model loaded from the cache
 	bool _isSubscribedToUnsolicitedNotifications{ false }; // Are we subscribed to unsolicited notifications
 	bool _areUnsolicitedNotificationsSupported{ false }; // Are unsolicited notifications supported
 	bool _advertised{ false }; // Has the entity been advertised to the observers

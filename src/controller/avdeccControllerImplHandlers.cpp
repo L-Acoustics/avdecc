@@ -674,6 +674,9 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
+				// Start off as not using the cached entity model
+				entity.setNotUsingCachedEntityModel();
+
 				// Validate some fields
 				auto const& e = entity.getEntity();
 				if (descriptor.entityID != e.getEntityID())

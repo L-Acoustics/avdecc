@@ -5696,6 +5696,8 @@ ControllerImpl::PackedDynamicInfoFailureAction ControllerImpl::processGetDynamic
 		// If we are in the middle of the GetDescriptorDynamicInfo step
 		if (step == ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo)
 		{
+			// Set the entity as not using the cached EntityModel
+			entity->setNotUsingCachedEntityModel();
 			// Clear all DescriptorDynamicInfo queries
 			entity->clearAllExpectedDescriptorDynamicInfo();
 			// Fallback to full DescriptorDynamicInfo enumeration by restarting the enumeration
@@ -5714,6 +5716,7 @@ ControllerImpl::PackedDynamicInfoFailureAction ControllerImpl::processGetDynamic
 		}
 		else
 		{
+			entity->setNotUsingCachedEntityModel();
 			entity->clearAllExpectedDescriptorDynamicInfo();
 			entity->clearAllExpectedPackedDynamicInfo();
 			entity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -6270,8 +6273,13 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 		// Fallback to full StaticModel enumeration
 		if (!success)
 		{
+			// Set the entity as not using the cached EntityModel
+			entity->setNotUsingCachedEntityModel();
+			// Flag the entity as not able to use the cached EntityModel
 			entity->setIgnoreCachedEntityModel();
+			// Clear all DescriptorDynamicInfo queries
 			entity->clearAllExpectedDescriptorDynamicInfo();
+			// Fallback to full descriptors enumeration
 			entity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			LOG_CONTROLLER_ERROR(entityID, "Failed to use cached EntityModel (too many DescriptorDynamic query retries), falling back to full StaticModel enumeration");
 		}
