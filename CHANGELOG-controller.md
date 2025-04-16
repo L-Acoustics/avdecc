@@ -4,6 +4,31 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2025-04-16
+### Added
+- [Automatically converting AEM/AVE/ANS dumps from format v1 to format v2](https://github.com/L-Acoustics/avdecc/issues/172)
+- [Virtual Entity and Entity Model dumps reference the json schema directly from github](https://github.com/L-Acoustics/avdecc/issues/164)
+- [Include Milan static fields to AEM checksum computation](https://github.com/L-Acoustics/avdecc/issues/170)
+- [MilanDynamicState to VirtualEntityBuilder](https://github.com/L-Acoustics/avdecc/issues/174)
+- [Support for Milan 1.2](https://github.com/L-Acoustics/avdecc/issues/169)
+- New `la::avdecc::controller::ControlledEntity::getMilanCompatibilityVersion()` method to differenciate between Milan versions
+- New `la::avdecc::controller::ControlledEntity::isPackedDynamicInfoSupported()` method to know if the entity supports packed dynamic info
+- New `la::avdecc::controller::ControlledEntity::isUsingCachedEntityModel()` method to know if the entity is using a cached entity model
+
+### Changed
+- Renamed `la::avdecc::controller::Controller::Observer::onCompatibilityFlagsChanged` to `onCompatibilityChanged` (with additional parameter)
+- Added new parameter to `la::avdecc::controller::model::VirtualEntityBuilder::build(CompatibilityFlags)` to specify the Milan version
+
+### Fixed
+- [Added a compilation option to continue enumeration in case device returns MISBEHAVE status](https://github.com/L-Acoustics/avdecc/issues/156)
+- [macOS] Device not properly enumerated if `Fast Enumeration` is enabled
+- [[macOS] bad_any_cast exceptions when receiving GET_DYNAMIC_INFO](https://github.com/L-Acoustics/avdecc/issues/143)
+- Fast enumeration didn't properly fallback during dynamic info retrieval
+- Missing dynamic model information when using cached entity model
+  - CLOCK_SOURCE descriptor fields: clock_source_identifier, clock_source_flags
+  - LOCALE and STRINGS descriptor missing for non-active configuration
+- [AEM Cache not working for devices with multiple configurations](https://github.com/L-Acoustics/avdecc/issues/165)
+
 ## [4.0.0] - 2025-02-18
 ### Added
 - Support for JACK_INPUT/JACK_OUTPUT descriptors
@@ -24,6 +49,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [Support for read-only properties change for virtual entities](https://github.com/L-Acoustics/avdecc/issues/162)
 - la::avdecc::controller::Controller::createVirtualEntityFromEntityModelFile method
 - la::avdecc::entity::model::VirtualEntityBuilder class to help creating virtual entities from EntityModel files
+- Unsolicited notifications support for VendorUnique messages, with statistics counters
+- Milan 1.2 MVU commands:
+  - SET_SYSTEM_UNIQUE_ID
+  - GET_SYSTEM_UNIQUE_ID
+  - SET_MEDIA_CLOCK_REFERENCE_INFO
+  - GET_MEDIA_CLOCK_REFERENCE_INFO
 
 ### Changed
 - Complete controller entity model refactoring to support descriptors at non-configuration level

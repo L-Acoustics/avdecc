@@ -64,8 +64,10 @@ public:
 		None = 0u, /**< No protocol interface (not a valid protocol interface type, should only be used to initialize variables). */
 		PCap = 1u << 0, /**< Packet Capture protocol interface. */
 		MacOSNative = 1u << 1, /**< macOS native API protocol interface - Only usable on macOS. */
-		Proxy = 1u << 2, /**< IEEE Std 1722.1 Proxy protocol interface. */
+		Proxy = 1u << 2, /**< IEEE Std 1722.1 Proxy protocol interface (Network Mode). */
 		Virtual = 1u << 3, /**< Virtual protocol interface. */
+		Serial = 1u << 4, /**< Serial port protocol interface. */
+		Local = 1u << 5, /**< Local domain socket protocol interface. */
 	};
 
 	/** Possible Error status returned (or thrown) by a ProtocolInterface */
@@ -176,10 +178,12 @@ public:
 		*           - onVuAecpResponse will never be called
 		*           - getCommandTimeout will be called for VendorUnique Commands by the ControllerStateMachine so it knows when a command timed out and can be retried (or return Timeout error status)
 		*           - AecpCommandResultHandler handler passed to sendAecpCommand will be called at some point
+		*           - isVuAecpUnsolicitedResponse and onVuAecpUnsolicitedResponse will be called by the ControllerStateMachine
 		*          If they are to be handled by the VendorUniqueDelegate:
 		*           - sendAecpCommand and sendAecpResponse shall not be called (use sendAecpMessage instead)
 		*           - onVuAecpResponse will be called when a VendorUnique Reponse for the registered VuAecpdu::ProtocolIdentifier is received and must be processed
 		*           - AecpCommandResultHandler handler passed to sendAecpCommand will never be called
+		*           - isVuAecpUnsolicitedResponse and onVuAecpUnsolicitedResponse shall not be called (use internal logic)
 		*          In any case:
 		*           - onVuAecpCommand will be called whenever a VendorUnique Command for the registered VuAecpdu::ProtocolIdentifier is received
 		*           - onAecpCommand and onAecpAemUnsolicitedResponse from Observer won't be called
@@ -192,9 +196,15 @@ public:
 		}
 
 		/** Gets the timeout value (in milliseconds) for the provided VuAecpdu. Called only if areHandledByControllerStateMachine() returned true. */
-		virtual std::uint32_t getVuAecpCommandTimeoutMsec(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) noexcept
+		virtual std::uint32_t getVuAecpCommandTimeoutMsec(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) const noexcept
 		{
 			return 250u;
+		}
+
+		/** Returns true if the provided VuAecpdu is an unsolicited response message, false otherwise. Called only if areHandledByControllerStateMachine() returned true. */
+		virtual bool isVuAecpUnsolicitedResponse(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) const noexcept
+		{
+			return false;
 		}
 
 		/** Notification for when an AECP VendorUnique Command is received (for a locally registered entity), for a ProtocolIdentifier this Delegate registered for. */
@@ -202,6 +212,9 @@ public:
 
 		/** Notification for when an AECP VendorUnique Response is received (for a locally registered entity), for a ProtocolIdentifier this Delegate registered for. Called only if areHandledByControllerStateMachine() returned false. */
 		virtual void onVuAecpResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) noexcept {}
+
+		/** Notification for when an AECP VendorUnique Unsolicited Response is received (for a locally registered entity), for a ProtocolIdentifier this Delegate registered for. Called only if areHandledByControllerStateMachine() returned true. */
+		virtual void onVuAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) noexcept {}
 	};
 
 	/**
@@ -342,7 +355,13 @@ protected:
 	static bool isAecpResponseMessageType(AecpMessageType const messageType) noexcept;
 
 	/** Returns the Command Timeout (in msec) for the specified VendorUnique ProtocolIdentifier and VuAecpdu. */
-	std::uint32_t getVuAecpCommandTimeout(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept;
+	std::uint32_t getVendorUniqueCommandTimeout(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept;
+
+	/** Returns true if the specified VuAecpdu and VendorUnique ProtocolIdentifier is an Unsolicited Response. */
+	bool isVendorUniqueUnsolicitedResponse(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept;
+
+	/** Forward the Unsolicited VuAecpdu to the specified ProtocolIdentifier. */
+	void handleVendorUniqueUnsolicitedResponse(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) noexcept;
 
 	/** Returns the VendorUniqueDelegate handling the specified protocolIdentifier, or nullptr if none has been registered. WARNING: Once returned, the pointed object is NOT locked. */
 	VendorUniqueDelegate* getVendorUniqueDelegate(VuAecpdu::ProtocolIdentifier const& protocolIdentifier) const noexcept;

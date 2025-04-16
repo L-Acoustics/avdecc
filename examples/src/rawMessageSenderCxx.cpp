@@ -45,13 +45,18 @@
 #include <cstdint>
 
 static auto constexpr s_ProgID = std::uint16_t{ 5 };
-static auto const s_TargetEntityID = la::avdecc::UniqueIdentifier{ 0x001b92fffe01b930 };
+static auto const s_TargetEntityID = la::avdecc::UniqueIdentifier{ 0x001b92ffff050870 };
 static auto const s_ListenerEntityID = la::avdecc::UniqueIdentifier{ 0x001b92fffe01b930 };
 static auto const s_TalkerEntityID = la::avdecc::UniqueIdentifier{ 0x1b92fffe02233b };
-static auto const s_TargetMacAddress = la::networkInterface::MacAddress{ 0x00, 0x1b, 0x92, 0x01, 0xb9, 0x30 };
+static auto const s_TargetMacAddress = la::networkInterface::MacAddress{ 0x00, 0x1b, 0x92, 0x05, 0x08, 0x70 };
 
 inline void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 {
+	if (!pi.isDirectMessageSupported())
+	{
+		outputText("Direct message sending is not supported by this ProtocolInterface\n");
+		return;
+	}
 	auto const controllerID = la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), s_ProgID, true);
 
 	// Send raw ADP message (Entity Available message)
@@ -80,7 +85,11 @@ inline void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		adpdu.setAssociationID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
 
 		// Send the message
-		pi.sendAdpMessage(adpdu);
+		auto const error = pi.sendAdpMessage(adpdu);
+		if (!!error)
+		{
+			outputText("Error sending ADP message: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+		}
 	}
 
 	// Send raw ACMP message (Connect Stream Command)
@@ -107,7 +116,11 @@ inline void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		acmpdu.setStreamVlanID(0u);
 
 		// Send the message
-		pi.sendAcmpMessage(acmpdu);
+		auto const error = pi.sendAcmpMessage(acmpdu);
+		if (!!error)
+		{
+			outputText("Error sending ACMP message: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+		}
 	}
 
 	// Send raw AEM AECP message (Acquire Command)
@@ -135,7 +148,11 @@ inline void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		}
 
 		// Send the message
-		pi.sendAecpMessage(aecpdu);
+		auto const error = pi.sendAecpMessage(aecpdu);
+		if (!!error)
+		{
+			outputText("Error sending AECP message: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+		}
 	}
 
 	// Send raw MVU AECP message (Get Milan Info)
@@ -162,7 +179,11 @@ inline void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		}
 
 		// Send the message
-		pi.sendAecpMessage(aecpdu);
+		auto const error = pi.sendAecpMessage(aecpdu);
+		if (!!error)
+		{
+			outputText("Error sending AECP message: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+		}
 	}
 }
 
@@ -247,7 +268,7 @@ inline void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 		{
 			return true;
 		}
-		virtual std::uint32_t getVuAecpCommandTimeoutMsec(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) noexcept override
+		virtual std::uint32_t getVuAecpCommandTimeoutMsec(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) const noexcept override
 		{
 			return 250u;
 		}
@@ -432,8 +453,13 @@ inline void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterf
 		}
 
 	private:
-		virtual void onEntityOnline(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::Entity const& /*entity*/) noexcept override
+		virtual void onEntityOnline(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::Entity const& entity) noexcept override
 		{
+			if (entity.getControllerCapabilities().test(la::avdecc::entity::ControllerCapability::Implemented))
+			{
+				outputText("Ignoring discovered controller entity\n");
+				return;
+			}
 			outputText("Found an entity (either local or remote)\n");
 			_foundEntity = entityID;
 		}
@@ -600,6 +626,24 @@ inline void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterf
 		if (status == std::future_status::timeout)
 		{
 			outputText("AEM AECP command timed out\n");
+		}
+	}
+
+	// MVU GetMilanInfo
+	{
+		auto commandResultPromise = std::promise<void>{};
+		entity->getMilanInfo(foundEntity,
+			[&commandResultPromise](la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::MilanInfo const& milanInfo)
+			{
+				outputText("Got GetMilanInfo response with status: " + std::to_string(la::avdecc::utils::to_integral(status)) + ": " + std::to_string(milanInfo.protocolVersion) + "\n");
+				commandResultPromise.set_value();
+			});
+
+		// Wait for the command result
+		auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(20));
+		if (status == std::future_status::timeout)
+		{
+			outputText("MVU command timed out\n");
 		}
 	}
 }

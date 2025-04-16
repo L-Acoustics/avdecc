@@ -2696,6 +2696,93 @@ void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, st
 	}
 }
 
+void ControllerImpl::setSystemUniqueID(UniqueIdentifier const targetEntityID, entity::model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setSystemUniqueID (SystemUniqueID={})", systemUniqueID);
+
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controllerProxy->setSystemUniqueID(targetEntityID, systemUniqueID,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::SystemUniqueIdentifier const systemUniqueID)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setSystemUniqueID (): {}", entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+
+					// Update system unique ID
+					if (!!status)
+					{
+						updateSystemUniqueID(*entity, systemUniqueID);
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::MvuCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, std::optional<entity::model::MediaClockReferencePriority> const userPriority, std::optional<entity::model::AvdeccFixedString> const& domainName, SetMediaClockReferenceInfoHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setMediaClockReferenceInfo (ClockDomainIndex={} UserPriority={} DomainName={})", clockDomainIndex, userPriority ? std::to_string(*userPriority) : "NotSet", domainName ? static_cast<std::string>(*domainName) : "NotSet");
+
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controllerProxy->setMediaClockReferenceInfo(targetEntityID, clockDomainIndex, userPriority, domainName,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& mcrInfo)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setMediaClockReferenceInfo (): {}", entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+
+					// Update media clock reference info
+					if (!!status)
+					{
+						validateDefaultMediaClockReferencePriority(*entity, clockDomainIndex, defaultPriority, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+						updateMediaClockReferenceInfo(*entity, clockDomainIndex, mcrInfo, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::MvuCommandStatus::UnknownEntity);
+	}
+}
+
 void ControllerImpl::connectStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
@@ -3162,7 +3249,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 
 #else // ENABLE_AVDECC_FEATURE_JSON
 
-	auto [error, errorText, entityTree] = EndStation::deserializeEntityModelFromJson(filePath, false, isBinaryFormat);
+	auto [error, errorText, entityTree, entityModelID] = deserializeJsonEntityModel(filePath, isBinaryFormat);
 	if (!error)
 	{
 		// TODO: Feed the cache with the loaded model

@@ -96,12 +96,29 @@ void CommandStateMachine::unregisterLocalEntity(entity::LocalEntity& entity) noe
 	auto const infoIt = _commandEntities.find(entityID);
 	if (infoIt != _commandEntities.end())
 	{
-		// Unregister LocalEntity
+		// Cancel all inflight commands (AECP and ACMP) and trigger handlers
+		auto& localEntityInfo = infoIt->second;
+		for (auto const& [targetEntityID, inflight] : localEntityInfo.inflightAecpCommands)
+		{
+			for (auto const& command : inflight.inflightCommands)
+			{
+				utils::invokeProtectedHandler(command.resultHandler, nullptr, ProtocolInterface::Error::UnknownLocalEntity);
+			}
+		}
+		for (auto const& [targetMacAddress, inflight] : localEntityInfo.inflightAcmpCommands)
+		{
+			for (auto const& command : inflight.inflightCommands)
+			{
+				utils::invokeProtectedHandler(command.resultHandler, nullptr, ProtocolInterface::Error::UnknownLocalEntity);
+			}
+		}
+
+		// Unregister LocalEntity (causing any arriving AECP/ACMP command to be discarded by the state machine)
 		_commandEntities.erase(infoIt);
 	}
 }
 
-void CommandStateMachine::discardEntityMessages(la::avdecc::UniqueIdentifier const& entityID) noexcept
+void CommandStateMachine::discardAECPCommandsTowardsEntity(la::avdecc::UniqueIdentifier const& entityID) noexcept
 {
 	// Lock
 	auto const lg = std::lock_guard{ *_manager };
@@ -263,7 +280,7 @@ void CommandStateMachine::handleAecpResponse(Aecpdu const& aecpdu) noexcept
 	if (controllerID == AemAecpdu::Identify_ControllerEntityID)
 	{
 		// Check if it's an AEM unsolicited response
-		if (isAEMUnsolicitedResponse(aecpdu))
+		if (isAemUnsolicitedResponse(aecpdu))
 		{
 			utils::invokeProtectedMethod(&Delegate::onAecpAemIdentifyNotification, _delegate, static_cast<AemAecpdu const&>(aecpdu));
 		}
@@ -277,9 +294,16 @@ void CommandStateMachine::handleAecpResponse(Aecpdu const& aecpdu) noexcept
 	if (auto const commandEntityIt = _commandEntities.find(controllerID); commandEntityIt != _commandEntities.end())
 	{
 		// Check if it's an AEM unsolicited response
-		if (isAEMUnsolicitedResponse(aecpdu))
+		if (isAemUnsolicitedResponse(aecpdu))
 		{
 			utils::invokeProtectedMethod(&Delegate::onAecpAemUnsolicitedResponse, _delegate, static_cast<AemAecpdu const&>(aecpdu));
+		}
+		// Or a VU unsolicited response
+		else if (isVuUnsolicitedResponse(aecpdu))
+		{
+			auto const& vuAecp = static_cast<VuAecpdu const&>(aecpdu);
+			auto const vuProtocolID = vuAecp.getProtocolIdentifier();
+			protocolInterface->onVuAecpUnsolicitedResponse(vuProtocolID, vuAecp);
 		}
 		else
 		{
@@ -472,7 +496,7 @@ ProtocolInterface::Error CommandStateMachine::sendAcmpCommand(Acmpdu::UniquePoin
 /* ************************************************************ */
 /* Private methods                                              */
 /* ************************************************************ */
-bool CommandStateMachine::isAEMUnsolicitedResponse(Aecpdu const& aecpdu) const noexcept
+bool CommandStateMachine::isAemUnsolicitedResponse(Aecpdu const& aecpdu) const noexcept
 {
 	auto const messageType = aecpdu.getMessageType();
 
@@ -500,6 +524,22 @@ bool CommandStateMachine::shouldRearmTimer(Aecpdu const& aecpdu) const noexcept
 			return true;
 		}
 	}
+	return false;
+}
+
+bool CommandStateMachine::isVuUnsolicitedResponse(Aecpdu const& aecpdu) const noexcept
+{
+	auto const messageType = aecpdu.getMessageType();
+
+	if (messageType == AecpMessageType::VendorUniqueResponse)
+	{
+		auto const& vuAecp = static_cast<VuAecpdu const&>(aecpdu);
+		auto const vuProtocolID = vuAecp.getProtocolIdentifier();
+		auto* const protocolInterface = _manager->getProtocolInterfaceDelegate();
+
+		return protocolInterface->isVuAecpUnsolicitedResponse(vuProtocolID, vuAecp);
+	}
+
 	return false;
 }
 

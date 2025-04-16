@@ -189,6 +189,12 @@ public:
 		return *this;
 	}
 
+	/** Serializes a MilanVersion */
+	Serializer& operator<<(entity::model::MilanVersion const& v)
+	{
+		return operator<<(v.getValue());
+	}
+
 	/** Appends a raw buffer to the serialized buffer (without changing endianess) */
 	Serializer& packBuffer(void const* const ptr, size_t const size)
 	{
@@ -405,6 +411,15 @@ public:
 	Deserializer& operator>>(MemoryBuffer& v)
 	{
 		unpackBuffer(v.data(), v.size());
+		return *this;
+	}
+
+	/** Unpacks a MilanVersion */
+	Deserializer& operator>>(entity::model::MilanVersion& v)
+	{
+		entity::model::MilanVersion::value_type value;
+		operator>>(value);
+		v.setValue(value);
 		return *this;
 	}
 

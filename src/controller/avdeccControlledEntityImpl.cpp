@@ -103,9 +103,15 @@ bool ControlledEntityImpl::isVirtual() const noexcept
 {
 	return _isVirtual;
 }
+
 ControlledEntity::CompatibilityFlags ControlledEntityImpl::getCompatibilityFlags() const noexcept
 {
 	return _compatibilityFlags;
+}
+
+entity::model::MilanVersion ControlledEntityImpl::getMilanCompatibilityVersion() const noexcept
+{
+	return _milanCompatibilityVersion;
 }
 
 bool ControlledEntityImpl::isMilanRedundant() const noexcept
@@ -118,9 +124,14 @@ bool ControlledEntityImpl::gotFatalEnumerationError() const noexcept
 	return _gotFatalEnumerateError;
 }
 
-bool ControlledEntityImpl::isGetDynamicInfoSupported() const noexcept
+bool ControlledEntityImpl::isPackedDynamicInfoSupported() const noexcept
 {
-	return _isGetDynamicInfoSupported;
+	return _isPackedDynamicInfoSupported;
+}
+
+bool ControlledEntityImpl::isUsingCachedEntityModel() const noexcept
+{
+	return _isUsingCachedEntityModel;
 }
 
 bool ControlledEntityImpl::isSubscribedToUnsolicitedNotifications() const noexcept
@@ -228,6 +239,11 @@ entity::Entity const& ControlledEntityImpl::getEntity() const noexcept
 std::optional<entity::model::MilanInfo> ControlledEntityImpl::getMilanInfo() const noexcept
 {
 	return _milanInfo;
+}
+
+std::optional<entity::model::MilanDynamicState> ControlledEntityImpl::getMilanDynamicState() const noexcept
+{
+	return _milanDynamicState;
 }
 
 std::optional<entity::model::ControlIndex> ControlledEntityImpl::getIdentifyControlIndex() const noexcept
@@ -644,6 +660,16 @@ std::uint64_t ControlledEntityImpl::getAemAecpUnsolicitedCounter() const noexcep
 std::uint64_t ControlledEntityImpl::getAemAecpUnsolicitedLossCounter() const noexcept
 {
 	return _aemAecpUnsolicitedLossCounter;
+}
+
+std::uint64_t ControlledEntityImpl::getMvuAecpUnsolicitedCounter() const noexcept
+{
+	return _mvuAecpUnsolicitedCounter;
+}
+
+std::uint64_t ControlledEntityImpl::getMvuAecpUnsolicitedLossCounter() const noexcept
+{
+	return _mvuAecpUnsolicitedLossCounter;
 }
 
 std::chrono::milliseconds const& ControlledEntityImpl::getEnumerationTime() const noexcept
@@ -1567,6 +1593,20 @@ void ControlledEntityImpl::setMilanInfo(entity::model::MilanInfo const& info) no
 	_milanInfo = info;
 }
 
+void ControlledEntityImpl::setMilanDynamicState(entity::model::MilanDynamicState const& state) noexcept
+{
+	_milanDynamicState = state;
+}
+
+void ControlledEntityImpl::setSystemUniqueID(entity::model::SystemUniqueIdentifier const uniqueID) noexcept
+{
+	if (!_milanDynamicState)
+	{
+		_milanDynamicState = entity::model::MilanDynamicState{};
+	}
+	_milanDynamicState->systemUniqueID = uniqueID;
+}
+
 // Setters of the Statistics
 void ControlledEntityImpl::setAecpRetryCounter(std::uint64_t const value) noexcept
 {
@@ -1596,6 +1636,16 @@ void ControlledEntityImpl::setAemAecpUnsolicitedCounter(std::uint64_t const valu
 void ControlledEntityImpl::setAemAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept
 {
 	_aemAecpUnsolicitedLossCounter = value;
+}
+
+void ControlledEntityImpl::setMvuAecpUnsolicitedCounter(std::uint64_t const value) noexcept
+{
+	_mvuAecpUnsolicitedCounter = value;
+}
+
+void ControlledEntityImpl::setMvuAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept
+{
+	_mvuAecpUnsolicitedLossCounter = value;
 }
 
 void ControlledEntityImpl::setEnumerationTime(std::chrono::milliseconds const& value) noexcept
@@ -1649,6 +1699,9 @@ bool ControlledEntityImpl::setCachedEntityNode(model::EntityNode&& cachedNode, e
 
 	// And override with the EntityDescriptor so this entity's specific fields are copied
 	setEntityDescriptor(descriptor);
+
+	// Set the entity as using the cached model
+	_isUsingCachedEntityModel = true;
 
 	return true;
 }
@@ -2283,6 +2336,18 @@ std::uint64_t ControlledEntityImpl::incrementAemAecpUnsolicitedLossCounter() noe
 	return _aemAecpUnsolicitedLossCounter;
 }
 
+std::uint64_t ControlledEntityImpl::incrementMvuAecpUnsolicitedCounter() noexcept
+{
+	++_mvuAecpUnsolicitedCounter;
+	return _mvuAecpUnsolicitedCounter;
+}
+
+std::uint64_t ControlledEntityImpl::incrementMvuAecpUnsolicitedLossCounter() noexcept
+{
+	++_mvuAecpUnsolicitedLossCounter;
+	return _mvuAecpUnsolicitedLossCounter;
+}
+
 void ControlledEntityImpl::setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept
 {
 	_enumerationStartTime = std::move(startTime);
@@ -2372,7 +2437,7 @@ std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getRegisterUnso
 }
 
 // Expected GetDynamicInfo query methods
-bool ControlledEntityImpl::checkAndClearExpectedGetDynamicInfo(std::uint16_t const packetID) noexcept
+bool ControlledEntityImpl::checkAndClearExpectedPackedDynamicInfo(std::uint16_t const packetID) noexcept
 {
 	AVDECC_ASSERT(_sharedLock->_lockedCount > 0, "ControlledEntity should be locked");
 
@@ -2380,28 +2445,28 @@ bool ControlledEntityImpl::checkAndClearExpectedGetDynamicInfo(std::uint16_t con
 	if (_gotFatalEnumerateError)
 		return false;
 
-	return _expectedGetDynamicInfo.erase(packetID) == 1;
+	return _expectedPackedDynamicInfo.erase(packetID) == 1;
 }
 
-void ControlledEntityImpl::setGetDynamicInfoExpected(std::uint16_t const packetID) noexcept
+void ControlledEntityImpl::setPackedDynamicInfoExpected(std::uint16_t const packetID) noexcept
 {
 	AVDECC_ASSERT(_sharedLock->_lockedCount > 0, "ControlledEntity should be locked");
 
-	_expectedGetDynamicInfo.insert(packetID);
+	_expectedPackedDynamicInfo.insert(packetID);
 }
 
-void ControlledEntityImpl::clearAllExpectedGetDynamicInfo() noexcept
+void ControlledEntityImpl::clearAllExpectedPackedDynamicInfo() noexcept
 {
 	AVDECC_ASSERT(_sharedLock->_lockedCount > 0, "ControlledEntity should be locked");
 
-	_expectedGetDynamicInfo.clear();
+	_expectedPackedDynamicInfo.clear();
 }
 
-bool ControlledEntityImpl::gotAllExpectedGetDynamicInfo() const noexcept
+bool ControlledEntityImpl::gotAllExpectedPackedDynamicInfo() const noexcept
 {
 	AVDECC_ASSERT(_sharedLock->_lockedCount > 0, "ControlledEntity should be locked");
 
-	return _expectedGetDynamicInfo.empty();
+	return _expectedPackedDynamicInfo.empty();
 }
 
 std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getGetDynamicInfoRetryTimer() noexcept
@@ -2547,6 +2612,13 @@ void ControlledEntityImpl::setDynamicInfoExpected(entity::model::ConfigurationIn
 	conf.insert(key);
 }
 
+void ControlledEntityImpl::clearAllExpectedDynamicInfo() noexcept
+{
+	AVDECC_ASSERT(_sharedLock->_lockedCount > 0, "ControlledEntity should be locked");
+
+	_expectedDynamicInfo.clear();
+}
+
 bool ControlledEntityImpl::gotAllExpectedDynamicInfo() const noexcept
 {
 	AVDECC_ASSERT(_sharedLock->_lockedCount > 0, "ControlledEntity should be locked");
@@ -2678,6 +2750,11 @@ void ControlledEntityImpl::setCompatibilityFlags(CompatibilityFlags const compat
 	_compatibilityFlags = compatibilityFlags;
 }
 
+void ControlledEntityImpl::setMilanCompatibilityVersion(entity::model::MilanVersion const version) noexcept
+{
+	_milanCompatibilityVersion = version;
+}
+
 void ControlledEntityImpl::setMilanRedundant(bool const isMilanRedundant) noexcept
 {
 	_isMilanRedundant = isMilanRedundant;
@@ -2689,9 +2766,14 @@ void ControlledEntityImpl::setGetFatalEnumerationError() noexcept
 	_gotFatalEnumerateError = true;
 }
 
-void ControlledEntityImpl::setGetDynamicInfoSupported(bool const isSupported) noexcept
+void ControlledEntityImpl::setPackedDynamicInfoSupported(bool const isSupported) noexcept
 {
-	_isGetDynamicInfoSupported = isSupported;
+	_isPackedDynamicInfoSupported = isSupported;
+}
+
+void ControlledEntityImpl::setNotUsingCachedEntityModel() noexcept
+{
+	_isUsingCachedEntityModel = false;
 }
 
 void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept
@@ -2701,7 +2783,8 @@ void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const is
 	// If unsubscribing, reset the expected sequence id
 	if (!isSubscribed)
 	{
-		_expectedSequenceID = std::nullopt;
+		_expectedAemSequenceID = std::nullopt;
+		_expectedMvuSequenceID = std::nullopt;
 	}
 }
 
@@ -2777,22 +2860,32 @@ ControlledEntity::Diagnostics& ControlledEntityImpl::getDiagnostics() noexcept
 	return _diagnostics;
 }
 
-bool ControlledEntityImpl::hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept
+bool ControlledEntityImpl::hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID) noexcept
 {
 	auto unmatched = false;
-	if (_isSubscribedToUnsolicitedNotifications && _milanInfo && _milanInfo->protocolVersion == 1)
+	if (_isSubscribedToUnsolicitedNotifications && _milanInfo && _milanInfo->protocolVersion >= 1)
 	{
 		// Compare received sequenceID and expected one, if it's not the first one received.
 		// We don't expect 0 as first value, since the controller itself might restart (with the same entityID) without properly deregistering first,
 		// in which case the entity will send unsolicited continuing the previous sequence.
-		if (_expectedSequenceID.has_value())
+		if (expectedSequenceID.has_value())
 		{
-			unmatched = *_expectedSequenceID != sequenceID;
+			unmatched = *expectedSequenceID != sequenceID;
 		}
 		// Update next expected sequence ID
-		_expectedSequenceID = static_cast<protocol::AecpSequenceID>(sequenceID + 1u);
+		expectedSequenceID = static_cast<protocol::AecpSequenceID>(sequenceID + 1u);
 	}
 	return unmatched;
+}
+
+bool ControlledEntityImpl::hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept
+{
+	return hasLostUnsolicitedNotification(sequenceID, _expectedAemSequenceID);
+}
+
+bool ControlledEntityImpl::hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept
+{
+	return hasLostUnsolicitedNotification(sequenceID, _expectedMvuSequenceID);
 }
 
 // Static methods
@@ -2804,10 +2897,10 @@ std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const 
 			return protocol::AemCommandType::AcquireEntity;
 		case DynamicInfoType::LockedState:
 			return protocol::AemCommandType::LockEntity;
-		case DynamicInfoType::InputStreamAudioMappings:
-			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_INPUT)";
-		case DynamicInfoType::OutputStreamAudioMappings:
-			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_OUTPUT)";
+		case DynamicInfoType::InputStreamPortAudioMappings:
+			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_PORT_INPUT)";
+		case DynamicInfoType::OutputStreamPortAudioMappings:
+			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_PORT_OUTPUT)";
 		case DynamicInfoType::InputStreamState:
 			return protocol::AcmpMessageType::GetRxStateCommand;
 		case DynamicInfoType::OutputStreamState:
@@ -2832,6 +2925,10 @@ std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const 
 			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (STREAM_INPUT)";
 		case DynamicInfoType::GetStreamOutputCounters:
 			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (STREAM_OUTPUT)";
+		case DynamicInfoType::GetSystemUniqueID:
+			return protocol::MvuCommandType::GetSystemUniqueID;
+		case DynamicInfoType::GetMediaClockReferenceInfo:
+			return protocol::MvuCommandType::GetMediaClockReferenceInfo;
 		default:
 			return "Unknown DynamicInfoType";
 	}
@@ -2859,10 +2956,10 @@ std::string ControlledEntityImpl::descriptorDynamicInfoTypeToString(DescriptorDy
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (JACK_INPUT)";
 		case DescriptorDynamicInfoType::OutputJackName:
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (JACK_OUTPUT)";
-		/*case DescriptorDynamicInfoType::AvbInterfaceName: // Never used, we always have to query the whole descriptor
-			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (AVB_INTERFACE)";*/
-		case DescriptorDynamicInfoType::ClockSourceName:
-			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (CLOCK_SOURCE)";
+		case DescriptorDynamicInfoType::AvbInterfaceDescriptor:
+			return static_cast<std::string>(protocol::AemCommandType::ReadDescriptor) + " (AVB_INTERFACE)";
+		case DescriptorDynamicInfoType::ClockSourceDescriptor:
+			return static_cast<std::string>(protocol::AemCommandType::ReadDescriptor) + " (CLOCK_SOURCE)";
 		case DescriptorDynamicInfoType::MemoryObjectName:
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (MEMORY_OBJECT)";
 		case DescriptorDynamicInfoType::MemoryObjectLength:

@@ -2,7 +2,39 @@
 // AVDECC LIBRARY SWIG file
 ////////////////////////////////////////
 
-%module(directors="1") avdecc
+%module(directors="1", csbegin="#nullable enable\n") avdecc
+
+// C# Specifics
+#if defined(SWIGCSHARP)
+// Optimize code generation by enabling RVO
+%typemap(out, optimal="1") SWIGTYPE
+%{
+	$result = new $1_ltype($1);
+%}
+#pragma SWIG nowarn=474
+// Marshal all std::string as UTF8Str
+%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
+// Expose internal constructor and methods publicly, some dependant modules may need it
+#	if !defined(SWIGIMPORTED)
+#	define PUBLIC_BUT_HIDDEN [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)] public
+	SWIG_CSBODY_PROXY(PUBLIC_BUT_HIDDEN, PUBLIC_BUT_HIDDEN, SWIGTYPE)
+#	endif
+// Use Nullable Reference Types for Optional (requires C# >= 8.0)
+#define SWIG_STD_OPTIONAL_USE_NULLABLE_REFERENCE_TYPES
+// Override default visibility for internal optional class (to make it accessible from other assemblies but not visible)
+#undef SWIG_STD_OPTIONAL_INTERNAL_CLASS_MODIFIER
+#define SWIG_STD_OPTIONAL_INTERNAL_CLASS_MODIFIER PUBLIC_BUT_HIDDEN
+#endif
+
+// Common for all languages
+// Use 64-bit size_t
+#if defined(USE_SIZE_T_64)
+%apply unsigned long long { size_t };
+%apply const unsigned long long & { const size_t & };
+#endif
+// Ignore warning %extend defined for an undeclared class 'name'.
+#pragma SWIG nowarn=303
+
 
 %include <stl.i>
 %include <std_string.i>
@@ -12,6 +44,7 @@
 %include <std_map.i>
 %include <windows.i>
 %include <std_unique_ptr.i>
+%include <std_optional.i>
 #if 0
 %include <swiginterface.i>
 #endif
@@ -19,7 +52,6 @@
 %include <arrays_csharp.i>
 #endif
 %include "la/avdecc/internals/chrono.i"
-%include "la/avdecc/internals/optional.i"
 %include "la/avdecc/internals/std_function.i"
 %include "la/avdecc/internals/std_tuple.i"
 
@@ -37,18 +69,7 @@
 	#include <la/avdecc/internals/protocolInterface.hpp>
 %}
 
-#if defined(USE_SIZE_T_64)
-// Use 64-bit size_t
-%apply unsigned long long { size_t };
-%apply const unsigned long long & { const size_t & };
-#endif
-
-// Optimize code generation by enabling RVO
-%typemap(out, optimal="1") SWIGTYPE
-%{
-	$result = new $1_ltype($1);
-%}
-
+// Force define AVDECC C/C++ API Macros to nothing
 #define LA_AVDECC_API
 #define LA_AVDECC_CALL_CONVENTION
 
@@ -100,7 +121,7 @@ enum class ThreadPriority
 %unique_ptr(la::avdecc::Executor) // Define unique_ptr for Executor
 // TODO: Would be nice to have the handler in the same namespace as the class (ie. be able to pass a namespace to std_function)
 %std_function(Handler_Empty, void);
-DEFINE_OPTIONAL_CLASS(std, string, OptStdString)
+%optional_string()
 
 %nspace la::avdecc::ExecutorWithDispatchQueue;
 %rename("%s") la::avdecc::ExecutorWithDispatchQueue; // Unignore class
@@ -181,14 +202,10 @@ public:
 // Entity Model
 ////////////////////////////////////////
 // Define optionals before including entityModel.i (we need to declare the optionals before the underlying types are defined)
-DEFINE_OPTIONAL_SIMPLE(OptUInt8, std::uint8_t, (byte)0)
-DEFINE_OPTIONAL_SIMPLE(OptUInt16, std::uint16_t, (ushort)0)
-DEFINE_OPTIONAL_SIMPLE(OptUInt32, std::uint32_t, (uint)0)
-DEFINE_OPTIONAL_SIMPLE(OptUInt64, std::uint64_t, (ulong)0)
-//DEFINE_OPTIONAL_SIMPLE(OptDescriptorIndex, la::avdecc::entity::model::DescriptorIndex, avdeccEntityModel.getInvalidDescriptorIndex()) // Currently we cannot define both OptUInt16 and OptDescriptorIndex (or they mix up). We'll define each Descriptor type once we use a TypedDefine
-DEFINE_OPTIONAL_SIMPLE(OptMsrpFailureCode, la::avdecc::entity::model::MsrpFailureCode, la.avdecc.entity.model.MsrpFailureCode.NoFailure)
-DEFINE_OPTIONAL_CLASS(la::avdecc, UniqueIdentifier, OptUniqueIdentifier)
-DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
+%optional_arithmetic(la::avdecc::entity::model::MsrpFailureCode, OptMsrpFailureCode)
+%optional(la::avdecc::UniqueIdentifier)
+%optional(la::networkInterface::MacAddress)
+%optional(la::avdecc::entity::model::MediaClockReferenceInfo)
 
 // Import entity model
 %import "la/avdecc/internals/entityModel.i"
@@ -198,11 +215,11 @@ DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
 // Entity/LocalEntity
 ////////////////////////////////////////
 // Bind enums
-DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity, AemCommandStatus, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity, AaCommandStatus, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity, MvuCommandStatus, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity, ControlStatus, "ushort")
-DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity, AdvertiseFlag, "byte")
+DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity::AemCommandStatus, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity::AaCommandStatus, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity::MvuCommandStatus, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity::ControlStatus, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity::AdvertiseFlag, "byte")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -339,6 +356,8 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Interface)
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_nanoseconds;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_Tlvs;
 %rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_MilanInfo;
+%rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_SystemUniqueIdentifier;
+%rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_ClockDomainIndex_DefaultMediaClockReferencePriority_MediaClockReferenceInfo;
 %rename("%s") Handler_StreamIdentification_StreamIdentification_uint16_t_ConnectionFlags_ControlStatus;
 
 // TODO: Would be nice to have the handler in the same namespace as the class (ie. be able to pass a namespace to std_function)
@@ -415,6 +434,8 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Interface)
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_Tlvs, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AaCommandStatus const status, la::avdecc::entity::addressAccess::Tlvs const& tlvs);
 #endif
 %std_function(Handler_UniqueIdentifier_MvuCommandStatus_MilanInfo, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::MilanInfo const& info);
+%std_function(Handler_UniqueIdentifier_MvuCommandStatus_SystemUniqueIdentifier, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::SystemUniqueIdentifier const systemUniqueID);
+%std_function(Handler_UniqueIdentifier_MvuCommandStatus_ClockDomainIndex_DefaultMediaClockReferencePriority_MediaClockReferenceInfo, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::DefaultMediaClockReferencePriority const defaultPriority, la::avdecc::entity::model::MediaClockReferenceInfo const& mcrInfo);
 %std_function(Handler_StreamIdentification_StreamIdentification_uint16_t_ConnectionFlags_ControlStatus, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status);
 
 %nspace la::avdecc::entity::ControllerEntity;
@@ -440,13 +461,15 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Interface)
 // Protocol Interface
 ////////////////////////////////////////
 // Bind enums
-DEFINE_ENUM_CLASS(la::avdecc::protocol::ProtocolInterface, Type, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::protocol::ProtocolInterface::Type, "uint")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
 %nspace la::avdecc::protocol::ProtocolInterface;
 %rename("%s") la::avdecc::protocol::ProtocolInterface; // Unignore class
+%rename("Lock") la::avdecc::protocol::ProtocolInterface::lock; // Reserved keyword
+%rename("Unlock") la::avdecc::protocol::ProtocolInterface::lock; // Rename as well to match "lock" renaming
 //%ignore la::avdecc::protocol::ProtocolInterface::ProtocolInterface(ProtocolInterface&&); // Ignore move constructor
 //%ignore la::avdecc::protocol::ProtocolInterface::operator=; // Ignore copy operator
 %ignore la::avdecc::protocol::ProtocolInterface::registerVendorUniqueDelegate; // Ignore method (we don't want to handle VendorUniqueDelegate now)
@@ -459,7 +482,9 @@ DEFINE_ENUM_CLASS(la::avdecc::protocol::ProtocolInterface, Type, "uint")
 %ignore la::avdecc::protocol::ProtocolInterface::sendAecpResponse; // Ignore method (we don't want to handle Aecpdu now)
 %ignore la::avdecc::protocol::ProtocolInterface::sendAcmpCommand; // Ignore method (we don't want to handle Acmpdu now)
 %ignore la::avdecc::protocol::ProtocolInterface::sendAcmpResponse; // Ignore method (we don't want to handle Acmpdu now)
-%ignore la::avdecc::protocol::ProtocolInterface::getVuAecpCommandTimeout; // Ignore method (we don't want to handle VuAecpdu now)
+%ignore la::avdecc::protocol::ProtocolInterface::getVendorUniqueCommandTimeout; // Ignore method (we don't want to handle VuAecpdu now)
+%ignore la::avdecc::protocol::ProtocolInterface::isVendorUniqueUnsolicitedResponse; // Ignore method (we don't want to handle VuAecpdu now)
+%ignore la::avdecc::protocol::ProtocolInterface::handleVendorUniqueUnsolicitedResponse; // Ignore method (we don't want to handle VuAecpdu now)
 %ignore la::avdecc::protocol::ProtocolInterface::getVendorUniqueDelegate; // Ignore method (we don't want to handle VuAecpdu now)
 %unique_ptr(la::avdecc::protocol::ProtocolInterface) // Define unique_ptr for ProtocolInterface
 // Extend the class
@@ -601,15 +626,17 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::protocol::ProtocolInterface, SupportedPro
 %enddef
 
 // Define optionals
-DEFINE_OPTIONAL_SIMPLE(OptBool, bool, false)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamDynamicInfo, OptStreamDynamicInfo)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AvbInterfaceInfo, OptAvbInterfaceInfo)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AsPath, OptAsPath)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, EntityCounters, OptEntityCounters)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamInputCounters, OptStreamInputCounters)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamOutputCounters, OptStreamOutputCounters)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AvbInterfaceCounters, OptAvbInterfaceCounters)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, ClockDomainCounters, OptClockDomainCounters)
+%optional_arithmetic(std::uint16_t, OptUInt16)
+%optional_arithmetic(std::uint64_t, OptUInt64)
+%optional_arithmetic(bool, OptBool)
+%optional(la::avdecc::entity::model::StreamDynamicInfo)
+%optional(la::avdecc::entity::model::AvbInterfaceInfo)
+%optional(la::avdecc::entity::model::AsPath)
+%optional(la::avdecc::entity::model::EntityCounters)
+%optional(la::avdecc::entity::model::StreamInputCounters)
+%optional(la::avdecc::entity::model::StreamOutputCounters)
+%optional(la::avdecc::entity::model::AvbInterfaceCounters)
+%optional(la::avdecc::entity::model::ClockDomainCounters)
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -695,7 +722,7 @@ DEFINE_AEM_TREE_NODE(Entity);
 // JSON SERIALIZATION
 ////////////////////////////////////////
 // Bind enums
-DEFINE_ENUM_CLASS(la::avdecc::entity::model::jsonSerializer, Flag, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity::model::jsonSerializer::Flag, "ushort")
 
 // Include c++ declaration file
 %include "la/avdecc/internals/jsonSerialization.hpp"
@@ -862,7 +889,7 @@ public:
 namespace la.avdecc
 {
 	// la::avdecc::Exception
-	class Exception : global::System.ApplicationException
+	public class Exception : global::System.ApplicationException
 	{
 		public Exception(string message)
 			: base(message)
@@ -871,7 +898,7 @@ namespace la.avdecc
 	}
 
 	// la::avdecc::EndStation::Exception
-	class EndStationException : global::System.ApplicationException
+	public class EndStationException : global::System.ApplicationException
 	{
 		public enum Error
 		{
@@ -901,7 +928,7 @@ namespace la.avdecc
 	namespace protocol
 	{
 		// la::avdecc::protocol::ProtocolInterface::Exception
-		class ProtocolInterfaceException : global::System.ApplicationException
+		public class ProtocolInterfaceException : global::System.ApplicationException
 		{
 			public enum Error
 			{

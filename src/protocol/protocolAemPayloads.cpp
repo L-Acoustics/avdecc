@@ -51,6 +51,7 @@ static inline void checkResponsePayload(AemAecpdu::Payload const& payload, entit
 		{
 			throw IncorrectPayloadSizeException();
 		}
+		throw NotImplementedException();
 	}
 	else
 	{
@@ -95,7 +96,7 @@ std::tuple<AemAcquireEntityFlags, UniqueIdentifier, entity::model::DescriptorTyp
 	des >> ownerID;
 	des >> descriptorType >> descriptorIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemAcquireEntityCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemAcquireEntityCommandPayloadSize, "Used bytes doesn't match protocol constant");
 
 	return std::make_tuple(flags, ownerID, descriptorType, descriptorIndex);
 }
@@ -149,7 +150,7 @@ std::tuple<AemLockEntityFlags, UniqueIdentifier, entity::model::DescriptorType, 
 	des >> lockedID;
 	des >> descriptorType >> descriptorIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemLockEntityCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemLockEntityCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(flags, lockedID, descriptorType, descriptorIndex);
 }
@@ -202,7 +203,7 @@ std::tuple<entity::model::ConfigurationIndex, entity::model::DescriptorType, ent
 	des >> configurationIndex >> reserved;
 	des >> descriptorType >> descriptorIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemReadDescriptorCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemReadDescriptorCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(configurationIndex, descriptorType, descriptorIndex);
 }
@@ -270,7 +271,7 @@ std::tuple<size_t, entity::model::ConfigurationIndex, entity::model::DescriptorT
 	des >> configurationIndex >> reserved;
 	des >> descriptorType >> descriptorIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemReadCommonDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemReadCommonDescriptorResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(des.usedBytes(), configurationIndex, descriptorType, descriptorIndex);
 }
@@ -304,7 +305,7 @@ entity::model::EntityDescriptor deserializeReadEntityDescriptorResponse(AemAecpd
 		des >> entityDescriptor.serialNumber;
 		des >> entityDescriptor.configurationsCount >> entityDescriptor.currentConfiguration;
 
-		AVDECC_ASSERT(des.usedBytes() == AecpAemReadEntityDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadEntityDescriptorResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -361,7 +362,7 @@ entity::model::ConfigurationDescriptor deserializeReadConfigurationDescriptorRes
 			des >> type >> count;
 			configurationDescriptor.descriptorCounts[type] = count;
 		}
-		AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemReadConfigurationDescriptorResponsePayloadMinSize + descriptorCountsSize), "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemReadConfigurationDescriptorResponsePayloadMinSize + descriptorCountsSize), "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -555,7 +556,7 @@ entity::model::JackDescriptor deserializeReadJackDescriptorResponse(AemAecpdu::P
 		des >> jackDescriptor.jackFlags >> jackDescriptor.jackType;
 		des >> jackDescriptor.numberOfControls >> jackDescriptor.baseControl;
 
-		AVDECC_ASSERT(des.usedBytes() == AecpAemReadJackDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadJackDescriptorResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -593,7 +594,7 @@ entity::model::AvbInterfaceDescriptor deserializeReadAvbInterfaceDescriptorRespo
 		des >> avbInterfaceDescriptor.logSyncInterval >> avbInterfaceDescriptor.logAnnounceInterval >> avbInterfaceDescriptor.logPDelayInterval;
 		des >> avbInterfaceDescriptor.portNumber;
 
-		AVDECC_ASSERT(des.usedBytes() == AecpAemReadAvbInterfaceDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadAvbInterfaceDescriptorResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -626,7 +627,7 @@ entity::model::ClockSourceDescriptor deserializeReadClockSourceDescriptorRespons
 		des >> clockSourceDescriptor.clockSourceIdentifier;
 		des >> clockSourceDescriptor.clockSourceLocationType >> clockSourceDescriptor.clockSourceLocationIndex;
 
-		AVDECC_ASSERT(des.usedBytes() == AecpAemReadClockSourceDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadClockSourceDescriptorResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -660,7 +661,7 @@ entity::model::MemoryObjectDescriptor deserializeReadMemoryObjectDescriptorRespo
 		des >> memoryObjectDescriptor.startAddress >> memoryObjectDescriptor.maximumLength >> memoryObjectDescriptor.length;
 #pragma message("TODO: Unpack the new field added in corrigendum document (but preserve compatibility with older devices if the field is not present!!)")
 
-		AVDECC_ASSERT(des.usedBytes() == AecpAemReadMemoryObjectDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadMemoryObjectDescriptorResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -690,7 +691,7 @@ entity::model::LocaleDescriptor deserializeReadLocaleDescriptorResponse(AemAecpd
 		des >> localeDescriptor.localeID;
 		des >> localeDescriptor.numberOfStringDescriptors >> localeDescriptor.baseStringDescriptorIndex;
 
-		AVDECC_ASSERT(des.usedBytes() == AecpAemReadLocaleDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadLocaleDescriptorResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -722,7 +723,7 @@ entity::model::StringsDescriptor deserializeReadStringsDescriptorResponse(AemAec
 			des >> stringsDescriptor.strings[strIndex];
 		}
 
-		AVDECC_ASSERT(des.usedBytes() == AecpAemReadStringsDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadStringsDescriptorResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -754,7 +755,7 @@ entity::model::StreamPortDescriptor deserializeReadStreamPortDescriptorResponse(
 		des >> streamPortDescriptor.numberOfClusters >> streamPortDescriptor.baseCluster;
 		des >> streamPortDescriptor.numberOfMaps >> streamPortDescriptor.baseMap;
 
-		AVDECC_ASSERT(des.usedBytes() == AecpAemReadStreamPortDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadStreamPortDescriptorResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -786,7 +787,7 @@ entity::model::ExternalPortDescriptor deserializeReadExternalPortDescriptorRespo
 		des >> externalPortDescriptor.signalType >> externalPortDescriptor.signalIndex >> externalPortDescriptor.signalOutput;
 		des >> externalPortDescriptor.blockLatency >> externalPortDescriptor.jackIndex;
 
-		AVDECC_ASSERT(des.usedBytes() == AecpAemReadExternalPortDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadExternalPortDescriptorResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -818,7 +819,7 @@ entity::model::InternalPortDescriptor deserializeReadInternalPortDescriptorRespo
 		des >> internalPortDescriptor.signalType >> internalPortDescriptor.signalIndex >> internalPortDescriptor.signalOutput;
 		des >> internalPortDescriptor.blockLatency >> internalPortDescriptor.internalIndex;
 
-		AVDECC_ASSERT(des.usedBytes() == AecpAemReadInternalPortDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadInternalPortDescriptorResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -851,7 +852,7 @@ entity::model::AudioClusterDescriptor deserializeReadAudioClusterDescriptorRespo
 		des >> audioClusterDescriptor.pathLatency >> audioClusterDescriptor.blockLatency;
 		des >> audioClusterDescriptor.channelCount >> audioClusterDescriptor.format;
 
-		AVDECC_ASSERT(des.usedBytes() == AecpAemReadAudioClusterDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadAudioClusterDescriptorResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -1153,7 +1154,7 @@ entity::model::PtpInstanceDescriptor deserializeReadPtpInstanceDescriptorRespons
 		des >> ptpInstanceDescriptor.numberOfControls >> ptpInstanceDescriptor.baseControl;
 		des >> ptpInstanceDescriptor.numberOfPtpPorts >> ptpInstanceDescriptor.basePtpPort;
 
-		AVDECC_ASSERT(des.usedBytes() == AecpAemReadPtpInstanceDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadPtpInstanceDescriptorResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -1185,7 +1186,7 @@ entity::model::PtpPortDescriptor deserializeReadPtpPortDescriptorResponse(AemAec
 		des >> ptpPortDescriptor.portNumber >> ptpPortDescriptor.portType >> ptpPortDescriptor.flags >> ptpPortDescriptor.avbInterfaceIndex;
 		des.unpackBuffer(ptpPortDescriptor.profileIdentifier.data(), ptpPortDescriptor.profileIdentifier.size());
 
-		AVDECC_ASSERT(des.usedBytes() == AecpAemReadPtpPortDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadPtpPortDescriptorResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -1240,7 +1241,7 @@ std::tuple<entity::model::ConfigurationIndex> deserializeSetConfigurationCommand
 
 	des >> reserved >> configurationIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemSetConfigurationCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemSetConfigurationCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(configurationIndex);
 }
@@ -1310,7 +1311,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	des >> descriptorType >> descriptorIndex;
 	des >> streamFormat;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemSetStreamFormatCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemSetStreamFormatCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex, streamFormat);
 }
@@ -1358,7 +1359,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 	des >> descriptorType >> descriptorIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemGetStreamFormatCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetStreamFormatCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
@@ -1431,7 +1432,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	des >> streamInfo.streamVlanID;
 	des >> reserved2;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemSetStreamInfoCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemSetStreamInfoCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex, streamInfo);
 }
@@ -1479,7 +1480,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 	des >> descriptorType >> descriptorIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemGetStreamInfoCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetStreamInfoCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
@@ -1563,11 +1564,11 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 			streamInfo.probingStatus = static_cast<entity::model::ProbingStatus>((probing_acmp_status & 0xe0) >> 5);
 			streamInfo.acmpStatus = static_cast<AcmpStatus>(probing_acmp_status & 0x1f);
 
-			AVDECC_ASSERT(des.usedBytes() == AecpAemMilanGetStreamInfoResponsePayloadSize, "Used more bytes than specified in protocol constant");
+			AVDECC_ASSERT(des.usedBytes() == AecpAemMilanGetStreamInfoResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 		}
 		else
 		{
-			AVDECC_ASSERT(des.usedBytes() == AecpAemGetStreamInfoResponsePayloadSize, "Used more bytes than specified in protocol constant");
+			AVDECC_ASSERT(des.usedBytes() == AecpAemGetStreamInfoResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 		}
 	}
 	catch (std::invalid_argument const&)
@@ -1631,7 +1632,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 	des >> descriptorType >> descriptorIndex;
 	des >> nameIndex >> configurationIndex >> name;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemSetNameCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemSetNameCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex, nameIndex, configurationIndex, name);
 }
@@ -1683,7 +1684,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 	des >> descriptorType >> descriptorIndex;
 	des >> nameIndex >> configurationIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemGetNameCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetNameCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex, nameIndex, configurationIndex);
 }
@@ -1730,7 +1731,7 @@ std::tuple<UniqueIdentifier> deserializeSetAssociationIDCommand(AemAecpdu::Paylo
 
 	des >> associationID;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemSetAssociationIDCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemSetAssociationIDCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(associationID);
 }
@@ -1757,16 +1758,16 @@ std::tuple<UniqueIdentifier> deserializeSetAssociationIDResponse(entity::LocalEn
 /** GET_ASSOCIATION_ID Response - IEEE1722.1-2013 Clause 7.4.20.2 */
 Serializer<AecpAemGetAssociationIDResponsePayloadSize> serializeGetAssociationIDResponse(UniqueIdentifier const associationID)
 {
-	// Same as GET_ASSOCIATION_ID Command
+	// Same as SET_ASSOCIATION_ID Command
 	static_assert(AecpAemGetAssociationIDResponsePayloadSize == AecpAemSetAssociationIDCommandPayloadSize, "GET_ASSOCIATION_ID Response no longer the same as SET_ASSOCIATION_ID Command");
 	return serializeSetAssociationIDCommand(associationID);
 }
 
 std::tuple<UniqueIdentifier> deserializeGetAssociationIDResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
-	// Same as GET_ASSOCIATION_ID Command
+	// Same as SET_ASSOCIATION_ID Command
 	static_assert(AecpAemGetAssociationIDResponsePayloadSize == AecpAemSetAssociationIDCommandPayloadSize, "GET_ASSOCIATION_ID Response no longer the same as SET_ASSOCIATION_ID Command");
-	checkResponsePayload(payload, status, AecpAemSetAssociationIDCommandPayloadSize, AecpAemGetAssociationIDResponsePayloadSize);
+	checkResponsePayload(payload, status, AecpAemGetAssociationIDCommandPayloadSize, AecpAemGetAssociationIDResponsePayloadSize);
 	return deserializeSetAssociationIDCommand(payload);
 }
 
@@ -1800,7 +1801,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	des >> descriptorType >> descriptorIndex;
 	des >> samplingRate;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemSetSamplingRateCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemSetSamplingRateCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex, samplingRate);
 }
@@ -1848,7 +1849,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 	des >> descriptorType >> descriptorIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemGetSamplingRateCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetSamplingRateCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
@@ -1901,7 +1902,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	des >> descriptorType >> descriptorIndex;
 	des >> clockSourceIndex >> reserved;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemSetClockSourceCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemSetClockSourceCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex, clockSourceIndex);
 }
@@ -1949,7 +1950,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 	des >> descriptorType >> descriptorIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemGetClockSourceCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetClockSourceCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
@@ -2115,7 +2116,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 	des >> descriptorType >> descriptorIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemGetControlCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetControlCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
@@ -2163,7 +2164,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 	des >> descriptorType >> descriptorIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemStartStreamingCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemStartStreamingCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
@@ -2242,7 +2243,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 	des >> descriptorType >> descriptorIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemGetAvbInfoCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetAvbInfoCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
@@ -2296,7 +2297,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 			des >> mapping.trafficClass >> mapping.priority >> mapping.vlanID;
 			mappings.push_back(mapping);
 		}
-		AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAvbInfoResponsePayloadMinSize + mappingsSize), "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAvbInfoResponsePayloadMinSize + mappingsSize), "Unpacked bytes doesn't match protocol constant");
 		avbInfo.mappings = std::move(mappings);
 
 		if (des.remaining() != 0)
@@ -2344,7 +2345,7 @@ std::tuple<entity::model::DescriptorIndex> deserializeGetAsPathCommand(AemAecpdu
 
 	des >> descriptorIndex >> reserved;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemGetAsPathCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetAsPathCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorIndex);
 }
@@ -2394,7 +2395,7 @@ std::tuple<entity::model::DescriptorIndex, entity::model::AsPath> deserializeGet
 			des >> clockIdentity;
 			asPath.sequence.push_back(clockIdentity);
 		}
-		AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAsPathResponsePayloadMinSize + sequenceSize), "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAsPathResponsePayloadMinSize + sequenceSize), "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -2440,7 +2441,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 	des >> descriptorType >> descriptorIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemGetCountersCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetCountersCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
@@ -2488,7 +2489,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 			des >> counter;
 		}
 
-		AVDECC_ASSERT(des.usedBytes() == AecpAemGetCountersResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == AecpAemGetCountersResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 	}
 	catch (std::invalid_argument const&)
 	{
@@ -2529,7 +2530,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 	des >> descriptorType >> descriptorIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemRebootCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemRebootCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
@@ -2582,7 +2583,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	des >> descriptorType >> descriptorIndex;
 	des >> mapIndex >> reserved;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemGetAudioMapCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetAudioMapCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex, mapIndex);
 }
@@ -2639,7 +2640,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 			des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
 			mappings.push_back(mapping);
 		}
-		AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAudioMapResponsePayloadMinSize + mappingsSize), "Used more bytes than specified in protocol constant");
+		AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAudioMapResponsePayloadMinSize + mappingsSize), "Unpacked bytes doesn't match protocol constant");
 
 		if (des.remaining() != 0)
 		{
@@ -2708,7 +2709,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 		des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
 		mappings.push_back(mapping);
 	}
-	AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemAddAudioMappingsCommandPayloadMinSize + mappingsSize), "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemAddAudioMappingsCommandPayloadMinSize + mappingsSize), "Unpacked bytes doesn't match protocol constant");
 
 	if (des.remaining() != 0)
 	{
@@ -2862,7 +2863,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	des >> descriptorType >> descriptorIndex;
 	des >> operationID >> reserved;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemAbortOperationResponsePayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemAbortOperationResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex, operationID);
 }
@@ -2916,7 +2917,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	des >> descriptorType >> descriptorIndex;
 	des >> operationID >> percentComplete;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemOperationStatusResponsePayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemOperationStatusResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex, operationID, percentComplete);
 }
@@ -2951,7 +2952,7 @@ std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex, 
 	des >> memoryObjectIndex >> configurationIndex;
 	des >> length;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemSetMemoryObjectLengthCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemSetMemoryObjectLengthCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(configurationIndex, memoryObjectIndex, length);
 }
@@ -2999,7 +3000,7 @@ std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex> 
 
 	des >> memoryObjectIndex >> configurationIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemGetMemoryObjectLengthCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetMemoryObjectLengthCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(configurationIndex, memoryObjectIndex);
 }
@@ -3132,7 +3133,7 @@ std::tuple<entity::model::DescriptorType, entity::model::StreamIndex, std::uint6
 	des >> descriptorType >> streamIndex;
 	des >> maxTransitTime;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemSetMaxTransitTimeCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemSetMaxTransitTimeCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, streamIndex, maxTransitTime);
 }
@@ -3180,7 +3181,7 @@ std::tuple<entity::model::DescriptorType, entity::model::StreamIndex> deserializ
 
 	des >> descriptorType >> streamIndex;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemGetMaxTransitTimeCommandPayloadSize, "Used more bytes than specified in protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetMaxTransitTimeCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, streamIndex);
 }

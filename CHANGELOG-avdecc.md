@@ -4,6 +4,16 @@ All notable changes to the Avdecc Library will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2025-04-16
+### Added
+- [Support for SERIAL ProtocolInterface](https://github.com/L-Acoustics/avdecc/issues/150) (by Luke Howard)
+- [Support for LOCAL SOCKET ProtocolInterface](https://github.com/L-Acoustics/avdecc/issues/150) (by Luke Howard)
+- [Support for Milan 1.2](https://github.com/L-Acoustics/avdecc/issues/169)
+
+### Fixed
+- [MacOS Native] Workarkound for macOS AVB Framework bug (VendorUnique messages altered from RESPONSE to COMMAND)
+- Missing symbol exports for macOS
+
 ## [4.0.0] - 2025-02-18
 ### Added
 - Support for JACK_INPUT/JACK_OUTPUT descriptors
@@ -17,6 +27,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for GET_DYNAMIC_INFO command
 - Support for SET/GET_MAX_TRANSIT_TIME command
 - Json schema AEM_Schema.json added to newly created resources/schemas directory
+- Unsolicited notifications support for VendorUnique messages
+- Milan 1.2 MVU commands:
+  - SET_SYSTEM_UNIQUE_ID
+  - GET_SYSTEM_UNIQUE_ID
+  - SET_MEDIA_CLOCK_REFERENCE_INFO
+  - GET_MEDIA_CLOCK_REFERENCE_INFO
 
 ### Changed
 - la::avdecc::entity::controller::Delegate is now virtual pure, but a new derivated visitor (with all default implementation) has been added: la::avdecc::entity::controller::DefaultedDelegate

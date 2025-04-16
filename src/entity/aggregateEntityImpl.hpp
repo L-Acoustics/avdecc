@@ -182,6 +182,10 @@ private:
 	virtual void addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept override;
 	/* Enumeration and Control Protocol (AECP) MVU (Milan Vendor Unique) */
 	virtual void getMilanInfo(UniqueIdentifier const targetEntityID, GetMilanInfoHandler const& handler) const noexcept override;
+	virtual void setSystemUniqueID(UniqueIdentifier const targetEntityID, model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept override;
+	virtual void getSystemUniqueID(UniqueIdentifier const targetEntityID, GetSystemUniqueIDHandler const& handler) const noexcept override;
+	virtual void setMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, std::optional<model::MediaClockReferencePriority> const userPriority, std::optional<model::AvdeccFixedString> const& domainName, SetMediaClockReferenceInfoHandler const& handler) const noexcept override;
+	virtual void getMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, GetMediaClockReferenceInfoHandler const& handler) const noexcept override;
 	/* Connection Management Protocol (ACMP) */
 	virtual void connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept override;
 	virtual void disconnectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, DisconnectStreamHandler const& handler) const noexcept override;
@@ -223,6 +227,11 @@ private:
 	virtual void onAecpTimeout(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID) noexcept override;
 	virtual void onAecpUnexpectedResponse(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID) noexcept override;
 	virtual void onAecpResponseTime(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept override;
+
+	/* ************************************************************************** */
+	/* protocol::ProtocolInterface::VendorUniqueDelegate overrides                */
+	/* ************************************************************************** */
+	virtual void onVuAecpUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& aecpdu) noexcept override;
 
 	/* ************************************************************************** */
 	/* LocalEntityImpl overrides                                                  */

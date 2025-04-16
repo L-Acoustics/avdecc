@@ -53,7 +53,7 @@ namespace model
 {
 using VirtualIndex = std::uint32_t; // We don't use the same type than DescriptorIndex (std::uint16_t). We want to be able to overload based on the type ('using' is not strongly typing our alias)
 
-enum class AcquireState
+enum class AcquireState : std::uint8_t
 {
 	Undefined, /**< State undefined */
 	NotSupported, /**< Acquire is not supported by this Entity */
@@ -64,7 +64,7 @@ enum class AcquireState
 	ReleaseInProgress, /**< Currently trying to release the entity (still *possibly* acquired by us) */
 };
 
-enum class LockState
+enum class LockState : std::uint8_t
 {
 	Undefined, /**< State undefined */
 	NotSupported, /**< Lock is not supported by this Entity */
@@ -77,7 +77,7 @@ enum class LockState
 
 struct MediaClockChainNode
 {
-	enum class Type
+	enum class Type : std::uint8_t
 	{
 		Undefined = 0, /**< Undefined media clock origin (Entity offline) */
 
@@ -87,7 +87,7 @@ struct MediaClockChainNode
 		StreamInput = 3, /**< Stream media clock */
 	};
 
-	enum class Status
+	enum class Status : std::uint8_t
 	{
 		Active = 0, /**< Media clock is active */
 

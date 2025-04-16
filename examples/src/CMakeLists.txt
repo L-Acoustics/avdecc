@@ -1,13 +1,24 @@
 # avdecc examples
 
+# Examples are using curses on Linux and macOS (but not if the generator is Xcode)
+set(CURSES_COMPILE_OPTIONS "")
+set(CURSES_LINK_OPTIONS "")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+	# Check if the generator is not Xcode
+	if(NOT CMAKE_GENERATOR STREQUAL "Xcode")
+		set(CURSES_COMPILE_OPTIONS -DUSE_CURSES)
+		set(CURSES_LINK_OPTIONS ncurses)
+	endif()
+endif()
+
 # RawMessageSend
 add_executable(RawMessageSend rawMessageSenderCxx.cpp utils.cpp utils.hpp)
 set_target_properties(RawMessageSend PROPERTIES FOLDER "Examples")
 # Using avdecc library
 target_link_libraries(RawMessageSend PRIVATE la_avdecc_cxx)
-if(NOT WIN32)
-	target_link_libraries(RawMessageSend PRIVATE ncurses)
-endif()
+# Add (optional) curses support
+target_compile_options(RawMessageSend PRIVATE ${CURSES_COMPILE_OPTIONS})
+target_link_libraries(RawMessageSend PRIVATE ${CURSES_LINK_OPTIONS})
 # Setup common options
 cu_setup_executable_options(RawMessageSend)
 # Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
@@ -18,9 +29,9 @@ add_executable(SimpleController simpleController.cpp utils.cpp utils.hpp)
 set_target_properties(SimpleController PROPERTIES FOLDER "Examples")
 # Using avdecc library
 target_link_libraries(SimpleController PRIVATE la_avdecc_cxx)
-if(NOT WIN32)
-	target_link_libraries(SimpleController PRIVATE ncurses)
-endif()
+# Add (optional) curses support
+target_compile_options(SimpleController PRIVATE ${CURSES_COMPILE_OPTIONS})
+target_link_libraries(SimpleController PRIVATE ${CURSES_LINK_OPTIONS})
 # Setup common options
 cu_setup_executable_options(SimpleController)
 # Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
@@ -29,7 +40,7 @@ cu_setup_deploy_runtime(SimpleController ${INSTALL_EXAMPLE_FLAG} ${SIGN_FLAG})
 add_custom_command(
 	TARGET SimpleController
 	POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/../data/SimpleControllerModel.json ${CMAKE_BINARY_DIR}/examples/src/SimpleControllerModel.json
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/../data/SimpleControllerModelV2.json ${CMAKE_BINARY_DIR}/examples/src/SimpleControllerModelV2.json
 	COMMENT "Copying Examples data to output folder"
 	VERBATIM
 )
@@ -53,9 +64,9 @@ if(BUILD_AVDECC_BINDINGS_C)
 	target_compile_options(RawMessageSendC PRIVATE -DUSE_BINDINGS_C)
 	# Using avdecc library
 	target_link_libraries(RawMessageSendC PRIVATE la_avdecc_c)
-	if(NOT WIN32)
-		target_link_libraries(RawMessageSendC PRIVATE ncurses)
-	endif()
+	# Add (optional) curses support
+	target_compile_options(RawMessageSendC PRIVATE ${CURSES_COMPILE_OPTIONS})
+	target_link_libraries(RawMessageSendC PRIVATE ${CURSES_LINK_OPTIONS})
 	# Setup NIH
 	target_link_libraries(RawMessageSendC PRIVATE la_networkInterfaceHelper_static)
 	# Setup common options
@@ -71,9 +82,9 @@ if(BUILD_AVDECC_CONTROLLER)
 	set_target_properties(Discovery PROPERTIES FOLDER "Examples/Controller")
 	# Using controller library
 	target_link_libraries(Discovery PRIVATE la_avdecc_controller_cxx)
-	if(NOT WIN32)
-		target_link_libraries(Discovery PRIVATE ncurses)
-	endif()
+	# Add (optional) curses support
+	target_compile_options(Discovery PRIVATE ${CURSES_COMPILE_OPTIONS})
+	target_link_libraries(Discovery PRIVATE ${CURSES_LINK_OPTIONS})
 	# Setup common options
 	cu_setup_executable_options(Discovery)
 	# Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
@@ -85,9 +96,9 @@ if(BUILD_AVDECC_CONTROLLER)
 		set_target_properties(EntityDumper PROPERTIES FOLDER "Examples/Controller")
 		# Using controller library
 		target_link_libraries(EntityDumper PRIVATE la_avdecc_controller_cxx)
-		if(NOT WIN32)
-			target_link_libraries(EntityDumper PRIVATE ncurses)
-		endif()
+		# Add (optional) curses support
+		target_compile_options(EntityDumper PRIVATE ${CURSES_COMPILE_OPTIONS})
+		target_link_libraries(EntityDumper PRIVATE ${CURSES_LINK_OPTIONS})
 		# Setup common options
 		cu_setup_executable_options(EntityDumper)
 		# Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)

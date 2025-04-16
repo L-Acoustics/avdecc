@@ -1030,6 +1030,38 @@ void AggregateEntityImpl::getMilanInfo(UniqueIdentifier const targetEntityID, Ge
 	}
 }
 
+void AggregateEntityImpl::setSystemUniqueID(UniqueIdentifier const targetEntityID, model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setSystemUniqueID(targetEntityID, systemUniqueID, handler);
+	}
+}
+
+void AggregateEntityImpl::getSystemUniqueID(UniqueIdentifier const targetEntityID, GetSystemUniqueIDHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getSystemUniqueID(targetEntityID, handler);
+	}
+}
+
+void AggregateEntityImpl::setMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, std::optional<model::MediaClockReferencePriority> const userPriority, std::optional<model::AvdeccFixedString> const& domainName, SetMediaClockReferenceInfoHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setMediaClockReferenceInfo(targetEntityID, clockDomainIndex, userPriority, domainName, handler);
+	}
+}
+
+void AggregateEntityImpl::getMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, GetMediaClockReferenceInfoHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMediaClockReferenceInfo(targetEntityID, clockDomainIndex, handler);
+	}
+}
+
 /* Connection Management Protocol (ACMP) */
 void AggregateEntityImpl::connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept
 {
@@ -1230,14 +1262,7 @@ void AggregateEntityImpl::onAecpAemUnsolicitedResponse(protocol::ProtocolInterfa
 	{
 		_controllerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
 	}
-	if (_listenerCapabilityDelegate != nullptr)
-	{
-		_listenerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
-	}
-	if (_talkerCapabilityDelegate != nullptr)
-	{
-		_talkerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
-	}
+	// Listener and Talker don't handle AEM Unsolicited Notifications
 }
 void AggregateEntityImpl::onAecpAemIdentifyNotification(protocol::ProtocolInterface* const pi, protocol::AemAecpdu const& aecpdu) noexcept
 {
@@ -1245,14 +1270,7 @@ void AggregateEntityImpl::onAecpAemIdentifyNotification(protocol::ProtocolInterf
 	{
 		_controllerCapabilityDelegate->onAecpAemIdentifyNotification(pi, aecpdu);
 	}
-	if (_listenerCapabilityDelegate != nullptr)
-	{
-		_listenerCapabilityDelegate->onAecpAemIdentifyNotification(pi, aecpdu);
-	}
-	if (_talkerCapabilityDelegate != nullptr)
-	{
-		_talkerCapabilityDelegate->onAecpAemIdentifyNotification(pi, aecpdu);
-	}
+	// Listener and Talker don't handle AEM IDENTIFY
 }
 
 /* **** ACMP notifications **** */
@@ -1323,6 +1341,18 @@ void AggregateEntityImpl::onAecpResponseTime(protocol::ProtocolInterface* const 
 		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).onAecpResponseTime(pi, entityID, responseTime);
 	}
 	// Listener and Talker don't really care about statistics
+}
+
+/* ************************************************************************** */
+/* protocol::ProtocolInterface::VendorUniqueDelegate overrides                */
+/* ************************************************************************** */
+void AggregateEntityImpl::onVuAecpUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& aecpdu) noexcept
+{
+	if (_controllerCapabilityDelegate != nullptr)
+	{
+		_controllerCapabilityDelegate->onAecpVuUnsolicitedResponse(pi, protocolIdentifier, aecpdu);
+	}
+	// Listener and Talker don't handle MVU Unsolicited Notifications
 }
 
 /* ************************************************************************** */

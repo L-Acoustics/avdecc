@@ -39,6 +39,12 @@
 #ifdef HAVE_PROTOCOL_INTERFACE_VIRTUAL
 #	include "protocolInterface/protocolInterface_virtual.hpp"
 #endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
+#ifdef HAVE_PROTOCOL_INTERFACE_SERIAL
+#	include "protocolInterface/protocolInterface_serial.hpp"
+#endif // HAVE_PROTOCOL_INTERFACE_SERIAL
+#ifdef HAVE_PROTOCOL_INTERFACE_LOCAL
+#	include "protocolInterface/protocolInterface_local.hpp"
+#endif // HAVE_PROTOCOL_INTERFACE_LOCAL
 
 namespace la
 {
@@ -140,7 +146,7 @@ bool ProtocolInterface::isAecpResponseMessageType(AecpMessageType const messageT
 	return false;
 }
 
-std::uint32_t ProtocolInterface::getVuAecpCommandTimeout(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept
+std::uint32_t ProtocolInterface::getVendorUniqueCommandTimeout(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept
 {
 	auto timeout = std::uint32_t{ 250u };
 
@@ -151,11 +157,43 @@ std::uint32_t ProtocolInterface::getVuAecpCommandTimeout(VuAecpdu::ProtocolIdent
 	{
 		auto* vuDelegate = vudIt->second;
 
-		AVDECC_ASSERT(vuDelegate->areHandledByControllerStateMachine(protocolIdentifier), "getVuAecpCommandTimeout should only be called for VendorUniqueDelegates that let the ControllerStateMachine handle sending commands");
+		AVDECC_ASSERT(vuDelegate->areHandledByControllerStateMachine(protocolIdentifier), "getVuAecpCommandTimeout should only be called for VendorUniqueDelegates that let the ControllerStateMachine handle sending/receiving commands");
 		timeout = vuDelegate->getVuAecpCommandTimeoutMsec(protocolIdentifier, aecpdu);
 	}
 
 	return timeout;
+}
+
+bool ProtocolInterface::isVendorUniqueUnsolicitedResponse(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept
+{
+	auto isUnsol = false;
+
+	// Lock
+	auto const lg = std::lock_guard{ *this };
+
+	if (auto const vudIt = _vendorUniqueDelegates.find(protocolIdentifier); vudIt != _vendorUniqueDelegates.end())
+	{
+		auto* vuDelegate = vudIt->second;
+
+		AVDECC_ASSERT(vuDelegate->areHandledByControllerStateMachine(protocolIdentifier), "isVendorUniqueUnsolicitedResponse should only be called for VendorUniqueDelegates that let the ControllerStateMachine handle sending/receiving commands");
+		isUnsol = vuDelegate->isVuAecpUnsolicitedResponse(protocolIdentifier, aecpdu);
+	}
+
+	return isUnsol;
+}
+
+void ProtocolInterface::handleVendorUniqueUnsolicitedResponse(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) noexcept
+{
+	// Lock
+	auto const lg = std::lock_guard{ *this };
+
+	if (auto const vudIt = _vendorUniqueDelegates.find(protocolIdentifier); vudIt != _vendorUniqueDelegates.end())
+	{
+		auto* vuDelegate = vudIt->second;
+
+		AVDECC_ASSERT(vuDelegate->areHandledByControllerStateMachine(protocolIdentifier), "handleVendorUniqueUnsolicitedResponse should only be called for VendorUniqueDelegates that let the ControllerStateMachine handle sending/receiving commands");
+		vuDelegate->onVuAecpUnsolicitedResponse(this, protocolIdentifier, aecpdu);
+	}
 }
 
 ProtocolInterface::VendorUniqueDelegate* ProtocolInterface::getVendorUniqueDelegate(VuAecpdu::ProtocolIdentifier const& protocolIdentifier) const noexcept
@@ -196,6 +234,14 @@ ProtocolInterface* LA_AVDECC_CALL_CONVENTION ProtocolInterface::createRawProtoco
 		case Type::Virtual:
 			return ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(networkInterfaceID, { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }, executorName);
 #endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
+#if defined(HAVE_PROTOCOL_INTERFACE_SERIAL)
+		case Type::Serial:
+			return ProtocolInterfaceSerial::createRawProtocolInterfaceSerial(networkInterfaceID, executorName);
+#endif // HAVE_PROTOCOL_INTERFACE_SERIAL
+#if defined(HAVE_PROTOCOL_INTERFACE_LOCAL)
+		case Type::Local:
+			return ProtocolInterfaceLocal::createRawProtocolInterfaceLocal(networkInterfaceID, executorName);
+#endif // HAVE_PROTOCOL_INTERFACE_LOCAL
 		default:
 			break;
 	}
@@ -219,9 +265,13 @@ std::string LA_AVDECC_CALL_CONVENTION ProtocolInterface::typeToString(Type const
 		case Type::MacOSNative:
 			return "macOS native";
 		case Type::Proxy:
-			return "IEEE Std 1722.1 proxy";
+			return "IEEE Std 1722.1 network proxy";
 		case Type::Virtual:
-			return "Virtual interface";
+			return "Virtual loopback";
+		case Type::Serial:
+			return "Serial port";
+		case Type::Local:
+			return "Local domain socket";
 		default:
 			return "Unknown protocol interface type";
 	}
@@ -264,6 +314,22 @@ ProtocolInterface::SupportedProtocolInterfaceTypes LA_AVDECC_CALL_CONVENTION Pro
 			s_supportedProtocolInterfaceTypes.set(Type::Virtual);
 		}
 #endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
+
+		// Serial
+#if defined(HAVE_PROTOCOL_INTERFACE_SERIAL)
+		if (protocol::ProtocolInterfaceSerial::isSupported())
+		{
+			s_supportedProtocolInterfaceTypes.set(Type::Serial);
+		}
+#endif // HAVE_PROTOCOL_INTERFACE_SERIAL
+
+		// Local domain socket
+#if defined(HAVE_PROTOCOL_INTERFACE_LOCAL)
+		if (protocol::ProtocolInterfaceLocal::isSupported())
+		{
+			s_supportedProtocolInterfaceTypes.set(Type::Local);
+		}
+#endif // HAVE_PROTOCOL_INTERFACE_LOCAL
 	}
 
 	return s_supportedProtocolInterfaceTypes;

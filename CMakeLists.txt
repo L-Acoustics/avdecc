@@ -1,7 +1,7 @@
 # Avdecc Library
 
 # Minimum CMake version
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.29)
 
 ############ Versioning
 
@@ -10,9 +10,9 @@ cmake_minimum_required(VERSION 3.22)
 # It should have 3 digits (x.y.z) on main branch, and 4 digits (x.y.z.w) on dev and task branches. The last digit being used as beta label.
 # As soon as an API change occurs in dev or task branch, update the version number by following SemVer rules (so the API breaking changes are not lost/forgotten).
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task) which will be labelled 1.5.0-beta3
-set(LA_AVDECC_VERSION 4.0.0)
-set(LA_AVDECC_CONTROLLER_VERSION 4.0.0)
-set(LA_AVDECC_C_VERSION 4.0.0)
+set(LA_AVDECC_VERSION 4.1.0)
+set(LA_AVDECC_CONTROLLER_VERSION 4.1.0)
+set(LA_AVDECC_C_VERSION 4.1.0)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -30,6 +30,9 @@ option(BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING "Pcap protocol interface uses
 option(BUILD_AVDECC_INTERFACE_MAC "Build the macOS native protocol interface (macOS only)." TRUE)
 option(BUILD_AVDECC_INTERFACE_PROXY "Build the proxy protocol interface." FALSE)
 option(BUILD_AVDECC_INTERFACE_VIRTUAL "Build the virtual protocol interface (for unit tests)." TRUE)
+option(BUILD_AVDECC_INTERFACE_SERIAL "Build the serial protocol interface (macOS and linux only)." TRUE)
+option(BUILD_AVDECC_INTERFACE_LOCAL "Build the local domain socket protocol interface (macOS and linux only)." TRUE)
+
 # Install options
 option(INSTALL_AVDECC_EXAMPLES "Install examples." FALSE)
 option(INSTALL_AVDECC_TESTS "Install unit tests." FALSE)
@@ -49,6 +52,7 @@ option(ENABLE_AVDECC_STRICT_2018_REDUNDANCY "Be strict about 'Network Redundancy
 option(IGNORE_INVALID_CONTROL_DATA_LENGTH "Allow messages with an invalid advertised 'Control Data Length' field (not matching data in buffer)." TRUE) # Required for Motu devices sending invalid response messages
 option(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES "Allow invalid AEM non-success responses messages." TRUE) # Required for Motu/Tesira devices sending invalid error response messages
 option(IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS "Allow Entities not supporting Dynamic Mapping and not adversiting AUDIO_MAP." TRUE) # Required for Tesira devices not implementing Dynamic Mappings and not advertising any static map
+option(CONTINUE_MISBEHAVE_AEM_RESPONSES "Continue entity enumeration when receiving an AEM ENTITY_MISBEHAVE response status." TRUE) # Required for macOS Sequoia Virtual Entity sending ENTITY_MISBEHAVE response status for some commands (instead of NOT_SUPPORTED)
 option(ALLOW_GET_AUDIO_MAP_UNSOL "Allow receiving GetAudioMap unsolicited notifications." TRUE) # Required for L-Acoustics older devices, when changing dynamic mappings from the front panel
 option(ALLOW_RECV_BIG_AECP_PAYLOADS "Allow receiving AECP payloads bigger than the allowed 524 bytes." TRUE) # Required for Q6 Core devices not splitting AudioMaps into smaller ones, and for Milan devices
 option(ALLOW_SEND_BIG_AECP_PAYLOADS "Allow sending AECP payloads bigger than the allowed 524 bytes." FALSE)
@@ -58,40 +62,6 @@ option(ALLOW_SEND_BIG_AECP_PAYLOADS "Allow sending AECP payloads bigger than the
 # Configuration options
 if(NOT AVDECC_SWIG_LANGUAGES)
 	set(AVDECC_SWIG_LANGUAGES "csharp" CACHE STRING "Set the languages to compile as SWIG wrappers." FORCE)
-endif()
-
-############ Check dependencies
-
-# avdecc-tests needs avdecc.lib
-if(BUILD_AVDECC_TESTS)
-	set(BUILD_AVDECC_LIB_STATIC_RT_SHARED TRUE CACHE BOOL "Build avdecc static library (runtime shared)." FORCE)
-endif()
-
-# avdecc-examples needs avdecc.lib
-if(BUILD_AVDECC_EXAMPLES)
-	set(BUILD_AVDECC_LIB_STATIC_RT_SHARED TRUE CACHE BOOL "Build avdecc static library (runtime shared)." FORCE)
-endif()
-
-if(NOT CMAKE_HOST_APPLE AND BUILD_AVDECC_INTERFACE_MAC)
-	set(BUILD_AVDECC_INTERFACE_MAC FALSE)
-endif()
-
-if(BUILD_AVDECC_INTERFACE_PROXY)
-	message(FATAL_ERROR "Proxy interface not supported yet.")
-endif()
-
-if(NOT BUILD_AVDECC_INTERFACE_PCAP AND NOT BUILD_AVDECC_INTERFACE_MAC AND NOT BUILD_AVDECC_INTERFACE_PROXY)
-	message(FATAL_ERROR "At least one valid protocol interface must be built.")
-endif()
-
-# Build bindings requires the building of the libraries
-if(BUILD_AVDECC_BINDINGS_CSHARP AND NOT BUILD_AVDECC_LIB_SHARED_CXX)
-	set(BUILD_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Build C++ shared library." FORCE)
-endif()
-
-# Install bindings requires the installation of the libraries
-if(INSTALL_AVDECC_BINDINGS AND NOT INSTALL_AVDECC_LIB_SHARED_CXX)
-	set(INSTALL_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Install C++ shared library." FORCE)
 endif()
 
 ############ CMake configuration
@@ -134,6 +104,53 @@ cu_setup_project_version_variables(${LA_AVDECC_VERSION})
 
 # Set minimum OSX/iOS version
 cu_setup_apple_minimum_versions(MACOS 10.13)
+
+############ Check dependencies
+
+# avdecc-tests needs avdecc.lib
+if(BUILD_AVDECC_TESTS)
+	set(BUILD_AVDECC_LIB_STATIC_RT_SHARED TRUE CACHE BOOL "Build avdecc static library (runtime shared)." FORCE)
+endif()
+
+# avdecc-examples needs avdecc.lib
+if(BUILD_AVDECC_EXAMPLES)
+	set(BUILD_AVDECC_LIB_STATIC_RT_SHARED TRUE CACHE BOOL "Build avdecc static library (runtime shared)." FORCE)
+endif()
+
+# Cannot build 'macOS native protocol interface' from non-macOS host
+if(NOT CMAKE_HOST_APPLE AND BUILD_AVDECC_INTERFACE_MAC)
+	set(BUILD_AVDECC_INTERFACE_MAC FALSE)
+endif()
+
+# Cannot build 'serial protocol interface' for Windows target
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND BUILD_AVDECC_INTERFACE_SERIAL)
+	set(BUILD_AVDECC_INTERFACE_SERIAL FALSE)
+endif()
+
+# Cannot build 'local domain socket protocol interface' for Windows target
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND BUILD_AVDECC_INTERFACE_LOCAL)
+	set(BUILD_AVDECC_INTERFACE_LOCAL FALSE)
+endif()
+
+if(BUILD_AVDECC_INTERFACE_PROXY)
+	message(FATAL_ERROR "Proxy interface not supported yet.")
+endif()
+
+if(NOT BUILD_AVDECC_INTERFACE_PCAP AND NOT BUILD_AVDECC_INTERFACE_MAC AND NOT BUILD_AVDECC_INTERFACE_PROXY AND NOT BUILD_AVDECC_INTERFACE_VIRTUAL AND NOT BUILD_AVDECC_INTERFACE_SERIAL AND NOT BUILD_AVDECC_INTERFACE_LOCAL)
+	message(FATAL_ERROR "At least one valid protocol interface must be built.")
+endif()
+
+# Build bindings requires the building of the libraries
+if(BUILD_AVDECC_BINDINGS_CSHARP AND NOT BUILD_AVDECC_LIB_SHARED_CXX)
+	set(BUILD_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Build C++ shared library." FORCE)
+endif()
+
+# Install bindings requires the installation of the libraries
+if(INSTALL_AVDECC_BINDINGS AND NOT INSTALL_AVDECC_LIB_SHARED_CXX)
+	set(INSTALL_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Install C++ shared library." FORCE)
+endif()
+
+############ Setup dependencies
 
 # Include fmtlib
 if(ENABLE_AVDECC_USE_FMTLIB)

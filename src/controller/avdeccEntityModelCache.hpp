@@ -25,11 +25,13 @@
 #pragma once
 
 #include <la/avdecc/controller/internals/avdeccControlledEntityModel.hpp>
+#include <la/avdecc/utils.hpp>
 
 #include "avdeccControllerLogHelper.hpp"
 
 #include <unordered_map>
 #include <mutex>
+#include <tuple>
 #include <optional>
 
 namespace la
@@ -78,14 +80,14 @@ public:
 		{
 			if (auto const entityModelIt = _modelCache.find(entityModelID); entityModelIt != _modelCache.end())
 			{
-				return entityModelIt->second;
+				return std::get<1>(entityModelIt->second);
 			}
 		}
 
 		return std::nullopt;
 	}
 
-	void cacheEntityModel(UniqueIdentifier const entityModelID, model::EntityNode&& model) noexcept
+	void cacheEntityModel(UniqueIdentifier const entityModelID, model::EntityNode&& model, bool const isFullModel) noexcept
 	{
 		AVDECC_ASSERT(_isEnabled, "Should not call AEM cache if cache is not enabled");
 		AVDECC_ASSERT(entityModelID, "Should not call AEM cache if EntityModelID is invalid");
@@ -93,12 +95,23 @@ public:
 
 		if (_isEnabled && entityModelID)
 		{
-			// Cache the EntityModel but only if not already in cache
-			if (_modelCache.count(entityModelID) == 0)
+			// If the EntityModel is already in the cache, check if the passed model is complete (and the cached one is not)
+			if (auto const entityModelIt = _modelCache.find(entityModelID); entityModelIt != _modelCache.end())
 			{
-				// Move it to the cache
-				_modelCache.emplace(entityModelID, std::move(model));
+				auto const isCachedModelComplete = std::get<0>(entityModelIt->second);
+				// If the cached model is not complete but the new one is, we can replace it
+				if (!isCachedModelComplete && isFullModel)
+				{
+					// Move the new model to the cache
+					entityModelIt->second = { isFullModel, std::move(model) };
+					LOG_CONTROLLER_DEBUG(UniqueIdentifier::getNullUniqueIdentifier(), "EntityModelCache: Replacing incomplete model with complete one for EntityModelID: {}\n", utils::toHexString(entityModelID, true));
+				}
+				// Do not replace the cached model as the new one is either incomplete or we already have a complete one
+				return;
 			}
+
+			// Move the new model to the cache
+			_modelCache.emplace(entityModelID, std::make_tuple(isFullModel, std::move(model)));
 		}
 	}
 
@@ -179,7 +192,7 @@ private:
 	}
 
 	mutable std::mutex _lock{};
-	std::unordered_map<UniqueIdentifier, model::EntityNode, la::avdecc::UniqueIdentifier::hash> _modelCache{};
+	std::unordered_map<UniqueIdentifier, std::tuple<bool, model::EntityNode>, la::avdecc::UniqueIdentifier::hash> _modelCache{};
 	bool _isEnabled{ false };
 };
 

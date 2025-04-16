@@ -59,7 +59,7 @@ namespace controller
 * (either added, removed or signature modification).
 * Any other change (including templates, inline methods, defines, typedefs, ...) are considered a modification of the interface.
 */
-constexpr std::uint32_t InterfaceVersion = 400;
+constexpr std::uint32_t InterfaceVersion = 401;
 
 /**
 * @brief Checks if the library is compatible with specified interface version.
@@ -88,6 +88,7 @@ enum class CompileOption : std::uint32_t
 {
 	None = 0,
 	IgnoreNeitherStaticNorDynamicMappings = 1u << 0,
+	ContinueMisbehaveAemResponses = 1u << 1,
 	EnableRedundancy = 1u << 15,
 	Strict2018Redundancy = 1u << 16,
 	EnableJsonSupport = 1u << 17,
@@ -127,7 +128,7 @@ class Controller : public la::avdecc::utils::Subject<Controller, std::recursive_
 public:
 	using UniquePointer = std::unique_ptr<Controller, void (*)(Controller*)>;
 	using DeviceMemoryBuffer = MemoryBuffer;
-	static std::uint32_t constexpr ChecksumVersion = 3u;
+	static std::uint32_t constexpr ChecksumVersion = 4u;
 
 	enum class Error
 	{
@@ -167,6 +168,8 @@ public:
 		GetDynamicInfo,
 		RegisterUnsol,
 		GetMilanInfo,
+		GetSystemUniqueID,
+		GetMediaClockReferenceInfo,
 		EntityDescriptor,
 		ConfigurationDescriptor,
 		AudioUnitDescriptor,
@@ -252,7 +255,7 @@ public:
 
 		// Global entity notifications
 		virtual void onUnsolicitedRegistrationChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, bool const isSubscribed) noexcept = 0;
-		virtual void onCompatibilityFlagsChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::ControlledEntity::CompatibilityFlags const compatibilityFlags) noexcept = 0;
+		virtual void onCompatibilityChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::ControlledEntity::CompatibilityFlags const compatibilityFlags, la::avdecc::entity::model::MilanVersion const& milanCompatibleVersion) noexcept = 0;
 		virtual void onIdentificationStarted(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity) noexcept = 0;
 		virtual void onIdentificationStopped(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity) noexcept = 0;
 
@@ -307,6 +310,8 @@ public:
 		virtual void onOperationCompleted(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID, bool const failed) noexcept = 0;
 		virtual void onMediaClockChainChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::controller::model::MediaClockChain const& mcChain) noexcept = 0;
 		virtual void onMaxTransitTimeChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime) noexcept = 0;
+		virtual void onSystemUniqueIDChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept = 0;
+		virtual void onMediaClockReferenceInfoChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::MediaClockReferenceInfo const& mcrInfo) noexcept = 0;
 
 		// Statistics
 		/** When the count of AECP retry changed */
@@ -321,6 +326,10 @@ public:
 		virtual void onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept = 0;
 		/** When the count of lost AEM-AECP unsolicited notifications changed */
 		virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept = 0;
+		/** When the count of MVU-AECP unsolicited notifications changed */
+		virtual void onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept = 0;
+		/** When the count of lost MVU-AECP unsolicited notifications changed */
+		virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept = 0;
 
 		// Diagnostics
 		virtual void onDiagnosticsChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::ControlledEntity::Diagnostics const& diags) noexcept = 0;
@@ -345,7 +354,7 @@ public:
 
 		// Global entity notifications
 		virtual void onUnsolicitedRegistrationChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, bool const /*isSubscribed*/) noexcept override {}
-		virtual void onCompatibilityFlagsChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::ControlledEntity::CompatibilityFlags const /*compatibilityFlags*/) noexcept override {}
+		virtual void onCompatibilityChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::ControlledEntity::CompatibilityFlags const /*compatibilityFlags*/, la::avdecc::entity::model::MilanVersion const& /*milanCompatibleVersion*/) noexcept override {}
 		virtual void onIdentificationStarted(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/) noexcept override {}
 		virtual void onIdentificationStopped(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/) noexcept override {}
 
@@ -400,6 +409,8 @@ public:
 		virtual void onOperationCompleted(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, la::avdecc::entity::model::OperationID const /*operationID*/, bool const /*failed*/) noexcept override {}
 		virtual void onMediaClockChainChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ClockDomainIndex const /*clockDomainIndex*/, la::avdecc::controller::model::MediaClockChain const& /*mcChain*/) noexcept override {}
 		virtual void onMaxTransitTimeChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*streamIndex*/, std::chrono::nanoseconds const& /*maxTransitTime*/) noexcept override {}
+		virtual void onSystemUniqueIDChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::SystemUniqueIdentifier const /*systemUniqueID*/) noexcept override {}
+		virtual void onMediaClockReferenceInfoChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ClockDomainIndex const /*clockDomainIndex*/, la::avdecc::entity::model::MediaClockReferenceInfo const& /*mcrInfo*/) noexcept override {}
 
 		// Statistics
 		/** When the count of AECP retry changed */
@@ -414,6 +425,10 @@ public:
 		virtual void onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override {}
 		/** When the count of lost AEM-AECP unsolicited notifications changed */
 		virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override {}
+		/** When the count of MVU-AECP unsolicited notifications changed */
+		virtual void onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override {}
+		/** When the count of lost MVU-AECP unsolicited notifications changed */
+		virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override {}
 
 		// Diagnostics
 		virtual void onDiagnosticsChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::ControlledEntity::Diagnostics const& /*diags*/) noexcept override {}
@@ -492,6 +507,9 @@ public:
 	using ReadDeviceMemoryCompletionHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AaCommandStatus const status, la::avdecc::controller::Controller::DeviceMemoryBuffer const& memoryBuffer)>;
 	using WriteDeviceMemoryProgressHandler = std::function<bool(la::avdecc::controller::ControlledEntity const* const entity, float const percentComplete)>; // A negative percentComplete value means the progress is unknown but still continuing // Returning true will abort the operation
 	using WriteDeviceMemoryCompletionHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AaCommandStatus const status)>;
+	/* Enumeration and Control Protocol (AECP) MVU handlers (Milan Vendor Unique). WARNING: The 'entity' parameter might be nullptr even if 'status' is AemCommandStatus::Success, in case the unit goes offline right after processing our command. */
+	using SetSystemUniqueIDHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::MvuCommandStatus const status)>;
+	using SetMediaClockReferenceInfoHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::MvuCommandStatus const status)>;
 	/* Connection Management Protocol (ACMP) handlers */
 	using ConnectStreamHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const talkerStreamIndex, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::ControllerEntity::ControlStatus const status)>;
 	using DisconnectStreamHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::ControllerEntity::ControlStatus const status)>;
@@ -609,7 +627,11 @@ public:
 
 	/* Enumeration and Control Protocol (AECP) AA. WARNING: The completion handler will not be called if the controller is destroyed while the query is inflight. Otherwise it will always be called. */
 	virtual void readDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, std::uint64_t const length, ReadDeviceMemoryProgressHandler const& progressHandler, ReadDeviceMemoryCompletionHandler const& completionHandler) const noexcept = 0;
-	virtual void writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, la::avdecc::controller::Controller::DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryProgressHandler const& progressHandler, WriteDeviceMemoryCompletionHandler const& completionHandler) const noexcept = 0;
+	virtual void writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, controller::Controller::DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryProgressHandler const& progressHandler, WriteDeviceMemoryCompletionHandler const& completionHandler) const noexcept = 0;
+
+	/* Enumeration and Control Protocol (AECP) MVU handlers (Milan Vendor Unique). WARNING: The 'entity' parameter might be nullptr even if 'status' is AemCommandStatus::Success, in case the unit goes offline right after processing our command. */
+	virtual void setSystemUniqueID(UniqueIdentifier const targetEntityID, entity::model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept = 0;
+	virtual void setMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, std::optional<entity::model::MediaClockReferencePriority> const userPriority, std::optional<entity::model::AvdeccFixedString> const& domainName, SetMediaClockReferenceInfoHandler const& handler) const noexcept = 0;
 
 	/* Connection Management Protocol (ACMP). WARNING: The completion handler will not be called if the controller is destroyed while the query is inflight. Otherwise it will always be called. */
 	virtual void connectStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept = 0;
@@ -640,13 +662,13 @@ public:
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadVirtualEntitiesFromJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept = 0;
 	/** Deserializes a JSON file representing an entity, and loads it as a virtual ControlledEntity. */
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadVirtualEntityFromJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept = 0;
-	/** Deserializes a JSON file representing a full network state, and returns the ControlledEntities without loading them. */
+	/** Deserializes a JSON file representing a full network state (.ANS), and returns the ControlledEntities without loading them. */
 	static LA_AVDECC_CONTROLLER_API std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<SharedControlledEntity>> LA_AVDECC_CONTROLLER_CALL_CONVENTION deserializeControlledEntitiesFromJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept;
-	/** Deserializes a JSON file representing an entity, and returns the ControlledEntity without loading it. */
+	/** Deserializes a JSON file representing an entity (.AVE), and returns the ControlledEntity without loading it. */
 	static LA_AVDECC_CONTROLLER_API std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedControlledEntity> LA_AVDECC_CONTROLLER_CALL_CONVENTION deserializeControlledEntityFromJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept;
-	/** Loads an EntityModel file and feed it to the EntityModel cache */
+	/** Loads an EntityModel file (.AEM) and feed it to the EntityModel cache */
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> cacheEntityModelFile(std::string const& filePath, bool const isBinaryFormat = true) noexcept = 0;
-	/** Loads an EntityModel file and create a virtual ControlledEntity from it. */
+	/** Loads an EntityModel file (.AEM) and create a virtual ControlledEntity from it. */
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> createVirtualEntityFromEntityModelFile(std::string const& filePath, model::VirtualEntityBuilder* const builder, bool const isBinaryFormat = true) noexcept = 0;
 
 	/* Other helpful methods */

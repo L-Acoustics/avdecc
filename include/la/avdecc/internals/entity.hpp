@@ -386,7 +386,6 @@ public:
 		// Milan Vendor Unique Protocol Error Codes
 		Success = 0,
 		NotImplemented = 1,
-		BadArguments = 2,
 		// Library Error Codes
 		BaseProtocolViolation = 991, /**< The entity sent a message that violates the base protocol */
 		PartialImplementation = 992, /**< The library does not fully implement this command, please report this */

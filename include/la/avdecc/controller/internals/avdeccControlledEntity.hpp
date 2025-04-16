@@ -118,9 +118,11 @@ public:
 	// Getters
 	virtual bool isVirtual() const noexcept = 0; // True if the entity is a virtual one (la::avdecc::controller::Controller methods won't succeed due to the entity not actually been discovered)
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept = 0;
+	virtual entity::model::MilanVersion getMilanCompatibilityVersion() const noexcept = 0;
 	virtual bool isMilanRedundant() const noexcept = 0; // True if the entity is currently in Milan Redundancy mode (ie. current configuration has at least one redundant stream)
 	virtual bool gotFatalEnumerationError() const noexcept = 0; // True if the controller had a fatal error during entity information retrieval (leading to Exception::Type::EnumerationError if any throwing method is called).
-	virtual bool isGetDynamicInfoSupported() const noexcept = 0; // True if the entity supports GET_DYNAMIC_INFO
+	virtual bool isPackedDynamicInfoSupported() const noexcept = 0; // True if the entity supports GET_DYNAMIC_INFO
+	virtual bool isUsingCachedEntityModel() const noexcept = 0; // True if the entity model was loaded from the cache
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept = 0;
 	virtual bool areUnsolicitedNotificationsSupported() const noexcept = 0;
 	virtual bool isAcquired() const noexcept = 0; // Is entity acquired by the controller it's attached to
@@ -138,6 +140,7 @@ public:
 	virtual UniqueIdentifier getLockingControllerID() const noexcept = 0;
 	virtual entity::Entity const& getEntity() const noexcept = 0;
 	virtual std::optional<entity::model::MilanInfo> getMilanInfo() const noexcept = 0; // Retrieve MilanInfo, guaranteed to be present if CompatibilityFlag::Milan is set
+	virtual std::optional<entity::model::MilanDynamicState> getMilanDynamicState() const noexcept = 0; // Retrieve Milan Dynamic State, guaranteed to be present if CompatibilityFlag::Milan is set
 	virtual std::optional<entity::model::ControlIndex> getIdentifyControlIndex() const noexcept = 0; // Retrieve the Identify Control Index, if the entity has a valid one
 	virtual bool isEntityModelValidForCaching() const noexcept = 0; // True if the Entity Model is valid for caching
 	virtual bool isIdentifying() const noexcept = 0; // True if the Entity is currently identifying itself
@@ -196,6 +199,8 @@ public:
 	virtual std::chrono::milliseconds const& getAecpResponseAverageTime() const noexcept = 0;
 	virtual std::uint64_t getAemAecpUnsolicitedCounter() const noexcept = 0;
 	virtual std::uint64_t getAemAecpUnsolicitedLossCounter() const noexcept = 0;
+	virtual std::uint64_t getMvuAecpUnsolicitedCounter() const noexcept = 0;
+	virtual std::uint64_t getMvuAecpUnsolicitedLossCounter() const noexcept = 0;
 	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept = 0;
 
 	// Diagnostics

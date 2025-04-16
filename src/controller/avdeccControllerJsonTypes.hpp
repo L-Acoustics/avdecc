@@ -83,6 +83,8 @@ constexpr auto ControlledEntityStatistics_AecpUnexpectedResponseCounter = "aecp_
 constexpr auto ControlledEntityStatistics_AecpResponseAverageTime = "aecp_response_average_time";
 constexpr auto ControlledEntityStatistics_AemAecpUnsolicitedCounter = "aem_aecp_unsolicited_counter";
 constexpr auto ControlledEntityStatistics_AemAecpUnsolicitedLossCounter = "aem_aecp_unsolicited_loss_counter";
+constexpr auto ControlledEntityStatistics_MvuAecpUnsolicitedCounter = "mvu_aecp_unsolicited_counter";
+constexpr auto ControlledEntityStatistics_MvuAecpUnsolicitedLossCounter = "mvu_aecp_unsolicited_loss_counter";
 constexpr auto ControlledEntityStatistics_EnumerationTime = "enumeration_time";
 
 /* ControlledEntityDiagnostics */
@@ -112,11 +114,14 @@ constexpr auto Controller_Informative_DumpSource = "_dump_source (informative)";
 
 /* ControlledEntity nodes */
 constexpr auto ControlledEntity_DumpVersion = "dump_version";
+constexpr auto ControlledEntity_Schema = "$schema";
 constexpr auto ControlledEntity_CompatibilityFlags = "compatibility_flags";
+constexpr auto ControlledEntity_MilanCompatibilityVersion = "milan_compatibility_version";
 constexpr auto ControlledEntity_AdpInformation = "adp_information";
 constexpr auto ControlledEntity_EntityModel = "entity_model";
 constexpr auto ControlledEntity_EntityModelID = "entity_model_id";
 constexpr auto ControlledEntity_MilanInformation = "milan_information";
+constexpr auto ControlledEntity_MilanDynamicState = "milan_dynamic_state";
 constexpr auto ControlledEntity_EntityState = "state";
 constexpr auto ControlledEntity_Statistics = "statistics";
 constexpr auto ControlledEntity_Diagnostics = "diagnostics";
@@ -130,6 +135,7 @@ constexpr auto Controller_DumpVersion = std::uint32_t{ 1 };
 
 /* ControlledEntity nodes */
 constexpr auto ControlledEntity_DumpVersion = std::uint32_t{ 2 };
+constexpr auto ControlledEntity_SchemaBaseURL = "https://raw.githubusercontent.com/L-Acoustics/avdecc/refs/heads/main/resources/schemas/AVE/";
 
 } // namespace keyValue
 } // namespace jsonSerializer

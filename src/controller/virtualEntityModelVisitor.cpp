@@ -165,25 +165,29 @@ VirtualEntityModelVisitor::VirtualEntityModelVisitor(ControlledEntityImpl* const
 		_controlledEntity->setEnumerationTime(enumerationTime);
 	}
 	// Diagnostics should be computed automatically
-	// CompatibilityFlags
+	// CompatibilityFlags & MilanCompatibilityVersion
 	{
 		auto flags = ControlledEntity::CompatibilityFlags{};
+		auto milanCompatibilityVersion = entity::model::MilanVersion{};
 
 		// Call the builder
-		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity::CompatibilityFlags&)>(&model::VirtualEntityBuilder::build, _builder, flags);
+		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(ControlledEntity::CompatibilityFlags&, entity::model::MilanVersion&)>(&model::VirtualEntityBuilder::build, _builder, flags, milanCompatibilityVersion);
 
-		// Set the flags
+		// Set the flags and compatibility version
 		_controlledEntity->setCompatibilityFlags(flags);
+		_controlledEntity->setMilanCompatibilityVersion(milanCompatibilityVersion);
 	}
 	// MilanInfo
 	{
 		auto info = entity::model::MilanInfo{};
+		auto state = entity::model::MilanDynamicState{};
 
 		// Call the builder
-		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(entity::model::MilanInfo&)>(&model::VirtualEntityBuilder::build, _builder, info);
+		utils::invokeProtectedMethod<void (model::VirtualEntityBuilder::*)(entity::model::MilanInfo&, entity::model::MilanDynamicState&)>(&model::VirtualEntityBuilder::build, _builder, info, state);
 
-		// Set the info
+		// Set the info and state
 		_controlledEntity->setMilanInfo(info);
+		_controlledEntity->setMilanDynamicState(state);
 	}
 }
 

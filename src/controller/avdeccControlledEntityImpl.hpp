@@ -117,12 +117,12 @@ public:
 
 	enum class EnumerationStep : std::uint16_t
 	{
-		GetMilanInfo = 1u << 0,
-		CheckDynamicInfoSupported = 1u << 1,
-		RegisterUnsol = 1u << 2,
-		GetStaticModel = 1u << 3,
-		GetDescriptorDynamicInfo = 1u << 4, /** DescriptorDynamicInfoType */
-		GetDynamicInfo = 1u << 5, /** DynamicInfoType */
+		GetMilanInfo = 1u << 0, /** To get MilanInfo from MVU */
+		CheckPackedDynamicInfoSupported = 1u << 1, /** To check if GET_DYNAMIC_INFO command is supported */
+		RegisterUnsol = 1u << 2, /** To register for unsolicited notifications */
+		GetStaticModel = 1u << 3, /** To get the static model (at least always retrieve the ENTITY_DESCRIPTOR) */
+		GetDescriptorDynamicInfo = 1u << 4, /** To get descriptor dynamic information in case we used a cached version of the static model */
+		GetDynamicInfo = 1u << 5, /** To get all other dynamic information (not directly contained in descriptors) */
 	};
 	using EnumerationSteps = utils::EnumBitfield<EnumerationStep>;
 
@@ -137,8 +137,8 @@ public:
 	{
 		AcquiredState, // acquireEntity(ReleasedFlag)
 		LockedState, // lockEntity(ReleasedFlag)
-		InputStreamAudioMappings, // getStreamPortInputAudioMap (GET_AUDIO_MAP)
-		OutputStreamAudioMappings, // getStreamPortOutputAudioMap (GET_AUDIO_MAP)
+		InputStreamPortAudioMappings, // getStreamPortInputAudioMap (GET_AUDIO_MAP)
+		OutputStreamPortAudioMappings, // getStreamPortOutputAudioMap (GET_AUDIO_MAP)
 		InputStreamState, // getListenerStreamState (GET_RX_STATE)
 		OutputStreamState, // getTalkerStreamState (GET_TX_STATE)
 		OutputStreamConnection, // getTalkerStreamConnection (GET_TX_CONNECTION)
@@ -151,6 +151,8 @@ public:
 		GetClockDomainCounters, // getClockDomainCounters (GET_COUNTERS)
 		GetStreamInputCounters, // getStreamInputCounters (GET_COUNTERS)
 		GetStreamOutputCounters, // getStreamOutputCounters (GET_COUNTERS)
+		GetSystemUniqueID, // getSystemUniqueID (MVU GET_SYSTEM_UNIQUE_ID)
+		GetMediaClockReferenceInfo, // getMediaClockReferenceInfo (MVU GET_MEDIA_CLOCK_REFERENCE_INFO)
 	};
 
 	/** Dynamic information stored in descriptors. Only required to retrieve from entities when the static model is known (because it was in EntityModelID cache).  */
@@ -166,7 +168,7 @@ public:
 		InputJackName, // JACK_INPUT.object_name -> GET_NAME (7.4.18)
 		OutputJackName, // JACK_OUTPUT.object_name -> GET_NAME (7.4.18)
 		AvbInterfaceDescriptor, // AVB_INTERFACE -> GET_DESCRIPTOR // Special case due to dynamic values that can only be retrieved from the descriptor
-		ClockSourceName, // CLOCK_SOURCE.object_name -> GET_NAME (7.4.18)
+		ClockSourceDescriptor, // CLOCK_SOURCE -> GET_DESCRIPTOR // Special case due to dynamic values that can only be retrieved from the descriptor
 		MemoryObjectName, // MEMORY_OBJECT.object_name -> GET_NAME (7.4.18)
 		MemoryObjectLength, // MEMORY_OBJECT.length -> GET_MEMORY_OBJECT_LENGTH (7.4.73)
 		AudioClusterName, // AUDIO_CLUSTER.object_name -> GET_NAME (7.4.18)
@@ -194,9 +196,11 @@ public:
 	// Getters
 	virtual bool isVirtual() const noexcept override;
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept override;
+	virtual entity::model::MilanVersion getMilanCompatibilityVersion() const noexcept override;
 	virtual bool isMilanRedundant() const noexcept override;
 	virtual bool gotFatalEnumerationError() const noexcept override;
-	virtual bool isGetDynamicInfoSupported() const noexcept override;
+	virtual bool isPackedDynamicInfoSupported() const noexcept override;
+	virtual bool isUsingCachedEntityModel() const noexcept override;
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept override;
 	virtual bool areUnsolicitedNotificationsSupported() const noexcept override;
 	virtual bool isAcquired() const noexcept override;
@@ -214,6 +218,7 @@ public:
 	virtual UniqueIdentifier getLockingControllerID() const noexcept override;
 	virtual entity::Entity const& getEntity() const noexcept override;
 	virtual std::optional<entity::model::MilanInfo> getMilanInfo() const noexcept override;
+	virtual std::optional<entity::model::MilanDynamicState> getMilanDynamicState() const noexcept override;
 	virtual std::optional<entity::model::ControlIndex> getIdentifyControlIndex() const noexcept override;
 	virtual bool isEntityModelValidForCaching() const noexcept override;
 	virtual bool isIdentifying() const noexcept override;
@@ -272,6 +277,8 @@ public:
 	virtual std::chrono::milliseconds const& getAecpResponseAverageTime() const noexcept override;
 	virtual std::uint64_t getAemAecpUnsolicitedCounter() const noexcept override;
 	virtual std::uint64_t getAemAecpUnsolicitedLossCounter() const noexcept override;
+	virtual std::uint64_t getMvuAecpUnsolicitedCounter() const noexcept override;
+	virtual std::uint64_t getMvuAecpUnsolicitedLossCounter() const noexcept override;
 	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept override;
 
 	// Diagnostics
@@ -330,6 +337,8 @@ public:
 	void setLockState(model::LockState const state) noexcept;
 	void setLockingController(UniqueIdentifier const controllerID) noexcept;
 	void setMilanInfo(entity::model::MilanInfo const& info) noexcept;
+	void setMilanDynamicState(entity::model::MilanDynamicState const& state) noexcept;
+	void setSystemUniqueID(entity::model::SystemUniqueIdentifier const uniqueID) noexcept;
 
 	// Setters of the Statistics
 	void setAecpRetryCounter(std::uint64_t const value) noexcept;
@@ -338,6 +347,8 @@ public:
 	void setAecpResponseAverageTime(std::chrono::milliseconds const& value) noexcept;
 	void setAemAecpUnsolicitedCounter(std::uint64_t const value) noexcept;
 	void setAemAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept;
+	void setMvuAecpUnsolicitedCounter(std::uint64_t const value) noexcept;
+	void setMvuAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept;
 	void setEnumerationTime(std::chrono::milliseconds const& value) noexcept;
 
 	// Setters of the Diagnostics
@@ -375,6 +386,8 @@ public:
 	std::chrono::milliseconds const& updateAecpResponseTimeAverage(std::chrono::milliseconds const& responseTime) noexcept;
 	std::uint64_t incrementAemAecpUnsolicitedCounter() noexcept;
 	std::uint64_t incrementAemAecpUnsolicitedLossCounter() noexcept;
+	std::uint64_t incrementMvuAecpUnsolicitedCounter() noexcept;
+	std::uint64_t incrementMvuAecpUnsolicitedLossCounter() noexcept;
 	void setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept;
 	void setEndEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& endTime) noexcept;
 
@@ -384,11 +397,11 @@ public:
 	bool gotExpectedCheckDynamicInfoSupported() const noexcept;
 	std::pair<bool, std::chrono::milliseconds> getCheckDynamicInfoSupportedRetryTimer() noexcept;
 
-	// Expected GetDynamicInfo query methods
-	bool checkAndClearExpectedGetDynamicInfo(std::uint16_t const packetID) noexcept;
-	void setGetDynamicInfoExpected(std::uint16_t const packetID) noexcept;
-	void clearAllExpectedGetDynamicInfo() noexcept;
-	bool gotAllExpectedGetDynamicInfo() const noexcept;
+	// Expected GetDynamicInfo (packed version of dynamic info) query methods
+	bool checkAndClearExpectedPackedDynamicInfo(std::uint16_t const packetID) noexcept;
+	void setPackedDynamicInfoExpected(std::uint16_t const packetID) noexcept;
+	void clearAllExpectedPackedDynamicInfo() noexcept;
+	bool gotAllExpectedPackedDynamicInfo() const noexcept;
 	std::pair<bool, std::chrono::milliseconds> getGetDynamicInfoRetryTimer() noexcept;
 
 	// Expected RegisterUnsol query methods
@@ -412,6 +425,7 @@ public:
 	// Expected dynamic info query methods
 	bool checkAndClearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex = 0u) noexcept;
 	void setDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex = 0u) noexcept;
+	void clearAllExpectedDynamicInfo() noexcept;
 	bool gotAllExpectedDynamicInfo() const noexcept;
 	std::pair<bool, std::chrono::milliseconds> getQueryDynamicInfoRetryTimer() noexcept;
 
@@ -432,9 +446,11 @@ public:
 	void addEnumerationStep(EnumerationStep const step) noexcept;
 	void clearEnumerationStep(EnumerationStep const step) noexcept;
 	void setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept;
+	void setMilanCompatibilityVersion(entity::model::MilanVersion const version) noexcept;
 	void setMilanRedundant(bool const isMilanRedundant) noexcept;
 	void setGetFatalEnumerationError() noexcept;
-	void setGetDynamicInfoSupported(bool const isSupported) noexcept;
+	void setPackedDynamicInfoSupported(bool const isSupported) noexcept;
+	void setNotUsingCachedEntityModel() noexcept;
 	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
 	void setUnsolicitedNotificationsSupported(bool const isSupported) noexcept;
 	bool wasAdvertised() const noexcept;
@@ -446,7 +462,8 @@ public:
 	bool isRedundantSecondaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	bool isRedundantSecondaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	Diagnostics& getDiagnostics() noexcept;
-	bool hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
+	bool hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
+	bool hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
 	entity::model::EntityTree const& getEntityModelTree() const noexcept;
 	void buildEntityModelGraph(entity::model::EntityTree const& entityTree) noexcept;
 
@@ -476,6 +493,7 @@ private:
 	void addOrFixStreamPortInputMapping(entity::model::AudioMappings& mappings, entity::model::AudioMapping const& mapping) const noexcept;
 	void fixStreamPortInputMappings(std::map<entity::model::StreamPortIndex, model::StreamPortInputNode>& streamPorts) noexcept;
 	void fixStreamPortMappings(model::ConfigurationNode& configNode) noexcept;
+	bool hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID) noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	void buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -494,15 +512,17 @@ private:
 	std::uint16_t _queryDescriptorDynamicInfoRetryCount{ 0u };
 	EnumerationSteps _enumerationSteps{};
 	CompatibilityFlags _compatibilityFlags{ CompatibilityFlag::IEEE17221 }; // Entity is IEEE1722.1 compatible by default
+	entity::model::MilanVersion _milanCompatibilityVersion{};
 	bool _isMilanRedundant{ false }; // Current configuration has at least one redundant stream
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
-	bool _isGetDynamicInfoSupported{ false }; // Is the GET_DYNAMIC_INFO command supported
+	bool _isPackedDynamicInfoSupported{ false }; // Is the GET_DYNAMIC_INFO command supported
+	bool _isUsingCachedEntityModel{ false }; // Is the entity model loaded from the cache
 	bool _isSubscribedToUnsolicitedNotifications{ false }; // Are we subscribed to unsolicited notifications
 	bool _areUnsolicitedNotificationsSupported{ false }; // Are unsolicited notifications supported
 	bool _advertised{ false }; // Has the entity been advertised to the observers
 	bool _expectedCheckDynamicInfoSupported{ false };
 	bool _expectedRegisterUnsol{ false };
-	std::unordered_set<std::uint16_t> _expectedGetDynamicInfo{};
+	std::unordered_set<std::uint16_t> _expectedPackedDynamicInfo{};
 	std::unordered_set<MilanInfoKey> _expectedMilanInfo{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorKey>> _expectedDescriptors{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DynamicInfoKey>> _expectedDynamicInfo{};
@@ -512,13 +532,14 @@ private:
 	UniqueIdentifier _owningControllerID{}; // EID of the controller currently owning (who acquired) this entity
 	model::LockState _lockState{ model::LockState::Undefined };
 	UniqueIdentifier _lockingControllerID{}; // EID of the controller currently locking (who locked) this entity
-	std::optional<protocol::AecpSequenceID> _expectedSequenceID{ std::nullopt };
+	std::optional<protocol::AecpSequenceID> _expectedAemSequenceID{ std::nullopt };
+	std::optional<protocol::AecpSequenceID> _expectedMvuSequenceID{ std::nullopt };
 	// Milan specific information
 	std::optional<entity::model::MilanInfo> _milanInfo{ std::nullopt };
+	std::optional<entity::model::MilanDynamicState> _milanDynamicState{ std::nullopt };
 	// Entity variables
 	entity::Entity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model
-	//entity::model::EntityTree _entityTree{}; // Tree of the model as represented by the AVDECC protocol
 	model::EntityNode _entityNode{}; // Model as represented by the ControlledEntity (tree of references to the model::EntityStaticTree and model::EntityDynamicTree)
 	// Entity Model Tree Access Strategy
 	friend class TreeModelAccessTraverseStrategy;
@@ -540,6 +561,8 @@ private:
 	std::chrono::milliseconds _aecpResponseAverageTime{};
 	std::uint64_t _aemAecpUnsolicitedCounter{ 0ull };
 	std::uint64_t _aemAecpUnsolicitedLossCounter{ 0ull };
+	std::uint64_t _mvuAecpUnsolicitedCounter{ 0ull };
+	std::uint64_t _mvuAecpUnsolicitedLossCounter{ 0ull };
 	std::chrono::time_point<std::chrono::steady_clock> _enumerationStartTime{}; // Intermediate variable used by _enumerationTime
 	std::chrono::milliseconds _enumerationTime{};
 	// Diagnostics

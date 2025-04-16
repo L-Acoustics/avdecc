@@ -1,8 +1,6 @@
 // #define LOAD_TEST_VIRTUAL_ENTITY_FROM_AEM
 // #define LOAD_TEST_VIRTUAL_ENTITY_FROM_AVE
 
-using la.avdecc.controller;
-
 class DiscoveryApp
 {
 	static void Main()
@@ -59,7 +57,7 @@ class DiscoveryApp
 			commonInformation.listenerStreamSinks = 2;
 			commonInformation.listenerCapabilities = new ListenerCapabilities();
 			commonInformation.listenerCapabilities.set(la.avdecc.entity.ListenerCapability.Implemented);
-			commonInformation.identifyControlIndex = 0;
+			commonInformation.identifyControlIndex = new OptUInt16(0);
 
 			var interfaceInfo = new la.avdecc.entity.Entity.InterfaceInformation();
 			interfaceInfo.macAddress = new MacAddress(new byte[] { 0x06, 0x05, 0x04, 0x03, 0x02, 0x01 });
@@ -69,12 +67,80 @@ class DiscoveryApp
 		public override void build(la.avdecc.controller.ControlledEntity entity, la.avdecc.entity.model.EntityNodeStaticModel staticModel, la.avdecc.entity.model.EntityNodeDynamicModel dynamicModel)
 		{
 			dynamicModel.entityName = new la.avdecc.entity.model.AvdeccFixedString("SimpleEntity");
+			dynamicModel.currentConfiguration = ActiveConfigurationIndex;
 		}
 		public override void build(CompatibilityFlags flags)
 		{
 			flags.set(la.avdecc.controller.ControlledEntity.CompatibilityFlag.IEEE17221);
 			flags.set(la.avdecc.controller.ControlledEntity.CompatibilityFlag.Milan);
 		}
+		public override void build(la.avdecc.controller.ControlledEntity entity, ushort descriptorIndex, la.avdecc.entity.model.ConfigurationNodeStaticModel staticModel, la.avdecc.entity.model.ConfigurationNodeDynamicModel dynamicModel)
+		{
+			// Set active configuration
+			if (descriptorIndex == ActiveConfigurationIndex)
+			{
+				dynamicModel.isActiveConfiguration = true;
+			}
+			_isConfigurationActive = dynamicModel.isActiveConfiguration;
+		}
+		public override void build(la.avdecc.controller.ControlledEntity entity, ushort descriptorIndex, la.avdecc.entity.model.AudioUnitNodeStaticModel staticModel, la.avdecc.entity.model.AudioUnitNodeDynamicModel dynamicModel)
+		{
+			// Only process active configuration
+			if (_isConfigurationActive)
+			{
+				// Choose the first sampling rate
+				dynamicModel.currentSamplingRate = staticModel.samplingRates.IsEmpty ? new la.avdecc.entity.model.SamplingRate() : staticModel.samplingRates.First();
+			}
+		}
+		public override void build(la.avdecc.controller.ControlledEntity entity, ushort descriptorIndex, la.avdecc.entity.model.StreamNodeStaticModel staticModel, la.avdecc.entity.model.StreamInputNodeDynamicModel dynamicModel)
+		{
+			// Only process active configuration
+			if (_isConfigurationActive)
+			{
+				// Choose the first stream format
+				dynamicModel.streamFormat = staticModel.formats.IsEmpty ? new la.avdecc.entity.model.StreamFormat() : staticModel.formats.First();
+			}
+		}
+
+		public override void build(la.avdecc.controller.ControlledEntity entity, ushort descriptorIndex, la.avdecc.entity.model.StreamNodeStaticModel staticModel, la.avdecc.entity.model.StreamOutputNodeDynamicModel dynamicModel)
+		{
+			// Only process active configuration
+			if (_isConfigurationActive)
+			{
+				// Choose the first stream format
+				dynamicModel.streamFormat = staticModel.formats.IsEmpty ? new la.avdecc.entity.model.StreamFormat() : staticModel.formats.First();
+			}
+		}
+		public override void build(la.avdecc.controller.ControlledEntity entity, ushort descriptorIndex, la.avdecc.entity.model.AvbInterfaceNodeStaticModel staticModel, la.avdecc.entity.model.AvbInterfaceNodeDynamicModel dynamicModel)
+		{
+			// Only process active configuration
+			if (_isConfigurationActive)
+			{
+				// Set the macAddress
+				dynamicModel.macAddress = new MacAddress(new byte[] { 0x06, 0x05, 0x04, 0x03, 0x02, 0x01 });
+				;
+			}
+		}
+		public override void build(la.avdecc.controller.ControlledEntity entity, ushort descriptorIndex, la.avdecc.entity.model.DescriptorType attachedTo, la.avdecc.entity.model.ControlNodeStaticModel staticModel, la.avdecc.entity.model.ControlNodeDynamicModel dynamicModel)
+		{
+			// Only process active configuration
+			if (_isConfigurationActive)
+			{
+				// Identify control
+				if (staticModel.controlType == new la.avdecc.UniqueIdentifier((ulong)la.avdecc.entity.model.StandardControlType.Identify))
+				{
+					var values = new LinearValuesUInt8();
+					var value = new LinearValueDynamicUInt8();
+					value.currentValue = 0;
+					values.addValue(value);
+					dynamicModel.values = new la.avdecc.entity.model.ControlValues(values);
+				}
+			}
+		}
+
+		private static ushort ActiveConfigurationIndex = 0;
+		private bool _isConfigurationActive = false;
+
 	}
 #endif // LOAD_TEST_VIRTUAL_ENTITY_FROM_AEM
 

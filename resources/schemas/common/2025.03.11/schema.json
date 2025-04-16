@@ -1,0 +1,453 @@
+{
+	"$schema": "http://json-schema.org/draft/2020-12/schema#",
+	"title": "AEM Common Definition",
+	"description": "Common types and definitions for ATDECC Entity Model schemas",
+	"type": "object",
+	"schema_version": "2025.03.11",
+	"$defs": {
+		"uniqueIdentifier": {
+			"type": "string",
+			"pattern": "^0x[0-9a-fA-F]{16}$",
+			"description": "Defined as a string representing an hexadecimal 64 bits value."
+		},
+		"avdeccString": {
+			"type": "string",
+			"maxLength": 64,
+			"description": "Defined as a string with a maximum length of 64 bytes.(not characters, if possible in JSON Schema)"
+		},
+		"descriptorIndex": {
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 65535,
+			"description": "Defined as a number ranging from 0 to 65535."
+		},
+		"uint8": {
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 255,
+			"description": "Defined as an unsigned one byte number (ranging from 0 to 255)."
+		},
+		"uint16": {
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 65535,
+			"description": "Defined as an unsigned two bytes number (ranging from 0 to 65535)."
+		},
+		"uint32": {
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 4294967295,
+			"description": "Defined as an unsigned four bytes number (ranging from 0 to 4294967295)."
+		},
+		"uint64": {
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 18446744073709551615,
+			"description": "Defined as an unsigned 8 bytes number."
+		},
+		"macAddress": {
+			"type": "string",
+			"pattern": "^([A-F0-9]{2}:){5}[A-F0-9]{2}$",
+			"description": "Defined as a string representing 6 hexadecimal bytes separated by a colon."
+		},
+		"streamFormat": {
+			"type": "string",
+			"pattern": "^0x[0-9a-fA-F]{16}$",
+			"description": "Defined as a string representing an hexadecimal 64 bits value."
+		},
+		"samplingRate": {
+			"type": "string",
+			"pattern": "^0x[0-9a-fA-F]{8}$",
+			"description": "Defined as a string representing an hexadecimal 32 bits value."
+		},
+		"localizedDescription": {
+			"type": "object",
+			"properties": {
+				"index": {
+					"type": "integer",
+					"minimum": 0,
+					"maximum": 7
+				},
+				"offset": {
+					"type": "integer",
+					"minimum": 0,
+					"maximum": 8191
+				}
+			},
+			"required": [
+				"index",
+				"offset"
+			],
+			"description": "An object with the following properties of index (0-7) and offset (0-8191) all required"
+		},
+		"audioMapping": {
+			"type": "object",
+			"properties": {
+				"stream_index": {
+					"$ref": "#/$defs/descriptorIndex"
+				},
+				"stream_channel": {
+					"$ref": "#/$defs/uint16"
+				},
+				"cluster_offset": {
+					"$ref": "#/$defs/descriptorIndex"
+				},
+				"cluster_channel": {
+					"$ref": "#/$defs/uint16"
+				}
+			},
+			"required": [
+				"stream_index",
+				"stream_channel",
+				"cluster_offset",
+				"cluster_channel"
+			],
+			"description": "As an object with the following properties of StreamIndex (descriptor Index), stream Channel (uint16), cluster offset (descriptorIndex), and cluster channel (uint16) all required"
+		},
+		"jackFlag": {
+			"type": "string",
+			"enum": [
+				"UNKNOWN",
+				"CLOCK_SYNC_SOURCE",
+				"CAPTIVE"
+			]
+		},
+		"avbInterfaceFlag": {
+			"type": "string",
+			"enum": [
+				"UNKNOWN",
+				"GPTP_GRANDMASTER_SUPPORTED",
+				"GPTP_SUPPORTED",
+				"SRP_SUPPORTED",
+				"FQTSS_NOT_SUPPORTED",
+				"SCHEDULED_TRAFFIC_SUPPORTED",
+				"CAN_LISTEN_TO_SELF",
+				"CAN_LISTEN_TO_OTHER_SELF"
+			]
+		},
+		"descriptorType": {
+			"type": "string",
+			"enum": [
+				"INVALID",
+				"ENTITY",
+				"CONFIGURATION",
+				"AUDIO_UNIT",
+				"VIDEO_UNIT",
+				"SENSOR_UNIT",
+				"STREAM_INPUT",
+				"STREAM_OUTPUT",
+				"JACK_INPUT",
+				"JACK_OUTPUT",
+				"AVB_INTERFACE",
+				"CLOCK_SOURCE",
+				"MEMORY_OBJECT",
+				"LOCALE",
+				"STRINGS",
+				"STREAM_PORT_INPUT",
+				"STREAM_PORT_OUTPUT",
+				"EXTERNAL_PORT_INPUT",
+				"EXTERNAL_PORT_OUTPUT",
+				"INTERNAL_PORT_INPUT",
+				"INTERNAL_PORT_OUTPUT",
+				"AUDIO_CLUSTER",
+				"VIDEO_CLUSTER",
+				"SENSOR_CLUSTER",
+				"AUDIO_MAP",
+				"VIDEO_MAP",
+				"SENSOR_MAP",
+				"CONTROL",
+				"SIGNAL_SELECTOR",
+				"MIXER",
+				"MATRIX",
+				"MATRIX_SIGNAL",
+				"SIGNAL_SPLITTER",
+				"SIGNAL_COMBINER",
+				"SIGNAL_DEMULTIPLEXER",
+				"SIGNAL_MULTIPLEXER",
+				"SIGNAL_TRANSCODER",
+				"CLOCK_DOMAIN",
+				"CONTROL_BLOCK",
+				"TIMING",
+				"PTP_INSTANCE",
+				"PTP_PORT"
+			]
+		},
+		"streamFlag": {
+			"type": "string",
+			"enum": [
+				"CLOCK_SYNC_SOURCE",
+				"CLASS_A",
+				"CLASS_B",
+				"SUPPORTS_ENCRYPTED",
+				"PRIMARY_BACKUP_SUPPORTED",
+				"PRIMARY_BACKUP_VALID",
+				"SECONDARY_BACKUP_SUPPORTED",
+				"SECONDARY_BACKUP_VALID",
+				"TERTIARY_BACKUP_SUPPORTED",
+				"TERTIARY_BACKUP_VALID",
+				"SUPPORTS_AVTP_UDP_V4",
+				"SUPPORTS_AVTP_UDP_V6",
+				"NO_SUPPORT_AVTP_NATIVE",
+				"TIMING_FIELD_VALID",
+				"NO_MEDIA_CLOCK",
+				"SUPPORTS_NO_SRP"
+			]
+		},
+		"portFlag": {
+			"type": "string",
+			"enum": [
+				"UNKNOWN",
+				"CLOCK_SYNC_SOURCE",
+				"ASYNC_SAMPLE_RATE_CONV",
+				"SYNC_SAMPLE_RATE_CONV"
+			]
+		},
+		"ptpInstanceFlag": {
+			"type": "string",
+			"enum": [
+				"UNKNOWN",
+				"CAN_SET_INSTANCE_ENABLE",
+				"CAN_SET_PRIORITY_1",
+				"CAN_SET_PRIORITY_2",
+				"CAN_SET_DOMAIN_NUMBER",
+				"CAN_SET_EXTERNAL_PORT_CONFIGURATION",
+				"CAN_SET_SLAVE_ONLY",
+				"CAN_ENABLE_PERFORMANCE",
+				"PERFORMANCE_MONITORING",
+				"GRANDMASTER_CAPABLE"
+			]
+		},
+		"milanInfoFeaturesFlag": {
+			"type": "string",
+			"enum": [
+				"UNKNOWN",
+				"REDUNDANCY",
+				"TALKER_DYNAMIC_MAPPINGS_WHILE_RUNNING"
+			]
+		},
+		"audioClusterFormat": {
+			"type": "string",
+			"enum": [
+				"IEC_60958",
+				"MBLA",
+				"MIDI",
+				"SMPTE"
+			]
+		},
+		"clockSourceType": {
+			"type": "string",
+			"enum": [
+				"EXPANSION",
+				"INTERNAL",
+				"EXTERNAL",
+				"INPUT_STREAM"
+			]
+		},
+		"memoryObjectType": {
+			"type": "string",
+			"enum": [
+				"FIRMWARE_IMAGE",
+				"VENDOR_SPECIFIC",
+				"CRASH_DUMP",
+				"LOG_OBJECT",
+				"AUTOSTART_SETTINGS",
+				"SNAPSHOT_SETTINGS",
+				"SVG_MANUFACTURER",
+				"SVG_ENTITY",
+				"SVG_GENERIC",
+				"PNG_MANUFACTURER",
+				"PNG_ENTITY",
+				"PNG_GENERIC",
+				"DAE_MANUFACTURER",
+				"DAE_ENTITY",
+				"DAE_GENERIC"
+			]
+		},
+		"jackType": {
+			"type": "string",
+			"enum": [
+				"EXPANSION",
+				"SPEAKER",
+				"HEADPHONE",
+				"ANALOG_MICROPHONE",
+				"SPDIF",
+				"ADAT",
+				"TDIF",
+				"MADI",
+				"UNBALANCED_ANALOG",
+				"BALANCED_ANALOG",
+				"DIGITAL",
+				"MIDI",
+				"AES_EBU",
+				"COMPOSITE_VIDEO",
+				"S_VHS_VIDEO",
+				"COMPONENT_VIDEO",
+				"DVI",
+				"HDMI",
+				"UDI",
+				"DISPLAYPORT",
+				"ANTENNA",
+				"ANALOG_TUNER",
+				"ETHERNET",
+				"WIFI",
+				"USB",
+				"PCI",
+				"PCI_E",
+				"SCSI",
+				"ATA",
+				"IMAGER",
+				"IR",
+				"THUNDERBOLT",
+				"SATA",
+				"SMPTE_LTC",
+				"DIGITAL_MICROPHONE",
+				"AUDIO_MEDIA_CLOCK",
+				"VIDEO_MEDIA_CLOCK",
+				"GNSS_CLOCK",
+				"PPS"
+			]
+		},
+		"timingAlgorithm": {
+			"type": "string",
+			"enum": [
+				"SINGLE",
+				"FALLBACK",
+				"COMBINED"
+			]
+		},
+		"ptpPortType": {
+			"type": "string",
+			"enum": [
+				"P2P_LINK_LAYER",
+				"P2P_MULTICAST_UDP_V4",
+				"P2P_MULTICAST_UDP_V6",
+				"TIMING_MEASUREMENT",
+				"FINE_TIMING_MEASUREMENT",
+				"E2E_LINK_LAYER",
+				"E2E_MULTICAST_UDP_V4",
+				"E2E_MULTICAST_UDP_V6",
+				"P2P_UNICAST_UDP_V4",
+				"P2P_UNICAST_UDP_V6",
+				"E2E_UNICAST_UDP_V4",
+				"E2E_UNICAST_UDP_V6"
+			]
+		},
+		"controlValueUnit": {
+			"type": "string",
+			"enum": [
+				"UNITLESS",
+				"COUNT",
+				"PERCENT",
+				"FSTOP",
+				"SECONDS",
+				"MINUTES",
+				"HOURS",
+				"DAYS",
+				"MONTHS",
+				"YEARS",
+				"SAMPLES",
+				"FRAMES",
+				"HERTZ",
+				"SEMITONES",
+				"CENTS",
+				"OCTAVES",
+				"FPS",
+				"METRES",
+				"KELVIN",
+				"GRAMS",
+				"VOLTS",
+				"DBV",
+				"DBU",
+				"AMPS",
+				"WATTS",
+				"DBM",
+				"DBW",
+				"PASCALS",
+				"BITS",
+				"BYTES",
+				"KIBIBYTES",
+				"MEBIBYTES",
+				"GIBIBYTES",
+				"TEBIBYTES",
+				"BITS_PER_SEC",
+				"BYTES_PER_SEC",
+				"KIBIBYTES_PER_SEC",
+				"MEBIBYTES_PER_SEC",
+				"GIBIBYTES_PER_SEC",
+				"TEBIBYTES_PER_SEC",
+				"CANDELAS",
+				"JOULES",
+				"RADIANS",
+				"NEWTONS",
+				"OHMS",
+				"METRES_PER_SEC",
+				"RADIANS_PER_SEC",
+				"METRES_PER_SEC_SQUARED",
+				"RADIANS_PER_SEC_SQUARED",
+				"TESLAS",
+				"WEBERS",
+				"AMPS_PER_METRE",
+				"METRES_SQUARED",
+				"METRES_CUBED",
+				"LITRES",
+				"DB",
+				"DB_PEAK",
+				"DB_RMS",
+				"DBFS",
+				"DBFS_PEAK",
+				"DBFS_RMS",
+				"DBTP",
+				"DB_SPL_A",
+				"DB_Z",
+				"DB_SPL_C",
+				"DB_SPL",
+				"LU",
+				"LUFS",
+				"DB_A"
+			]
+		},
+		"controlValueType": {
+			"type": "string",
+			"enum": [
+				"CONTROL_LINEAR_INT8",
+				"CONTROL_LINEAR_UINT8",
+				"CONTROL_LINEAR_INT16",
+				"CONTROL_LINEAR_UINT16",
+				"CONTROL_LINEAR_INT32",
+				"CONTROL_LINEAR_UINT32",
+				"CONTROL_LINEAR_INT64",
+				"CONTROL_LINEAR_UINT64",
+				"CONTROL_LINEAR_FLOAT",
+				"CONTROL_LINEAR_DOUBLE",
+				"CONTROL_SELECTOR_INT8",
+				"CONTROL_SELECTOR_UINT8",
+				"CONTROL_SELECTOR_INT16",
+				"CONTROL_SELECTOR_UINT16",
+				"CONTROL_SELECTOR_INT32",
+				"CONTROL_SELECTOR_UINT32",
+				"CONTROL_SELECTOR_INT64",
+				"CONTROL_SELECTOR_UINT64",
+				"CONTROL_SELECTOR_FLOAT",
+				"CONTROL_SELECTOR_DOUBLE",
+				"CONTROL_SELECTOR_STRING",
+				"CONTROL_ARRAY_INT8",
+				"CONTROL_ARRAY_UINT8",
+				"CONTROL_ARRAY_INT16",
+				"CONTROL_ARRAY_UINT16",
+				"CONTROL_ARRAY_INT32",
+				"CONTROL_ARRAY_UINT32",
+				"CONTROL_ARRAY_INT64",
+				"CONTROL_ARRAY_UINT64",
+				"CONTROL_ARRAY_FLOAT",
+				"CONTROL_ARRAY_DOUBLE",
+				"CONTROL_UTF8",
+				"CONTROL_BODE_PLOT",
+				"CONTROL_SMPTE_TIME",
+				"CONTROL_SAMPLE_RATE",
+				"CONTROL_GPTP_TIME",
+				"CONTROL_VENDOR",
+				"EXPANSION"
+			]
+		}
+	}
+}

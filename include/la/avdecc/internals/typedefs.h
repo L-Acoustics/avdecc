@@ -134,6 +134,8 @@ enum avdecc_protocol_interface_type_e
 	avdecc_protocol_interface_type_macos_native = 1u << 1, /**< macOS native API protocol interface - Only usable on macOS. */
 	avdecc_protocol_interface_type_proxy = 1u << 2, /**< IEEE Std 1722.1 Proxy protocol interface. */
 	avdecc_protocol_interface_type_virtual = 1u << 3, /**< Virtual protocol interface. */
+	avdecc_protocol_interface_type_serial = 1u << 4, /**< Serial port protocol interface. */
+	avdecc_protocol_interface_type_local = 1u << 5, /**< Local domain socket protocol interface. */
 };
 
 /** Valid values for avdecc_protocol_interface_error_t */

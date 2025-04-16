@@ -546,8 +546,9 @@ namespace
 class Builder : public la::avdecc::controller::model::DefaultedVirtualEntityBuilder
 {
 public:
-	Builder(la::avdecc::controller::ControlledEntity::CompatibilityFlags const flags) noexcept
+	Builder(la::avdecc::controller::ControlledEntity::CompatibilityFlags const flags, la::avdecc::entity::model::MilanVersion const& milanCompatibilityVersion) noexcept
 		: _compatibilityFlags{ flags }
+		, _milanCompatibilityVersion{ milanCompatibilityVersion }
 	{
 	}
 
@@ -577,12 +578,13 @@ public:
 		auto const interfaceInfo = la::avdecc::entity::Entity::InterfaceInformation{ la::networkInterface::MacAddress{ 0x06, 0x05, 0x04, 0x03, 0x02, 0x01 }, 31u, 0u, std::nullopt, std::nullopt };
 		intfcInformation[la::avdecc::entity::Entity::GlobalAvbInterfaceIndex] = interfaceInfo;
 	}
-	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& compatibilityFlags) noexcept override
+	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& compatibilityFlags, la::avdecc::entity::model::MilanVersion& milanCompatibilityVersion) noexcept override
 	{
 		for (auto const f : _compatibilityFlags)
 		{
 			compatibilityFlags.set(f);
 		}
+		milanCompatibilityVersion = _milanCompatibilityVersion;
 	}
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::EntityNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::EntityNodeDynamicModel& dynamicModel) noexcept override
 	{
@@ -653,16 +655,17 @@ private:
 	static auto constexpr ActiveConfigurationIndex = la::avdecc::entity::model::ConfigurationIndex{ 0u };
 	bool _isConfigurationActive{ false };
 	la::avdecc::controller::ControlledEntity::CompatibilityFlags _compatibilityFlags{};
+	la::avdecc::entity::model::MilanVersion _milanCompatibilityVersion{};
 };
 } // namespace
 
-TEST_F(Controller_F, VirtualEntityFromEntityModelFile)
+inline void doVirtualEntityFromEntityModelFile(Controller_F* self, std::string const& fileName)
 {
 	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x0102030405060708 };
 	auto const compatibilityFlags = la::avdecc::controller::ControlledEntity::CompatibilityFlags{ la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221, la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan };
-	auto builder = Builder{ compatibilityFlags };
-	auto& controller = getController();
-	auto const [error, message] = controller.createVirtualEntityFromEntityModelFile("data/SimpleEntityModel.json", &builder, false);
+	auto builder = Builder{ compatibilityFlags, la::avdecc::entity::model::MilanVersion{ 1, 0 } };
+	auto& controller = self->getController();
+	auto const [error, message] = controller.createVirtualEntityFromEntityModelFile(fileName, &builder, false);
 	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
 	EXPECT_STREQ("", message.c_str());
 
@@ -679,8 +682,18 @@ TEST_F(Controller_F, VirtualEntityFromEntityModelFile)
 	// Serialize the virtual entity
 	{
 		auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDiagnostics /*, la::avdecc::entity::model::jsonSerializer::Flag::BinaryFormat*/ };
-		controller.serializeControlledEntityAsJson(EntityID, "OutputVirtualEntity.json", flags, "Discovery Example");
+		controller.serializeControlledEntityAsJson(EntityID, "OutputVirtualEntity.json", flags, "Unit Test");
 	}
+}
+
+TEST_F(Controller_F, VirtualEntityFromEntityModelFileV1)
+{
+	doVirtualEntityFromEntityModelFile(this, "data/SimpleEntityModelV1.json");
+}
+
+TEST_F(Controller_F, VirtualEntityFromEntityModelFileV2)
+{
+	doVirtualEntityFromEntityModelFile(this, "data/SimpleEntityModelV2.json");
 }
 
 /*
@@ -3128,6 +3141,7 @@ TEST(Controller, HashEntityModelV1)
 	auto const checksum = la::avdecc::controller::Controller::computeEntityModelChecksum(*controlledEntity, std::uint32_t{ 1u });
 	EXPECT_TRUE(checksum.has_value());
 	EXPECT_EQ(64u, checksum.value().size());
+	EXPECT_STREQ("26FA70AA2874BFBCC2DDA118901D110CC2712C03E8BC25CBC7591883DDB50DB1", checksum.value().c_str());
 }
 
 TEST(Controller, HashEntityModelV2)
@@ -3138,4 +3152,27 @@ TEST(Controller, HashEntityModelV2)
 	auto const checksum = la::avdecc::controller::Controller::computeEntityModelChecksum(*controlledEntity, std::uint32_t{ 2u });
 	EXPECT_TRUE(checksum.has_value());
 	EXPECT_EQ(64u, checksum.value().size());
+	EXPECT_STREQ("5563CE79CA724205A93DEED82096B51F85279BC8B50C2912029D7C017D69BE74", checksum.value().c_str());
+}
+
+TEST(Controller, HashEntityModelV3)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel };
+	auto const& [error, msg, controlledEntity] = la::avdecc::controller::Controller::deserializeControlledEntityFromJson("data/SimpleEntity.json", flags);
+	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	auto const checksum = la::avdecc::controller::Controller::computeEntityModelChecksum(*controlledEntity, std::uint32_t{ 3u });
+	EXPECT_TRUE(checksum.has_value());
+	EXPECT_EQ(64u, checksum.value().size());
+	EXPECT_STREQ("083B11851F4A48B5331A72A8213B94F67F85CEB32C92E2D5B6501D0EBB7EEDB5", checksum.value().c_str());
+}
+
+TEST(Controller, HashEntityModelV4)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel };
+	auto const& [error, msg, controlledEntity] = la::avdecc::controller::Controller::deserializeControlledEntityFromJson("data/SimpleEntity.json", flags);
+	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	auto const checksum = la::avdecc::controller::Controller::computeEntityModelChecksum(*controlledEntity, std::uint32_t{ 4u });
+	EXPECT_TRUE(checksum.has_value());
+	EXPECT_EQ(64u, checksum.value().size());
+	EXPECT_STREQ("D98765B3D5D8FC8BC5D57766A51AA0F5FD32D1EFE4DB290099A19EEBF14A9EAA", checksum.value().c_str());
 }

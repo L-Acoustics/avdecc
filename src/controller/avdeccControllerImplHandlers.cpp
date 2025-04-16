@@ -32,10 +32,10 @@ namespace avdecc
 {
 namespace controller
 {
-static auto const s_MilanMandatoryStreamInputCounters = entity::StreamInputCounterValidFlags{ entity::StreamInputCounterValidFlag::MediaLocked, entity::StreamInputCounterValidFlag::MediaUnlocked, entity::StreamInputCounterValidFlag::StreamInterrupted, entity::StreamInputCounterValidFlag::SeqNumMismatch, entity::StreamInputCounterValidFlag::MediaReset, entity::StreamInputCounterValidFlag::TimestampUncertain, entity::StreamInputCounterValidFlag::UnsupportedFormat, entity::StreamInputCounterValidFlag::LateTimestamp, entity::StreamInputCounterValidFlag::EarlyTimestamp, entity::StreamInputCounterValidFlag::FramesRx }; // Milan-2019 Clause 6.8.10
-static auto const s_MilanMandatoryStreamOutputCounters = entity::StreamOutputCounterValidFlags{ entity::StreamOutputCounterValidFlag::StreamStart, entity::StreamOutputCounterValidFlag::StreamStop, entity::StreamOutputCounterValidFlag::MediaReset, entity::StreamOutputCounterValidFlag::TimestampUncertain, entity::StreamOutputCounterValidFlag::FramesTx }; // Milan-2019 Clause 6.7.7
-static auto const s_MilanMandatoryAvbInterfaceCounters = entity::AvbInterfaceCounterValidFlags{ entity::AvbInterfaceCounterValidFlag::LinkUp, entity::AvbInterfaceCounterValidFlag::LinkDown, entity::AvbInterfaceCounterValidFlag::GptpGmChanged }; // Milan-2019 Clause 6.6.3
-static auto const s_MilanMandatoryClockDomainCounters = entity::ClockDomainCounterValidFlags{ entity::ClockDomainCounterValidFlag::Locked, entity::ClockDomainCounterValidFlag::Unlocked }; // Milan-2019 Clause 6.11.2
+static auto const s_MilanMandatoryStreamInputCounters = entity::StreamInputCounterValidFlags{ entity::StreamInputCounterValidFlag::MediaLocked, entity::StreamInputCounterValidFlag::MediaUnlocked, entity::StreamInputCounterValidFlag::StreamInterrupted, entity::StreamInputCounterValidFlag::SeqNumMismatch, entity::StreamInputCounterValidFlag::MediaReset, entity::StreamInputCounterValidFlag::TimestampUncertain, entity::StreamInputCounterValidFlag::UnsupportedFormat, entity::StreamInputCounterValidFlag::LateTimestamp, entity::StreamInputCounterValidFlag::EarlyTimestamp, entity::StreamInputCounterValidFlag::FramesRx }; // Milan 1.2 Clause 5.3.8.10
+static auto const s_MilanMandatoryStreamOutputCounters = entity::StreamOutputCounterValidFlags{ entity::StreamOutputCounterValidFlag::StreamStart, entity::StreamOutputCounterValidFlag::StreamStop, entity::StreamOutputCounterValidFlag::MediaReset, entity::StreamOutputCounterValidFlag::TimestampUncertain, entity::StreamOutputCounterValidFlag::FramesTx }; // Milan 1.2 Clause 5.3.7.7
+static auto const s_MilanMandatoryAvbInterfaceCounters = entity::AvbInterfaceCounterValidFlags{ entity::AvbInterfaceCounterValidFlag::LinkUp, entity::AvbInterfaceCounterValidFlag::LinkDown, entity::AvbInterfaceCounterValidFlag::GptpGmChanged }; // Milan 1.2 Clause 5.3.6.3
+static auto const s_MilanMandatoryClockDomainCounters = entity::ClockDomainCounterValidFlags{ entity::ClockDomainCounterValidFlag::Locked, entity::ClockDomainCounterValidFlag::Unlocked }; // Milan 1.2 Clause 5.3.11.2
 
 /* ************************************************************ */
 /* Result handlers                                              */
@@ -43,7 +43,7 @@ static auto const s_MilanMandatoryClockDomainCounters = entity::ClockDomainCount
 /* Enumeration and Control Protocol (AECP) handlers */
 void ControllerImpl::onGetMilanInfoResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::MilanInfo const& info) noexcept
 {
-	LOG_CONTROLLER_TRACE(entityID, "onGetMilanInfoResult (ProtocolVersion={} FeaturesFlags={} CertificationVersion={}): {}", info.protocolVersion, utils::toHexString(utils::forceNumeric(info.featuresFlags.value())), info.certificationVersion, entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(entityID, "onGetMilanInfoResult (ProtocolVersion={} FeaturesFlags={} CertificationVersion={}): {}", info.protocolVersion, utils::toHexString(utils::forceNumeric(info.featuresFlags.value())), utils::toHexString(info.certificationVersion.getValue()), entity::ControllerEntity::statusToString(status));
 
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -54,21 +54,24 @@ void ControllerImpl::onGetMilanInfoResult(entity::controller::Interface const* c
 		{
 			if (!!status)
 			{
-				// Flag the entity as "Milan compatible", if protocolVersion is 1
-				switch (info.protocolVersion)
+				// Flag the entity as "Milan compatible", if protocolVersion is at least 1
+				if (info.protocolVersion >= 1)
 				{
-					case 1:
-						addCompatibilityFlag(this, *controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
-						break;
-					default:
-						LOG_CONTROLLER_WARN(entityID, "Unsupported Milan protocol_version: {}", info.protocolVersion);
-						break;
+					addCompatibilityFlag(this, *controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+					// Up until Milan 1.3, we don't have a clear way to differentiate between Milan versions, assume it is Milan 1.2 compatible (will be retrograded if needed)
+					auto milanCompatibilityVersion = entity::model::MilanVersion{ 1, 2 };
+					controlledEntity->setMilanCompatibilityVersion(milanCompatibilityVersion);
+				}
+				// Warn if the protocolVersion is not supported by the library
+				if (info.protocolVersion > 1)
+				{
+					LOG_CONTROLLER_WARN(entityID, "Unsupported Milan protocol_version: {}", info.protocolVersion);
 				}
 				controlledEntity->setMilanInfo(info);
 			}
 			else
 			{
-				if (!processGetMilanModelFailureStatus(status, controlledEntity.get(), ControlledEntityImpl::MilanInfoType::MilanInfo))
+				if (!processGetMilanInfoFailureStatus(status, controlledEntity.get(), ControlledEntityImpl::MilanInfoType::MilanInfo, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::GetMilanInfo);
@@ -102,11 +105,11 @@ void ControllerImpl::onEmptyGetDynamicInfoResult(entity::controller::Interface c
 		{
 			if (!!status)
 			{
-				entity.setGetDynamicInfoSupported(true);
+				entity.setPackedDynamicInfoSupported(true);
 			}
 			else
 			{
-				if (!processEmptyGetDynamicInfoFailureStatus(status, &entity))
+				if (!processEmptyGetDynamicInfoFailureStatus(status, &entity, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 2 }, std::nullopt, entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &entity, QueryCommandError::CheckDynamicInfoSupported);
@@ -114,11 +117,11 @@ void ControllerImpl::onEmptyGetDynamicInfoResult(entity::controller::Interface c
 				}
 			}
 
-			// Got all expected "descriptors"check dynamic info supported"
+			// Got all expected "check dynamic info supported"
 			if (entity.gotExpectedCheckDynamicInfoSupported())
 			{
 				// Clear this enumeration step and check for next one
-				entity.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::CheckDynamicInfoSupported);
+				entity.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::CheckPackedDynamicInfoSupported);
 				checkEnumerationSteps(&entity);
 			}
 		}
@@ -136,7 +139,7 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 	{
 		auto& entity = *controlledEntity;
 
-		if (entity.checkAndClearExpectedGetDynamicInfo(packetID))
+		if (entity.checkAndClearExpectedPackedDynamicInfo(packetID))
 		{
 			auto updatedStatus = status;
 
@@ -564,13 +567,17 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 				}
 				catch (std::bad_any_cast const&)
 				{
+					updatedStatus = entity::ControllerEntity::AemCommandStatus::ProtocolError;
 					gotError = true;
 				}
 			}
 
+			auto action = ControllerImpl::PackedDynamicInfoFailureAction::Continue;
 			if (gotError)
 			{
-				if (!processGetDynamicInfoFailureStatus(updatedStatus, &entity, sentParameters, packetID, step))
+				LOG_CONTROLLER_TRACE(entityID, "onGetDynamicInfoResult updated status: {}", entity::ControllerEntity::statusToString(updatedStatus));
+				action = processGetDynamicInfoFailureStatus(updatedStatus, &entity, sentParameters, packetID, step, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 2 }, std::nullopt, entity::model::MilanVersion{ 1, 0 } } });
+				if (action == ControllerImpl::PackedDynamicInfoFailureAction::Fatal)
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &entity, QueryCommandError::GetDynamicInfo);
@@ -578,13 +585,16 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 				}
 			}
 
-			// Got all expected dynamic information (either descriptor dynamic information or dynamic information, because GET_DYNAMIC_INFO contains both)
-			if (entity.gotAllExpectedGetDynamicInfo())
+			// Got all expected dynamic information (either descriptor dynamic information or dynamic information, because GET_DYNAMIC_INFO is used for both)
+			if (entity.gotAllExpectedPackedDynamicInfo())
 			{
 				if ((step == ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo && entity.gotAllExpectedDescriptorDynamicInfo()) || (step == ControlledEntityImpl::EnumerationStep::GetDynamicInfo && entity.gotAllExpectedDynamicInfo()))
 				{
-					// Clear this enumeration step and check for next one
-					controlledEntity->clearEnumerationStep(step);
+					if (action == ControllerImpl::PackedDynamicInfoFailureAction::Continue)
+					{
+						// Clear this enumeration step and check for next one
+						controlledEntity->clearEnumerationStep(step);
+					}
 					checkEnumerationSteps(&entity);
 				}
 			}
@@ -612,7 +622,7 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 			}
 			else
 			{
-				if (!processRegisterUnsolFailureStatus(status, &entity))
+				if (!processRegisterUnsolFailureStatus(status, &entity, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &entity, QueryCommandError::RegisterUnsol);
@@ -664,6 +674,9 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
+				// Start off as not using the cached entity model
+				entity.setNotUsingCachedEntityModel();
+
 				// Validate some fields
 				auto const& e = entity.getEntity();
 				if (descriptor.entityID != e.getEntityID())
@@ -1249,7 +1262,7 @@ void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interfac
 					}
 					else
 					{
-						if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceDescriptor, interfaceIndex, false))
+						if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceDescriptor, interfaceIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 						{
 							controlledEntity->setGetFatalEnumerationError();
 							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceDescriptor);
@@ -1257,7 +1270,7 @@ void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interfac
 						}
 					}
 					// Got all expected descriptor dynamic information
-					if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+					if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 					{
 						// Clear this enumeration step and check for next one
 						controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -1273,7 +1286,7 @@ void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interfac
 	}
 }
 
-void ControllerImpl::onClockSourceDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockIndex, entity::model::ClockSourceDescriptor const& descriptor) noexcept
+void ControllerImpl::onClockSourceDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockIndex, entity::model::ClockSourceDescriptor const& descriptor, ControlledEntityImpl::EnumerationStep const step) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onClockSourceDescriptorResult (ConfigurationIndex={} ClockIndex={}): {}", configurationIndex, clockIndex, entity::ControllerEntity::statusToString(status));
 
@@ -1282,29 +1295,69 @@ void ControllerImpl::onClockSourceDescriptorResult(entity::controller::Interface
 
 	if (controlledEntity)
 	{
-		if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::ClockSource, clockIndex))
+		auto const processSuccessHandler = [&descriptor, configurationIndex, clockIndex, &controlledEntity]()
 		{
-			if (!!status)
+			controlledEntity->setClockSourceDescriptor(descriptor, configurationIndex, clockIndex);
+		};
+		switch (step)
+		{
+			case ControlledEntityImpl::EnumerationStep::GetStaticModel:
 			{
-				controlledEntity->setClockSourceDescriptor(descriptor, configurationIndex, clockIndex);
-			}
-			else
-			{
-				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockSource, clockIndex))
+				if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::ClockSource, clockIndex))
 				{
-					controlledEntity->setGetFatalEnumerationError();
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockSourceDescriptor);
-					return;
+					if (!!status)
+					{
+						processSuccessHandler();
+					}
+					else
+					{
+						if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockSource, clockIndex))
+						{
+							controlledEntity->setGetFatalEnumerationError();
+							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockSourceDescriptor);
+							return;
+						}
+					}
+					// Got all expected descriptors
+					if (controlledEntity->gotAllExpectedDescriptors())
+					{
+						// Clear this enumeration step and check for next one
+						controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
+						checkEnumerationSteps(controlledEntity.get());
+					}
 				}
+				break;
 			}
-
-			// Got all expected descriptors
-			if (controlledEntity->gotAllExpectedDescriptors())
+			case ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo:
 			{
-				// Clear this enumeration step and check for next one
-				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
-				checkEnumerationSteps(controlledEntity.get());
+				if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceDescriptor, clockIndex))
+				{
+					if (!!status)
+					{
+						processSuccessHandler();
+					}
+					else
+					{
+						if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceDescriptor, clockIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
+						{
+							controlledEntity->setGetFatalEnumerationError();
+							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockSourceDescriptor);
+							return;
+						}
+					}
+					// Got all expected descriptor dynamic information
+					if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+					{
+						// Clear this enumeration step and check for next one
+						controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+						checkEnumerationSteps(controlledEntity.get());
+					}
+				}
+				break;
 			}
+			default:
+				AVDECC_ASSERT(false, "Invalid EnumerationStep");
+				break;
 		}
 	}
 }
@@ -1873,7 +1926,7 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::controller::Interface co
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, streamIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, streamIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 }, entity::model::MilanVersion{ 1, 2 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ListenerStreamInfo);
@@ -1882,7 +1935,7 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::controller::Interface co
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1910,7 +1963,7 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::controller::Interface c
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, streamIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, streamIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 }, entity::model::MilanVersion{ 1, 2 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::TalkerStreamInfo);
@@ -1919,7 +1972,7 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::controller::Interface c
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1946,7 +1999,7 @@ void ControllerImpl::onGetAcquiredStateResult(entity::controller::Interface cons
 			// Could not determine the AcquiredState
 			if (acquireState == model::AcquireState::Undefined)
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u, 0u, true))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u, 0u, MilanRequirements{}))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AcquiredState);
@@ -1958,7 +2011,7 @@ void ControllerImpl::onGetAcquiredStateResult(entity::controller::Interface cons
 			updateAcquiredState(entity, acquireState, owningController);
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -1985,7 +2038,7 @@ void ControllerImpl::onGetLockedStateResult(entity::controller::Interface const*
 			// Could not determine the LockState
 			if (lockState == model::LockState::Undefined)
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::LockedState, 0u, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::LockedState, 0u, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::LockedState);
@@ -1997,7 +2050,7 @@ void ControllerImpl::onGetLockedStateResult(entity::controller::Interface const*
 			updateLockedState(entity, lockState, lockingController);
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2016,7 +2069,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::controller::Inte
 
 	if (controlledEntity)
 	{
-		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex, mapIndex))
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamPortAudioMappings, streamPortIndex, mapIndex))
 		{
 			if (!!status)
 			{
@@ -2036,13 +2089,13 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::controller::Inte
 				controlledEntity->addStreamPortInputAudioMappings(streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 				if (!isComplete)
 				{
-					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex, mapIndex + 1);
+					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamPortAudioMappings, streamPortIndex, mapIndex + 1);
 					return;
 				}
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex, mapIndex, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamPortAudioMappings, streamPortIndex, mapIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamInputAudioMap);
@@ -2060,7 +2113,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::controller::Inte
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2079,7 +2132,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::controller::Int
 
 	if (controlledEntity)
 	{
-		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex, mapIndex))
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamPortAudioMappings, streamPortIndex, mapIndex))
 		{
 			if (!!status)
 			{
@@ -2099,13 +2152,13 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::controller::Int
 				controlledEntity->addStreamPortOutputAudioMappings(streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 				if (!isComplete)
 				{
-					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex, mapIndex + 1);
+					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamPortAudioMappings, streamPortIndex, mapIndex + 1);
 					return;
 				}
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex, mapIndex, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamPortAudioMappings, streamPortIndex, mapIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamOutputAudioMap);
@@ -2123,7 +2176,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::controller::Int
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2152,7 +2205,7 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, avbInterfaceIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, avbInterfaceIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInfo);
@@ -2188,7 +2241,7 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2215,7 +2268,7 @@ void ControllerImpl::onGetAsPathResult(entity::controller::Interface const* cons
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAsPath, avbInterfaceIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAsPath, avbInterfaceIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AsPath);
@@ -2224,7 +2277,7 @@ void ControllerImpl::onGetAsPathResult(entity::controller::Interface const* cons
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2254,7 +2307,7 @@ void ControllerImpl::onGetEntityCountersResult(entity::controller::Interface con
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::GetEntityCounters, 0u, 0u, true))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::GetEntityCounters, 0u, 0u, MilanRequirements{}))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::EntityCounters);
@@ -2263,7 +2316,7 @@ void ControllerImpl::onGetEntityCountersResult(entity::controller::Interface con
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2303,7 +2356,7 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interfa
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, avbInterfaceIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, avbInterfaceIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceCounters);
@@ -2312,7 +2365,7 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interfa
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2352,7 +2405,7 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::controller::Interfac
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, clockDomainIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, clockDomainIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockDomainCounters);
@@ -2361,7 +2414,7 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::controller::Interfac
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2401,7 +2454,7 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interfac
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters, streamIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters, streamIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamInputCounters);
@@ -2410,7 +2463,7 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interfac
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2450,7 +2503,7 @@ void ControllerImpl::onGetStreamOutputCountersResult(entity::controller::Interfa
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters, streamIndex, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters, streamIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamOutputCounters);
@@ -2459,7 +2512,7 @@ void ControllerImpl::onGetStreamOutputCountersResult(entity::controller::Interfa
 			}
 
 			// Got all expected dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -2486,7 +2539,7 @@ void ControllerImpl::onConfigurationNameResult(entity::controller::Interface con
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName, 0u, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ConfigurationName);
@@ -2495,7 +2548,7 @@ void ControllerImpl::onConfigurationNameResult(entity::controller::Interface con
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2522,7 +2575,7 @@ void ControllerImpl::onAudioUnitNameResult(entity::controller::Interface const* 
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, audioUnitIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, audioUnitIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AudioUnitName);
@@ -2531,7 +2584,7 @@ void ControllerImpl::onAudioUnitNameResult(entity::controller::Interface const* 
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2558,7 +2611,7 @@ void ControllerImpl::onAudioUnitSamplingRateResult(entity::controller::Interface
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, audioUnitIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, audioUnitIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AudioUnitSamplingRate);
@@ -2567,7 +2620,7 @@ void ControllerImpl::onAudioUnitSamplingRateResult(entity::controller::Interface
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2594,7 +2647,7 @@ void ControllerImpl::onInputStreamNameResult(entity::controller::Interface const
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, streamIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, streamIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::InputStreamName);
@@ -2603,7 +2656,7 @@ void ControllerImpl::onInputStreamNameResult(entity::controller::Interface const
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2631,7 +2684,7 @@ void ControllerImpl::onInputStreamFormatResult(entity::controller::Interface con
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, streamIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, streamIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::InputStreamFormat);
@@ -2640,7 +2693,7 @@ void ControllerImpl::onInputStreamFormatResult(entity::controller::Interface con
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2667,7 +2720,7 @@ void ControllerImpl::onOutputStreamNameResult(entity::controller::Interface cons
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, streamIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, streamIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::OutputStreamName);
@@ -2676,7 +2729,7 @@ void ControllerImpl::onOutputStreamNameResult(entity::controller::Interface cons
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2704,7 +2757,7 @@ void ControllerImpl::onOutputStreamFormatResult(entity::controller::Interface co
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, streamIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, streamIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::OutputStreamFormat);
@@ -2713,7 +2766,7 @@ void ControllerImpl::onOutputStreamFormatResult(entity::controller::Interface co
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2740,7 +2793,7 @@ void ControllerImpl::onInputJackNameResult(entity::controller::Interface const* 
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName, jackIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName, jackIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::InputJackName);
@@ -2749,7 +2802,7 @@ void ControllerImpl::onInputJackNameResult(entity::controller::Interface const* 
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2776,7 +2829,7 @@ void ControllerImpl::onOutputJackNameResult(entity::controller::Interface const*
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName, jackIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName, jackIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::OutputJackName);
@@ -2785,43 +2838,7 @@ void ControllerImpl::onOutputJackNameResult(entity::controller::Interface const*
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
-			{
-				// Clear this enumeration step and check for next one
-				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
-				checkEnumerationSteps(controlledEntity.get());
-			}
-		}
-	}
-}
-
-void ControllerImpl::onClockSourceNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& clockSourceName) noexcept
-{
-	LOG_CONTROLLER_TRACE(entityID, "onClockSourceNameResult (ConfigurationIndex={} ClockSourceIndex={}): {}", configurationIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
-
-	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto controlledEntity = getControlledEntityImplGuard(entityID);
-
-	if (controlledEntity)
-	{
-		if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, clockSourceIndex))
-		{
-			if (!!status)
-			{
-				updateClockSourceName(*controlledEntity, configurationIndex, clockSourceIndex, clockSourceName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-			}
-			else
-			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, clockSourceIndex, false))
-				{
-					controlledEntity->setGetFatalEnumerationError();
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockSourceName);
-					return;
-				}
-			}
-
-			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2848,7 +2865,7 @@ void ControllerImpl::onMemoryObjectNameResult(entity::controller::Interface cons
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, memoryObjectIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, memoryObjectIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::MemoryObjectName);
@@ -2857,7 +2874,7 @@ void ControllerImpl::onMemoryObjectNameResult(entity::controller::Interface cons
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2884,7 +2901,7 @@ void ControllerImpl::onMemoryObjectLengthResult(entity::controller::Interface co
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, memoryObjectIndex, true))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, memoryObjectIndex, MilanRequirements{}))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::MemoryObjectLength);
@@ -2893,7 +2910,7 @@ void ControllerImpl::onMemoryObjectLengthResult(entity::controller::Interface co
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2920,7 +2937,7 @@ void ControllerImpl::onAudioClusterNameResult(entity::controller::Interface cons
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, audioClusterIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, audioClusterIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AudioClusterName);
@@ -2929,7 +2946,7 @@ void ControllerImpl::onAudioClusterNameResult(entity::controller::Interface cons
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2956,7 +2973,7 @@ void ControllerImpl::onControlNameResult(entity::controller::Interface const* co
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlName, controlIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlName, controlIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ControlName);
@@ -2965,7 +2982,7 @@ void ControllerImpl::onControlNameResult(entity::controller::Interface const* co
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -2997,7 +3014,7 @@ void ControllerImpl::onControlValuesResult(entity::controller::Interface const* 
 				}
 			}
 
-			if (!st && !processGetDescriptorDynamicInfoFailureStatus(st, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlValues, controlIndex, false))
+			if (!st && !processGetDescriptorDynamicInfoFailureStatus(st, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlValues, controlIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 			{
 				controlledEntity->setGetFatalEnumerationError();
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ControlValues);
@@ -3005,7 +3022,7 @@ void ControllerImpl::onControlValuesResult(entity::controller::Interface const* 
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -3032,7 +3049,7 @@ void ControllerImpl::onClockDomainNameResult(entity::controller::Interface const
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, clockDomainIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, clockDomainIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockDomainName);
@@ -3041,7 +3058,7 @@ void ControllerImpl::onClockDomainNameResult(entity::controller::Interface const
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -3068,7 +3085,7 @@ void ControllerImpl::onClockDomainSourceIndexResult(entity::controller::Interfac
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, clockDomainIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, clockDomainIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockDomainSourceIndex);
@@ -3077,7 +3094,7 @@ void ControllerImpl::onClockDomainSourceIndexResult(entity::controller::Interfac
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -3104,7 +3121,7 @@ void ControllerImpl::onTimingNameResult(entity::controller::Interface const* con
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::TimingName, timingIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::TimingName, timingIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 2 }, std::nullopt, entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::TimingName);
@@ -3113,7 +3130,7 @@ void ControllerImpl::onTimingNameResult(entity::controller::Interface const* con
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -3140,7 +3157,7 @@ void ControllerImpl::onPtpInstanceNameResult(entity::controller::Interface const
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpInstanceName, ptpInstanceIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpInstanceName, ptpInstanceIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 2 }, std::nullopt, entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::PtpInstanceName);
@@ -3149,7 +3166,7 @@ void ControllerImpl::onPtpInstanceNameResult(entity::controller::Interface const
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -3176,7 +3193,7 @@ void ControllerImpl::onPtpPortNameResult(entity::controller::Interface const* co
 			}
 			else
 			{
-				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpPortName, ptpPortIndex, false))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::PtpPortName, ptpPortIndex, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 2 }, std::nullopt, entity::model::MilanVersion{ 1, 0 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::PtpPortName);
@@ -3185,7 +3202,7 @@ void ControllerImpl::onPtpPortNameResult(entity::controller::Interface const* co
 			}
 
 			// Got all expected descriptor dynamic information
-			if (controlledEntity->gotAllExpectedGetDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -3194,6 +3211,80 @@ void ControllerImpl::onPtpPortNameResult(entity::controller::Interface const* co
 		}
 	}
 }
+
+void ControllerImpl::onGetSystemUniqueIDResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onGetSystemUniqueIDResult (SystemUniqueID={}): {}", systemUniqueID, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetSystemUniqueID, entity::model::getInvalidDescriptorIndex(), std::uint16_t{ 0u }))
+		{
+			if (!!status)
+			{
+				updateSystemUniqueID(*controlledEntity, systemUniqueID);
+			}
+			else
+			{
+				if (!processGetMvuDynamicInfoFailureStatus(status, controlledEntity.get(), entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetSystemUniqueID, entity::model::getInvalidDescriptorIndex(), std::uint16_t{ 0u }, MilanRequirements{}))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::GetSystemUniqueID);
+					return;
+				}
+			}
+
+			// Got all expected dynamic information
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			{
+				// Clear this enumeration step and check for next one
+				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		}
+	}
+}
+
+void ControllerImpl::onGetMediaClockReferenceInfoResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& info) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onGetMediaClockReferenceInfoResult (ClockDomainIndex={} DefaultPrio={}): {}", clockDomainIndex, utils::to_integral(defaultPriority), entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetMediaClockReferenceInfo, clockDomainIndex, std::uint16_t{ 0u }))
+		{
+			if (!!status)
+			{
+				validateDefaultMediaClockReferencePriority(*controlledEntity, clockDomainIndex, defaultPriority, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				updateMediaClockReferenceInfo(*controlledEntity, clockDomainIndex, info, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			}
+			else
+			{
+				if (!processGetMvuDynamicInfoFailureStatus(status, controlledEntity.get(), entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetMediaClockReferenceInfo, clockDomainIndex, std::uint16_t{ 0u }, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 3 }, std::nullopt, entity::model::MilanVersion{ 1, 2 } } }))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::GetMediaClockReferenceInfo);
+					return;
+				}
+			}
+
+			// Got all expected dynamic information
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			{
+				// Clear this enumeration step and check for next one
+				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		}
+	}
+}
+
 
 /* Connection Management Protocol (ACMP) handlers */
 void ControllerImpl::onConnectStreamResult(entity::controller::Interface const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, [[maybe_unused]] entity::model::StreamIdentification const& listenerStream, [[maybe_unused]] std::uint16_t const connectionCount, [[maybe_unused]] entity::ConnectionFlags const flags, [[maybe_unused]] entity::ControllerEntity::ControlStatus const status) noexcept
@@ -3239,7 +3330,9 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface 
 			}
 			else
 			{
-				if (!processGetAcmpDynamicInfoFailureStatus(status, &talker, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, talkerStream.streamIndex, false))
+				// Milan requirement depends on the presence of the MvuBinding feature flag
+				auto requiredVersions = MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } };
+				if (!processGetAcmpDynamicInfoFailureStatus(status, &talker, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, talkerStream.streamIndex, MilanRequirements{ requiredVersions }))
 				{
 					talker.setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &talker, QueryCommandError::TalkerStreamState);
@@ -3248,7 +3341,7 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface 
 			}
 
 			// Got all expected dynamic information
-			if (talker.gotAllExpectedGetDynamicInfo() && talker.gotAllExpectedDynamicInfo())
+			if (talker.gotAllExpectedPackedDynamicInfo() && talker.gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				talker.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -3281,7 +3374,9 @@ void ControllerImpl::onGetListenerStreamStateResult(entity::controller::Interfac
 			}
 			else
 			{
-				if (!processGetAcmpDynamicInfoFailureStatus(status, listener.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, listenerStream.streamIndex, false))
+				// Milan requirement depends on the presence of the MvuBinding feature flag
+				auto requiredVersions = MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } };
+				if (!processGetAcmpDynamicInfoFailureStatus(status, listener.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, listenerStream.streamIndex, MilanRequirements{ requiredVersions }))
 				{
 					listener->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, listener.get(), QueryCommandError::ListenerStreamState);
@@ -3290,7 +3385,7 @@ void ControllerImpl::onGetListenerStreamStateResult(entity::controller::Interfac
 			}
 
 			// Got all expected dynamic information
-			if (listener->gotAllExpectedGetDynamicInfo() && listener->gotAllExpectedDynamicInfo())
+			if (listener->gotAllExpectedPackedDynamicInfo() && listener->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				listener->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
@@ -3317,7 +3412,7 @@ void ControllerImpl::onGetTalkerStreamConnectionResult(entity::controller::Inter
 			}
 			else
 			{
-				if (!processGetAcmpDynamicInfoFailureStatus(status, talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream, connectionIndex, true))
+				if (!processGetAcmpDynamicInfoFailureStatus(status, talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream, connectionIndex, MilanRequirements{}))
 				{
 					talker->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, talker.get(), QueryCommandError::TalkerStreamConnection);
@@ -3326,7 +3421,7 @@ void ControllerImpl::onGetTalkerStreamConnectionResult(entity::controller::Inter
 			}
 
 			// Got all expected dynamic information
-			if (talker->gotAllExpectedGetDynamicInfo() && talker->gotAllExpectedDynamicInfo())
+			if (talker->gotAllExpectedPackedDynamicInfo() && talker->gotAllExpectedDynamicInfo())
 			{
 				// Clear this enumeration step and check for next one
 				talker->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);

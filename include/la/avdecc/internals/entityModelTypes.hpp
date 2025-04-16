@@ -35,6 +35,7 @@
 #include <string>
 #include <array>
 #include <vector>
+#include <stdexcept> // invalid_argument
 #include <iostream>
 #include <optional>
 #include <cstring> // std::memcpy
@@ -80,6 +81,8 @@ using DescriptorCounterValidFlag = std::uint32_t; /** Counters valid flag - IEEE
 using DescriptorCounter = std::uint32_t; /** Counter - IEEE1722.1-2013 Clause 7.4.42 */
 using OperationID = std::uint16_t; /** OperationID for OPERATIONS returned by an entity to a controller - IEEE1722.1-2013 Clause 7.4.53 */
 using BridgeIdentifier = std::uint64_t;
+using SystemUniqueIdentifier = std::uint32_t; /** System Unique Identifier - Milan 1.2 Clause 5.4.4.2 */
+using MediaClockReferencePriority = std::uint8_t; /** Media Clock Reference Priority - Milan 1.2 Clause 5.4.4.4 */
 
 constexpr DescriptorIndex getInvalidDescriptorIndex() noexcept
 {
@@ -87,7 +90,7 @@ constexpr DescriptorIndex getInvalidDescriptorIndex() noexcept
 }
 
 /** Descriptor Type - IEEE1722.1-2013 Clause 7.2 */
-enum class DescriptorType : std::uint16_t
+enum class LA_AVDECC_API DescriptorType : std::uint16_t
 {
 	Entity = 0x0000,
 	Configuration = 0x0001,
@@ -152,7 +155,7 @@ constexpr bool operator==(DescriptorType const lhs, std::underlying_type_t<Descr
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION descriptorTypeToString(DescriptorType const descriptorType) noexcept;
 
 /** Jack Type - IEEE1722.1-2013 Clause 7.2.7.2 */
-enum class JackType : std::uint16_t
+enum class LA_AVDECC_API JackType : std::uint16_t
 {
 	Speaker = 0x0000,
 	Headphone = 0x0001,
@@ -208,7 +211,7 @@ constexpr bool operator==(JackType const lhs, std::underlying_type_t<JackType> c
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION jackTypeToString(JackType const jackType) noexcept;
 
 /** ClockSource Type - IEEE1722.1-2013 Clause 7.2.9.2 */
-enum class ClockSourceType : std::uint16_t
+enum class LA_AVDECC_API ClockSourceType : std::uint16_t
 {
 	Internal = 0x0000,
 	External = 0x0001,
@@ -229,7 +232,7 @@ constexpr bool operator==(ClockSourceType const lhs, std::underlying_type_t<Cloc
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION clockSourceTypeToString(ClockSourceType const clockSourceType) noexcept;
 
 /** MemoryObject Type - IEEE1722.1-2013 Clause 7.2.10.1 */
-enum class MemoryObjectType : std::uint16_t
+enum class LA_AVDECC_API MemoryObjectType : std::uint16_t
 {
 	FirmwareImage = 0x0000,
 	VendorSpecific = 0x0001,
@@ -261,7 +264,7 @@ constexpr bool operator==(MemoryObjectType const lhs, std::underlying_type_t<Mem
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION memoryObjectTypeToString(MemoryObjectType const memoryObjectType) noexcept;
 
 /** MemoryObject Operation Type - IEEE1722.1-2013 Clause 7.2.10.2 */
-enum class MemoryObjectOperationType : std::uint16_t
+enum class LA_AVDECC_API MemoryObjectOperationType : std::uint16_t
 {
 	Store = 0x0000,
 	StoreAndReboot = 0x0001,
@@ -283,7 +286,7 @@ constexpr bool operator==(MemoryObjectOperationType const lhs, std::underlying_t
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION memoryObjectOperationTypeToString(MemoryObjectOperationType const memoryObjectOperationType) noexcept;
 
 /** AudioCluster Format - IEEE1722.1-2013 Clause 7.2.16.1 */
-enum class AudioClusterFormat : std::uint8_t
+enum class LA_AVDECC_API AudioClusterFormat : std::uint8_t
 {
 	Iec60958 = 0x00,
 	Mbla = 0x40,
@@ -327,7 +330,7 @@ struct AudioMapping
 using AudioMappings = std::vector<AudioMapping>;
 
 /** Timing Algorithm - IEEE1722.1-2021 Clause 7.2.34.1 */
-enum class TimingAlgorithm : std::uint16_t
+enum class LA_AVDECC_API TimingAlgorithm : std::uint16_t
 {
 	Single = 0x0000,
 	Fallback = 0x0001,
@@ -347,7 +350,7 @@ constexpr bool operator==(TimingAlgorithm const lhs, std::underlying_type_t<Timi
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION timingAlgorithmToString(TimingAlgorithm const timingAlgorithm) noexcept;
 
 /** PTP Port Type - IEEE1722.1-2021 Clause 7.2.36.1 */
-enum class PtpPortType : std::uint16_t
+enum class LA_AVDECC_API PtpPortType : std::uint16_t
 {
 	P2PLinkLayer = 0x0000,
 	P2PMulticastUdpV4 = 0x0001,
@@ -381,7 +384,7 @@ constexpr std::uint32_t StandardControlTypeVendorID = 0x90e0f0;
 
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION controlTypeToString(ControlType const& controlType) noexcept;
 
-enum class StandardControlType : std::uint64_t
+enum class LA_AVDECC_API StandardControlType : std::uint64_t
 {
 	Enable = 0x90e0f00000000000,
 	Identify = 0x90e0f00000000001,
@@ -490,7 +493,7 @@ using PathSequence = std::vector<UniqueIdentifier>;
 using DescriptorCounters = std::array<DescriptorCounter, 32>;
 
 /** UTF-8 String */
-class AvdeccFixedString final
+class LA_AVDECC_API AvdeccFixedString final
 {
 public:
 	static constexpr size_t MaxLength = 64;
@@ -639,7 +642,7 @@ private:
 };
 
 /** Sampling Rate - IEEE1722.1-2013 Clause 7.3.1 */
-class SamplingRate final
+class LA_AVDECC_API SamplingRate final
 {
 public:
 	using value_type = std::uint32_t;
@@ -775,7 +778,7 @@ private:
 };
 
 /** Stream Format packed value - IEEE1722.1-2013 Clause 7.3.2 */
-class StreamFormat final
+class LA_AVDECC_API StreamFormat final
 {
 public:
 	using value_type = std::uint64_t;
@@ -864,7 +867,7 @@ private:
 };
 
 /** Localized String Reference - IEEE1722.1-2013 Clause 7.3.6 */
-class LocalizedStringReference final
+class LA_AVDECC_API LocalizedStringReference final
 {
 public:
 	using value_type = std::uint16_t;
@@ -984,12 +987,12 @@ private:
 };
 
 /** Control Value Unit - IEEE1722.1-2013 Clause 7.3.3 */
-class ControlValueUnit final
+class LA_AVDECC_API ControlValueUnit final
 {
 public:
 	using value_type = std::uint16_t;
 
-	enum class Unit : std::uint8_t
+	enum class LA_AVDECC_API Unit : std::uint8_t
 	{
 		// Unitless Quantities
 		Unitless = 0x00,
@@ -1227,12 +1230,12 @@ private:
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION controlValueUnitToString(ControlValueUnit::Unit const controlValueUnit) noexcept;
 
 /** Control Value Type - IEEE1722.1-2013 Clause 7.3.5 */
-class ControlValueType final
+class LA_AVDECC_API ControlValueType final
 {
 public:
 	using value_type = std::uint16_t;
 
-	enum class Type : std::uint16_t
+	enum class LA_AVDECC_API Type : std::uint16_t
 	{
 		ControlLinearInt8 = 0x0000,
 		ControlLinearUInt8 = 0x0001,
@@ -1372,7 +1375,7 @@ private:
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION controlValueTypeToString(ControlValueType::Type const controlValueType) noexcept;
 
 /** Control Values - IEEE1722.1-2013 Clause 7.3.5 */
-class ControlValues final
+class LA_AVDECC_API ControlValues final
 {
 public:
 	/** Traits to handle ValueDetails behavior. */
@@ -1533,8 +1536,140 @@ constexpr bool operator<(StreamIdentification const& lhs, StreamIdentification c
 	return (lhs.entityID.getValue() < rhs.entityID.getValue()) || (lhs.entityID == rhs.entityID && lhs.streamIndex < rhs.streamIndex);
 }
 
-/** Probing Status - Milan-2019 Clause 6.8.6 */
-enum class ProbingStatus : std::uint8_t
+/** Milan Version - Milan 1.3 Clause 5.4.4.1 */
+class LA_AVDECC_API MilanVersion final
+{
+	constexpr static std::size_t MaxDigits = 4u;
+
+public:
+	using value_type = std::uint32_t;
+	using digit_type = std::uint8_t;
+
+	MilanVersion() noexcept = default;
+	explicit MilanVersion(value_type const version) noexcept
+		: _version{ version }
+	{
+	}
+
+	MilanVersion(digit_type const majorVersion, digit_type const minorVersion, digit_type const patchVersion = 0u, digit_type const buildVersion = 0u) noexcept
+		: _version{ (static_cast<value_type>(majorVersion) << (sizeof(digit_type) * 8 * 3)) | (static_cast<value_type>(minorVersion) << (sizeof(digit_type) * 8 * 2)) | (static_cast<value_type>(patchVersion) << (sizeof(digit_type) * 8 * 1)) | static_cast<value_type>(buildVersion) }
+	{
+	}
+
+	explicit MilanVersion(std::string const& version)
+	{
+		auto value = value_type{ 0u };
+		auto const tokens = utils::tokenizeString(version, '.', true);
+		if (tokens.size() != MaxDigits)
+		{
+			throw std::invalid_argument("Invalid MilanVersion string representation (expected " + std::to_string(MaxDigits) + " digits separated by dots)");
+		}
+		for (auto i = 0u; i < MaxDigits; ++i)
+		{
+			auto const tokValue = utils::convertFromString<value_type>(tokens[i].c_str()); // convertFromString doesn't accept single byte types, so we use a larger type then check max value
+			if (tokValue > std::numeric_limits<digit_type>::max())
+			{
+				throw std::invalid_argument("Invalid MilanVersion string representation (digit value out of range, must be 0-" + std::to_string(std::numeric_limits<digit_type>::max()) + ")");
+			}
+			value |= (tokValue << (sizeof(digit_type) * 8 * (3 - i)));
+		}
+		_version = value;
+	}
+
+	constexpr void setValue(value_type const version) noexcept
+	{
+		_version = version;
+	}
+
+	constexpr value_type getValue() const noexcept
+	{
+		return _version;
+	}
+
+	digit_type getMajorVersion() const noexcept
+	{
+		return static_cast<digit_type>((_version >> (sizeof(digit_type) * 8 * 3)) & std::numeric_limits<digit_type>::max());
+	}
+
+	digit_type getMinorVersion() const noexcept
+	{
+		return static_cast<digit_type>((_version >> (sizeof(digit_type) * 8 * 2)) & std::numeric_limits<digit_type>::max());
+	}
+
+	digit_type getPatchVersion() const noexcept
+	{
+		return static_cast<digit_type>((_version >> (sizeof(digit_type) * 8 * 1)) & std::numeric_limits<digit_type>::max());
+	}
+
+	digit_type getBuildVersion() const noexcept
+	{
+		return static_cast<digit_type>(_version & std::numeric_limits<digit_type>::max());
+	}
+
+	// Comparison operators
+	constexpr friend bool operator==(MilanVersion const& lhs, MilanVersion const& rhs) noexcept
+	{
+		return lhs._version == rhs._version;
+	}
+	constexpr friend bool operator!=(MilanVersion const& lhs, MilanVersion const& rhs) noexcept
+	{
+		return !(lhs == rhs);
+	}
+	constexpr friend bool operator<(MilanVersion const& lhs, MilanVersion const& rhs) noexcept
+	{
+		return lhs._version < rhs._version;
+	}
+	constexpr friend bool operator>(MilanVersion const& lhs, MilanVersion const& rhs) noexcept
+	{
+		return rhs < lhs;
+	}
+	constexpr friend bool operator<=(MilanVersion const& lhs, MilanVersion const& rhs) noexcept
+	{
+		return !(lhs > rhs);
+	}
+	constexpr friend bool operator>=(MilanVersion const& lhs, MilanVersion const& rhs) noexcept
+	{
+		return !(lhs < rhs);
+	}
+
+	/** Convert to string representation, with specified number of digits (from major to build). */
+	std::string to_string(std::size_t const digits = MaxDigits) const
+	{
+		auto versionString = std::string{};
+		if (digits < 1 || digits > MaxDigits)
+		{
+			throw std::invalid_argument("Invalid MilanVersion string representation (number of digits must be between 1 and " + std::to_string(MaxDigits) + ")");
+		}
+		versionString.reserve(digits * 2 + (digits - 1)); // N digits, (N-1) dots
+		for (auto i = 0u; i < digits; ++i)
+		{
+			if (i > 0)
+			{
+				versionString += '.';
+			}
+			versionString += std::to_string(((_version >> (sizeof(digit_type) * 8 * (3 - i))) & std::numeric_limits<digit_type>::max()));
+		}
+		return versionString;
+	}
+
+	// String operator
+	operator std::string() const noexcept
+	{
+		return to_string();
+	}
+
+	// Defaulted compiler auto-generated methods
+	MilanVersion(MilanVersion const&) = default;
+	MilanVersion(MilanVersion&&) = default;
+	MilanVersion& operator=(MilanVersion const&) = default;
+	MilanVersion& operator=(MilanVersion&&) = default;
+
+private:
+	value_type _version{ 0u };
+};
+
+/** Probing Status - Milan 1.2 Clause 5.3.8.6 */
+enum class LA_AVDECC_API ProbingStatus : std::uint8_t
 {
 	Disabled = 0x00, /** The sink is not probing because it is not bound. */
 	Passive = 0x01, /** The sink is probing passively. It waits until the bound talker has been discovered. */
@@ -1553,7 +1688,7 @@ constexpr bool operator==(ProbingStatus const lhs, std::underlying_type_t<Probin
 }
 
 /** MSRP Failure Code - 802.1Q-2018 Table 35-6 */
-enum class MsrpFailureCode : std::uint8_t
+enum class LA_AVDECC_API MsrpFailureCode : std::uint8_t
 {
 	NoFailure = 0,
 	InsufficientBandwidth = 1,
@@ -1587,6 +1722,36 @@ constexpr bool operator==(MsrpFailureCode const lhs, std::underlying_type_t<Msrp
 }
 
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION msrpFailureCodeToString(MsrpFailureCode const msrpFailureCode) noexcept;
+
+/** Default Media Clock Reference Priority - Milan 1.2 Clause 7.6.1.1 */
+enum class LA_AVDECC_API DefaultMediaClockReferencePriority : MediaClockReferencePriority
+{
+	Highest = 255, /**< Highest priority */
+	DedicatedGenerators = 240, /**< Dedicated media clock reference generators */
+	MatrixMixingDevices = 224, /**< Matrix mixing devices, signal routers, network switches with central audio processing capability */
+	MixingConsoles = 208, /**< Mixing consoles */
+	Stageboxes = 192, /**< Stageboxes, audio interfaces */
+	Processors = 176, /**< Loudspeaker processors */
+	Amplifiers = 160, /**< Amplifiers, powered loudspeakers, in-ear transmitters */
+	RecordingDevices = 144, /**< Recording devices */
+	Default = 128, /**< Default (if the device provides no data, this is taken as its priority) */
+	EffectProcessingDevices = 112, /**< Effect processing devices */
+	WirelessReceivers = 80, /**< Wireless receivers */
+	Microphones = 64, /**< Microphones */
+	Instruments = 48, /**< Instruments */
+	Lowest = 0, /**< Lowest priority */
+};
+constexpr bool operator==(DefaultMediaClockReferencePriority const lhs, DefaultMediaClockReferencePriority const rhs)
+{
+	return static_cast<std::underlying_type_t<DefaultMediaClockReferencePriority>>(lhs) == static_cast<std::underlying_type_t<DefaultMediaClockReferencePriority>>(rhs);
+}
+
+constexpr bool operator==(DefaultMediaClockReferencePriority const lhs, std::underlying_type_t<DefaultMediaClockReferencePriority> const rhs)
+{
+	return static_cast<std::underlying_type_t<DefaultMediaClockReferencePriority>>(lhs) == rhs;
+}
+
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION defaultMediaClockReferencePriorityToString(DefaultMediaClockReferencePriority const mcrPriority) noexcept;
 
 } // namespace model
 } // namespace entity

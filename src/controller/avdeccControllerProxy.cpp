@@ -2415,6 +2415,86 @@ void ControllerVirtualProxy::getMilanInfo(UniqueIdentifier const targetEntityID,
 	}
 }
 
+void ControllerVirtualProxy::setSystemUniqueID(UniqueIdentifier const targetEntityID, entity::model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, systemUniqueID, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->setSystemUniqueID(targetEntityID, systemUniqueID, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->setSystemUniqueID(targetEntityID, systemUniqueID, handler);
+	}
+}
+
+void ControllerVirtualProxy::getSystemUniqueID(UniqueIdentifier const targetEntityID, GetSystemUniqueIDHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->getSystemUniqueID(targetEntityID, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->getSystemUniqueID(targetEntityID, handler);
+	}
+}
+
+void ControllerVirtualProxy::setMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, std::optional<entity::model::MediaClockReferencePriority> const userPriority, std::optional<entity::model::AvdeccFixedString> const& domainName, SetMediaClockReferenceInfoHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, clockDomainIndex, userPriority, domainName, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->setMediaClockReferenceInfo(targetEntityID, clockDomainIndex, userPriority, domainName, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->setMediaClockReferenceInfo(targetEntityID, clockDomainIndex, userPriority, domainName, handler);
+	}
+}
+
+void ControllerVirtualProxy::getMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, GetMediaClockReferenceInfoHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, clockDomainIndex, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->getMediaClockReferenceInfo(targetEntityID, clockDomainIndex, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->getMediaClockReferenceInfo(targetEntityID, clockDomainIndex, handler);
+	}
+}
+
 void ControllerVirtualProxy::connectStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept
 {
 	auto const isVirtual = isVirtualEntity(listenerStream.entityID);

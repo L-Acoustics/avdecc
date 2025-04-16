@@ -80,10 +80,11 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 			adp[entity::keyName::Entity_InterfaceInformation_Node] = intfcs;
 		}
 
-		// Dump device compatibility flags
+		// Dump device compatibility
 		if (flags.test(entity::model::jsonSerializer::Flag::ProcessCompatibility))
 		{
 			object[keyName::ControlledEntity_CompatibilityFlags] = entity.getCompatibilityFlags();
+			object[keyName::ControlledEntity_MilanCompatibilityVersion] = static_cast<std::string>(entity.getMilanCompatibilityVersion());
 		}
 
 		// Dump AEM if supported
@@ -98,6 +99,8 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 			{
 				object[keyName::ControlledEntity_EntityModelID] = entity.getEntity().getEntityModelID();
 			}
+			// Dump schema information
+			object[keyName::ControlledEntity_Schema] = std::string{ keyValue::ControlledEntity_SchemaBaseURL } + "v" + std::to_string(keyValue::ControlledEntity_DumpVersion) + "/schema.json";
 		}
 
 		// Dump Milan information, if present
@@ -107,6 +110,16 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 			if (milanInfo)
 			{
 				object[keyName::ControlledEntity_MilanInformation] = *milanInfo;
+			}
+		}
+
+		// Dump Milan Dynamic State, if present
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessMilan) && flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel))
+		{
+			auto const milanDynamicState = entity.getMilanDynamicState();
+			if (milanDynamicState)
+			{
+				object[keyName::ControlledEntity_MilanDynamicState] = *milanDynamicState;
 			}
 		}
 
@@ -133,6 +146,8 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 			statistics[controller::keyName::ControlledEntityStatistics_AecpResponseAverageTime] = entity.getAecpResponseAverageTime();
 			statistics[controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedCounter] = entity.getAemAecpUnsolicitedCounter();
 			statistics[controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedLossCounter] = entity.getAemAecpUnsolicitedLossCounter();
+			statistics[controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedCounter] = entity.getMvuAecpUnsolicitedCounter();
+			statistics[controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedLossCounter] = entity.getMvuAecpUnsolicitedLossCounter();
 			statistics[controller::keyName::ControlledEntityStatistics_EnumerationTime] = entity.getEnumerationTime();
 		}
 
@@ -331,6 +346,20 @@ void setEntityStatistics(ControlledEntityImpl& entity, json const& object)
 			if (it != object.end())
 			{
 				entity.setAemAecpUnsolicitedLossCounter(it->get<std::uint64_t>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedCounter);
+			if (it != object.end())
+			{
+				entity.setMvuAecpUnsolicitedCounter(it->get<std::uint64_t>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedLossCounter);
+			if (it != object.end())
+			{
+				entity.setMvuAecpUnsolicitedLossCounter(it->get<std::uint64_t>());
 			}
 		}
 		{

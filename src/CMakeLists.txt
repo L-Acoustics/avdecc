@@ -222,6 +222,30 @@ if(BUILD_AVDECC_INTERFACE_VIRTUAL)
 	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_VIRTUAL")
 endif()
 
+# Serial Protocol interface
+if(BUILD_AVDECC_INTERFACE_SERIAL)
+	list(APPEND SOURCE_FILES_PROTOCOL_INTERFACE
+		protocolInterface/protocolInterface_serial.cpp
+		protocolInterface/cobsSerialization.cpp
+	)
+	list(APPEND HEADER_FILES_PROTOCOL_INTERFACE
+		protocolInterface/protocolInterface_serial.hpp
+		protocolInterface/cobsSerialization.hpp
+	)
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_SERIAL")
+endif()
+
+# Local Domain Socket Protocol interface
+if(BUILD_AVDECC_INTERFACE_LOCAL)
+	list(APPEND SOURCE_FILES_PROTOCOL_INTERFACE
+		protocolInterface/protocolInterface_local.cpp
+	)
+	list(APPEND HEADER_FILES_PROTOCOL_INTERFACE
+		protocolInterface/protocolInterface_local.hpp
+	)
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_LOCAL")
+endif()
+
 # Features
 if(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_REDUNDANCY")
@@ -360,7 +384,7 @@ if(BUILD_AVDECC_BINDINGS_CSHARP)
 	include(${CU_BASE_DIR}/helpers/SetupSwig.cmake REQUIRED)
 
 	# avdecc entity model
-	set(NIH_NUGET_DEPENDENCY "la_networkInterfaceHelper:1.2.3")
+	set(NIH_NUGET_DEPENDENCY "la_networkInterfaceHelper:1.2.5")
 	set(AVDECC_ENTITY_MODEL_LIB_NAME ${PROJECT_NAME}EntityModel)
 	set(TARGET_PREFIX ${AVDECC_ENTITY_MODEL_LIB_NAME})
 	set(SWIG_INTERFACE_FILE "${CU_ROOT_DIR}/include/la/avdecc/internals/entityModel.i")
@@ -368,14 +392,12 @@ if(BUILD_AVDECC_BINDINGS_CSHARP)
 		"${CU_ROOT_DIR}/include/la/avdecc/utils.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/memoryBuffer.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/chrono.i"
-		"${CU_ROOT_DIR}/include/la/avdecc/internals/csharp_optional.i"
-		"${CU_ROOT_DIR}/include/la/avdecc/internals/optional.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/swig_foreach.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_function.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_tuple.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_unordered_map.i"
 	)
-	cu_setup_swig_target(VERSION 4.3 TARGET_NAME ${PROJECT_NAME}::shared INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES FILE_DEPENDENCIES ${SWIG_FILE_DEPENDENCIES} INSTALL_CONFIGURATIONS Release Debug OUTVAR_PREFIX_SUPPORT_FILES_FOLDER SUPPORT_FILES_FOLDER)
+	cu_setup_swig_target(VERSION 4.4 TARGET_NAME ${PROJECT_NAME}::shared INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES FILE_DEPENDENCIES ${SWIG_FILE_DEPENDENCIES} INSTALL_CONFIGURATIONS Release Debug OUTVAR_PREFIX_SUPPORT_FILES_FOLDER SUPPORT_FILES_FOLDER)
 
 	# Post process generated targets
 	foreach(SWIG_LANG ${AVDECC_SWIG_LANGUAGES})
@@ -405,15 +427,13 @@ if(BUILD_AVDECC_BINDINGS_CSHARP)
 		"${CU_ROOT_DIR}/include/la/avdecc/memoryBuffer.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/logger.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/chrono.i"
-		"${CU_ROOT_DIR}/include/la/avdecc/internals/csharp_optional.i"
-		"${CU_ROOT_DIR}/include/la/avdecc/internals/optional.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/swig_foreach.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_function.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_tuple.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_unordered_map.i"
 		"${CU_ROOT_DIR}/include/la/avdecc/internals/entityModel.i"
 	)
-	cu_setup_swig_target(VERSION 4.3 TARGET_NAME ${PROJECT_NAME}::shared INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES FILE_DEPENDENCIES ${SWIG_FILE_DEPENDENCIES} INSTALL_CONFIGURATIONS Release Debug OUTVAR_PREFIX_SUPPORT_FILES_FOLDER SUPPORT_FILES_FOLDER)
+	cu_setup_swig_target(VERSION 4.4 TARGET_NAME ${PROJECT_NAME}::shared INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES FILE_DEPENDENCIES ${SWIG_FILE_DEPENDENCIES} INSTALL_CONFIGURATIONS Release Debug OUTVAR_PREFIX_SUPPORT_FILES_FOLDER SUPPORT_FILES_FOLDER)
 
 	# Post process generated targets
 	foreach(SWIG_LANG ${AVDECC_SWIG_LANGUAGES})
