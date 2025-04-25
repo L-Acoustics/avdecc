@@ -90,7 +90,8 @@ public:
 	/** Serializes an AvdeccFixedString (without changing endianess) */
 	Sha256Serializer& operator<<(entity::model::AvdeccFixedString const& v)
 	{
-		appendBuffer(v.data(), v.size());
+		auto const [ptr, size] = v.data();
+		appendBuffer(ptr, size);
 		return *this;
 	}
 

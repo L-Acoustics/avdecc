@@ -39,6 +39,7 @@
 #include <iostream>
 #include <optional>
 #include <cstring> // std::memcpy
+#include <tuple>
 
 namespace la
 {
@@ -539,16 +540,26 @@ public:
 		}
 	}
 
-	/** Returns the raw buffer */
-	value_type* data() noexcept
+	/* @brief Returns the raw buffer and its size
+	 * @details Returns the full buffer and the size of the buffer.
+	 * @note The buffer is not guaranteed to be NULL terminated.
+	 *       Use the str() method to get a secured std::string.
+	 * @returns A tuple containing the pointer to the buffer and its size.
+	*/
+	std::tuple<value_type*, size_t> data() noexcept
 	{
-		return _buffer.data();
+		return std::make_tuple(_buffer.data(), _buffer.size());
 	}
 
-	/** Returns the raw buffer (const) (might not be NULL terminated) */
-	value_type const* data() const noexcept
+	/* @brief Returns the raw buffer (const) and its size
+	 * @details Returns the full buffer (const) and the size of the buffer.
+	 * @note The buffer is not guaranteed to be NULL terminated.
+	 *       Use the str() method to get a secured std::string.
+	 * @returns A tuple containing the pointer to the buffer and its size.
+	*/
+	std::tuple<value_type const*, size_t> data() const noexcept
 	{
-		return _buffer.data();
+		return std::make_tuple(_buffer.data(), _buffer.size());
 	}
 
 	/** Returns the (fixed) size of the buffer */

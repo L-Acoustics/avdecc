@@ -37,8 +37,9 @@ TEST(AvdeccFixedString, DefaultConstructor)
 	EXPECT_TRUE(afs.empty());
 	EXPECT_STREQ("", afs.str().c_str()) << "String should be empty";
 
-	auto const* const ptr = afs.data();
-	for (auto i = 0u; i < afs.size(); ++i)
+	auto const [ptr, dataSize] = afs.data();
+	EXPECT_EQ(dataSize, afs.size()) << "Size should be the same as the buffer size";
+	for (auto i = 0u; i < dataSize; ++i)
 	{
 		EXPECT_EQ(0, ptr[i]) << "Each value should be '\0' initialized";
 	}
@@ -54,8 +55,9 @@ TEST(AvdeccFixedString, StdStringConstructor)
 		EXPECT_FALSE(afs.empty());
 		EXPECT_STREQ(str.c_str(), afs.str().c_str());
 
-		auto const* const ptr = afs.data();
-		for (auto i = str.size(); i < afs.size(); ++i)
+		auto const [ptr, dataSize] = afs.data();
+		EXPECT_EQ(dataSize, afs.size()) << "Size should be the same as the buffer size";
+		for (auto i = str.size(); i < dataSize; ++i)
 		{
 			EXPECT_EQ(0, ptr[i]) << "Other values should be '\0' initialized";
 		}
@@ -84,8 +86,9 @@ TEST(AvdeccFixedString, RawBufferConstructor)
 	EXPECT_FALSE(afs.empty());
 	EXPECT_STREQ(str, afs.str().c_str());
 
-	auto const* const ptr = afs.data();
-	for (auto i = size; i < afs.size(); ++i)
+	auto const [ptr, dataSize] = afs.data();
+	EXPECT_EQ(dataSize, afs.size()) << "Size should be the same as the buffer size";
+	for (auto i = size; i < dataSize; ++i)
 	{
 		EXPECT_EQ(0, ptr[i]) << "Other values should be '\0' initialized";
 	}
@@ -102,8 +105,9 @@ TEST(AvdeccFixedString, AssignStdString)
 		EXPECT_FALSE(afs.empty());
 		EXPECT_STREQ(str.c_str(), afs.str().c_str());
 
-		auto const* const ptr = afs.data();
-		for (auto i = str.size(); i < afs.size(); ++i)
+		auto const [ptr, dataSize] = afs.data();
+		EXPECT_EQ(dataSize, afs.size()) << "Size should be the same as the buffer size";
+		for (auto i = str.size(); i < dataSize; ++i)
 		{
 			EXPECT_EQ(0, ptr[i]) << "Other values should be '\0' initialized";
 		}
@@ -116,8 +120,9 @@ TEST(AvdeccFixedString, AssignStdString)
 		EXPECT_FALSE(afs.empty());
 		EXPECT_STREQ(str.c_str(), afs.str().c_str());
 
-		auto const* const ptr = afs.data();
-		for (auto i = str.size(); i < afs.size(); ++i)
+		auto const [ptr, dataSize] = afs.data();
+		EXPECT_EQ(dataSize, afs.size()) << "Size should be the same as the buffer size";
+		for (auto i = str.size(); i < dataSize; ++i)
 		{
 			EXPECT_EQ(0, ptr[i]) << "Other values should be '\0' initialized";
 		}
@@ -136,8 +141,9 @@ TEST(AvdeccFixedString, AssignRawBuffer)
 		EXPECT_FALSE(afs.empty());
 		EXPECT_STREQ(str, afs.str().c_str());
 
-		auto const* const ptr = afs.data();
-		for (auto i = size; i < afs.size(); ++i)
+		auto const [ptr, dataSize] = afs.data();
+		EXPECT_EQ(dataSize, afs.size()) << "Size should be the same as the buffer size";
+		for (auto i = size; i < dataSize; ++i)
 		{
 			EXPECT_EQ(0, ptr[i]) << "Other values should be '\0' initialized";
 		}
@@ -151,8 +157,9 @@ TEST(AvdeccFixedString, AssignRawBuffer)
 		EXPECT_FALSE(afs.empty());
 		EXPECT_STREQ(str, afs.str().c_str());
 
-		auto const* const ptr = afs.data();
-		for (auto i = size; i < afs.size(); ++i)
+		auto const [ptr, dataSize] = afs.data();
+		EXPECT_EQ(dataSize, afs.size()) << "Size should be the same as the buffer size";
+		for (auto i = size; i < dataSize; ++i)
 		{
 			EXPECT_EQ(0, ptr[i]) << "Other values should be '\0' initialized";
 		}
