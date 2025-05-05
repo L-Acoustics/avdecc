@@ -21,6 +21,7 @@ set(TESTS_SOURCE
 	endStation_tests.cpp
 	enum_tests.cpp
 	entity_tests.cpp
+	entityModel_tests.cpp
 	instrumentationObserver.hpp
 	logger_tests.cpp
 	memoryBuffer_tests.cpp
