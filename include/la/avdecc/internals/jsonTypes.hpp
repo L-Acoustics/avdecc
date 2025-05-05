@@ -857,6 +857,14 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlag17221, {
 																																	{ StreamOutputCounterValidFlag17221::TimestampValid, "TIMESTAMP_VALID" },
 																																	{ StreamOutputCounterValidFlag17221::TimestampNotValid, "TIMESTAMP_NOT_VALID" },
 																																	{ StreamOutputCounterValidFlag17221::FramesTx, "FRAMES_TX" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific8, "ENTITY_SPECIFIC_8" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific7, "ENTITY_SPECIFIC_7" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific6, "ENTITY_SPECIFIC_6" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific5, "ENTITY_SPECIFIC_5" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific4, "ENTITY_SPECIFIC_4" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific3, "ENTITY_SPECIFIC_3" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific2, "ENTITY_SPECIFIC_2" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific1, "ENTITY_SPECIFIC_1" },
 																																});
 
 /* MilanInfoFeaturesFlag conversion */

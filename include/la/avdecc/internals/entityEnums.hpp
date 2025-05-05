@@ -393,6 +393,14 @@ enum class LA_AVDECC_API StreamOutputCounterValidFlag17221 : model::DescriptorCo
 	TimestampValid = 1u << 5, /**< Increments on receipt of a Stream data AVTPDU with the tv bit set. */
 	TimestampNotValid = 1u << 6, /**< Increments on receipt of a Stream data AVTPDU with tv bit cleared. */
 	FramesTx = 1u << 7, /**< Increments on each Stream data AVTPDU transmitted. */
+	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */
+	EntitySpecific7 = 1u << 25, /**< Entity Specific counter 7. */
+	EntitySpecific6 = 1u << 26, /**< Entity Specific counter 6. */
+	EntitySpecific5 = 1u << 27, /**< Entity Specific counter 5. */
+	EntitySpecific4 = 1u << 28, /**< Entity Specific counter 4. */
+	EntitySpecific3 = 1u << 29, /**< Entity Specific counter 3. */
+	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
+	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
 };
 using StreamOutputCounterValidFlags17221 = utils::EnumBitfield<StreamOutputCounterValidFlag17221>;
 
