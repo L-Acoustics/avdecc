@@ -1667,7 +1667,18 @@ void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledE
 	}
 }
 
-void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::StreamOutputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+entity::model::StreamOutputCounters::CounterType ControllerImpl::getStreamOutputCounterType(ControlledEntityImpl& controlledEntity) noexcept
+{
+	// At least Milan 1.0, use the Milan type counters
+	if (controlledEntity.getMilanCompatibilityVersion() >= entity::model::MilanVersion{ 1, 0 })
+	{
+		return entity::model::StreamOutputCounters::CounterType::Milan_12;
+	}
+	// Otherwise use the 1722.1 type counters
+	return entity::model::StreamOutputCounters::CounterType::IEEE17221_2021;
+}
+
+void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamOutputCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 

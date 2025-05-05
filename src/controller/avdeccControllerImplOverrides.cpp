@@ -3468,18 +3468,8 @@ void ControllerImpl::setStreamOutputCounters(UniqueIdentifier const targetEntity
 	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
 	if (controlledEntity && controlledEntity->isVirtual())
 	{
-		// Convert descriptor specific counters to generic descriptor counters
-		auto validCounters = entity::StreamOutputCounterValidFlags{};
-		auto descriptorCounters = entity::model::DescriptorCounters{};
-
-		for (auto const [flag, counter] : counters)
-		{
-			validCounters.set(flag);
-			descriptorCounters[validCounters.getPosition(flag)] = counter;
-		}
-
 		// Use the "update**" method, there are many things to do
-		updateStreamOutputCounters(*controlledEntity, streamIndex, validCounters, descriptorCounters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+		updateStreamOutputCounters(*controlledEntity, streamIndex, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 	}
 }
 
