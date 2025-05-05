@@ -370,7 +370,7 @@ enum class LA_AVDECC_API StreamInputCounterValidFlag : model::DescriptorCounterV
 using StreamInputCounterValidFlags = utils::EnumBitfield<StreamInputCounterValidFlag>;
 
 /* STREAM_OUTPUT Counters - Milan 1.2 Clause 5.3.7.7 */
-enum class LA_AVDECC_API StreamOutputCounterValidFlag : model::DescriptorCounterValidFlag
+enum class LA_AVDECC_API StreamOutputCounterValidFlagMilan12 : model::DescriptorCounterValidFlag
 {
 	None = 0u,
 	StreamStart = 1u << 0, /**< Incremented each time the Talker starts streaming. */
@@ -379,7 +379,7 @@ enum class LA_AVDECC_API StreamOutputCounterValidFlag : model::DescriptorCounter
 	TimestampUncertain = 1u << 3, /**< Incremented at the end of every observation interval during which the "tu" bit has been set in any of the transmitted Stream Data AVTPDUs. The duration of the observation interval is implementation-specific and shall be less than or equal to 1 second. */
 	FramesTx = 1u << 4, /**< Incremented at the end of every observation interval during which at least one Stream Data AVTPDU has been transmitted on this STREAM_OUTPUT. The duration of the observation interval is implementation-specific and shall be less than or equal to 1 second. */
 };
-using StreamOutputCounterValidFlags = utils::EnumBitfield<StreamOutputCounterValidFlag>;
+using StreamOutputCounterValidFlagsMilan12 = utils::EnumBitfield<StreamOutputCounterValidFlagMilan12>;
 
 /* STREAM_OUTPUT Counters - IEEE1722.1-2021 Clause 7.4.42.2.5 */
 enum class LA_AVDECC_API StreamOutputCounterValidFlag17221 : model::DescriptorCounterValidFlag
@@ -395,6 +395,36 @@ enum class LA_AVDECC_API StreamOutputCounterValidFlag17221 : model::DescriptorCo
 	FramesTx = 1u << 7, /**< Increments on each Stream data AVTPDU transmitted. */
 };
 using StreamOutputCounterValidFlags17221 = utils::EnumBitfield<StreamOutputCounterValidFlag17221>;
+
+/** Proxy class for StreamOutputCounterValidFlags */
+class StreamOutputCounterValidFlags final
+{
+public:
+	using value_type = model::DescriptorCounterValidFlag;
+	constexpr StreamOutputCounterValidFlags() noexcept = default;
+	constexpr StreamOutputCounterValidFlags(value_type const value) noexcept
+		: _flags{ value }
+	{
+	}
+
+	/** Either get Milan 1.2 or IEEE1722.1-2021 StreamOutputCounterValidFlags */
+	template<typename ValidFlagsType, typename = std::enable_if_t<std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221>>>
+	constexpr ValidFlagsType get() const noexcept
+	{
+		auto flags = ValidFlagsType{};
+		flags.assign(_flags);
+		return flags;
+	}
+
+	/** Get the underlying value */
+	constexpr value_type value() const noexcept
+	{
+		return _flags;
+	}
+
+private:
+	value_type _flags{ 0u };
+};
 
 /** Milan Info Features Flags - Milan 1.2 Clause 5.4.4.1 */
 enum class LA_AVDECC_API MilanInfoFeaturesFlag : std::uint32_t

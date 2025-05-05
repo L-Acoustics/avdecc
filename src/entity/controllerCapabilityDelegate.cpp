@@ -3907,8 +3907,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 					}
 					case model::DescriptorType::StreamOutput:
 					{
-						StreamOutputCounterValidFlags flags;
-						flags.assign(validFlags);
+						auto flags = StreamOutputCounterValidFlags{ validFlags };
 						answerCallback.invoke<controller::Interface::GetStreamOutputCountersHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, flags, counters);
 						if (aem.getUnsolicited() && delegate && !!status)
 						{

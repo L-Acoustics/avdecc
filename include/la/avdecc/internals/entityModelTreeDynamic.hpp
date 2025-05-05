@@ -32,6 +32,8 @@
 #include <cstdint>
 #include <map>
 #include <optional>
+#include <typeindex>
+#include <unordered_map>
 
 namespace la
 {
@@ -45,7 +47,173 @@ using EntityCounters = std::map<entity::EntityCounterValidFlag, DescriptorCounte
 using AvbInterfaceCounters = std::map<entity::AvbInterfaceCounterValidFlag, DescriptorCounter>;
 using ClockDomainCounters = std::map<entity::ClockDomainCounterValidFlag, DescriptorCounter>;
 using StreamInputCounters = std::map<entity::StreamInputCounterValidFlag, DescriptorCounter>;
-using StreamOutputCounters = std::map<entity::StreamOutputCounterValidFlag, DescriptorCounter>;
+
+/** Class representing the StreamOutputCounters (which are not equivalent based on Milan/IEEE spec). */
+class StreamOutputCounters final
+{
+public:
+	enum class CounterType
+	{
+		Unknown = 0,
+		Milan_12 = 1,
+		IEEE17221_2021 = 2,
+	};
+
+	StreamOutputCounters() noexcept = default;
+	StreamOutputCounters(CounterType const counterType, DescriptorCounterValidFlag const validFlags, DescriptorCounters const counters) noexcept
+		: _validFlags{ validFlags }
+		, _counters{ counters }
+	{
+		setCounterType(counterType);
+	}
+
+	CounterType getCounterType() const noexcept
+	{
+		return _counterType;
+	}
+
+	void setCounterType(CounterType const counterType) noexcept
+	{
+		_counterType = counterType;
+		_counterTypeHash = counterTypeToHash(_counterType);
+	}
+
+	/** Get the ValidFlags corresponding to the specified StreamOutputCounterValidFlags type. */
+	template<typename ValidFlagsType>
+	ValidFlagsType getValidFlags() const
+	{
+		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221>, "Invalid type for StreamOutputCounterValidFlags");
+
+		// Check if requested template parameter type matches the internal CounterType
+		if (typeid(ValidFlagsType).hash_code() != _counterTypeHash)
+		{
+			throw std::invalid_argument("Trying to getValidFlags() of for a type different than current CounterType");
+		}
+
+		return _validFlags.get<ValidFlagsType>();
+	}
+
+	/** Get a copy of the counters corresponding to the specified StreamOutputCounterValidFlags type, in the map association format. Throws if the requested type is different from the current CounterType. */
+	template<typename ValidFlagsType, typename CountersType = std::map<typename ValidFlagsType::value_type, DescriptorCounter>>
+	CountersType getCounters() const
+	{
+		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221>, "Invalid type for StreamOutputCounterValidFlags");
+
+		// Check if requested template parameter type matches the internal CounterType
+		if (typeid(ValidFlagsType).hash_code() != _counterTypeHash)
+		{
+			throw std::invalid_argument("Trying to getCounters() of for a type different than current CounterType");
+		}
+
+		return convertCounters<ValidFlagsType>();
+	}
+
+	/** Get a copy of the counters corresponding to the specified StreamOutputCounterValidFlags type, in the map association format. */
+	template<typename ValidFlagsType, typename CountersType = std::map<typename ValidFlagsType::value_type, DescriptorCounter>>
+	CountersType convertCounters() const noexcept
+	{
+		auto convertedCounters = CountersType{};
+		auto validFlags = ValidFlagsType{};
+		validFlags.assign(_validFlags.value());
+
+		// Create a map of the valid flags to the corresponding counter
+		for (auto const counter : validFlags)
+		{
+			convertedCounters[counter] = _counters[validFlags.getPosition(counter)];
+		}
+
+		return convertedCounters;
+	}
+
+	/** Set the counters from the specified StreamOutputCounterValidFlags type. Invalid map key (not a bit value) silently ignored. */
+	template<typename CountersType, typename ValidFlagType = typename CountersType::key_type, typename ValidFlagsType = utils::EnumBitfield<ValidFlagType>>
+	void setCounters(CountersType const& counters) noexcept
+	{
+		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221>, "Invalid type for StreamOutputCounterValidFlags");
+
+		// Convert template type to CounterType
+		auto const hash = typeid(ValidFlagsType).hash_code();
+		auto const counterType = hashToCounterType(hash);
+		setCounterType(counterType);
+
+		// Reset counters
+		_counters = DescriptorCounters{};
+
+		// Set the new data
+		auto validFlags = decltype(_validFlags)::value_type{};
+		for (auto const& [validFlag, counter] : counters)
+		{
+			auto const baseFlag = utils::to_integral(validFlag);
+			// Validate the flag
+			if (countBits(baseFlag) == 1)
+			{
+				validFlags += baseFlag;
+				_counters[getBitPosition(baseFlag)] = counter;
+			}
+		}
+
+		// Set the valid flags
+		_validFlags = StreamOutputCounterValidFlags{ validFlags };
+	}
+
+	DescriptorCounterValidFlag getBaseValidFlags() const noexcept
+	{
+		return _validFlags.value();
+	}
+
+	DescriptorCounters const& getBaseCounters() const noexcept
+	{
+		return _counters;
+	}
+
+	DescriptorCounters& getBaseCounters() noexcept
+	{
+		return _counters;
+	}
+
+private:
+	static constexpr size_t countBits(StreamOutputCounterValidFlags::value_type const value) noexcept
+	{
+		return (value == 0u) ? 0u : 1u + countBits(value & (value - 1u));
+	}
+	static constexpr size_t getBitPosition(StreamOutputCounterValidFlags::value_type const value, StreamOutputCounterValidFlags::value_type const setBitValue = static_cast<StreamOutputCounterValidFlags::value_type>(-1)) noexcept
+	{
+		return (value == 1u) ? 0u : (setBitValue & 0x1) + getBitPosition(value >> 1, setBitValue >> 1);
+	}
+	static inline size_t counterTypeToHash(CounterType const counterType)
+	{
+		switch (counterType)
+		{
+			case CounterType::Unknown:
+				return 0;
+			case CounterType::Milan_12:
+				return typeid(StreamOutputCounterValidFlagsMilan12).hash_code();
+			case CounterType::IEEE17221_2021:
+				return typeid(StreamOutputCounterValidFlags17221).hash_code();
+			default:
+				AVDECC_ASSERT(false, "Unhandled CounterType");
+				return 0;
+		}
+	}
+	static inline CounterType hashToCounterType(size_t const hash)
+	{
+		static std::unordered_map<size_t, CounterType> s_hashMap{
+			{ typeid(StreamOutputCounterValidFlagsMilan12).hash_code(), CounterType::Milan_12 },
+			{ typeid(StreamOutputCounterValidFlags17221).hash_code(), CounterType::IEEE17221_2021 },
+		};
+
+		if (auto const& it = s_hashMap.find(hash); it != s_hashMap.end())
+		{
+			return it->second;
+		}
+		return CounterType::Unknown;
+	}
+
+	CounterType _counterType{ CounterType::Unknown };
+	size_t _counterTypeHash{ 0 }; // Hash of the currently stored type, used for type checking in template methods
+	StreamOutputCounterValidFlags _validFlags{};
+	DescriptorCounters _counters{};
+};
 
 struct AudioUnitNodeDynamicModel
 {

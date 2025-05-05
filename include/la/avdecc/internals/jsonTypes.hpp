@@ -344,45 +344,110 @@ struct adl_serializer<la::avdecc::entity::model::StreamInputCounters>
 };
 
 /** la::avdecc::entity::model::StreamOutputCounters converter */
+template<typename ValidFlagsType>
+static void writeStreamOutputCounter(la::avdecc::entity::model::StreamOutputCounters const& counters, json& object)
+{
+	auto const c = counters.getCounters<ValidFlagsType>();
+	for (auto const& [name, value] : c)
+	{
+		json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
+		auto const key = n.get<std::string>();
+		if (key == "UNKNOWN")
+		{
+			object[la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(name), true, true)] = value;
+		}
+		else
+		{
+			object[key] = value;
+		}
+	}
+}
+template<typename ValidFlagsType, typename ValidFlagType = typename ValidFlagsType::value_type, typename CountersType = std::map<ValidFlagType, la::avdecc::entity::model::DescriptorCounter>>
+static void readStreamOutputCounters(json const& object, la::avdecc::entity::model::StreamOutputCounters& counters)
+{
+	auto c = CountersType{};
+
+	for (auto const& [name, value] : object.items())
+	{
+		json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
+		auto const key = n.get<ValidFlagType>();
+		// Check if key is a valid CounterValidFlag enum
+		if (key == ValidFlagType::None)
+		{
+			logJsonSerializer(la::avdecc::logger::Level::Warn, std::string("Unknown StreamOutputCounterValidFlag name: ") + name);
+			c.insert(std::make_pair(static_cast<ValidFlagType>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::DescriptorCounterValidFlag>(name.c_str())), value.get<typename CountersType::mapped_type>()));
+		}
+		else
+		{
+			c.insert(std::make_pair(key, value.get<typename CountersType::mapped_type>()));
+		}
+	}
+
+	counters.setCounters(c);
+}
 template<>
 struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
 {
 	static void to_json(json& j, la::avdecc::entity::model::StreamOutputCounters const& counters)
 	{
+		auto enclosing_object = json::object();
+
+		// Write the type of counters
+		enclosing_object["counter_type"] = counters.getCounterType();
+
+		// Write the counters depending on the type
 		auto object = json::object();
 
-		for (auto const& [name, value] : counters)
+		try
 		{
-			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
-			auto const key = n.get<std::string>();
-			if (key == "UNKNOWN")
+			switch (counters.getCounterType())
 			{
-				object[la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(name), true, true)] = value;
-			}
-			else
-			{
-				object[key] = value;
+				case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12:
+				{
+					writeStreamOutputCounter<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>(counters, object);
+					break;
+				}
+				case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
+					writeStreamOutputCounter<la::avdecc::entity::StreamOutputCounterValidFlags17221>(counters, object);
+					break;
+				default:
+					AVDECC_ASSERT(false, "Unsupported StreamOutputCounterValidFlags type");
+					break;
 			}
 		}
+		catch (std::invalid_argument const& e)
+		{
+			throw la::avdecc::jsonSerializer::SerializationException{ la::avdecc::jsonSerializer::SerializationError::InternalError, "Unsupported StreamOutputCounters Type" };
+		}
 
-		j = std::move(object);
+		enclosing_object["counters"] = std::move(object);
+		j = std::move(enclosing_object);
 	}
 	static void from_json(json const& j, la::avdecc::entity::model::StreamOutputCounters& counters)
 	{
-		for (auto const& [name, value] : j.items())
+		// First check for the presence of the counter_type field (indicating the new format), if not present assume the format is Milan 1.2
+		auto counterType = la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12;
+		auto const* objectToRead = &j;
+		if (auto const it = j.find("counter_type"); it != j.end())
 		{
-			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
-			auto const key = n.get<la::avdecc::entity::model::StreamOutputCounters::key_type>();
-			// Check if key is a valid CounterValidFlag enum
-			if (key == la::avdecc::entity::model::StreamOutputCounters::key_type::None)
+			counterType = it->get<la::avdecc::entity::model::StreamOutputCounters::CounterType>();
+			objectToRead = &j["counters"];
+		}
+		switch (counterType)
+		{
+			case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12:
 			{
-				logJsonSerializer(la::avdecc::logger::Level::Warn, std::string("Unknown StreamOutputCounterValidFlag name: ") + name);
-				counters.insert(std::make_pair(static_cast<la::avdecc::entity::model::StreamOutputCounters::key_type>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::DescriptorCounterValidFlag>(name.c_str())), value.get<la::avdecc::entity::model::StreamOutputCounters::mapped_type>()));
+				readStreamOutputCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>(*objectToRead, counters);
+				break;
 			}
-			else
+			case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
 			{
-				counters.insert(std::make_pair(key, value.get<la::avdecc::entity::model::StreamOutputCounters::mapped_type>()));
+				readStreamOutputCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>(*objectToRead, counters);
+				break;
 			}
+			default:
+				AVDECC_ASSERT(false, "Unsupported StreamOutputCounterValidFlags type");
+				break;
 		}
 	}
 };
@@ -765,16 +830,34 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamInputCounterValidFlag, {
 																														{ StreamInputCounterValidFlag::EntitySpecific2, "ENTITY_SPECIFIC_2" },
 																														{ StreamInputCounterValidFlag::EntitySpecific1, "ENTITY_SPECIFIC_1" },
 																													});
+/* StreamOutputCounters::CounterType */
+NLOHMANN_JSON_SERIALIZE_ENUM(model::StreamOutputCounters::CounterType, {
+																																				 { model::StreamOutputCounters::CounterType::Unknown, "UNKNOWN" },
+																																				 { model::StreamOutputCounters::CounterType::Milan_12, "MILAN_12" },
+																																				 { model::StreamOutputCounters::CounterType::IEEE17221_2021, "IEEE17221_2021" },
+																																			 });
+/* StreamOutputCounterValidFlagMilan12 conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlagMilan12, {
+																																		{ StreamOutputCounterValidFlagMilan12::None, "UNKNOWN" },
+																																		{ StreamOutputCounterValidFlagMilan12::StreamStart, "STREAM_START" },
+																																		{ StreamOutputCounterValidFlagMilan12::StreamStop, "STREAM_STOP" },
+																																		{ StreamOutputCounterValidFlagMilan12::MediaReset, "MEDIA_RESET" },
+																																		{ StreamOutputCounterValidFlagMilan12::TimestampUncertain, "TIMESTAMP_UNCERTAIN" },
+																																		{ StreamOutputCounterValidFlagMilan12::FramesTx, "FRAMES_TX" },
+																																	});
 
-/* StreamOutputCounterValidFlag conversion */
-NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlag, {
-																														 { StreamOutputCounterValidFlag::None, "UNKNOWN" },
-																														 { StreamOutputCounterValidFlag::StreamStart, "STREAM_START" },
-																														 { StreamOutputCounterValidFlag::StreamStop, "STREAM_STOP" },
-																														 { StreamOutputCounterValidFlag::MediaReset, "MEDIA_RESET" },
-																														 { StreamOutputCounterValidFlag::TimestampUncertain, "TIMESTAMP_UNCERTAIN" },
-																														 { StreamOutputCounterValidFlag::FramesTx, "FRAMES_TX" },
-																													 });
+/* StreamOutputCounterValidFlag17221 conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlag17221, {
+																																	{ StreamOutputCounterValidFlag17221::None, "UNKNOWN" },
+																																	{ StreamOutputCounterValidFlag17221::StreamStart, "STREAM_START" },
+																																	{ StreamOutputCounterValidFlag17221::StreamStop, "STREAM_STOP" },
+																																	{ StreamOutputCounterValidFlag17221::StreamInterrupted, "STREAM_INTERRUPTED" },
+																																	{ StreamOutputCounterValidFlag17221::MediaReset, "MEDIA_RESET" },
+																																	{ StreamOutputCounterValidFlag17221::TimestampUncertain, "TIMESTAMP_UNCERTAIN" },
+																																	{ StreamOutputCounterValidFlag17221::TimestampValid, "TIMESTAMP_VALID" },
+																																	{ StreamOutputCounterValidFlag17221::TimestampNotValid, "TIMESTAMP_NOT_VALID" },
+																																	{ StreamOutputCounterValidFlag17221::FramesTx, "FRAMES_TX" },
+																																});
 
 /* MilanInfoFeaturesFlag conversion */
 NLOHMANN_JSON_SERIALIZE_ENUM(MilanInfoFeaturesFlag, {

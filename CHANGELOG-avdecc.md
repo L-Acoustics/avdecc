@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Changed
 - Changed AvdeccFixedString::data() method to return a tuple of a pointer and a size (to help prevent misuse)
+- la::avdecc::entity::model::StreamOutputCounters and la::avdecc::entity::StreamOutputCounterValidFlags modified to accommodate the different types of counters (IEEE and Milan)
 
 ## [4.1.0] - 2025-04-16
 ### Added
