@@ -405,7 +405,7 @@ enum class LA_AVDECC_API StreamOutputCounterValidFlag17221 : model::DescriptorCo
 using StreamOutputCounterValidFlags17221 = utils::EnumBitfield<StreamOutputCounterValidFlag17221>;
 
 /** Proxy class for StreamOutputCounterValidFlags */
-class StreamOutputCounterValidFlags final
+class LA_AVDECC_API StreamOutputCounterValidFlags final
 {
 public:
 	using value_type = model::DescriptorCounterValidFlag;

@@ -49,7 +49,7 @@ using ClockDomainCounters = std::map<entity::ClockDomainCounterValidFlag, Descri
 using StreamInputCounters = std::map<entity::StreamInputCounterValidFlag, DescriptorCounter>;
 
 /** Class representing the StreamOutputCounters (which are not equivalent based on Milan/IEEE spec). */
-class StreamOutputCounters final
+class LA_AVDECC_API StreamOutputCounters final
 {
 public:
 	enum class CounterType
