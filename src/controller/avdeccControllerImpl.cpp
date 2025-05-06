@@ -1686,22 +1686,28 @@ void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlled
 	auto* const streamCounters = controlledEntity.getStreamOutputCounters(streamIndex, notFoundBehavior);
 	if (streamCounters)
 	{
-		// Update (or set) counters
-		for (auto counter : validCounters)
-		{
-			(*streamCounters)[counter] = counters[validCounters.getPosition(counter)];
-		}
+		// Use operator+= to update the counters (will take care of the type if it's different)
+		streamCounters->operator+=(counters);
 
-		// If Milan device, validate counters values
+		// If Milan 1.2 device, validate counters values
 		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 		{
-			// StreamStop should either be equal to StreamStart or be one more (Milan 1.2 Clause 5.3.7.7)
-			// We are safe to get those counters, check for their presence during first enumeration has already been done
-			auto const startValue = (*streamCounters)[entity::StreamOutputCounterValidFlag::StreamStart];
-			auto const stopValue = (*streamCounters)[entity::StreamOutputCounterValidFlag::StreamStop];
-			if (startValue != stopValue && startValue != (stopValue + 1))
+			try
 			{
-				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT:{} ({} / {})", streamIndex, startValue, stopValue);
+				auto milan12Counters = streamCounters->getCounters<entity::StreamOutputCounterValidFlagsMilan12>();
+				// StreamStop should either be equal to StreamStart or be one more (Milan 1.2 Clause 5.3.7.7)
+				// We are safe to get those counters, check for their presence during first enumeration has already been done
+				auto const startValue = milan12Counters[entity::StreamOutputCounterValidFlagMilan12::StreamStart];
+				auto const stopValue = milan12Counters[entity::StreamOutputCounterValidFlagMilan12::StreamStop];
+				if (startValue != stopValue && startValue != (stopValue + 1))
+				{
+					LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT:{} ({} / {})", streamIndex, startValue, stopValue);
+					removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+				}
+			}
+			catch (std::invalid_argument const&)
+			{
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid STREAM_OUTPUT counters type");
 				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 			}
 		}
