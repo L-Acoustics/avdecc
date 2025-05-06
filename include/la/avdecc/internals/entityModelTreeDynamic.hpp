@@ -59,7 +59,10 @@ public:
 		IEEE17221_2021 = 2,
 	};
 
+	/** Default constructor */
 	StreamOutputCounters() noexcept = default;
+
+	/** Constructor from base validFlags and base counters (explicit CounterType) */
 	StreamOutputCounters(CounterType const counterType, DescriptorCounterValidFlag const validFlags, DescriptorCounters const counters) noexcept
 		: _validFlags{ validFlags }
 		, _counters{ counters }
@@ -67,11 +70,23 @@ public:
 		setCounterType(counterType);
 	}
 
+	/** Constructor from map association format (deduced CounterType) */
+	template<typename CountersType, typename ValidFlagType = typename CountersType::key_type, typename ValidFlagsType = utils::EnumBitfield<ValidFlagType>>
+	StreamOutputCounters(CountersType const& counters) noexcept
+	{
+		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221>, "Invalid type for StreamOutputCounterValidFlags");
+
+		// Set the counters
+		setCounters(counters);
+	}
+
+	/** Get the CounterType */
 	CounterType getCounterType() const noexcept
 	{
 		return _counterType;
 	}
 
+	/** Set the CounterType */
 	void setCounterType(CounterType const counterType) noexcept
 	{
 		_counterType = counterType;
@@ -156,19 +171,59 @@ public:
 		_validFlags = StreamOutputCounterValidFlags{ validFlags };
 	}
 
+	/** Get the valid flags of the base type. */
 	DescriptorCounterValidFlag getBaseValidFlags() const noexcept
 	{
 		return _validFlags.value();
 	}
 
+	/** Get the counters of the base type. */
 	DescriptorCounters const& getBaseCounters() const noexcept
 	{
 		return _counters;
 	}
 
+	/** Get the counters of the base type. */
 	DescriptorCounters& getBaseCounters() noexcept
 	{
 		return _counters;
+	}
+
+	/** Operator+=. If same CounterType append the provided counters. If different type fully replace with the provided ones. */
+	StreamOutputCounters& operator+=(StreamOutputCounters const& other) noexcept
+	{
+		enum class BaseFlag : DescriptorCounterValidFlag
+		{
+		};
+		using BaseFlags = utils::EnumBitfield<BaseFlag>;
+
+		// Check if the CounterType is the same
+		if (_counterType == other._counterType)
+		{
+			auto otherValidFlags = BaseFlags{};
+			otherValidFlags.assign(other._validFlags.value());
+			auto validFlags = _validFlags.value();
+
+			// Append the counters
+			for (auto const validFlag : otherValidFlags)
+			{
+				auto const baseFlag = utils::to_integral(validFlag);
+				auto const bitPosition = getBitPosition(baseFlag);
+				validFlags += baseFlag;
+				_counters[bitPosition] = other._counters[bitPosition];
+			}
+
+			// Set the valid flags
+			_validFlags = StreamOutputCounterValidFlags{ validFlags };
+		}
+		else
+		{
+			// Replace the counters
+			setCounterType(other._counterType);
+			_counters = other._counters;
+			_validFlags = other._validFlags;
+		}
+		return *this;
 	}
 
 private:
