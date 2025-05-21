@@ -32,6 +32,23 @@
 #include <cstdint>
 #include <string>
 
+// We need to forward declare the following enums, then export the matching EnumBitfield template specialisation on unix-like systems (using LA_AVDECC_TYPE_INFO_EXPORT) so type_info is correctly visible outside the shared library (required for typeid to work)
+namespace la::avdecc
+{
+namespace entity
+{
+/* STREAM_OUTPUT Counters - Milan 1.2 Clause 5.3.7.7 */
+enum class LA_AVDECC_API StreamOutputCounterValidFlagMilan12 : model::DescriptorCounterValidFlag;
+/* STREAM_OUTPUT Counters - IEEE1722.1-2021 Clause 7.4.42.2.5 */
+enum class LA_AVDECC_API StreamOutputCounterValidFlag17221 : model::DescriptorCounterValidFlag;
+} // namespace entity
+namespace utils
+{
+template class LA_AVDECC_TYPE_INFO_EXPORT EnumBitfield<entity::StreamOutputCounterValidFlagMilan12>;
+template class LA_AVDECC_TYPE_INFO_EXPORT EnumBitfield<entity::StreamOutputCounterValidFlag17221>;
+} // namespace utils
+} // namespace la::avdecc
+
 namespace la
 {
 namespace avdecc
@@ -370,7 +387,7 @@ enum class LA_AVDECC_API StreamInputCounterValidFlag : model::DescriptorCounterV
 using StreamInputCounterValidFlags = utils::EnumBitfield<StreamInputCounterValidFlag>;
 
 /* STREAM_OUTPUT Counters - Milan 1.2 Clause 5.3.7.7 */
-enum class LA_AVDECC_API StreamOutputCounterValidFlagMilan12 : model::DescriptorCounterValidFlag
+enum class StreamOutputCounterValidFlagMilan12 : model::DescriptorCounterValidFlag /* Do not use LA_AVDECC_API here, it is forward declared */
 {
 	None = 0u,
 	StreamStart = 1u << 0, /**< Incremented each time the Talker starts streaming. */
@@ -382,7 +399,7 @@ enum class LA_AVDECC_API StreamOutputCounterValidFlagMilan12 : model::Descriptor
 using StreamOutputCounterValidFlagsMilan12 = utils::EnumBitfield<StreamOutputCounterValidFlagMilan12>;
 
 /* STREAM_OUTPUT Counters - IEEE1722.1-2021 Clause 7.4.42.2.5 */
-enum class LA_AVDECC_API StreamOutputCounterValidFlag17221 : model::DescriptorCounterValidFlag
+enum class StreamOutputCounterValidFlag17221 : model::DescriptorCounterValidFlag /* Do not use LA_AVDECC_API here, it is forward declared */
 {
 	None = 0u,
 	StreamStart = 1u << 0, /**< Incremented when a stream is started. */
