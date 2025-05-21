@@ -102,7 +102,7 @@ public:
 		// Check if requested template parameter type matches the internal CounterType
 		if (typeid(ValidFlagsType).hash_code() != _counterTypeHash)
 		{
-			throw std::invalid_argument("Trying to getValidFlags() of for a type different than current CounterType");
+			throw std::invalid_argument("Trying to getValidFlags() for a type different than current CounterType");
 		}
 
 		return _validFlags.get<ValidFlagsType>();
@@ -117,7 +117,7 @@ public:
 		// Check if requested template parameter type matches the internal CounterType
 		if (typeid(ValidFlagsType).hash_code() != _counterTypeHash)
 		{
-			throw std::invalid_argument("Trying to getCounters() of for a type different than current CounterType");
+			throw std::invalid_argument("Trying to getCounters() for a type different than current CounterType");
 		}
 
 		return convertCounters<ValidFlagsType>();
