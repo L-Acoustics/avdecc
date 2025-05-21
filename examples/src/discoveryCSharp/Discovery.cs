@@ -291,6 +291,33 @@ class DiscoveryApp
 				var entityID = entity.getEntity().getEntityID().getValue().ToString("X");
 				Console.WriteLine($"Max Transit Time for {entityID} Stream {streamIndex}: {maxTransitTime} nsec");
 			}
+
+			public override void onStreamOutputCountersChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamIndex, la.avdecc.entity.model.StreamOutputCounters counters)
+			{
+				var entityID = entity.getEntity().getEntityID().getValue().ToString("X");
+				Console.WriteLine($"Stream Output Counters for {entityID} Stream {streamIndex} changed:");
+
+				switch (counters.getCounterType())
+				{
+					case la.avdecc.entity.model.StreamOutputCounters.CounterType.Milan_12:
+						var milan12counters = counters.getCounters_Milan12();
+						foreach (var counter in milan12counters)
+						{
+							Console.WriteLine($" - {counter.Key}: {counter.Value}");
+						}
+						break;
+					case la.avdecc.entity.model.StreamOutputCounters.CounterType.IEEE17221_2021:
+						var ieee17221counters = counters.getCounters_17221();
+						foreach (var counter in ieee17221counters)
+						{
+							Console.WriteLine($" - {counter.Key}: {counter.Value}");
+						}
+						break;
+					default:
+						Console.WriteLine($"Unknown Counters: {counters}");
+						break;
+				}
+			}
 		}
 
 		private la.avdecc.controller.Controller? _controller = null;

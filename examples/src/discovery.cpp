@@ -28,6 +28,7 @@
 
 #include <la/avdecc/controller/avdeccController.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
+#include <la/avdecc/internals/jsonTypes.hpp>
 #include <la/avdecc/utils.hpp>
 #include <la/avdecc/logger.hpp>
 #include "utils.hpp"
@@ -199,6 +200,7 @@ private:
 	virtual void onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override;
 	virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override;
 	virtual void onMaxTransitTimeChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime) noexcept override;
+	virtual void onStreamOutputCountersChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamOutputCounters const& counters) noexcept override;
 
 private:
 	la::avdecc::controller::Controller::UniquePointer _controller{ nullptr, nullptr }; // Read/Write from the UI thread (and read only from la::avdecc::controller::Controller::Observer callbacks)
@@ -400,6 +402,59 @@ void Discovery::onMaxTransitTimeChanged(la::avdecc::controller::Controller const
 {
 	auto const entityID = entity->getEntity().getEntityID();
 	outputText("Max Transit Time for " + la::avdecc::utils::toHexString(entityID, true) + " Stream " + std::to_string(streamIndex) + ": " + std::to_string(maxTransitTime.count()) + " nsec\n");
+}
+
+void Discovery::onStreamOutputCountersChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamOutputCounters const& counters) noexcept
+{
+	auto const entityID = entity->getEntity().getEntityID();
+	outputText("Stream Output Counters for " + la::avdecc::utils::toHexString(entityID, true) + " Stream " + std::to_string(streamIndex) + " changed:\n");
+
+	try
+	{
+		switch (counters.getCounterType())
+		{
+			case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12:
+			{
+				auto const milan12Counters = counters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
+				for (auto const& [flag, value] : milan12Counters)
+				{
+					nlohmann::json const n = flag; // Must use operator= instead of constructor to force usage of the to_json overload
+					outputText(" - " + n.get<std::string>() + ": " + std::to_string(value) + "\n");
+				}
+				break;
+			}
+			case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
+			{
+				auto const ieeeCounters = counters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>();
+				for (auto const& [flag, value] : ieeeCounters)
+				{
+					nlohmann::json const n = flag; // Must use operator= instead of constructor to force usage of the to_json overload
+					if (n == "UNKNOWN")
+					{
+						outputText(" - " + la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(flag), true, true) + ": " + std::to_string(value) + "\n");
+					}
+					else
+					{
+						outputText(" - " + n.get<std::string>() + ": " + std::to_string(value) + "\n");
+					}
+				}
+				break;
+			}
+			default:
+			{
+				outputText("Unknown stream output counter type\n");
+				break;
+			}
+		}
+	}
+	catch (std::invalid_argument const& e)
+	{
+		outputText("Exception: " + std::string(e.what()) + "\n");
+	}
+	catch (...)
+	{
+		outputText("Unknown exception\n");
+	}
 }
 
 
