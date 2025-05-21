@@ -375,11 +375,11 @@ static void readStreamOutputCounters(json const& object, la::avdecc::entity::mod
 		if (key == ValidFlagType::None)
 		{
 			logJsonSerializer(la::avdecc::logger::Level::Warn, std::string("Unknown StreamOutputCounterValidFlag name: ") + name);
-			c.insert(std::make_pair(static_cast<ValidFlagType>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::DescriptorCounterValidFlag>(name.c_str())), value.get<typename CountersType::mapped_type>()));
+			c.insert(std::make_pair(static_cast<ValidFlagType>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::DescriptorCounterValidFlag>(name.c_str())), value.template get<typename CountersType::mapped_type>()));
 		}
 		else
 		{
-			c.insert(std::make_pair(key, value.get<typename CountersType::mapped_type>()));
+			c.insert(std::make_pair(key, value.template get<typename CountersType::mapped_type>()));
 		}
 	}
 
@@ -415,7 +415,7 @@ struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
 					break;
 			}
 		}
-		catch (std::invalid_argument const& e)
+		catch (std::invalid_argument const&)
 		{
 			throw la::avdecc::jsonSerializer::SerializationException{ la::avdecc::jsonSerializer::SerializationError::InternalError, "Unsupported StreamOutputCounters Type" };
 		}
