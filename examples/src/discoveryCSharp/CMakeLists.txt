@@ -8,4 +8,4 @@ foreach(_DEP ${CSHARP_DEPENDENCIES})
 	cu_generate_csharp_target_add_csharp_dependency(${_DEP})
 endforeach()
 
-cu_generate_csharp_target(TARGET_NAME "Discovery" ADDITIONAL_DEPENDENCIES ${CSHARP_DEPENDENCIES})
+cu_generate_csharp_target(TARGET_NAME "Discovery" ADDITIONAL_DEPENDENCIES ${CSHARP_DEPENDENCIES} NO_WARNING_AS_ERROR)
