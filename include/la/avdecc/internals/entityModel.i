@@ -52,6 +52,7 @@
 
 // Force define AVDECC C/C++ API Macros to nothing
 #define LA_AVDECC_API
+#define LA_AVDECC_TYPE_INFO_EXPORT
 #define LA_AVDECC_CALL_CONVENTION
 
 // Other defines
