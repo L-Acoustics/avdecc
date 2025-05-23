@@ -189,6 +189,12 @@ public:
 		return _counters;
 	}
 
+	/** True if the StreamOutputCounters is empty (no valid flags set). */
+	bool empty() const noexcept
+	{
+		return getBaseValidFlags() == DescriptorCounterValidFlag{ 0u };
+	}
+
 	/** Operator+=. If same CounterType append the provided counters. If different type fully replace with the provided ones. */
 	StreamOutputCounters& operator+=(StreamOutputCounters const& other) noexcept
 	{

@@ -34,24 +34,28 @@ TEST(EntityModel, StreamOutputCountersConstruct)
 	{
 		auto const streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{};
 		EXPECT_EQ(la::avdecc::entity::model::StreamOutputCounters::CounterType::Unknown, streamOutputCounters.getCounterType()) << "CounterType should be Unknown";
+		EXPECT_TRUE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
 	}
 	// Unknown type (empty counters)
 	{
 		auto const counters = la::avdecc::entity::model::DescriptorCounters{};
 		auto const streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ la::avdecc::entity::model::StreamOutputCounters::CounterType::Unknown, la::avdecc::entity::model::DescriptorCounterValidFlag{ 0u }, counters };
 		EXPECT_EQ(la::avdecc::entity::model::StreamOutputCounters::CounterType::Unknown, streamOutputCounters.getCounterType()) << "CounterType should be Unknown";
+		EXPECT_TRUE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
 	}
 	// Milan 1.2 (empty counters)
 	{
 		auto const counters = la::avdecc::entity::model::DescriptorCounters{};
 		auto const streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12, la::avdecc::entity::model::DescriptorCounterValidFlag{ 0u }, counters };
 		EXPECT_EQ(la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12, streamOutputCounters.getCounterType()) << "CounterType should be Milan 1.2";
+		EXPECT_TRUE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
 	}
 	// IEEE1722.1-2021 (empty counters)
 	{
 		auto const counters = la::avdecc::entity::model::DescriptorCounters{};
 		auto const streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021, la::avdecc::entity::model::DescriptorCounterValidFlag{ 0u }, counters };
 		EXPECT_EQ(la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021, streamOutputCounters.getCounterType()) << "CounterType should be IEEE1722.1-2021";
+		EXPECT_TRUE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
 	}
 	// Milan 1.2 (MediaReset counter)
 	{
@@ -59,6 +63,7 @@ TEST(EntityModel, StreamOutputCountersConstruct)
 		auto counters = la::avdecc::entity::model::DescriptorCounters{};
 		counters[2] = la::avdecc::entity::model::DescriptorCounter{ 42u };
 		auto const streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12, la::avdecc::entity::model::DescriptorCounterValidFlag{ 0x00000004 }, counters };
+		EXPECT_FALSE(streamOutputCounters.empty()) << "StreamOutputCounters should not be empty";
 		auto const milan12Counters = streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
 		EXPECT_EQ(1u, milan12Counters.size()) << "Should have 1 counter";
 		EXPECT_EQ(42u, milan12Counters.at(la::avdecc::entity::StreamOutputCounterValidFlagMilan12::MediaReset)) << "Counter value should be 42";
@@ -70,6 +75,7 @@ TEST(EntityModel, StreamOutputCountersConstruct)
 		auto const milanEmptyCounter = std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::model::DescriptorCounter>{};
 		auto const streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ milanEmptyCounter };
 		EXPECT_EQ(la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12, streamOutputCounters.getCounterType()) << "CounterType should be Milan 1.2";
+		EXPECT_TRUE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
 		auto const milan12Counters = streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
 		EXPECT_EQ(milanEmptyCounter, milan12Counters) << "Counters should be equal";
 		EXPECT_EQ(0u, milan12Counters.size()) << "Should have 0 counter";
@@ -79,6 +85,7 @@ TEST(EntityModel, StreamOutputCountersConstruct)
 		auto const milanMediaResetCounter = std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::model::DescriptorCounter>{ { la::avdecc::entity::StreamOutputCounterValidFlagMilan12::MediaReset, 42u } };
 		auto const streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ milanMediaResetCounter };
 		EXPECT_EQ(la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12, streamOutputCounters.getCounterType()) << "CounterType should be Milan 1.2";
+		EXPECT_FALSE(streamOutputCounters.empty()) << "StreamOutputCounters should not be empty";
 		auto const milan12Counters = streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
 		EXPECT_EQ(milanMediaResetCounter, milan12Counters) << "Counters should be equal";
 		EXPECT_EQ(1u, milan12Counters.size()) << "Should have 1 counter";
@@ -92,6 +99,7 @@ TEST(EntityModel, GetStreamOutputCounters)
 	{
 		auto const counters = la::avdecc::entity::model::DescriptorCounters{};
 		auto const streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ la::avdecc::entity::model::StreamOutputCounters::CounterType::Unknown, la::avdecc::entity::model::DescriptorCounterValidFlag{ 0u }, counters };
+		EXPECT_TRUE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
 		// Getting counters for other type should throw
 		EXPECT_THROW(streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>(), std::invalid_argument);
 		EXPECT_THROW(streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>(), std::invalid_argument);
@@ -100,6 +108,7 @@ TEST(EntityModel, GetStreamOutputCounters)
 	{
 		auto const counters = la::avdecc::entity::model::DescriptorCounters{};
 		auto const streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12, la::avdecc::entity::model::DescriptorCounterValidFlag{ 0u }, counters };
+		EXPECT_TRUE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
 		// Getting counters for other type should throw
 		EXPECT_THROW(streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>(), std::invalid_argument);
 	}
@@ -107,6 +116,7 @@ TEST(EntityModel, GetStreamOutputCounters)
 	{
 		auto const counters = la::avdecc::entity::model::DescriptorCounters{};
 		auto const streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021, la::avdecc::entity::model::DescriptorCounterValidFlag{ 0u }, counters };
+		EXPECT_TRUE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
 		// Getting counters for other type should throw
 		EXPECT_THROW(streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>(), std::invalid_argument);
 	}
@@ -116,6 +126,7 @@ TEST(EntityModel, GetStreamOutputCounters)
 		auto counters = la::avdecc::entity::model::DescriptorCounters{};
 		counters[2] = la::avdecc::entity::model::DescriptorCounter{ 42u };
 		auto const streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12, la::avdecc::entity::model::DescriptorCounterValidFlag{ 0x00000004 }, counters };
+		EXPECT_FALSE(streamOutputCounters.empty()) << "StreamOutputCounters should not be empty";
 		auto const milan12Counters = streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
 		EXPECT_EQ(1u, milan12Counters.size()) << "Should have 1 counter";
 		EXPECT_EQ(42u, milan12Counters.at(la::avdecc::entity::StreamOutputCounterValidFlagMilan12::MediaReset)) << "Counter value should be 42";
@@ -130,6 +141,7 @@ TEST(EntityModel, GetStreamOutputCounters)
 		// TimestampUncertain is bit 3 for Milan 1.2 (ie. 0x00000008) at index 3
 		counters[3] = la::avdecc::entity::model::DescriptorCounter{ 24u };
 		auto const streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12, la::avdecc::entity::model::DescriptorCounterValidFlag{ 0x00000004 + 0x00000008 }, counters };
+		EXPECT_FALSE(streamOutputCounters.empty()) << "StreamOutputCounters should not be empty";
 		auto const ieee17221Counters = streamOutputCounters.convertCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>();
 		EXPECT_EQ(2u, ieee17221Counters.size()) << "Should have 2 counters";
 		// MediaReset is bit 3 for IEEE1722.1-2021 (ie. 0x00000008) at index 3, where TimestampUncertain is for Milan 1.2
@@ -143,6 +155,7 @@ TEST(EntityModel, GetStreamOutputCounters)
 		auto counters = la::avdecc::entity::model::DescriptorCounters{};
 		counters[5] = la::avdecc::entity::model::DescriptorCounter{ 42u };
 		auto const streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12, la::avdecc::entity::model::DescriptorCounterValidFlag{ 0x00000020 }, counters };
+		EXPECT_FALSE(streamOutputCounters.empty()) << "StreamOutputCounters should not be empty";
 		auto const milan12Counters = streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
 		EXPECT_EQ(1u, milan12Counters.size()) << "Should have 1 counter";
 		EXPECT_EQ(0x00000020, la::avdecc::utils::to_integral(milan12Counters.begin()->first)) << "Counter bit should be 0x00000020";
@@ -158,7 +171,9 @@ TEST(EntityModel, SetStreamOutputCounters)
 	{
 		auto const milanCounters = std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::model::DescriptorCounter>{ { la::avdecc::entity::StreamOutputCounterValidFlagMilan12::MediaReset, 42u } };
 		auto streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{};
+		EXPECT_TRUE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
 		streamOutputCounters.setCounters(milanCounters);
+		EXPECT_FALSE(streamOutputCounters.empty()) << "StreamOutputCounters should not be empty";
 		EXPECT_EQ(la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12, streamOutputCounters.getCounterType()) << "CounterType should be Milan 1.2";
 		auto const milan12Counters = streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
 		EXPECT_EQ(1u, milan12Counters.size()) << "Should have 1 counter";
@@ -171,7 +186,9 @@ TEST(EntityModel, SetStreamOutputCounters)
 	{
 		auto const milanCounters = std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::model::DescriptorCounter>{ { static_cast<la::avdecc::entity::StreamOutputCounterValidFlagMilan12>(3u), 42u } }; // '3' is not a valid flag (more than one bit set)
 		auto streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{};
+		EXPECT_TRUE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
 		streamOutputCounters.setCounters(milanCounters);
+		EXPECT_TRUE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
 		EXPECT_EQ(la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12, streamOutputCounters.getCounterType()) << "CounterType should be Milan 1.2";
 		auto const milan12Counters = streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
 		EXPECT_EQ(0u, milan12Counters.size()) << "Should have 0 counter (invalid flag)";
@@ -182,7 +199,9 @@ TEST(EntityModel, SetStreamOutputCounters)
 	{
 		auto const milanCounters = std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::model::DescriptorCounter>{ { la::avdecc::entity::StreamOutputCounterValidFlagMilan12::None, 42u } };
 		auto streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{};
+		EXPECT_TRUE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
 		streamOutputCounters.setCounters(milanCounters);
+		EXPECT_TRUE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
 		EXPECT_EQ(la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12, streamOutputCounters.getCounterType()) << "CounterType should be Milan 1.2";
 		auto const milan12Counters = streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
 		EXPECT_EQ(0u, milan12Counters.size()) << "Should have 0 counter (invalid flag, 'None' has no bit set)";
@@ -193,7 +212,9 @@ TEST(EntityModel, SetStreamOutputCounters)
 	{
 		auto const milanCounters = std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::model::DescriptorCounter>{ { static_cast<la::avdecc::entity::StreamOutputCounterValidFlagMilan12>(32u), 42u } };
 		auto streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{};
+		EXPECT_TRUE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
 		streamOutputCounters.setCounters(milanCounters);
+		EXPECT_FALSE(streamOutputCounters.empty()) << "StreamOutputCounters should not be empty";
 		EXPECT_EQ(la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12, streamOutputCounters.getCounterType()) << "CounterType should be Milan 1.2";
 		auto const milan12Counters = streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
 		EXPECT_EQ(1u, milan12Counters.size()) << "Should have 1 counter";
@@ -206,7 +227,9 @@ TEST(EntityModel, SetStreamOutputCounters)
 	{
 		auto const milanCounters = std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::model::DescriptorCounter>{ { la::avdecc::entity::StreamOutputCounterValidFlagMilan12::StreamStart, 42u } };
 		auto streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{};
+		EXPECT_TRUE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
 		streamOutputCounters.setCounters(milanCounters);
+		EXPECT_FALSE(streamOutputCounters.empty()) << "StreamOutputCounters should not be empty";
 		EXPECT_EQ(la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12, streamOutputCounters.getCounterType()) << "CounterType should be Milan 1.2";
 		auto const milan12Counters = streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
 		EXPECT_EQ(1u, milan12Counters.size()) << "Should have 1 counter";
@@ -227,7 +250,10 @@ TEST(EntityModel, StreamOutputCountersAppend)
 	{
 		auto streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ milanMediaResetCounter };
 		auto otherStreamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ milanStreamStopCounter };
+		EXPECT_FALSE(streamOutputCounters.empty()) << "StreamOutputCounters should be empty";
+		EXPECT_FALSE(otherStreamOutputCounters.empty()) << "StreamOutputCounters should not be empty";
 		streamOutputCounters += otherStreamOutputCounters;
+		EXPECT_FALSE(streamOutputCounters.empty()) << "StreamOutputCounters should not be empty";
 		EXPECT_EQ(la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12, streamOutputCounters.getCounterType()) << "CounterType should be Milan 1.2";
 		auto const milan12Counters = streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
 		EXPECT_EQ(2u, milan12Counters.size()) << "Should have 2 counters";
@@ -238,7 +264,10 @@ TEST(EntityModel, StreamOutputCountersAppend)
 	{
 		auto streamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ milanMediaResetCounter };
 		auto otherStreamOutputCounters = la::avdecc::entity::model::StreamOutputCounters{ ieeeMediaResetCounter };
+		EXPECT_FALSE(streamOutputCounters.empty()) << "StreamOutputCounters should not be empty";
+		EXPECT_FALSE(otherStreamOutputCounters.empty()) << "StreamOutputCounters should not be empty";
 		streamOutputCounters += otherStreamOutputCounters;
+		EXPECT_FALSE(streamOutputCounters.empty()) << "StreamOutputCounters should not be empty";
 		EXPECT_EQ(la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021, streamOutputCounters.getCounterType()) << "CounterType should be IEEE1722.1-2021";
 		auto const ieee17221Counters = streamOutputCounters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>();
 		EXPECT_EQ(1u, ieee17221Counters.size()) << "Should have 1 counter";
