@@ -1686,8 +1686,8 @@ void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlled
 	auto* const streamCounters = controlledEntity.getStreamOutputCounters(streamIndex, notFoundBehavior);
 	if (streamCounters)
 	{
-		// Use operator+= to update the counters (will take care of the type if it's different)
-		streamCounters->operator+=(counters);
+		// Use operator|= to update the counters (will take care of the type if it's different)
+		streamCounters->operator|=(counters);
 
 		// If Milan 1.2 device, validate counters values
 		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))

@@ -687,7 +687,7 @@ DEFINE_AEM_TREE_NODE(Entity);
 %nspace la::avdecc::entity::model::StreamOutputCounters;
 %rename("%s") la::avdecc::entity::model::StreamOutputCounters; // Unignore class
 %ignore la::avdecc::entity::model::StreamOutputCounters::getBaseCounters() const noexcept; // Ignore const overload
-%rename("append") la::avdecc::entity::model::StreamOutputCounters::operator+=; // Rename operator+= to 'append'
+%rename("concatenate") la::avdecc::entity::model::StreamOutputCounters::operator|=; // Rename operator|= to 'concatenate'
 
 // Define catches for methods that can throw
 %catches(std::invalid_argument) la::avdecc::entity::model::StreamOutputCounters::getValidFlags;

@@ -195,8 +195,8 @@ public:
 		return getBaseValidFlags() == DescriptorCounterValidFlag{ 0u };
 	}
 
-	/** Operator+=. If same CounterType append the provided counters. If different type fully replace with the provided ones. */
-	StreamOutputCounters& operator+=(StreamOutputCounters const& other) noexcept
+	/** Operator|=. If same CounterType append the provided counters. If different type fully replace with the provided ones. */
+	StreamOutputCounters& operator|=(StreamOutputCounters const& other) noexcept
 	{
 		enum class BaseFlag : DescriptorCounterValidFlag
 		{
@@ -215,7 +215,7 @@ public:
 			{
 				auto const baseFlag = utils::to_integral(validFlag);
 				auto const bitPosition = getBitPosition(baseFlag);
-				validFlags += baseFlag;
+				validFlags |= baseFlag;
 				_counters[bitPosition] = other._counters[bitPosition];
 			}
 
