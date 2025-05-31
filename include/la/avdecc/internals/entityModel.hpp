@@ -441,6 +441,7 @@ struct MilanInfo
 	std::uint32_t protocolVersion{ 0u };
 	MilanInfoFeaturesFlags featuresFlags{};
 	MilanVersion certificationVersion{ 0u };
+	MilanVersion specificationVersion{ 0u };
 };
 
 inline bool operator==(MilanInfo const& lhs, MilanInfo const& rhs) noexcept

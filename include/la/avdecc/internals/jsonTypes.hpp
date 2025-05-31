@@ -1218,6 +1218,7 @@ constexpr auto AvbInterfaceInfo_MsrpMappings = "msrp_mappings";
 constexpr auto MilanInfo_ProtocolVersion = "protocol_version";
 constexpr auto MilanInfo_Flags = "flags";
 constexpr auto MilanInfo_CertificationVersion = "certification_version";
+constexpr auto MilanInfo_SpecificationVersion = "specification_version";
 
 /* MilanDynamicState */
 constexpr auto MilanDynamicState_SystemUniqueID = "system_unique_id";
@@ -2815,9 +2816,8 @@ inline void to_json(json& j, MilanInfo const& info)
 {
 	j[keyName::MilanInfo_ProtocolVersion] = info.protocolVersion;
 	j[keyName::MilanInfo_Flags] = info.featuresFlags;
-	{
-		j[keyName::MilanInfo_CertificationVersion] = static_cast<std::string>(info.certificationVersion);
-	}
+	j[keyName::MilanInfo_CertificationVersion] = static_cast<std::string>(info.certificationVersion);
+	j[keyName::MilanInfo_SpecificationVersion] = static_cast<std::string>(info.specificationVersion);
 }
 inline void from_json(json const& j, MilanInfo& info)
 {
@@ -2826,6 +2826,19 @@ inline void from_json(json const& j, MilanInfo& info)
 	{
 		auto const str = j.at(keyName::MilanInfo_CertificationVersion).get<std::string>();
 		info.certificationVersion = MilanVersion{ str };
+	}
+	if (auto const it = j.find(keyName::MilanInfo_SpecificationVersion); it != j.end())
+	{
+		auto const str = it->get<std::string>();
+		info.specificationVersion = MilanVersion{ str };
+	}
+	else
+	{
+		// Fallback to Milan 1.0 if protocol version is 1
+		if (info.protocolVersion == 1u)
+		{
+			info.specificationVersion = MilanVersion{ 1, 0 };
+		}
 	}
 }
 

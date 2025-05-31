@@ -116,6 +116,12 @@ std::tuple<entity::model::MilanInfo> deserializeGetMilanInfoResponse(entity::Loc
 
 	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetMilanInfoResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
+	// Force Milan 1.0 if protocol version is 1
+	if (info.protocolVersion == 1u)
+	{
+		info.specificationVersion = entity::model::MilanVersion{ 1, 0 };
+	}
+
 	return std::make_tuple(info);
 }
 
