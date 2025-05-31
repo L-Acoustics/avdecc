@@ -1669,11 +1669,17 @@ void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledE
 
 entity::model::StreamOutputCounters::CounterType ControllerImpl::getStreamOutputCounterType(ControlledEntityImpl& controlledEntity) noexcept
 {
-	// At least Milan 1.0, use the Milan type counters
-	if (controlledEntity.getMilanCompatibilityVersion() >= entity::model::MilanVersion{ 1, 0 })
+	// Counters type depends on the Milan specification version and other fields
+	auto const milanInfo = controlledEntity.getMilanInfo();
+	if (milanInfo)
 	{
-		return entity::model::StreamOutputCounters::CounterType::Milan_12;
+		// At least Milan 1.0, use the Milan type counters
+		if (milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 })
+		{
+			return entity::model::StreamOutputCounters::CounterType::Milan_12;
+		}
 	}
+
 	// Otherwise use the 1722.1 type counters
 	return entity::model::StreamOutputCounters::CounterType::IEEE17221_2021;
 }
