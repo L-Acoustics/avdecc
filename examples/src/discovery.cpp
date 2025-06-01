@@ -28,7 +28,9 @@
 
 #include <la/avdecc/controller/avdeccController.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
-#include <la/avdecc/internals/jsonTypes.hpp>
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+#	include <la/avdecc/internals/jsonTypes.hpp>
+#endif // ENABLE_AVDECC_FEATURE_JSON
 #include <la/avdecc/utils.hpp>
 #include <la/avdecc/logger.hpp>
 #include "utils.hpp"
@@ -418,16 +420,7 @@ void Discovery::onStreamOutputCountersChanged(la::avdecc::controller::Controller
 				auto const milan12Counters = counters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
 				for (auto const& [flag, value] : milan12Counters)
 				{
-					nlohmann::json const n = flag; // Must use operator= instead of constructor to force usage of the to_json overload
-					outputText(" - " + n.get<std::string>() + ": " + std::to_string(value) + "\n");
-				}
-				break;
-			}
-			case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
-			{
-				auto const ieeeCounters = counters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>();
-				for (auto const& [flag, value] : ieeeCounters)
-				{
+#ifdef ENABLE_AVDECC_FEATURE_JSON
 					nlohmann::json const n = flag; // Must use operator= instead of constructor to force usage of the to_json overload
 					if (n == "UNKNOWN")
 					{
@@ -437,6 +430,30 @@ void Discovery::onStreamOutputCountersChanged(la::avdecc::controller::Controller
 					{
 						outputText(" - " + n.get<std::string>() + ": " + std::to_string(value) + "\n");
 					}
+#else // !ENABLE_AVDECC_FEATURE_JSON
+					outputText(" - " + la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(flag), true, true) + ": " + std::to_string(value) + "\n");
+#endif // ENABLE_AVDECC_FEATURE_JSON
+				}
+				break;
+			}
+			case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
+			{
+				auto const ieeeCounters = counters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>();
+				for (auto const& [flag, value] : ieeeCounters)
+				{
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+					nlohmann::json const n = flag; // Must use operator= instead of constructor to force usage of the to_json overload
+					if (n == "UNKNOWN")
+					{
+						outputText(" - " + la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(flag), true, true) + ": " + std::to_string(value) + "\n");
+					}
+					else
+					{
+						outputText(" - " + n.get<std::string>() + ": " + std::to_string(value) + "\n");
+					}
+#else // !ENABLE_AVDECC_FEATURE_JSON
+					outputText(" - " + la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(flag), true, true) + ": " + std::to_string(value) + "\n");
+#endif // ENABLE_AVDECC_FEATURE_JSON
 				}
 				break;
 			}

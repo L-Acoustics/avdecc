@@ -3350,6 +3350,7 @@ bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 		{
 			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
 
+#ifdef ENABLE_AVDECC_FEATURE_JSON
 			if (isVirtual)
 			{
 				// Deregister the ControlledEntity
@@ -3358,6 +3359,9 @@ bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 				registerVirtualControlledEntity(std::move(sharedControlledEntity));
 			}
 			else
+#else // !ENABLE_AVDECC_FEATURE_JSON
+			(void)isVirtual; // Avoid unused variable warning
+#endif // ENABLE_AVDECC_FEATURE_JSON
 			{
 				forgetRemoteEntity(entityID);
 				discoverRemoteEntity(entityID);
@@ -3372,7 +3376,11 @@ bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 
 bool ControllerImpl::unloadVirtualEntity(UniqueIdentifier const entityID) noexcept
 {
+#ifndef ENABLE_AVDECC_FEATURE_JSON
+	return false;
+#else // ENABLE_AVDECC_FEATURE_JSON
 	return !!deregisterVirtualControlledEntity(entityID);
+#endif // !ENABLE_AVDECC_FEATURE_JSON
 }
 
 /* ************************************************************ */

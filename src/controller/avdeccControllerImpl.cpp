@@ -383,6 +383,7 @@ void ControllerImpl::updateLockedState(ControlledEntityImpl& controlledEntity, m
 
 void ControllerImpl::updateConfiguration(entity::controller::Interface const* const /*controller*/, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
+#ifdef ENABLE_AVDECC_FEATURE_JSON
 	if (controlledEntity.isVirtual())
 	{
 		// FIXME: Move 'canChangeVirtualEntityConfiguration' to a real public method
@@ -431,6 +432,7 @@ void ControllerImpl::updateConfiguration(entity::controller::Interface const* co
 		}
 	}
 	else
+#endif // ENABLE_AVDECC_FEATURE_JSON
 	{
 		// For real entities, simulate going offline then online again (to properly update the model)
 		auto const entityID = controlledEntity.getEntity().getEntityID();

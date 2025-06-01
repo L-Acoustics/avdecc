@@ -178,7 +178,6 @@ private:
 	virtual bool refreshEntity(UniqueIdentifier const entityID) noexcept override;
 	virtual bool unloadVirtualEntity(UniqueIdentifier const entityID) noexcept override;
 
-
 	/* ************************************************************ */
 	/* Result handlers                                              */
 	/* ************************************************************ */

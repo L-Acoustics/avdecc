@@ -587,6 +587,7 @@ TEST(AemPayloads, RecvPayloadMaximumSize)
 #	endif // ALLOW_SEND_BIG_AECP_PAYLOADS
 }
 
+#	ifdef ENABLE_AVDECC_FEATURE_JSON
 static inline std::tuple<la::avdecc::entity::model::ControlNodeStaticModel, la::avdecc::entity::model::ControlNodeDynamicModel> buildControlNodes(la::avdecc::entity::model::ControlDescriptor const& descriptor)
 {
 	// Copy static model
@@ -616,7 +617,6 @@ static inline std::tuple<la::avdecc::entity::model::ControlNodeStaticModel, la::
 	return { s, d };
 }
 
-#	ifdef ENABLE_AVDECC_FEATURE_JSON
 TEST(AemPayloads, DeserializeReadControlDescriptorResponse_LinearUInt8)
 {
 	auto ser = la::avdecc::Serializer<la::avdecc::protocol::AemAecpdu::MaximumPayloadBufferLength>{};

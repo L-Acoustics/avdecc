@@ -38,6 +38,7 @@
 #include <vector>
 #include <thread>
 #include <chrono>
+#include <cassert>
 
 int doJob()
 {
