@@ -52,6 +52,7 @@
 
 // Force define AVDECC C/C++ API Macros to nothing
 #define LA_AVDECC_API
+#define LA_AVDECC_TYPE_INFO_EXPORT
 #define LA_AVDECC_CALL_CONVENTION
 
 // Other defines
@@ -190,6 +191,7 @@ DEFINE_AEM_TYPES_CLASS_BASE(AvdeccFixedString);
 {
 #if defined(SWIGCSHARP)
 	// Provide a more native ToString() method
+%csmethodmodifiers ToString "public override"; // Force override of object.ToString()
 	std::string ToString() const noexcept
 	{
 		return static_cast<std::string>(*$self);
@@ -248,13 +250,17 @@ DEFINE_ENUM_CLASS(la::avdecc::entity::EntityCounterValidFlag, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity::AvbInterfaceCounterValidFlag, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity::ClockDomainCounterValidFlag, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity::StreamInputCounterValidFlag, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::entity::StreamOutputCounterValidFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::StreamOutputCounterValidFlagMilan12, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity::StreamOutputCounterValidFlag17221, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity::MilanInfoFeaturesFlag, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity::MediaClockReferenceInfoFlag, "byte")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
+
+// StreamOutputCounterValidFlags
+%nspace la::avdecc::entity::StreamOutputCounterValidFlags;
+%rename("%s") la::avdecc::entity::StreamOutputCounterValidFlags; // Unignore class
 
 // Include c++ declaration file
 %include "la/avdecc/internals/entityEnums.hpp"
@@ -280,7 +286,7 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, EntityCounterValidFlags, EntityCo
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, AvbInterfaceCounterValidFlags, AvbInterfaceCounterValidFlag, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ClockDomainCounterValidFlags, ClockDomainCounterValidFlag, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamInputCounterValidFlags, StreamInputCounterValidFlag, std::uint32_t)
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlags, StreamOutputCounterValidFlag, std::uint32_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlagsMilan12, StreamOutputCounterValidFlagMilan12, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlags17221, StreamOutputCounterValidFlag17221, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MilanInfoFeaturesFlags, MilanInfoFeaturesFlag, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MediaClockReferenceInfoFlags, MediaClockReferenceInfoFlag, std::uint8_t)
@@ -303,6 +309,7 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MediaClockReferenceInfoFlags, Med
 	{
 #if defined(SWIGCSHARP)
 		// Provide a more native ToString() method
+%csmethodmodifiers ToString "public override"; // Force override of object.ToString()
 		std::string ToString() const noexcept
 		{
 			return static_cast<std::string>(*$self);

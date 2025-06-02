@@ -33,7 +33,7 @@ namespace avdecc
 namespace controller
 {
 static auto const s_MilanMandatoryStreamInputCounters = entity::StreamInputCounterValidFlags{ entity::StreamInputCounterValidFlag::MediaLocked, entity::StreamInputCounterValidFlag::MediaUnlocked, entity::StreamInputCounterValidFlag::StreamInterrupted, entity::StreamInputCounterValidFlag::SeqNumMismatch, entity::StreamInputCounterValidFlag::MediaReset, entity::StreamInputCounterValidFlag::TimestampUncertain, entity::StreamInputCounterValidFlag::UnsupportedFormat, entity::StreamInputCounterValidFlag::LateTimestamp, entity::StreamInputCounterValidFlag::EarlyTimestamp, entity::StreamInputCounterValidFlag::FramesRx }; // Milan 1.2 Clause 5.3.8.10
-static auto const s_MilanMandatoryStreamOutputCounters = entity::StreamOutputCounterValidFlags{ entity::StreamOutputCounterValidFlag::StreamStart, entity::StreamOutputCounterValidFlag::StreamStop, entity::StreamOutputCounterValidFlag::MediaReset, entity::StreamOutputCounterValidFlag::TimestampUncertain, entity::StreamOutputCounterValidFlag::FramesTx }; // Milan 1.2 Clause 5.3.7.7
+static auto const s_Milan12MandatoryStreamOutputCounters = entity::StreamOutputCounterValidFlagsMilan12{ entity::StreamOutputCounterValidFlagMilan12::StreamStart, entity::StreamOutputCounterValidFlagMilan12::StreamStop, entity::StreamOutputCounterValidFlagMilan12::MediaReset, entity::StreamOutputCounterValidFlagMilan12::TimestampUncertain, entity::StreamOutputCounterValidFlagMilan12::FramesTx }; // Milan 1.2 Clause 5.3.7.7
 static auto const s_MilanMandatoryAvbInterfaceCounters = entity::AvbInterfaceCounterValidFlags{ entity::AvbInterfaceCounterValidFlag::LinkUp, entity::AvbInterfaceCounterValidFlag::LinkDown, entity::AvbInterfaceCounterValidFlag::GptpGmChanged }; // Milan 1.2 Clause 5.3.6.3
 static auto const s_MilanMandatoryClockDomainCounters = entity::ClockDomainCounterValidFlags{ entity::ClockDomainCounterValidFlag::Locked, entity::ClockDomainCounterValidFlag::Unlocked }; // Milan 1.2 Clause 5.3.11.2
 
@@ -488,20 +488,29 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 								}
 								case entity::model::DescriptorType::StreamOutput:
 								{
-									auto validCounters = entity::StreamOutputCounterValidFlags{};
-									validCounters.assign(validFlag);
+									auto const counterType = ControllerImpl::getStreamOutputCounterType(entity);
+									auto const streamOutputCounters = entity::model::StreamOutputCounters{ counterType, validFlag, counters };
+									auto validCounters = entity::StreamOutputCounterValidFlags{ validFlag };
 
-									// If Milan device, validate mandatory counters are present
+									// If Milan 1.2 device, validate mandatory counters are present
 									if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 									{
-										if ((validCounters & s_MilanMandatoryStreamOutputCounters) != s_MilanMandatoryStreamOutputCounters)
+										if (counterType != entity::model::StreamOutputCounters::CounterType::Milan_12)
 										{
-											LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for STREAM_OUTPUT descriptor");
+											LOG_CONTROLLER_WARN(entityID, "Device is Milan compatible but doesn't have Milan type STREAM_OUTPUT counters");
 											removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan);
+										}
+										else
+										{
+											if ((validCounters.get<entity::StreamOutputCounterValidFlagsMilan12>() & s_Milan12MandatoryStreamOutputCounters) != s_Milan12MandatoryStreamOutputCounters)
+											{
+												LOG_CONTROLLER_WARN(entityID, "Milan 1.2 mandatory counters missing for STREAM_OUTPUT descriptor");
+												removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan);
+											}
 										}
 									}
 
-									updateStreamOutputCounters(entity, descriptorIndex, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+									updateStreamOutputCounters(entity, descriptorIndex, streamOutputCounters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 									break;
 								}
 								case entity::model::DescriptorType::ClockDomain:
@@ -2487,19 +2496,29 @@ void ControllerImpl::onGetStreamOutputCountersResult(entity::controller::Interfa
 			if (!!status)
 			{
 				auto& entity = *controlledEntity;
+				auto const counterType = ControllerImpl::getStreamOutputCounterType(entity);
+				auto const streamOutputCounters = entity::model::StreamOutputCounters{ counterType, validCounters.value(), counters };
 
-				// If Milan device, validate mandatory counters are present
+				// If Milan 1.2 device, validate mandatory counters are present
 				if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
-					if ((validCounters & s_MilanMandatoryStreamOutputCounters) != s_MilanMandatoryStreamOutputCounters)
+					if (counterType != entity::model::StreamOutputCounters::CounterType::Milan_12)
 					{
-						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for STREAM_OUTPUT descriptor");
+						LOG_CONTROLLER_WARN(entityID, "Device is Milan compatible but doesn't have Milan type STREAM_OUTPUT counters");
 						removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan);
+					}
+					else
+					{
+						if ((validCounters.get<entity::StreamOutputCounterValidFlagsMilan12>() & s_Milan12MandatoryStreamOutputCounters) != s_Milan12MandatoryStreamOutputCounters)
+						{
+							LOG_CONTROLLER_WARN(entityID, "Milan 1.2 mandatory counters missing for STREAM_OUTPUT descriptor");
+							removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan);
+						}
 					}
 				}
 
 				// Use the "update**" method, there are many things to do
-				updateStreamOutputCounters(entity, streamIndex, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				updateStreamOutputCounters(entity, streamIndex, streamOutputCounters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{

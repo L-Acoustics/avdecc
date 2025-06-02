@@ -796,7 +796,9 @@ void ControllerImpl::onStreamOutputCountersChanged(entity::controller::Interface
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateStreamOutputCounters(entity, streamIndex, validCounters, counters, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+		auto const counterType = ControllerImpl::getStreamOutputCounterType(entity);
+		auto const streamOutputCounters = entity::model::StreamOutputCounters{ counterType, validCounters.value(), counters };
+		updateStreamOutputCounters(entity, streamIndex, streamOutputCounters, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 

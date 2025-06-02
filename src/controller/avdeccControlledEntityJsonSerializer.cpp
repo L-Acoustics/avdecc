@@ -23,14 +23,17 @@
 */
 
 
-#include "avdeccControllerJsonTypes.hpp"
-#include "avdeccControlledEntityJsonSerializer.hpp"
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControlledEntityImpl.hpp"
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+#	include "avdeccControllerJsonTypes.hpp"
+#	include "avdeccControlledEntityJsonSerializer.hpp"
+#endif // ENABLE_AVDECC_FEATURE_JSON
 
-#include <la/avdecc/internals/jsonTypes.hpp>
-
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+#	include <la/avdecc/internals/jsonTypes.hpp>
 using json = nlohmann::json;
+#endif // ENABLE_AVDECC_FEATURE_JSON
 
 namespace la
 {

@@ -43,6 +43,7 @@
 #include <chrono>
 #include <future>
 #include <cstdint>
+#include <cassert>
 
 static auto constexpr s_ProgID = std::uint16_t{ 5 };
 static auto const s_TargetEntityID = la::avdecc::UniqueIdentifier{ 0x001b92ffff050870 };

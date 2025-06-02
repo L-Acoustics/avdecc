@@ -383,6 +383,7 @@ void ControllerImpl::updateLockedState(ControlledEntityImpl& controlledEntity, m
 
 void ControllerImpl::updateConfiguration(entity::controller::Interface const* const /*controller*/, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
+#ifdef ENABLE_AVDECC_FEATURE_JSON
 	if (controlledEntity.isVirtual())
 	{
 		// FIXME: Move 'canChangeVirtualEntityConfiguration' to a real public method
@@ -431,6 +432,7 @@ void ControllerImpl::updateConfiguration(entity::controller::Interface const* co
 		}
 	}
 	else
+#endif // ENABLE_AVDECC_FEATURE_JSON
 	{
 		// For real entities, simulate going offline then online again (to properly update the model)
 		auto const entityID = controlledEntity.getEntity().getEntityID();
@@ -1667,7 +1669,24 @@ void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledE
 	}
 }
 
-void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::StreamOutputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+entity::model::StreamOutputCounters::CounterType ControllerImpl::getStreamOutputCounterType(ControlledEntityImpl& controlledEntity) noexcept
+{
+	// Counters type depends on the Milan specification version and other fields
+	auto const milanInfo = controlledEntity.getMilanInfo();
+	if (milanInfo)
+	{
+		// At least Milan 1.0, use the Milan type counters
+		if (milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 })
+		{
+			return entity::model::StreamOutputCounters::CounterType::Milan_12;
+		}
+	}
+
+	// Otherwise use the 1722.1 type counters
+	return entity::model::StreamOutputCounters::CounterType::IEEE17221_2021;
+}
+
+void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamOutputCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
@@ -1675,22 +1694,28 @@ void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlled
 	auto* const streamCounters = controlledEntity.getStreamOutputCounters(streamIndex, notFoundBehavior);
 	if (streamCounters)
 	{
-		// Update (or set) counters
-		for (auto counter : validCounters)
-		{
-			(*streamCounters)[counter] = counters[validCounters.getPosition(counter)];
-		}
+		// Use operator|= to update the counters (will take care of the type if it's different)
+		streamCounters->operator|=(counters);
 
-		// If Milan device, validate counters values
+		// If Milan 1.2 device, validate counters values
 		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 		{
-			// StreamStop should either be equal to StreamStart or be one more (Milan 1.2 Clause 5.3.7.7)
-			// We are safe to get those counters, check for their presence during first enumeration has already been done
-			auto const startValue = (*streamCounters)[entity::StreamOutputCounterValidFlag::StreamStart];
-			auto const stopValue = (*streamCounters)[entity::StreamOutputCounterValidFlag::StreamStop];
-			if (startValue != stopValue && startValue != (stopValue + 1))
+			try
 			{
-				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT:{} ({} / {})", streamIndex, startValue, stopValue);
+				auto milan12Counters = streamCounters->getCounters<entity::StreamOutputCounterValidFlagsMilan12>();
+				// StreamStop should either be equal to StreamStart or be one more (Milan 1.2 Clause 5.3.7.7)
+				// We are safe to get those counters, check for their presence during first enumeration has already been done
+				auto const startValue = milan12Counters[entity::StreamOutputCounterValidFlagMilan12::StreamStart];
+				auto const stopValue = milan12Counters[entity::StreamOutputCounterValidFlagMilan12::StreamStop];
+				if (startValue != stopValue && startValue != (stopValue + 1))
+				{
+					LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT:{} ({} / {})", streamIndex, startValue, stopValue);
+					removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+				}
+			}
+			catch (std::invalid_argument const&)
+			{
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid STREAM_OUTPUT counters type");
 				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 			}
 		}

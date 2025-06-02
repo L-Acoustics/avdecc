@@ -69,10 +69,11 @@ class DiscoveryApp
 			dynamicModel.entityName = new la.avdecc.entity.model.AvdeccFixedString("SimpleEntity");
 			dynamicModel.currentConfiguration = ActiveConfigurationIndex;
 		}
-		public override void build(CompatibilityFlags flags)
+		public override void build(CompatibilityFlags compatibilityFlags, la.avdecc.entity.model.MilanVersion milanCompatibilityVersion)
 		{
-			flags.set(la.avdecc.controller.ControlledEntity.CompatibilityFlag.IEEE17221);
-			flags.set(la.avdecc.controller.ControlledEntity.CompatibilityFlag.Milan);
+			compatibilityFlags.set(la.avdecc.controller.ControlledEntity.CompatibilityFlag.IEEE17221);
+			compatibilityFlags.set(la.avdecc.controller.ControlledEntity.CompatibilityFlag.Milan);
+			milanCompatibilityVersion.setValue(0x01020000);
 		}
 		public override void build(la.avdecc.controller.ControlledEntity entity, ushort descriptorIndex, la.avdecc.entity.model.ConfigurationNodeStaticModel staticModel, la.avdecc.entity.model.ConfigurationNodeDynamicModel dynamicModel)
 		{
@@ -129,11 +130,18 @@ class DiscoveryApp
 				// Identify control
 				if (staticModel.controlType == new la.avdecc.UniqueIdentifier((ulong)la.avdecc.entity.model.StandardControlType.Identify))
 				{
+					/* Equivalent C++ Code
+					auto values = la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{};
+					values.addValue({ std::uint8_t{ 0x00 } });
+					dynamicModel.values = la::avdecc::entity::model::ControlValues{ values };
+					*/
+					/* To be implemented in C# (Need to create swig for LinearValuesUInt8 and LinearValueDynamicUInt8)
 					var values = new LinearValuesUInt8();
 					var value = new LinearValueDynamicUInt8();
 					value.currentValue = 0;
 					values.addValue(value);
 					dynamicModel.values = new la.avdecc.entity.model.ControlValues(values);
+					*/
 				}
 			}
 		}
@@ -290,6 +298,33 @@ class DiscoveryApp
 			{
 				var entityID = entity.getEntity().getEntityID().getValue().ToString("X");
 				Console.WriteLine($"Max Transit Time for {entityID} Stream {streamIndex}: {maxTransitTime} nsec");
+			}
+
+			public override void onStreamOutputCountersChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamIndex, la.avdecc.entity.model.StreamOutputCounters counters)
+			{
+				var entityID = entity.getEntity().getEntityID().getValue().ToString("X");
+				Console.WriteLine($"Stream Output Counters for {entityID} Stream {streamIndex} changed:");
+
+				switch (counters.getCounterType())
+				{
+					case la.avdecc.entity.model.StreamOutputCounters.CounterType.Milan_12:
+						var milan12counters = counters.getCounters_Milan12();
+						foreach (var counter in milan12counters)
+						{
+							Console.WriteLine($" - {counter.Key}: {counter.Value}");
+						}
+						break;
+					case la.avdecc.entity.model.StreamOutputCounters.CounterType.IEEE17221_2021:
+						var ieee17221counters = counters.getCounters_17221();
+						foreach (var counter in ieee17221counters)
+						{
+							Console.WriteLine($" - {counter.Key}: {counter.Value}");
+						}
+						break;
+					default:
+						Console.WriteLine($"Unknown Counters: {counters}");
+						break;
+				}
 			}
 		}
 
