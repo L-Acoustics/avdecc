@@ -44,7 +44,7 @@ jobs:
       with:
         submodules: recursive
 
-    - uses: L-Acoustics/la-mw-gh-action/.github/actions/la-swig@a82c4597a8e8247dcb8b2e452b7141272d3b8f47
+    - uses: L-Acoustics/la-mw-gh-action/.github/actions/la-swig@c91fd76c42bacd89bbc8ff5943ed1b6a0a87d598
       name: Install custom SWIG
       id: la_swig
 
