@@ -86,15 +86,19 @@ void deserializeGetMilanInfoCommand(MvuAecpdu::Payload const& payload)
 }
 
 /** GET_MILAN_INFO Response - Milan 1.2 Clause 5.4.4.1 */
-Serializer<AecpMvuGetMilanInfoResponsePayloadSize> serializeGetMilanInfoResponse(entity::model::MilanInfo const& info)
+Serializer<AecpMvuGetMilanInfoResponsePayloadMaxSize> serializeGetMilanInfoResponse(entity::model::MilanInfo const& info)
 {
-	auto ser = Serializer<AecpMvuGetMilanInfoResponsePayloadSize>{};
+	auto ser = Serializer<AecpMvuGetMilanInfoResponsePayloadMaxSize>{};
 	auto const reserved16 = std::uint16_t{ 0u };
 
 	ser << reserved16;
 	ser << info.protocolVersion << info.featuresFlags << info.certificationVersion;
 
-	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+	AVDECC_ASSERT(ser.usedBytes() == AecpMvuGetMilanInfo12ResponsePayloadSize, "Used bytes do not match the protocol constant");
+
+	// Pack Milan 1.3 fields
+	ser << info.specificationVersion;
+	AVDECC_ASSERT(ser.usedBytes() == AecpMvuGetMilanInfo13ResponsePayloadSize, "Used bytes do not match the protocol constant");
 
 	return ser;
 }
@@ -104,7 +108,7 @@ std::tuple<entity::model::MilanInfo> deserializeGetMilanInfoResponse(entity::Loc
 	auto* const commandPayload = payload.first;
 	auto const commandPayloadLength = payload.second;
 
-	checkResponsePayload(payload, status, AecpMvuGetMilanInfoCommandPayloadSize, AecpMvuGetMilanInfoResponsePayloadSize);
+	checkResponsePayload(payload, status, AecpMvuGetMilanInfoCommandPayloadSize, AecpMvuGetMilanInfoResponsePayloadMinSize);
 
 	// Check payload
 	auto des = Deserializer{ commandPayload, commandPayloadLength };
@@ -114,10 +118,16 @@ std::tuple<entity::model::MilanInfo> deserializeGetMilanInfoResponse(entity::Loc
 	des >> reserved16;
 	des >> info.protocolVersion >> info.featuresFlags >> info.certificationVersion;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetMilanInfoResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetMilanInfo12ResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
+	// Unpack Milan 1.3 fields if present
+	if (commandPayloadLength >= AecpMvuGetMilanInfo13ResponsePayloadSize)
+	{
+		des >> info.specificationVersion;
+		AVDECC_ASSERT(des.usedBytes() == AecpMvuGetMilanInfo13ResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
+	}
 	// Fallback to Milan 1.2 specification if protocol version is 1
-	if (info.protocolVersion == 1u)
+	else if (info.protocolVersion == 1u)
 	{
 		info.specificationVersion = entity::model::MilanVersion{ 1, 2 };
 	}

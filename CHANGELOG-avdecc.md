@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - New logging level: `Compat` for compatibility changes
+- Support for Milan 1.3
+  - Extended GET_MILAN_INFO command
 
 ### Changed
 - Changed AvdeccFixedString::data() method to return a tuple of a pointer and a size (to help prevent misuse)

@@ -457,6 +457,8 @@ enum class LA_AVDECC_API MilanInfoFeaturesFlag : std::uint32_t
 	None = 0u,
 	Redundancy = 1u << 0, /**< The entity supports the milan redundancy scheme. */
 	TalkerDynamicMappingsWhileRunning = 1u << 1, /**< The entity supports changing dynamic mappings of talker streams while streaming. */
+	MvuBinding = 1u << 2, /**< The entity supports streams binding through MVU commands. */
+	TalkerSignalPresence = 1u << 3, /**< The entity supports signaling the presence of its audio channels. */
 };
 using MilanInfoFeaturesFlags = utils::EnumBitfield<MilanInfoFeaturesFlag>;
 

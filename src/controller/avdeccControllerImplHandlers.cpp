@@ -60,6 +60,12 @@ void ControllerImpl::onGetMilanInfoResult(entity::controller::Interface const* c
 					addCompatibilityFlag(this, *controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 					// Up until Milan 1.3, we don't have a clear way to differentiate between Milan versions, assume it is Milan 1.2 compatible (will be retrograded if needed)
 					auto milanCompatibilityVersion = entity::model::MilanVersion{ 1, 2 };
+					// Milan 1.3 introduces a new field to help controllers differentiate between Milan versions
+					// For earlier Milan versions, the specificationVersion is set to 1.0 fallback value so we don't want to use it, stick with the Milan 1.2 compatibility version
+					if (info.specificationVersion >= entity::model::MilanVersion{ 1, 3 })
+					{
+						milanCompatibilityVersion = info.specificationVersion;
+					}
 					controlledEntity->setMilanCompatibilityVersion(milanCompatibilityVersion);
 				}
 				// Warn if the protocolVersion is not supported by the library
@@ -3372,6 +3378,12 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface 
 			{
 				// Milan requirement depends on the presence of the MvuBinding feature flag
 				auto requiredVersions = MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } };
+				auto const milanInfo = talker.getMilanInfo();
+				if (milanInfo && milanInfo->featuresFlags.test(entity::MilanInfoFeaturesFlag::MvuBinding))
+				{
+					// Milan 1.3 still require devices to respond to that command for backward compatibility, postpone end of requirement to a later version (unknown yet)
+					//requiredVersions.requiredUntil = entity::model::MilanVersion{ 1, 2 };
+				}
 				if (!processGetAcmpDynamicInfoFailureStatus(status, &talker, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, talkerStream.streamIndex, MilanRequirements{ requiredVersions }))
 				{
 					talker.setGetFatalEnumerationError();
@@ -3416,6 +3428,12 @@ void ControllerImpl::onGetListenerStreamStateResult(entity::controller::Interfac
 			{
 				// Milan requirement depends on the presence of the MvuBinding feature flag
 				auto requiredVersions = MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } };
+				auto const milanInfo = listener->getMilanInfo();
+				if (milanInfo && milanInfo->featuresFlags.test(entity::MilanInfoFeaturesFlag::MvuBinding))
+				{
+					// Milan 1.3 still require devices to respond to that command for backward compatibility, postpone end of requirement to a later version (unknown yet)
+					//requiredVersions.requiredUntil = entity::model::MilanVersion{ 1, 2 };
+				}
 				if (!processGetAcmpDynamicInfoFailureStatus(status, listener.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, listenerStream.streamIndex, MilanRequirements{ requiredVersions }))
 				{
 					listener->setGetFatalEnumerationError();

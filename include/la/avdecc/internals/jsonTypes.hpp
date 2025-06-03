@@ -886,6 +886,8 @@ NLOHMANN_JSON_SERIALIZE_ENUM(MilanInfoFeaturesFlag, {
 																											{ MilanInfoFeaturesFlag::None, "UNKNOWN" },
 																											{ MilanInfoFeaturesFlag::Redundancy, "REDUNDANCY" },
 																											{ MilanInfoFeaturesFlag::TalkerDynamicMappingsWhileRunning, "TALKER_DYNAMIC_MAPPINGS_WHILE_RUNNING" },
+																											{ MilanInfoFeaturesFlag::MvuBinding, "MVU_BINDING" },
+																											{ MilanInfoFeaturesFlag::TalkerSignalPresence, "TALKER_SIGNAL_PRESENCE" },
 																										});
 
 /* Entity::CommonInformation conversion */

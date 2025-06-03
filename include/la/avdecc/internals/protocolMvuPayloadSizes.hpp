@@ -26,6 +26,8 @@
 
 #include "la/avdecc/internals/protocolMvuAecpdu.hpp"
 
+#include <algorithm>
+
 namespace la
 {
 namespace avdecc
@@ -38,7 +40,13 @@ namespace mvuPayload
 constexpr size_t AecpMvuGetMilanInfoCommandPayloadSize = 2u;
 
 /** GET_MILAN_INFO Response - Milan 1.2 Clause 5.4.4.1 */
-constexpr size_t AecpMvuGetMilanInfoResponsePayloadSize = 14u;
+constexpr size_t AecpMvuGetMilanInfo12ResponsePayloadSize = 14u;
+
+/** GET_MILAN_INFO Response - Milan 1.3 Clause 5.4.4.1 */
+constexpr size_t AecpMvuGetMilanInfo13ResponsePayloadSize = 18u;
+
+constexpr size_t AecpMvuGetMilanInfoResponsePayloadMinSize = std::min(AecpMvuGetMilanInfo12ResponsePayloadSize, AecpMvuGetMilanInfo13ResponsePayloadSize);
+constexpr size_t AecpMvuGetMilanInfoResponsePayloadMaxSize = std::max(AecpMvuGetMilanInfo12ResponsePayloadSize, AecpMvuGetMilanInfo13ResponsePayloadSize);
 
 /** SET_SYSTEM_UNIQUE_ID Command - Milan 1.2 Clause 5.4.4.2 */
 constexpr size_t AecpMvuSetSystemUniqueIDCommandPayloadSize = 6u;
