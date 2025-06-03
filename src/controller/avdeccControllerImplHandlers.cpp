@@ -32,10 +32,10 @@ namespace avdecc
 {
 namespace controller
 {
-static auto const s_MilanMandatoryStreamInputCounters = entity::StreamInputCounterValidFlags{ entity::StreamInputCounterValidFlag::MediaLocked, entity::StreamInputCounterValidFlag::MediaUnlocked, entity::StreamInputCounterValidFlag::StreamInterrupted, entity::StreamInputCounterValidFlag::SeqNumMismatch, entity::StreamInputCounterValidFlag::MediaReset, entity::StreamInputCounterValidFlag::TimestampUncertain, entity::StreamInputCounterValidFlag::UnsupportedFormat, entity::StreamInputCounterValidFlag::LateTimestamp, entity::StreamInputCounterValidFlag::EarlyTimestamp, entity::StreamInputCounterValidFlag::FramesRx }; // Milan 1.2 Clause 5.3.8.10
+static auto const s_MilanMandatoryStreamInputCounters = entity::StreamInputCounterValidFlags{ entity::StreamInputCounterValidFlag::MediaLocked, entity::StreamInputCounterValidFlag::MediaUnlocked, entity::StreamInputCounterValidFlag::StreamInterrupted, entity::StreamInputCounterValidFlag::SeqNumMismatch, entity::StreamInputCounterValidFlag::MediaReset, entity::StreamInputCounterValidFlag::TimestampUncertain, entity::StreamInputCounterValidFlag::UnsupportedFormat, entity::StreamInputCounterValidFlag::LateTimestamp, entity::StreamInputCounterValidFlag::EarlyTimestamp, entity::StreamInputCounterValidFlag::FramesRx }; // Milan 1.3 Clause 5.3.8.10
 static auto const s_Milan12MandatoryStreamOutputCounters = entity::StreamOutputCounterValidFlagsMilan12{ entity::StreamOutputCounterValidFlagMilan12::StreamStart, entity::StreamOutputCounterValidFlagMilan12::StreamStop, entity::StreamOutputCounterValidFlagMilan12::MediaReset, entity::StreamOutputCounterValidFlagMilan12::TimestampUncertain, entity::StreamOutputCounterValidFlagMilan12::FramesTx }; // Milan 1.2 Clause 5.3.7.7
-static auto const s_MilanMandatoryAvbInterfaceCounters = entity::AvbInterfaceCounterValidFlags{ entity::AvbInterfaceCounterValidFlag::LinkUp, entity::AvbInterfaceCounterValidFlag::LinkDown, entity::AvbInterfaceCounterValidFlag::GptpGmChanged }; // Milan 1.2 Clause 5.3.6.3
-static auto const s_MilanMandatoryClockDomainCounters = entity::ClockDomainCounterValidFlags{ entity::ClockDomainCounterValidFlag::Locked, entity::ClockDomainCounterValidFlag::Unlocked }; // Milan 1.2 Clause 5.3.11.2
+static auto const s_MilanMandatoryAvbInterfaceCounters = entity::AvbInterfaceCounterValidFlags{ entity::AvbInterfaceCounterValidFlag::LinkUp, entity::AvbInterfaceCounterValidFlag::LinkDown, entity::AvbInterfaceCounterValidFlag::GptpGmChanged }; // Milan 1.3 Clause 5.3.6.3
+static auto const s_MilanMandatoryClockDomainCounters = entity::ClockDomainCounterValidFlags{ entity::ClockDomainCounterValidFlag::Locked, entity::ClockDomainCounterValidFlag::Unlocked }; // Milan 1.3 Clause 5.3.11.2
 
 /* ************************************************************ */
 /* Result handlers                                              */
@@ -497,9 +497,10 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 									auto const streamOutputCounters = entity::model::StreamOutputCounters{ counterType, validFlag, counters };
 									auto validCounters = entity::StreamOutputCounterValidFlags{ validFlag };
 
-									// If Milan 1.2 device, validate mandatory counters are present
+									// If Milan compatible device, validate mandatory counters are present
 									if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 									{
+#pragma message("TODO: Handle Milan 1.3 counters")
 										if (counterType != entity::model::StreamOutputCounters::CounterType::Milan_12)
 										{
 											removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.7.7", "Device is Milan compatible but doesn't have Milan type STREAM_OUTPUT counters");
@@ -2494,9 +2495,10 @@ void ControllerImpl::onGetStreamOutputCountersResult(entity::controller::Interfa
 				auto const counterType = ControllerImpl::getStreamOutputCounterType(entity);
 				auto const streamOutputCounters = entity::model::StreamOutputCounters{ counterType, validCounters.value(), counters };
 
-				// If Milan 1.2 device, validate mandatory counters are present
+				// If Milan compatible device, validate mandatory counters are present
 				if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
+#pragma message("TODO: Handle Milan 1.3 counters")
 					if (counterType != entity::model::StreamOutputCounters::CounterType::Milan_12)
 					{
 						removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.7.7", "Device is Milan compatible but doesn't have Milan type STREAM_OUTPUT counters");

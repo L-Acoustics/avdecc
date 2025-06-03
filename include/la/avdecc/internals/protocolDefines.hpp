@@ -266,7 +266,7 @@ public:
 	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** Milan Vendor Unique AECP Status - Milan 1.2 Clause 5.4.3.3 */
+/** Milan Vendor Unique AECP Status - Milan 1.3 Clause 5.4.3.3 */
 class MvuAecpStatus : public AecpStatus
 {
 public:
@@ -278,7 +278,7 @@ public:
 	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** Milan Vendor Unique Command Type - Milan 1.2 Clause 5.4.3.2.3 */
+/** Milan Vendor Unique Command Type - Milan 1.3 Clause 5.4.3.2.3 */
 class MvuCommandType : public utils::TypedDefine<MvuCommandType, std::uint16_t>
 {
 public:

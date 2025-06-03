@@ -51,7 +51,7 @@ static inline void checkResponsePayload(MvuAecpdu::Payload const& payload, entit
 	}
 }
 
-/** GET_MILAN_INFO Command - Milan 1.2 Clause 5.4.4.1 */
+/** GET_MILAN_INFO Command - Milan 1.3 Clause 5.4.4.1 */
 Serializer<AecpMvuGetMilanInfoCommandPayloadSize> serializeGetMilanInfoCommand()
 {
 	auto ser = Serializer<AecpMvuGetMilanInfoCommandPayloadSize>{};
@@ -85,7 +85,7 @@ void deserializeGetMilanInfoCommand(MvuAecpdu::Payload const& payload)
 	return;
 }
 
-/** GET_MILAN_INFO Response - Milan 1.2 Clause 5.4.4.1 */
+/** GET_MILAN_INFO Response - Milan 1.3 Clause 5.4.4.1 */
 Serializer<AecpMvuGetMilanInfoResponsePayloadMaxSize> serializeGetMilanInfoResponse(entity::model::MilanInfo const& info)
 {
 	auto ser = Serializer<AecpMvuGetMilanInfoResponsePayloadMaxSize>{};
@@ -219,7 +219,7 @@ std::tuple<entity::model::SystemUniqueIdentifier> deserializeGetSystemUniqueIDRe
 	return deserializeSetSystemUniqueIDCommand(payload);
 }
 
-/** SET_MEDIA_CLOCK_REFERENCE_INFO Command - Milan 1.2 Clause 5.4.4.4 */
+/** SET_MEDIA_CLOCK_REFERENCE_INFO Command - Milan 1.3 Clause 5.4.4.4 */
 Serializer<AecpMvuSetMediaClockReferenceInfoCommandPayloadSize> serializeSetMediaClockReferenceInfoCommand(entity::model::ClockDomainIndex const clockDomainIndex, entity::MediaClockReferenceInfoFlags const flags, entity::model::DefaultMediaClockReferencePriority const defaultMcrPrio, entity::model::MediaClockReferencePriority const userMcrPrio, entity::model::AvdeccFixedString const& domainName)
 {
 	auto ser = Serializer<AecpMvuSetMediaClockReferenceInfoCommandPayloadSize>{};
@@ -266,7 +266,7 @@ std::tuple<entity::model::ClockDomainIndex, entity::MediaClockReferenceInfoFlags
 	return std::make_tuple(clockDomainIndex, flags, defaultMcrPrio, userMcrPrio, domainName);
 }
 
-/** SET_MEDIA_CLOCK_REFERENCE_INFO Response - Milan 1.2 Clause 5.4.4.4 */
+/** SET_MEDIA_CLOCK_REFERENCE_INFO Response - Milan 1.3 Clause 5.4.4.4 */
 Serializer<AecpMvuSetMediaClockReferenceInfoResponsePayloadSize> serializeSetMediaClockReferenceInfoResponse(entity::model::ClockDomainIndex const clockDomainIndex, entity::MediaClockReferenceInfoFlags const flags, entity::model::DefaultMediaClockReferencePriority const defaultMcrPrio, entity::model::MediaClockReferencePriority const userMcrPrio, entity::model::AvdeccFixedString const& domainName)
 {
 	// Same as SET_MEDIA_CLOCK_REFERENCE_INFO Command
@@ -282,7 +282,7 @@ std::tuple<entity::model::ClockDomainIndex, entity::MediaClockReferenceInfoFlags
 	return deserializeSetMediaClockReferenceInfoCommand(payload);
 }
 
-/** GET_MEDIA_CLOCK_REFERENCE_INFO Command - Milan 1.2 Clause 5.4.4.5 */
+/** GET_MEDIA_CLOCK_REFERENCE_INFO Command - Milan 1.3 Clause 5.4.4.5 */
 Serializer<AecpMvuGetMediaClockReferenceInfoCommandPayloadSize> serializeGetMediaClockReferenceInfoCommand(entity::model::ClockDomainIndex const clockDomainIndex)
 {
 	auto ser = Serializer<AecpMvuGetMediaClockReferenceInfoCommandPayloadSize>{};
@@ -315,7 +315,7 @@ std::tuple<entity::model::ClockDomainIndex> deserializeGetMediaClockReferenceInf
 	return std::make_tuple(clockDomainIndex);
 }
 
-/** GET_MEDIA_CLOCK_REFERENCE_INFO Response - Milan 1.2 Clause 5.4.4.5 */
+/** GET_MEDIA_CLOCK_REFERENCE_INFO Response - Milan 1.3 Clause 5.4.4.5 */
 Serializer<AecpMvuGetMediaClockReferenceInfoResponsePayloadSize> serializeGetMediaClockReferenceInfoResponse(entity::model::ClockDomainIndex const clockDomainIndex, entity::MediaClockReferenceInfoFlags const flags, entity::model::DefaultMediaClockReferencePriority const defaultMcrPrio, entity::model::MediaClockReferencePriority const userMcrPrio, entity::model::AvdeccFixedString const& domainName)
 {
 	// Same as SET_MEDIA_CLOCK_REFERENCE_INFO Command

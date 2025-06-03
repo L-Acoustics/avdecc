@@ -437,7 +437,7 @@ MvuAecpStatus::operator std::string() const noexcept
 	return it->second;
 }
 
-/** Milan Vendor Unique Command Type - Milan 1.2 Clause 5.4.3.2.3 */
+/** Milan Vendor Unique Command Type - Milan 1.3 Clause 5.4.3.2.3 */
 MvuCommandType const MvuCommandType::GetMilanInfo{ 0x0000 };
 MvuCommandType const MvuCommandType::SetSystemUniqueID{ 0x0001 };
 MvuCommandType const MvuCommandType::GetSystemUniqueID{ 0x0002 };

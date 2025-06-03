@@ -36,7 +36,7 @@ namespace protocol
 {
 namespace mvuPayload
 {
-/** GET_MILAN_INFO Command - Milan 1.2 Clause 5.4.4.1 */
+/** GET_MILAN_INFO Command - Milan 1.3 Clause 5.4.4.1 */
 constexpr size_t AecpMvuGetMilanInfoCommandPayloadSize = 2u;
 
 /** GET_MILAN_INFO Response - Milan 1.2 Clause 5.4.4.1 */
@@ -60,16 +60,16 @@ constexpr size_t AecpMvuGetSystemUniqueIDCommandPayloadSize = 2u;
 /** GET_SYSTEM_UNIQUE_ID Response - Milan 1.2 Clause 5.4.4.3 */
 constexpr size_t AecpMvuGetSystemUniqueIDResponsePayloadSize = 6u;
 
-/** SET_MEDIA_CLOCK_REFERENCE_INFO Command - Milan 1.2 Clause 5.4.4.4 */
+/** SET_MEDIA_CLOCK_REFERENCE_INFO Command - Milan 1.3 Clause 5.4.4.4 */
 constexpr size_t AecpMvuSetMediaClockReferenceInfoCommandPayloadSize = 74u;
 
-/** SET_MEDIA_CLOCK_REFERENCE_INFO Response - Milan 1.2 Clause 5.4.4.4 */
+/** SET_MEDIA_CLOCK_REFERENCE_INFO Response - Milan 1.3 Clause 5.4.4.4 */
 constexpr size_t AecpMvuSetMediaClockReferenceInfoResponsePayloadSize = 74u;
 
-/** GET_MEDIA_CLOCK_REFERENCE_INFO Command - Milan 1.2 Clause 5.4.4.5 */
+/** GET_MEDIA_CLOCK_REFERENCE_INFO Command - Milan 1.3 Clause 5.4.4.5 */
 constexpr size_t AecpMvuGetMediaClockReferenceInfoCommandPayloadSize = 2u;
 
-/** GET_MEDIA_CLOCK_REFERENCE_INFO Response - Milan 1.2 Clause 5.4.4.5 */
+/** GET_MEDIA_CLOCK_REFERENCE_INFO Response - Milan 1.3 Clause 5.4.4.5 */
 constexpr size_t AecpMvuGetMediaClockReferenceInfoResponsePayloadSize = 74u;
 
 /** BIND_STREAM Command - Milan 1.3 Clause 5.4.4.6 */

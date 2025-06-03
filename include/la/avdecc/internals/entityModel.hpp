@@ -435,7 +435,7 @@ inline bool operator!=(AsPath const& lhs, AsPath const& rhs) noexcept
 	return !(lhs == rhs);
 }
 
-/** GET_MILAN_INFO - Milan 1.2 Clause 5.4.4.1 */
+/** GET_MILAN_INFO - Milan 1.3 Clause 5.4.4.1 */
 struct MilanInfo
 {
 	std::uint32_t protocolVersion{ 0u };
@@ -471,7 +471,7 @@ inline bool operator!=(MilanDynamicState const& lhs, MilanDynamicState const& rh
 	return !(lhs == rhs);
 }
 
-/** GET_MEDIA_CLOCK_REFERENCE_INFO - Milan 1.2 Clause 5.4.4.5 */
+/** GET_MEDIA_CLOCK_REFERENCE_INFO - Milan 1.3 Clause 5.4.4.5 */
 struct MediaClockReferenceInfo
 {
 	std::optional<MediaClockReferencePriority> userMediaClockPriority{ std::nullopt };

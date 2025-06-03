@@ -357,7 +357,7 @@ enum class LA_AVDECC_API ClockDomainCounterValidFlag : model::DescriptorCounterV
 };
 using ClockDomainCounterValidFlags = utils::EnumBitfield<ClockDomainCounterValidFlag>;
 
-/* STREAM_INPUT Counters - IEEE1722.1-2021 Clause 7.4.42.2.4 / Milan 1.2 Clause 5.3.8.10 */
+/* STREAM_INPUT Counters - IEEE1722.1-2021 Clause 7.4.42.2.4 / Milan 1.3 Clause 5.3.8.10 */
 enum class LA_AVDECC_API StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
 {
 	None = 0u,
@@ -451,7 +451,7 @@ private:
 	value_type _flags{ 0u };
 };
 
-/** Milan Info Features Flags - Milan 1.2 Clause 5.4.4.1 */
+/** Milan Info Features Flags - Milan 1.3 Clause 5.4.4.1 */
 enum class LA_AVDECC_API MilanInfoFeaturesFlag : std::uint32_t
 {
 	None = 0u,
@@ -462,7 +462,7 @@ enum class LA_AVDECC_API MilanInfoFeaturesFlag : std::uint32_t
 };
 using MilanInfoFeaturesFlags = utils::EnumBitfield<MilanInfoFeaturesFlag>;
 
-/** Media Clock Reference Info Flags - Milan 1.2 Clause 5.4.4.4 */
+/** Media Clock Reference Info Flags - Milan 1.3 Clause 5.4.4.4 */
 enum class LA_AVDECC_API MediaClockReferenceInfoFlag : std::uint8_t
 {
 	None = 0u,
