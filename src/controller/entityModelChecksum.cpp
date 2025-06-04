@@ -81,8 +81,11 @@ public:
 	template<typename T, typename = std::enable_if_t<std::is_arithmetic<T>::value || std::is_enum<T>::value>>
 	Sha256Serializer& operator<<(T const& v)
 	{
+		// Change endianness to ensure deterministic serialization across platforms (force LittleEndian)
+		auto const value = la::avdecc::endianSwap<la::avdecc::Endianness::HostEndian, la::avdecc::Endianness::LittleEndian>(v);
+
 		// Append to buffer
-		appendBuffer(reinterpret_cast<void const*>(&v), sizeof(v));
+		appendBuffer(reinterpret_cast<void const*>(&value), sizeof(value));
 
 		return *this;
 	}
@@ -411,9 +414,14 @@ void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/,
 		serializeNode(parent);
 		serializeNode(node);
 		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel << node.staticModel.localizedDescription;
-		for (auto const& [descriptorType, count] : node.staticModel.descriptorCounts)
+
+		// In order to have a deterministic order of descriptor counts, we sort them by key first
 		{
-			static_cast<Sha256Serializer&>(*_serializer) << descriptorType << count;
+			auto const sortedDescriptorCounts = std::map<decltype(node.staticModel.descriptorCounts)::key_type, decltype(node.staticModel.descriptorCounts)::mapped_type>{ node.staticModel.descriptorCounts.begin(), node.staticModel.descriptorCounts.end() };
+			for (auto const& [descriptorType, count] : sortedDescriptorCounts)
+			{
+				static_cast<Sha256Serializer&>(*_serializer) << descriptorType << count;
+			}
 		}
 	}
 }
