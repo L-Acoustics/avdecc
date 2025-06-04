@@ -6883,11 +6883,17 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 		// Read device compatibility
 		if (flags.test(entity::model::jsonSerializer::Flag::ProcessCompatibility))
 		{
-			entity.setCompatibilityFlags(object.at(jsonSerializer::keyName::ControlledEntity_CompatibilityFlags).get<ControlledEntity::CompatibilityFlags>());
+			auto const compatFlags = object.at(jsonSerializer::keyName::ControlledEntity_CompatibilityFlags).get<ControlledEntity::CompatibilityFlags>();
+			entity.setCompatibilityFlags(compatFlags);
 			if (auto const it = object.find(jsonSerializer::keyName::ControlledEntity_MilanCompatibilityVersion); it != object.end())
 			{
 				auto const str = it->get<std::string>();
 				entity.setMilanCompatibilityVersion(entity::model::MilanVersion{ str });
+			}
+			else if (compatFlags.test(ControlledEntity::CompatibilityFlag::Milan))
+			{
+				// Fallback to Milan 1.2 compatibility if the device has the Milan flag but there is no MilanCompatibilityVersion field (older dump). The compatibility version may be downgraded later during loading
+				entity.setMilanCompatibilityVersion(entity::model::MilanVersion{ 1, 2 });
 			}
 		}
 

@@ -2834,10 +2834,10 @@ inline void from_json(json const& j, MilanInfo& info)
 	}
 	else
 	{
-		// Fallback to Milan 1.0 if protocol version is 1
+		// Fallback to Milan 1.2 specification if protocol version is 1
 		if (info.protocolVersion == 1u)
 		{
-			info.specificationVersion = MilanVersion{ 1, 0 };
+			info.specificationVersion = MilanVersion{ 1, 2 };
 		}
 	}
 }
