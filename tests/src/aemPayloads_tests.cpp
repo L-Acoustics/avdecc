@@ -555,7 +555,7 @@ TEST(AemPayloads, RecvPayloadMaximumSize)
 			ser << mapping.streamIndex << mapping.streamChannel << mapping.clusterOffset << mapping.clusterChannel;
 		}
 
-		return la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
+		return ser;
 	};
 
 	la::avdecc::entity::model::AudioMappings mappings{};
@@ -566,7 +566,8 @@ TEST(AemPayloads, RecvPayloadMaximumSize)
 		mappings.push_back({});
 	}
 
-	auto const payload = serializeMappings(la::avdecc::entity::model::DescriptorType::AudioCluster, 5u, 8u, 1u, mappings);
+	auto const ser = serializeMappings(la::avdecc::entity::model::DescriptorType::AudioCluster, 5u, 8u, 1u, mappings);
+	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
 
 #	if defined(ALLOW_RECV_BIG_AECP_PAYLOADS)
 	try
