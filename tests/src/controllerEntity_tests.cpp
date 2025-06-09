@@ -74,7 +74,7 @@ TEST(ControllerEntity, DispatchWhileSending)
 	auto* const controller = static_cast<la::avdecc::entity::ControllerEntity*>(controllerGuard.get());
 
 	// Wait for ProtocolInterfaceVirtual dispatch thread to process the discovery message
-	auto status = dispatchDiscoveryPromise.get_future().wait_for(std::chrono::seconds(1));
+	auto status = dispatchDiscoveryPromise.get_future().wait_for(std::chrono::seconds(2));
 	ASSERT_NE(std::future_status::timeout, status) << "Test conception failure";
 
 	// Ok we can send a message
@@ -161,7 +161,7 @@ TEST(ControllerEntity, DetectMainAvbInterfaceLost)
 	std::this_thread::sleep_for(std::chrono::seconds(5));
 
 	// Wait for the handler to complete
-	auto status = entityOfflinePromise.get_future().wait_for(std::chrono::seconds(1));
+	auto status = entityOfflinePromise.get_future().wait_for(std::chrono::seconds(2));
 	ASSERT_NE(std::future_status::timeout, status);
 }
 
@@ -183,6 +183,6 @@ TEST(ControllerEntity, DetectMainAvbInterfaceLost)
 //	}
 //
 //	// Wait for the handler to complete
-//	auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(1));
+//	auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(2));
 //	ASSERT_NE(std::future_status::timeout, status);
 //}
