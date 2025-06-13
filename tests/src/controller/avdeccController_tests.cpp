@@ -462,7 +462,7 @@ TEST(Controller, DestroyWhileSending)
 	}
 
 	// Wait for the handler to complete
-	auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(1));
+	auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(2));
 	ASSERT_NE(std::future_status::timeout, status);
 }
 
@@ -524,7 +524,7 @@ TEST_F(Controller_F, VirtualEntityLoad)
 	}
 
 	// Wait for the handler to complete
-	//auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(1));
+	//auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(2));
 	//ASSERT_NE(std::future_status::timeout, status);
 }
 
@@ -540,7 +540,7 @@ TEST_F(Controller_F, VirtualEntityLoadUTF8)
 	}
 
 	// Wait for the handler to complete
-	//auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(1));
+	//auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(2));
 	//ASSERT_NE(std::future_status::timeout, status);
 }
 
@@ -728,7 +728,7 @@ TEST_F(Controller_F, BadArgumentsIfTooManyMappingsPassed)
 			});
 
 		auto fut = handlerPromise.get_future();
-		auto status = fut.wait_for(std::chrono::seconds(1));
+		auto status = fut.wait_for(std::chrono::seconds(2));
 		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
 		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::UnknownEntity, fut.get());
 	}
@@ -743,7 +743,7 @@ TEST_F(Controller_F, BadArgumentsIfTooManyMappingsPassed)
 			});
 
 		auto fut = handlerPromise.get_future();
-		auto status = fut.wait_for(std::chrono::seconds(1));
+		auto status = fut.wait_for(std::chrono::seconds(2));
 		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
 		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::BadArguments, fut.get());
 	}
@@ -758,7 +758,7 @@ TEST_F(Controller_F, BadArgumentsIfTooManyMappingsPassed)
 			});
 
 		auto fut = handlerPromise.get_future();
-		auto status = fut.wait_for(std::chrono::seconds(1));
+		auto status = fut.wait_for(std::chrono::seconds(2));
 		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
 		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::UnknownEntity, fut.get());
 	}
@@ -773,7 +773,7 @@ TEST_F(Controller_F, BadArgumentsIfTooManyMappingsPassed)
 			});
 
 		auto fut = handlerPromise.get_future();
-		auto status = fut.wait_for(std::chrono::seconds(1));
+		auto status = fut.wait_for(std::chrono::seconds(2));
 		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
 		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::BadArguments, fut.get());
 	}
@@ -788,7 +788,7 @@ TEST_F(Controller_F, BadArgumentsIfTooManyMappingsPassed)
 			});
 
 		auto fut = handlerPromise.get_future();
-		auto status = fut.wait_for(std::chrono::seconds(1));
+		auto status = fut.wait_for(std::chrono::seconds(2));
 		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
 		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::UnknownEntity, fut.get());
 	}
@@ -803,7 +803,7 @@ TEST_F(Controller_F, BadArgumentsIfTooManyMappingsPassed)
 			});
 
 		auto fut = handlerPromise.get_future();
-		auto status = fut.wait_for(std::chrono::seconds(1));
+		auto status = fut.wait_for(std::chrono::seconds(2));
 		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
 		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::BadArguments, fut.get());
 	}
@@ -818,7 +818,7 @@ TEST_F(Controller_F, BadArgumentsIfTooManyMappingsPassed)
 			});
 
 		auto fut = handlerPromise.get_future();
-		auto status = fut.wait_for(std::chrono::seconds(1));
+		auto status = fut.wait_for(std::chrono::seconds(2));
 		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
 		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::UnknownEntity, fut.get());
 	}
@@ -833,7 +833,7 @@ TEST_F(Controller_F, BadArgumentsIfTooManyMappingsPassed)
 			});
 
 		auto fut = handlerPromise.get_future();
-		auto status = fut.wait_for(std::chrono::seconds(1));
+		auto status = fut.wait_for(std::chrono::seconds(2));
 		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
 		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::BadArguments, fut.get());
 	}

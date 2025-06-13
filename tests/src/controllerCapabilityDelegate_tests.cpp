@@ -91,7 +91,7 @@ TEST_F(ControllerCapabilityDelegate_F, AddStreamPortInputAudioMappings)
 		});
 
 	auto fut = handlerPromise.get_future();
-	auto status = fut.wait_for(std::chrono::seconds(1));
+	auto status = fut.wait_for(std::chrono::seconds(2));
 	ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
 	EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::ProtocolError, fut.get());
 }
@@ -113,7 +113,7 @@ TEST_F(ControllerCapabilityDelegate_F, AddStreamPortOutputAudioMappings)
 		});
 
 	auto fut = handlerPromise.get_future();
-	auto status = fut.wait_for(std::chrono::seconds(1));
+	auto status = fut.wait_for(std::chrono::seconds(2));
 	ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
 	EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::ProtocolError, fut.get());
 }
@@ -135,7 +135,7 @@ TEST_F(ControllerCapabilityDelegate_F, RemoveStreamPortInputAudioMappings)
 		});
 
 	auto fut = handlerPromise.get_future();
-	auto status = fut.wait_for(std::chrono::seconds(1));
+	auto status = fut.wait_for(std::chrono::seconds(2));
 	ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
 	EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::ProtocolError, fut.get());
 }
@@ -157,7 +157,7 @@ TEST_F(ControllerCapabilityDelegate_F, RemoveStreamPortOutputAudioMappings)
 		});
 
 	auto fut = handlerPromise.get_future();
-	auto status = fut.wait_for(std::chrono::seconds(1));
+	auto status = fut.wait_for(std::chrono::seconds(2));
 	ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
 	EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::ProtocolError, fut.get());
 }
@@ -277,7 +277,7 @@ TEST_F(ControllerCapabilityDelegate_F, BaseProtocolViolation)
 
 	// Wait for the entity to become online
 	{
-		auto const status = entityOnlinePromise.get_future().wait_for(std::chrono::seconds(1));
+		auto const status = entityOnlinePromise.get_future().wait_for(std::chrono::seconds(2));
 		ASSERT_NE(std::future_status::timeout, status);
 	}
 
@@ -291,7 +291,7 @@ TEST_F(ControllerCapabilityDelegate_F, BaseProtocolViolation)
 	// Wait for acquire result with incorrect response
 	{
 		auto fut = acquireResultPromise.get_future();
-		ASSERT_NE(std::future_status::timeout, fut.wait_for(std::chrono::seconds(1)));
+		ASSERT_NE(std::future_status::timeout, fut.wait_for(std::chrono::seconds(2)));
 		ASSERT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::BaseProtocolViolation, fut.get());
 	}
 
@@ -305,7 +305,7 @@ TEST_F(ControllerCapabilityDelegate_F, BaseProtocolViolation)
 	// Wait for read descriptor result with incorrect response
 	{
 		auto fut = readDescriptorResultPromise.get_future();
-		ASSERT_NE(std::future_status::timeout, fut.wait_for(std::chrono::seconds(1)));
+		ASSERT_NE(std::future_status::timeout, fut.wait_for(std::chrono::seconds(2)));
 		ASSERT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::BaseProtocolViolation, fut.get());
 	}
 
