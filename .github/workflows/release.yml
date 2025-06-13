@@ -7,6 +7,18 @@ on:
 
   workflow_dispatch:
     inputs:
+      release_linux:
+        description: 'Release the linux package'
+        type: boolean
+        default: false
+      release_win:
+        description: 'Release the windows package'
+        type: boolean
+        default: true
+      release_mac:
+        description: 'Release the macos package'
+        type: boolean
+        default: true
       gh_release:
         description: 'Create the Github Release'
         type: boolean
@@ -24,12 +36,16 @@ permissions:
 env:
   NUGET_FEED_USENAME: github
   NUGET_FEED_URL: https://nuget.pkg.github.com/${{github.repository_owner}}/index.json 
-  lib_name: la_avdecc
+  lib_name: la_avdecc_controller
   build_dir: _build
   GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+  RELEASE_MAC: true
+  RELEASE_WIN: true
+  RELEASE_LINUX: false
 
 jobs:
   release-linux:
+    if: ${{vars.RELEASE_LINUX == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -84,6 +100,7 @@ jobs:
           cmake --build ${{env.build_dir}} --target ${{env.lib_name}}-csharp-nuget-push
 
   release-windows:
+    if: ${{vars.RELEASE_MACOS == 'true' }}
     env:
       LC_ALL: en_US.UTF-8
     strategy:
@@ -139,6 +156,7 @@ jobs:
           cmake --build ${{env.build_dir}} --target ${{env.lib_name}}-csharp-nuget-push
           
   release-macos:
+    if: ${{vars.RELEASE_WINDOWS == 'true' }}
     strategy:
       fail-fast: false
       matrix:
