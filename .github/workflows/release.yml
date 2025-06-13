@@ -24,7 +24,7 @@ permissions:
 env:
   NUGET_FEED_USENAME: github
   NUGET_FEED_URL: https://nuget.pkg.github.com/${{github.repository_owner}}/index.json 
-  lib_name: la_avdecc
+  lib_name: la_avdecc_controller
   build_dir: _build
   GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
