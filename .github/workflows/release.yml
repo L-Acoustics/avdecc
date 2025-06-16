@@ -1,0 +1,222 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+  workflow_dispatch:
+    inputs:
+      release_linux:
+        description: 'Release the linux package'
+        type: boolean
+        default: false
+      release_win:
+        description: 'Release the windows package'
+        type: boolean
+        default: true
+      release_mac:
+        description: 'Release the macos package'
+        type: boolean
+        default: true
+      gh_release:
+        description: 'Create the Github Release'
+        type: boolean
+        default: true
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+  packages: write
+  id-token: write
+
+
+env:
+  NUGET_FEED_USENAME: github
+  NUGET_FEED_URL: https://nuget.pkg.github.com/${{github.repository_owner}}/index.json
+  lib_name: la_avdecc_controller
+  build_dir: _build
+  GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+  RELEASE_MAC: true
+  RELEASE_WIN: true
+  RELEASE_LINUX: false
+
+jobs:
+  release-linux:
+    if: ${{vars.RELEASE_LINUX == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ["release"]
+        os: ["ubuntu-22.04","ubuntu-22.04-arm"]
+
+    runs-on: ${{matrix.os}}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - uses: L-Acoustics/la-mw-gh-action/.github/actions/la-swig@v0
+      name: Install custom SWIG
+      id: la_swig
+
+    - name: Configure runner
+      uses: L-Acoustics/la-mw-gh-action/.github/actions/la-configure-runner@v0
+      with:
+        os: linux
+
+    - name: Configure CMake
+      shell: bash
+      run: |
+        echo "Generating CMake for Configuration : ${{matrix.config}}"
+
+        arch=$([ ${{runner.arch}} = "X64" ] && echo "x64" || echo "arm64")
+        ./gen_cmake.sh -o ${{env.build_dir}} -${{matrix.config}} -c Ninja -build-csharp -arch $arch -- \
+          "-DNUGET_PUBLISH_SOURCE_URL=${{env.NUGET_FEED_URL}}" \
+          "-DSWIG_DIR=${{steps.la_swig.outputs.swig_dir}}" \
+          "-DCU_REPO_URL=https://github.com/${{github.repository}}" \
+          "-DSWIG_EXECUTABLE=${{steps.la_swig.outputs.swig_exec}}"
+
+    - name: Build All
+      # Build your program with the given configuration
+      run: cmake --build ${{env.build_dir}}
+
+    - name: Test
+      working-directory: ${{github.workspace}}/${{env.build_dir}}/tests/src
+      shell: bash
+      run: |
+        test_cmd="./Tests --gtest_filter=-INTEGRATION*"
+        if [ "${{matrix.config}}" = "debug" ]; then
+          test_cmd="./Tests-d --gtest_filter=-INTEGRATION*"
+        fi
+        eval $test_cmd
+
+    - name: Push package
+      run : |
+          # add source
+          dotnet nuget add source --username "L-Acoustics" --password ${{env.GITHUB_TOKEN}} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/L-Acoustics/index.json"
+          cmake --build ${{env.build_dir}} --target ${{env.lib_name}}-csharp-nuget-push
+
+  release-windows:
+    if: ${{vars.RELEASE_MACOS == 'true' }}
+    env:
+      LC_ALL: en_US.UTF-8
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ["release"]
+        os: ["windows-2022"]
+
+    runs-on: ${{matrix.os}}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - uses: L-Acoustics/la-mw-gh-action/.github/actions/la-swig@v0
+      name: Install custom SWIG
+      id: la_swig
+
+    - name: Configure runner
+      uses: L-Acoustics/la-mw-gh-action/.github/actions/la-configure-runner@v0
+      with:
+        os: windows
+
+    - name: Configure CMake
+      shell: bash
+      run: |
+        echo "Generating CMake for Configuration : ${{matrix.config}}"
+
+        arch=$([ ${{runner.arch}} = "X64" ] && echo "x64" || echo "arm64")
+        ./gen_cmake.sh -o ${{env.build_dir}} -${{matrix.config}} -build-csharp -c Ninja -arch $arch -- \
+          "-DNUGET_PUBLISH_SOURCE_URL=${{env.NUGET_FEED_URL}}" \
+          "-DSWIG_DIR=${{steps.la_swig.outputs.swig_dir}}" \
+          "-DCU_REPO_URL=https://github.com/${{github.repository}}" \
+          "-DSWIG_EXECUTABLE=${{steps.la_swig.outputs.swig_exec}}"
+
+    - name: Build All
+      # Build your program with the given configuration
+      run: cmake --build ${{env.build_dir}}
+    - name: Test
+      working-directory: ${{github.workspace}}/${{env.build_dir}}/tests/src
+      shell: bash
+      run: |
+        test_cmd="./Tests --gtest_filter=-INTEGRATION*"
+        if [ "${{matrix.config}}" = "debug" ]; then
+          test_cmd="./Tests-d --gtest_filter=-INTEGRATION*"
+        fi
+        eval $test_cmd
+
+    - name: Push package
+      run : |
+          # add source
+          dotnet nuget add source --username "L-Acoustics" --password ${{env.GITHUB_TOKEN}} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/L-Acoustics/index.json"
+          cmake --build ${{env.build_dir}} --target ${{env.lib_name}}-csharp-nuget-push
+
+  release-macos:
+    if: ${{vars.RELEASE_WINDOWS == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ["release"]
+        os: ["macos-14"]
+
+    runs-on: ${{matrix.os}}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - uses: L-Acoustics/la-mw-gh-action/.github/actions/la-swig@v0
+      name: Install custom SWIG
+      id: la_swig
+
+    - name: Configure runner
+      uses: L-Acoustics/la-mw-gh-action/.github/actions/la-configure-runner@v0
+      with:
+        os: macos
+
+    - name: Configure CMake
+      shell: bash
+      run: |
+        echo "Generating CMake for Configuration : ${{matrix.config}}"
+        ./gen_cmake.sh -o ${{env.build_dir}} -${{matrix.config}} -c Ninja -build-csharp -all-archs -- \
+          "-DNUGET_PUBLISH_SOURCE_URL=${{env.NUGET_FEED_URL}}" \
+          "-DSWIG_DIR=${{steps.la_swig.outputs.swig_dir}}" \
+          "-DCU_REPO_URL=https://github.com/${{github.repository}}" \
+          "-DSWIG_EXECUTABLE=${{steps.la_swig.outputs.swig_exec}}"
+
+    - name: Build All
+      run: cmake --build ${{env.build_dir}}
+
+    - name: Test
+      working-directory: ${{github.workspace}}/${{env.build_dir}}/tests/src
+      shell: bash
+      run: |
+        test_cmd="./Tests --gtest_filter=-INTEGRATION*"
+        if [ "${{matrix.config}}" = "debug" ]; then
+          test_cmd="./Tests-d --gtest_filter=-INTEGRATION*"
+        fi
+        eval $test_cmd
+
+    - name: Push package
+      run : |
+          # add source
+          dotnet nuget add source --username "L-Acoustics" --password ${{env.GITHUB_TOKEN}} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/L-Acoustics/index.json"
+          cmake --build ${{env.build_dir}} --target ${{env.lib_name}}-csharp-nuget-push
+
+  create-gh-release:
+    needs: [release-macos,release-windows,release-linux]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ contains(github.ref_name, 'beta') }}
