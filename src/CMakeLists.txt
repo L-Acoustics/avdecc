@@ -405,8 +405,10 @@ if(BUILD_AVDECC_BINDINGS_CSHARP)
 
 		# Add all public header files as dependency, so that wrapper files are re-generated whenever they change
 		set_property(TARGET ${SWIG_TARGET_NAME} PROPERTY SWIG_DEPENDS ${PUBLIC_HEADER_FILES})
+
 		# Setup common options like any other project
 		cu_setup_library_options(${SWIG_TARGET_NAME} ALIAS_NAME ${SWIG_LANG} NO_ALIAS_TARGET)
+
 		if(${SWIG_LANG} STREQUAL "csharp")
 			include(${CU_ROOT_DIR}/cmake/cmakeUtils/helpers/GenerateNugetTarget.cmake REQUIRED)
 			cu_generate_csharp_nuget_target(TARGET_NAME ${SWIG_TARGET_NAME} PACKAGE_NAME ${AVDECC_ENTITY_MODEL_LIB_NAME} NUGET_SOURCE_URL "${NUGET_PUBLISH_SOURCE_URL}" NUGET_API_KEY "${NUGET_PUBLISH_API_KEY}" CS_SOURCE_FOLDERS "${SUPPORT_FILES_FOLDER_csharp}" CS_PACKAGE_DEPENDENCIES "${NIH_NUGET_DEPENDENCY}")
@@ -441,8 +443,10 @@ if(BUILD_AVDECC_BINDINGS_CSHARP)
 
 		# Add all public header files as dependency, so that wrapper files are re-generated whenever they change
 		set_property(TARGET ${SWIG_TARGET_NAME} PROPERTY SWIG_DEPENDS ${PUBLIC_HEADER_FILES})
+
 		# Setup common options like any other project
 		cu_setup_library_options(${SWIG_TARGET_NAME} ALIAS_NAME ${SWIG_LANG} NO_ALIAS_TARGET)
+
 		if(${SWIG_LANG} STREQUAL "csharp")
 			include(${CU_ROOT_DIR}/cmake/cmakeUtils/helpers/GenerateNugetTarget.cmake REQUIRED)
 			cu_generate_csharp_nuget_target(TARGET_NAME ${SWIG_TARGET_NAME} NUGET_SOURCE_URL "${NUGET_PUBLISH_SOURCE_URL}" NUGET_API_KEY "${NUGET_PUBLISH_API_KEY}" CS_SOURCE_FOLDERS "${SUPPORT_FILES_FOLDER_csharp}" CS_PACKAGE_DEPENDENCIES "${NIH_NUGET_DEPENDENCY}" "${AVDECC_ENTITY_MODEL_LIB_NAME}:${CU_PROJECT_FRIENDLY_VERSION}" NUGET_PACK_TARGET_DEPENDENCIES ${AVDECC_ENTITY_MODEL_LIB_NAME}-csharp-nuget-push)
