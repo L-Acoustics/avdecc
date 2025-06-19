@@ -20,7 +20,7 @@ jobs:
         config: ["release","debug"]
         os: ["macos-14"]
 
-    runs-on: ${{matrix.os}}
+    runs-on: [self-hosted,ARM64,macOS,la-mw]
     steps:
     - uses: actions/checkout@v2
       with:
