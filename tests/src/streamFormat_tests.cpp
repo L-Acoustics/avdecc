@@ -255,6 +255,46 @@ TEST(StreamFormatInfo, CR_48_6intvl_1ts)
 	EXPECT_EQ(64, format->getSampleBitDepth());
 }
 
+TEST(StreamFormatInfo, CR_48_96intvl_1ts)
+{
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x041060010000bb80 } };
+	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
+	EXPECT_EQ(fmt, format->getStreamFormat());
+	ASSERT_EQ(la::avdecc::entity::model::StreamFormatInfo::Type::ClockReference, format->getType());
+	auto const crfFormat = static_cast<la::avdecc::entity::model::StreamFormatInfoCRF const*>(format.get());
+	EXPECT_EQ(0, format->getChannelsCount());
+	EXPECT_FALSE(format->isUpToChannelsCount());
+	EXPECT_EQ(0, format->getSamplingRate().getPull());
+	EXPECT_EQ(48000u, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int64, format->getSampleFormat());
+	EXPECT_TRUE(format->useSynchronousClock());
+	EXPECT_EQ(96u, crfFormat->getTimestampInterval());
+	EXPECT_EQ(1u, crfFormat->getTimestampsPerPdu());
+	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfoCRF::CRFType::AudioSample, crfFormat->getCRFType());
+	EXPECT_EQ(64, format->getSampleSize());
+	EXPECT_EQ(64, format->getSampleBitDepth());
+}
+
+TEST(StreamFormatInfo, CR_441_96intvl_1ts)
+{
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x041060010000ac44 } };
+	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
+	EXPECT_EQ(fmt, format->getStreamFormat());
+	ASSERT_EQ(la::avdecc::entity::model::StreamFormatInfo::Type::ClockReference, format->getType());
+	auto const crfFormat = static_cast<la::avdecc::entity::model::StreamFormatInfoCRF const*>(format.get());
+	EXPECT_EQ(0, format->getChannelsCount());
+	EXPECT_FALSE(format->isUpToChannelsCount());
+	EXPECT_EQ(0, format->getSamplingRate().getPull());
+	EXPECT_EQ(44100u, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int64, format->getSampleFormat());
+	EXPECT_TRUE(format->useSynchronousClock());
+	EXPECT_EQ(96u, crfFormat->getTimestampInterval());
+	EXPECT_EQ(1u, crfFormat->getTimestampsPerPdu());
+	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfoCRF::CRFType::AudioSample, crfFormat->getCRFType());
+	EXPECT_EQ(64, format->getSampleSize());
+	EXPECT_EQ(64, format->getSampleBitDepth());
+}
+
 TEST(StreamFormatInfo, CR_96_12intvl_1ts)
 {
 	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x04100c0100017700 } };
