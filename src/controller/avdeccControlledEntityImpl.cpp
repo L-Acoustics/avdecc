@@ -2996,7 +2996,6 @@ void ControlledEntityImpl::onEntityModelEnumerated() noexcept
 void ControlledEntityImpl::onEntityFullyLoaded() noexcept
 {
 	auto const& e = getEntity();
-	//auto const entityID = e.getEntityID();
 	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
 
 	// Save the enumeration time
@@ -3015,6 +3014,8 @@ void ControlledEntityImpl::onEntityFullyLoaded() noexcept
 				buildVirtualNodes(configKV.second);
 				// Fix dynamic mappings
 				fixStreamPortMappings(configKV.second);
+				// Set default Presentation Time
+				setDefaultPresentationTimes(configKV.second);
 			}
 		}
 	}
@@ -3223,6 +3224,40 @@ void ControlledEntityImpl::fixStreamPortMappings(model::ConfigurationNode& confi
 		if (!_redundantPrimaryStreamInputs.empty())
 		{
 			fixStreamPortInputMappings(audioUnitNode.streamPortInputs);
+		}
+	}
+}
+
+void ControlledEntityImpl::setDefaultPresentationTimes(model::ConfigurationNode& configNode) noexcept
+{
+	// Process all StreamOutputs
+	for (auto& [streamOutputIndex, streamOutputNode] : configNode.streamOutputs)
+	{
+		auto& dynamicModel = streamOutputNode.dynamicModel;
+
+		// If the presentationTimeOffset is 0, set it to the default value (which depends on the CLASS type)
+		if (dynamicModel.presentationTimeOffset.count() == 0)
+		{
+			auto defaultValue = std::chrono::milliseconds{ 2 }; // Default value for CLASS_A streams (CLASS A is the default)
+
+			// Check if this is a CLASS_B stream
+			if (dynamicModel.streamDynamicInfo && (*dynamicModel.streamDynamicInfo).isClassB)
+			{
+				defaultValue = std::chrono::milliseconds{ 50 }; // Default value for CLASS_B streams
+			}
+
+			// Check for Milan devices that use the msrpAccumulatedLatency field
+			auto const milanInfo = getMilanInfo();
+			if (milanInfo && (*milanInfo).specificationVersion >= entity::model::MilanVersion{ 1, 0 })
+			{
+				if (dynamicModel.streamDynamicInfo && (*dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
+				{
+					auto const msrpValueAsNs = std::chrono::nanoseconds{ *(*dynamicModel.streamDynamicInfo).msrpAccumulatedLatency };
+					defaultValue = std::chrono::duration_cast<decltype(defaultValue)>(msrpValueAsNs);
+				}
+			}
+
+			dynamicModel.presentationTimeOffset = defaultValue;
 		}
 	}
 }
