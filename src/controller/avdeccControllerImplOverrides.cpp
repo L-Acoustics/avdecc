@@ -2312,6 +2312,37 @@ void ControllerImpl::setMaxTransitTime(UniqueIdentifier const targetEntityID, en
 	}
 }
 
+void ControllerImpl::smartSetMaxTransitTime(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, SetMaxTransitTimeHandler const& handler) const noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		// Check for Milan devices that use the msrpAccumulatedLatency field from SET_STREAM_INFO
+		auto const milanInfo = controlledEntity->getMilanInfo();
+		if (milanInfo && (*milanInfo).specificationVersion >= entity::model::MilanVersion{ 1, 0 })
+		{
+			// If entity is virtual, don't try to use SET_STREAM_INFO as it probably won't be supported by the VirtualProxy (it needs to respond with a full StreamInfo which might be very difficult to provide)
+			if (!controlledEntity->isVirtual())
+			{
+				auto streamInfo = entity::model::StreamInfo{};
+				streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::MsrpAccLatValid);
+				streamInfo.msrpAccumulatedLatency = static_cast<decltype(streamInfo.msrpAccumulatedLatency)>(maxTransitTime.count());
+				setStreamOutputInfo(targetEntityID, streamIndex, streamInfo, handler);
+				return;
+			}
+		}
+
+		// Otherwise, use the setMaxTransitTime method
+		setMaxTransitTime(targetEntityID, streamIndex, maxTransitTime, handler);
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
 entity::addressAccess::Tlv ControllerImpl::makeNextReadDeviceMemoryTlv(std::uint64_t const baseAddress, std::uint64_t const length, std::uint64_t const currentSize) const noexcept
 {
 	try
