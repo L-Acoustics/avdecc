@@ -3231,6 +3231,42 @@ void ControllerImpl::onPtpPortNameResult(entity::controller::Interface const* co
 	}
 }
 
+void ControllerImpl::onGetMaxTransitTimeResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, entity::model::ConfigurationIndex const configurationIndex) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onGetMaxTransitTimeResult (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::GetMaxTransitTime, streamIndex))
+		{
+			auto& entity = *controlledEntity;
+			if (!!status)
+			{
+				updateMaxTransitTime(entity, streamIndex, maxTransitTime, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			}
+			else
+			{
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetMaxTransitTime, streamIndex, 0u, MilanRequirements{}))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::GetMaxTransitTime);
+					return;
+				}
+			}
+
+			// Got all expected dynamic information
+			if (controlledEntity->gotAllExpectedPackedDynamicInfo() && controlledEntity->gotAllExpectedDynamicInfo())
+			{
+				// Clear this enumeration step and check for next one
+				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		}
+	}
+}
+
 void ControllerImpl::onGetSystemUniqueIDResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetSystemUniqueIDResult (SystemUniqueID={}): {}", systemUniqueID, entity::ControllerEntity::statusToString(status));

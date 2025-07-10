@@ -2925,6 +2925,8 @@ std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const 
 			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (STREAM_INPUT)";
 		case DynamicInfoType::GetStreamOutputCounters:
 			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (STREAM_OUTPUT)";
+		case DynamicInfoType::GetMaxTransitTime:
+			return protocol::AemCommandType::GetMaxTransitTime;
 		case DynamicInfoType::GetSystemUniqueID:
 			return protocol::MvuCommandType::GetSystemUniqueID;
 		case DynamicInfoType::GetMediaClockReferenceInfo:

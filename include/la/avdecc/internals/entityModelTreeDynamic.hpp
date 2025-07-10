@@ -22,6 +22,7 @@
 * @author Christophe Calmejane
 * @brief Dynamic part of the avdecc entity model tree.
 * @note This is the part of the AEM that can be changed dynamically, or that might be different from an Entity to another one with the same EntityModelID
+*       It is the responsibility of the controller to keep this part up-to-date.
 */
 
 #pragma once
@@ -34,6 +35,7 @@
 #include <optional>
 #include <typeindex>
 #include <unordered_map>
+#include <chrono>
 
 namespace la
 {
@@ -299,6 +301,7 @@ struct StreamInputNodeDynamicModel : public StreamNodeDynamicModel
 struct StreamOutputNodeDynamicModel : public StreamNodeDynamicModel
 {
 	model::StreamConnections connections{};
+	std::chrono::nanoseconds presentationTimeOffset{ 0 };
 	std::optional<StreamOutputCounters> counters{ std::nullopt };
 };
 

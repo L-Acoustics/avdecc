@@ -151,6 +151,7 @@ public:
 		GetClockDomainCounters, // getClockDomainCounters (GET_COUNTERS)
 		GetStreamInputCounters, // getStreamInputCounters (GET_COUNTERS)
 		GetStreamOutputCounters, // getStreamOutputCounters (GET_COUNTERS)
+		GetMaxTransitTime, // getMaxTransitTime (GET_MAX_TRANSIT_TIME)
 		GetSystemUniqueID, // getSystemUniqueID (MVU GET_SYSTEM_UNIQUE_ID)
 		GetMediaClockReferenceInfo, // getMediaClockReferenceInfo (MVU GET_MEDIA_CLOCK_REFERENCE_INFO)
 	};

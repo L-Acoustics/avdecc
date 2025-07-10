@@ -552,6 +552,17 @@ static void updateStreamDynamicInfoData(entity::model::StreamNodeDynamicModel* c
 	utils::invokeProtectedHandler(dynamicInfoUpdatedHandler, *streamDynamicModel->streamDynamicInfo);
 }
 
+static bool computeIsOverLatency(std::chrono::nanoseconds const& presentationTimeOffset, std::optional<std::uint32_t> const& msrpAccumulatedLatency) noexcept
+{
+	// If we have msrpAccumulatedLatency
+	if (msrpAccumulatedLatency)
+	{
+		return *msrpAccumulatedLatency > static_cast<std::decay_t<decltype(msrpAccumulatedLatency)>::value_type>(presentationTimeOffset.count());
+	}
+
+	return false;
+}
+
 void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const streamFormatRequired, bool const milanExtendedRequired, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
@@ -598,111 +609,6 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 	}
 	updateStreamInputRunningStatus(controlledEntity, streamIndex, !info.streamInfoFlags.test(entity::StreamInfoFlag::StreamingWait), notFoundBehavior);
 
-#if 0
-	// According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
-	// This means that we should always replace the previously stored StreamInfo data with the last one received
-	{
-		// Create a new StreamDynamicInfo
-		auto dynamicInfo = entity::model::StreamDynamicInfo{};
-
-		// Update each field
-		dynamicInfo.isClassB = info.streamInfoFlags.test(entity::StreamInfoFlag::ClassB);
-		dynamicInfo.hasSavedState = info.streamInfoFlags.test(entity::StreamInfoFlag::SavedState);
-		dynamicInfo.doesSupportEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::SupportsEncrypted);
-		dynamicInfo.arePdusEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::EncryptedPdu);
-		dynamicInfo.hasTalkerFailed = info.streamInfoFlags.test(entity::StreamInfoFlag::TalkerFailed);
-		dynamicInfo._streamInfoFlags = info.streamInfoFlags;
-
-		if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamIDValid))
-		{
-			dynamicInfo.streamID = info.streamID;
-		}
-		if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpAccLatValid))
-		{
-			dynamicInfo.msrpAccumulatedLatency = info.msrpAccumulatedLatency;
-
-			// Check for Diagnostics - Latency Error
-			{
-				// Only if the entity has been advertised, onPreAdvertiseEntity will take care of the non-advertised ones later
-				if (controlledEntity.wasAdvertised())
-				{
-					auto isOverLatency = false;
-
-					// Only if Latency is greater than 0
-					if (info.msrpAccumulatedLatency > 0)
-					{
-						auto const& sink = controlledEntity.getSinkConnectionInformation(streamIndex);
-
-						// If the Stream is Connected, search for the Talker we are connected to
-						if (sink.state == entity::model::StreamInputConnectionInfo::State::Connected)
-						{
-							// Take a "scoped locked" shared copy of the ControlledEntity
-							auto talkerEntity = getControlledEntityImplGuard(sink.talkerStream.entityID, true);
-
-							if (talkerEntity)
-							{
-								auto const& talker = *talkerEntity;
-
-								// Only process advertised entities, onPreAdvertiseEntity will take care of the non-advertised ones later
-								if (talker.wasAdvertised())
-								{
-									try
-									{
-										auto const& talkerStreamOutputNode = talker.getStreamOutputNode(talker.getCurrentConfigurationIndex(), sink.talkerStream.streamIndex);
-										if (talkerStreamOutputNode.dynamicModel.streamDynamicInfo)
-										{
-											isOverLatency = info.msrpAccumulatedLatency > (*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency;
-										}
-									}
-									catch (ControlledEntity::Exception const&)
-									{
-										// Ignore Exception
-									}
-								}
-							}
-						}
-					}
-
-					updateStreamInputLatency(controlledEntity, streamIndex, isOverLatency);
-				}
-			}
-		}
-		if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamDestMacValid))
-		{
-			dynamicInfo.streamDestMac = info.streamDestMac;
-		}
-		if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpFailureValid))
-		{
-			dynamicInfo.msrpFailureCode = info.msrpFailureCode;
-			dynamicInfo.msrpFailureBridgeID = info.msrpFailureBridgeID;
-		}
-		if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamVlanIDValid))
-		{
-			dynamicInfo.streamVlanID = info.streamVlanID;
-		}
-		// Milan 1.0 additions
-		dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
-		dynamicInfo.probingStatus = info.probingStatus;
-		dynamicInfo.acmpStatus = info.acmpStatus;
-
-		// Update StreamDynamicInfo
-		auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
-		if (currentConfigurationIndexOpt)
-		{
-			auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamInputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
-			if (streamDynamicModel)
-			{
-				streamDynamicModel->streamDynamicInfo = std::move(dynamicInfo);
-
-				// Entity was advertised to the user, notify observers
-				if (controlledEntity.wasAdvertised())
-				{
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel->streamDynamicInfo);
-				}
-			}
-		}
-	}
-#else
 	// According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
 	// This means that we should always replace the previously stored StreamInfo data with the last one received
 	// Unfortunately it proves very difficult to do so for some devices (like when receiving a SET_STREAM_INFO with only one field set, it must generate a GET_STREAM_INFO with all fields set)
@@ -743,15 +649,7 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 										try
 										{
 											auto const& talkerStreamOutputNode = talker.getStreamOutputNode(talker.getCurrentConfigurationIndex(), sink.talkerStream.streamIndex);
-											// If we have StreamDynamicInfo data
-											if (talkerStreamOutputNode.dynamicModel.streamDynamicInfo)
-											{
-												// If we have a msrpAccumulatedLatency value
-												if ((*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
-												{
-													isOverLatency = msrpAccumulatedLatency > *(*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency;
-												}
-											}
+											isOverLatency = computeIsOverLatency(talkerStreamOutputNode.dynamicModel.presentationTimeOffset, msrpAccumulatedLatency);
 										}
 										catch (ControlledEntity::Exception const&)
 										{
@@ -775,7 +673,6 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 				});
 		}
 	}
-#endif
 }
 
 void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const streamFormatRequired, bool const milanExtendedRequired, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
@@ -824,71 +721,6 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 	}
 	updateStreamOutputRunningStatus(controlledEntity, streamIndex, !info.streamInfoFlags.test(entity::StreamInfoFlag::StreamingWait), notFoundBehavior);
 
-#if 0
-	// According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
-	// This means that we should always replace the previously stored StreamInfo data with the last one received
-	{
-		// Create a new StreamDynamicInfo
-		auto dynamicInfo = entity::model::StreamDynamicInfo{};
-
-		// Update each field
-		dynamicInfo.isClassB = info.streamInfoFlags.test(entity::StreamInfoFlag::ClassB);
-		dynamicInfo.hasSavedState = info.streamInfoFlags.test(entity::StreamInfoFlag::SavedState);
-		dynamicInfo.doesSupportEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::SupportsEncrypted);
-		dynamicInfo.arePdusEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::EncryptedPdu);
-		dynamicInfo.hasTalkerFailed = info.streamInfoFlags.test(entity::StreamInfoFlag::TalkerFailed);
-		dynamicInfo._streamInfoFlags = info.streamInfoFlags;
-
-		if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamIDValid))
-		{
-			dynamicInfo.streamID = info.streamID;
-		}
-		if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpAccLatValid))
-		{
-			dynamicInfo.msrpAccumulatedLatency = info.msrpAccumulatedLatency;
-
-			// Entity was advertised to the user, notify observers
-			if (controlledEntity.wasAdvertised())
-			{
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onMaxTransitTimeChanged, this, &controlledEntity, streamIndex, std::chrono::nanoseconds{ info.msrpAccumulatedLatency });
-			}
-		}
-		if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamDestMacValid))
-		{
-			dynamicInfo.streamDestMac = info.streamDestMac;
-		}
-		if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpFailureValid))
-		{
-			dynamicInfo.msrpFailureCode = info.msrpFailureCode;
-			dynamicInfo.msrpFailureBridgeID = info.msrpFailureBridgeID;
-		}
-		if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamVlanIDValid))
-		{
-			dynamicInfo.streamVlanID = info.streamVlanID;
-		}
-		// Milan 1.0 additions
-		dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
-		dynamicInfo.probingStatus = info.probingStatus;
-		dynamicInfo.acmpStatus = info.acmpStatus;
-
-		// Update StreamDynamicInfo
-		auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
-		if (currentConfigurationIndexOpt)
-		{
-			auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
-			if (streamDynamicModel)
-			{
-				streamDynamicModel->streamDynamicInfo = std::move(dynamicInfo);
-
-				// Entity was advertised to the user, notify observers
-				if (controlledEntity.wasAdvertised())
-				{
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel->streamDynamicInfo);
-				}
-			}
-		}
-	}
-#else
 	// According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
 	// This means that we should always replace the previously stored StreamInfo data with the last one received
 	// Unfortunately it proves very difficult to do so for some devices (like when receiving a SET_STREAM_INFO with only one field set, it must generate a GET_STREAM_INFO with all fields set)
@@ -902,12 +734,14 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 		if (streamDynamicModel)
 		{
 			updateStreamDynamicInfoData(streamDynamicModel, info,
-				[this, &controlledEntity, streamIndex](std::uint32_t const msrpAccumulatedLatency)
+				[this, &controlledEntity, streamIndex, notFoundBehavior](std::uint32_t const msrpAccumulatedLatency)
 				{
-					// Entity was advertised to the user, notify observers
-					if (controlledEntity.wasAdvertised())
+					// Milan devices use the msrpAccumulatedLatency value to compute the Max Transit Time
+					auto const milanInfo = controlledEntity.getMilanInfo();
+					if (milanInfo && (*milanInfo).specificationVersion >= entity::model::MilanVersion{ 1, 0 })
 					{
-						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onMaxTransitTimeChanged, this, &controlledEntity, streamIndex, std::chrono::nanoseconds{ msrpAccumulatedLatency });
+						// Forward to updateMaxTransitTime method
+						updateMaxTransitTime(controlledEntity, streamIndex, std::chrono::nanoseconds{ msrpAccumulatedLatency }, notFoundBehavior);
 					}
 				},
 				[this, &controlledEntity, streamIndex](entity::model::StreamDynamicInfo const& streamDynamicInfo)
@@ -920,7 +754,6 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 				});
 		}
 	}
-#endif
 }
 
 void ControllerImpl::updateEntityName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
@@ -1864,14 +1697,11 @@ void ControllerImpl::updateMaxTransitTime(ControlledEntityImpl& controlledEntity
 			}
 		}
 
-		// Update maxTransitTime
-		auto& streamDynamicInfo = *streamDynamicModel->streamDynamicInfo;
-		auto const msrpAccumulatedLatency = static_cast<decltype(streamDynamicInfo.msrpAccumulatedLatency)::value_type>(maxTransitTime.count());
-
-		// No value yet or changed
-		if (!streamDynamicInfo.msrpAccumulatedLatency.has_value() || *streamDynamicInfo.msrpAccumulatedLatency != msrpAccumulatedLatency)
+		// Value changed
+		if (streamDynamicModel->presentationTimeOffset != maxTransitTime)
 		{
-			streamDynamicInfo.msrpAccumulatedLatency = msrpAccumulatedLatency;
+			// Update maxTransitTime
+			streamDynamicModel->presentationTimeOffset = maxTransitTime;
 
 			// Entity was advertised to the user, notify observers
 			if (controlledEntity.wasAdvertised())
@@ -2657,6 +2487,13 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 				controller->getStreamOutputCounters(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetStreamOutputCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
 			};
 			break;
+		case ControlledEntityImpl::DynamicInfoType::GetMaxTransitTime:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getMaxTransitTime (StreamIndex={})", descriptorIndex);
+				controller->getMaxTransitTime(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetMaxTransitTimeResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+			};
+			break;
 		case ControlledEntityImpl::DynamicInfoType::GetSystemUniqueID:
 			queryFunc = [this, entityID](entity::ControllerEntity* const controller) noexcept
 			{
@@ -3012,6 +2849,15 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 		DynamicInfoVisitor& operator=(DynamicInfoVisitor&&) = delete;
 
 	private:
+		bool shouldGetMaxTransitTime() const noexcept
+		{
+			// If device is Milan, do not try to get MaxTransitTime as we are using GET_STREAM_INFO to report it
+			if (_milanVersion >= entity::model::MilanVersion{ 1, 0 })
+			{
+				return false;
+			}
+			return true;
+		}
 		// model::EntityModelVisitor overrides
 		virtual void visit(ControlledEntity const* const /*entity*/, model::EntityNode const& /*node*/) noexcept override
 		{
@@ -3082,6 +2928,19 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			else
 			{
 				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters, node.descriptorIndex);
+			}
+
+			// MaxTransitTime
+			if (shouldGetMaxTransitTime())
+			{
+				if (_usePackedDynamicInfo)
+				{
+					_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetMaxTransitTime, { entity::model::DescriptorType::StreamOutput, node.descriptorIndex } });
+				}
+				else
+				{
+					_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetMaxTransitTime, node.descriptorIndex);
+				}
 			}
 
 			// TX_STATE
@@ -5046,13 +4905,10 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 
 											// Check for Latency Error (if the Listener was advertised before this Talker, it couldn't check Talker's PresentationTime, so do it now)
 											// If we have StreamDynamicInfo data
-											if (streamOutputNode.dynamicModel.streamDynamicInfo && streamInputNode.dynamicModel.streamDynamicInfo)
+											if (streamInputNode.dynamicModel.streamDynamicInfo)
 											{
-												// If we have a msrpAccumulatedLatency value
-												if ((*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency && (*streamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
-												{
-													updateStreamInputLatency(listenerEntity, streamIndex, *(*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency > *(*streamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency);
-												}
+												auto const isOverLatency = computeIsOverLatency(streamOutputNode.dynamicModel.presentationTimeOffset, (*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency);
+												updateStreamInputLatency(listenerEntity, streamIndex, isOverLatency);
 											}
 										}
 									}
@@ -5114,13 +4970,9 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 							{
 								auto const& talkerStreamOutputNode = talkerEntity.getStreamOutputNode(talkerEntity.getCurrentConfigurationIndex(), talkerStreamIndex);
 								// If we have StreamDynamicInfo data
-								if (talkerStreamOutputNode.dynamicModel.streamDynamicInfo && streamInputNode.dynamicModel.streamDynamicInfo)
+								if (streamInputNode.dynamicModel.streamDynamicInfo)
 								{
-									// If we have a msrpAccumulatedLatency value
-									if ((*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency && (*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
-									{
-										isOverLatency = *(*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency > *(*talkerStreamOutputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency;
-									}
+									isOverLatency = computeIsOverLatency(talkerStreamOutputNode.dynamicModel.presentationTimeOffset, (*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency);
 								}
 							}
 							catch (ControlledEntity::Exception const&)

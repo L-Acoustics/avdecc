@@ -227,6 +227,7 @@ public:
 		TimingName,
 		PtpInstanceName,
 		PtpPortName,
+		GetMaxTransitTime,
 	};
 
 	/**
