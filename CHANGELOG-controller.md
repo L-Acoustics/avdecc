@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - `computeEntityModelChecksum` not returning a deterministic value for all OSes
+- [setMaxTransitTime and getMaxTransitTime not sending any message](https://github.com/L-Acoustics/avdecc/issues/183)
 
 ## [4.1.0] - 2025-04-16
 ### Added

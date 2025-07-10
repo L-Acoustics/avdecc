@@ -2332,22 +2332,18 @@ void ControllerVirtualProxy::setMaxTransitTime(UniqueIdentifier const targetEnti
 	auto const isVirtual = isVirtualEntity(targetEntityID);
 	if (isVirtual && _virtualInterface)
 	{
-		auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
-		if (_virtualInterface)
-		{
-			// Forward call to the virtual interface
-			la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
-				[this, targetEntityID, streamIndex, maxTransitTime, handler]()
-				{
-					auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
-					_virtualInterface->setMaxTransitTime(targetEntityID, streamIndex, maxTransitTime, handler);
-				});
-		}
-		else
-		{
-			// Forward call to real interface
-			_realInterface->setMaxTransitTime(targetEntityID, streamIndex, maxTransitTime, handler);
-		}
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, streamIndex, maxTransitTime, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->setMaxTransitTime(targetEntityID, streamIndex, maxTransitTime, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->setMaxTransitTime(targetEntityID, streamIndex, maxTransitTime, handler);
 	}
 }
 
@@ -2356,22 +2352,18 @@ void ControllerVirtualProxy::getMaxTransitTime(UniqueIdentifier const targetEnti
 	auto const isVirtual = isVirtualEntity(targetEntityID);
 	if (isVirtual && _virtualInterface)
 	{
-		auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
-		if (_virtualInterface)
-		{
-			// Forward call to the virtual interface
-			la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
-				[this, targetEntityID, streamIndex, handler]()
-				{
-					auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
-					_virtualInterface->getMaxTransitTime(targetEntityID, streamIndex, handler);
-				});
-		}
-		else
-		{
-			// Forward call to real interface
-			_realInterface->getMaxTransitTime(targetEntityID, streamIndex, handler);
-		}
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, streamIndex, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->getMaxTransitTime(targetEntityID, streamIndex, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->getMaxTransitTime(targetEntityID, streamIndex, handler);
 	}
 }
 
