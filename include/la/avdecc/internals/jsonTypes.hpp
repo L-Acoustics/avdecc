@@ -164,6 +164,20 @@ struct adl_serializer<std::chrono::milliseconds>
 	}
 };
 
+/** std::chrono::nanoseconds converter */
+template<>
+struct adl_serializer<std::chrono::nanoseconds>
+{
+	static void to_json(json& j, std::chrono::nanoseconds const& value)
+	{
+		j = value.count();
+	}
+	static void from_json(json const& j, std::chrono::nanoseconds& value)
+	{
+		value = std::chrono::nanoseconds{ j.get<std::chrono::nanoseconds::rep>() };
+	}
+};
+
 /** converter for an optionnaly defined value */
 template<typename KeyT, typename ValueType>
 inline void get_optional_value(json const& j, KeyT&& key, ValueType& v)
@@ -1014,6 +1028,7 @@ constexpr auto StreamOutputNode_Dynamic_ObjectName = "object_name";
 constexpr auto StreamOutputNode_Dynamic_StreamFormat = "stream_format";
 constexpr auto StreamOutputNode_Dynamic_StreamRunning = "stream_running";
 constexpr auto StreamOutputNode_Dynamic_StreamDynamicInfo = "stream_dynamic_info";
+constexpr auto StreamOutputNode_Dynamic_PresentationTimeOffset = "presentation_time_offset";
 constexpr auto StreamOutputNode_Dynamic_Counters = "counters";
 
 /* JackNode */
@@ -1916,6 +1931,7 @@ inline void to_json(json& j, StreamOutputNodeDynamicModel const& d)
 	j[keyName::StreamOutputNode_Dynamic_StreamFormat] = d.streamFormat;
 	j[keyName::StreamOutputNode_Dynamic_StreamRunning] = d.isStreamRunning;
 	j[keyName::StreamOutputNode_Dynamic_StreamDynamicInfo] = d.streamDynamicInfo;
+	j[keyName::StreamOutputNode_Dynamic_PresentationTimeOffset] = d.presentationTimeOffset;
 	j[keyName::StreamOutputNode_Dynamic_Counters] = d.counters;
 }
 inline void from_json(json const& j, StreamOutputNodeDynamicModel& d)
@@ -1924,6 +1940,7 @@ inline void from_json(json const& j, StreamOutputNodeDynamicModel& d)
 	j.at(keyName::StreamOutputNode_Dynamic_StreamFormat).get_to(d.streamFormat);
 	get_optional_value(j, keyName::StreamOutputNode_Dynamic_StreamRunning, d.isStreamRunning);
 	get_optional_value(j, keyName::StreamOutputNode_Dynamic_StreamDynamicInfo, d.streamDynamicInfo);
+	get_optional_value(j, keyName::StreamOutputNode_Dynamic_PresentationTimeOffset, d.presentationTimeOffset);
 	get_optional_value(j, keyName::StreamOutputNode_Dynamic_Counters, d.counters);
 }
 

@@ -151,6 +151,7 @@ public:
 		GetClockDomainCounters, // getClockDomainCounters (GET_COUNTERS)
 		GetStreamInputCounters, // getStreamInputCounters (GET_COUNTERS)
 		GetStreamOutputCounters, // getStreamOutputCounters (GET_COUNTERS)
+		GetMaxTransitTime, // getMaxTransitTime (GET_MAX_TRANSIT_TIME)
 		GetSystemUniqueID, // getSystemUniqueID (MVU GET_SYSTEM_UNIQUE_ID)
 		GetMediaClockReferenceInfo, // getMediaClockReferenceInfo (MVU GET_MEDIA_CLOCK_REFERENCE_INFO)
 	};
@@ -493,6 +494,7 @@ private:
 	void addOrFixStreamPortInputMapping(entity::model::AudioMappings& mappings, entity::model::AudioMapping const& mapping) const noexcept;
 	void fixStreamPortInputMappings(std::map<entity::model::StreamPortIndex, model::StreamPortInputNode>& streamPorts) noexcept;
 	void fixStreamPortMappings(model::ConfigurationNode& configNode) noexcept;
+	void setDefaultPresentationTimes(model::ConfigurationNode& configNode) noexcept;
 	bool hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID) noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	void buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept;

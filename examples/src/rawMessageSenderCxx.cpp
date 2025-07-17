@@ -461,6 +461,16 @@ inline void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterf
 				outputText("Ignoring discovered controller entity\n");
 				return;
 			}
+			if (!entity.getEntityCapabilities().test(la::avdecc::entity::EntityCapability::VendorUniqueSupported))
+			{
+				outputText("Ignoring entity not supporting Vendor Unique\n");
+				return;
+			}
+			if (entity.getListenerCapabilities().test(la::avdecc::entity::ListenerCapability::OtherSink))
+			{
+				outputText("Ignoring entity with Other Sink capability\n");
+				return;
+			}
 			outputText("Found an entity (either local or remote)\n");
 			_foundEntity = entityID;
 		}
