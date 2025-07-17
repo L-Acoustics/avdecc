@@ -59,6 +59,7 @@ public:
 		Unknown = 0,
 		Milan_12 = 1,
 		IEEE17221_2021 = 2,
+		Milan_SignalPresence = 3,
 	};
 
 	/** Default constructor */
@@ -76,7 +77,7 @@ public:
 	template<typename CountersType, typename ValidFlagType = typename CountersType::key_type, typename ValidFlagsType = utils::EnumBitfield<ValidFlagType>>
 	StreamOutputCounters(CountersType const& counters) noexcept
 	{
-		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221>, "Invalid type for StreamOutputCounterValidFlags");
+		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilanSignalPresence>, "Invalid type for StreamOutputCounterValidFlags");
 
 		// Set the counters
 		setCounters(counters);
@@ -99,7 +100,7 @@ public:
 	template<typename ValidFlagsType>
 	ValidFlagsType getValidFlags() const
 	{
-		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221>, "Invalid type for StreamOutputCounterValidFlags");
+		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilanSignalPresence>, "Invalid type for StreamOutputCounterValidFlags");
 
 		// Check if requested template parameter type matches the internal CounterType
 		if (typeid(ValidFlagsType).hash_code() != _counterTypeHash)
@@ -114,7 +115,7 @@ public:
 	template<typename ValidFlagsType, typename CountersType = std::map<typename ValidFlagsType::value_type, DescriptorCounter>>
 	CountersType getCounters() const
 	{
-		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221>, "Invalid type for StreamOutputCounterValidFlags");
+		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilanSignalPresence>, "Invalid type for StreamOutputCounterValidFlags");
 
 		// Check if requested template parameter type matches the internal CounterType
 		if (typeid(ValidFlagsType).hash_code() != _counterTypeHash)
@@ -146,7 +147,7 @@ public:
 	template<typename CountersType, typename ValidFlagType = typename CountersType::key_type, typename ValidFlagsType = utils::EnumBitfield<ValidFlagType>>
 	void setCounters(CountersType const& counters) noexcept
 	{
-		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221>, "Invalid type for StreamOutputCounterValidFlags");
+		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilanSignalPresence>, "Invalid type for StreamOutputCounterValidFlags");
 
 		// Convert template type to CounterType
 		auto const hash = typeid(ValidFlagsType).hash_code();
@@ -253,6 +254,8 @@ private:
 				return typeid(StreamOutputCounterValidFlagsMilan12).hash_code();
 			case CounterType::IEEE17221_2021:
 				return typeid(StreamOutputCounterValidFlags17221).hash_code();
+			case CounterType::Milan_SignalPresence:
+				return typeid(StreamOutputCounterValidFlagsMilanSignalPresence).hash_code();
 			default:
 				AVDECC_ASSERT(false, "Unhandled CounterType");
 				return 0;
@@ -263,6 +266,7 @@ private:
 		static std::unordered_map<size_t, CounterType> s_hashMap{
 			{ typeid(StreamOutputCounterValidFlagsMilan12).hash_code(), CounterType::Milan_12 },
 			{ typeid(StreamOutputCounterValidFlags17221).hash_code(), CounterType::IEEE17221_2021 },
+			{ typeid(StreamOutputCounterValidFlagsMilanSignalPresence).hash_code(), CounterType::Milan_SignalPresence },
 		};
 
 		if (auto const& it = s_hashMap.find(hash); it != s_hashMap.end())

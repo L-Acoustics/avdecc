@@ -41,11 +41,14 @@ namespace entity
 enum class LA_AVDECC_API StreamOutputCounterValidFlagMilan12 : model::DescriptorCounterValidFlag;
 /* STREAM_OUTPUT Counters - IEEE1722.1-2021 Clause 7.4.42.2.5 */
 enum class LA_AVDECC_API StreamOutputCounterValidFlag17221 : model::DescriptorCounterValidFlag;
+/* STREAM_OUTPUT Counters - Milan 1.3 Clause 5.3.7.7 */
+enum class LA_AVDECC_API StreamOutputCounterValidFlagMilanSignalPresence : model::DescriptorCounterValidFlag;
 } // namespace entity
 namespace utils
 {
 template class LA_AVDECC_TYPE_INFO_EXPORT EnumBitfield<entity::StreamOutputCounterValidFlagMilan12>;
 template class LA_AVDECC_TYPE_INFO_EXPORT EnumBitfield<entity::StreamOutputCounterValidFlag17221>;
+template class LA_AVDECC_TYPE_INFO_EXPORT EnumBitfield<entity::StreamOutputCounterValidFlagMilanSignalPresence>;
 } // namespace utils
 } // namespace la::avdecc
 
@@ -421,6 +424,31 @@ enum class StreamOutputCounterValidFlag17221 : model::DescriptorCounterValidFlag
 };
 using StreamOutputCounterValidFlags17221 = utils::EnumBitfield<StreamOutputCounterValidFlag17221>;
 
+/* STREAM_OUTPUT Counters - Milan 1.3 Clause 5.3.7.7 */
+enum class StreamOutputCounterValidFlagMilanSignalPresence : model::DescriptorCounterValidFlag /* Do not use LA_AVDECC_API here, it is forward declared */
+{
+	None = 0u,
+	StreamStart = 1u << 0, /**< Incremented when a stream is started. */
+	StreamStop = 1u << 1, /**< Incremented when a stream is stopped. */
+	StreamInterrupted = 1u << 2, /**< Incremented when Stream playback is interrupted. */
+	MediaReset = 1u << 3, /**< Increments on a toggle of the mr bit in the Stream data AVTPDU. */
+	TimestampUncertain = 1u << 4, /**< Increments on a toggle of the tu bit in the Stream data AVTPDU. */
+	TimestampValid = 1u << 5, /**< Increments on receipt of a Stream data AVTPDU with the tv bit set. */
+	TimestampNotValid = 1u << 6, /**< Increments on receipt of a Stream data AVTPDU with tv bit cleared. */
+	FramesTx = 1u << 7, /**< Increments on each Stream data AVTPDU transmitted. */
+	SignalPresence2 = 1u << 22, /**< Signal Presence 2. */
+	SignalPresence1 = 1u << 23, /**< Signal Presence 1. */
+	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */
+	EntitySpecific7 = 1u << 25, /**< Entity Specific counter 7. */
+	EntitySpecific6 = 1u << 26, /**< Entity Specific counter 6. */
+	EntitySpecific5 = 1u << 27, /**< Entity Specific counter 5. */
+	EntitySpecific4 = 1u << 28, /**< Entity Specific counter 4. */
+	EntitySpecific3 = 1u << 29, /**< Entity Specific counter 3. */
+	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
+	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
+};
+using StreamOutputCounterValidFlagsMilanSignalPresence = utils::EnumBitfield<StreamOutputCounterValidFlagMilanSignalPresence>;
+
 /** Proxy class for StreamOutputCounterValidFlags */
 class LA_AVDECC_API StreamOutputCounterValidFlags final
 {
@@ -432,8 +460,8 @@ public:
 	{
 	}
 
-	/** Either get Milan 1.2 or IEEE1722.1-2021 StreamOutputCounterValidFlags */
-	template<typename ValidFlagsType, typename = std::enable_if_t<std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221>>>
+	/** Either get Milan 1.2, IEEE1722.1-2021 or MilanSignalPresence StreamOutputCounterValidFlags */
+	template<typename ValidFlagsType, typename = std::enable_if_t<std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilanSignalPresence>>>
 	constexpr ValidFlagsType get() const noexcept
 	{
 		auto flags = ValidFlagsType{};

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Introduced checksum v5 to include `specification_version` field from `MilanInfo`
   - connectStream and disconnectStream methods automatically choose MVU Bind mechanism if available
   - Extended GET_SYSTEM_UNIQUE_ID and SET_SYSTEM_UNIQUE_ID commands
+  - Signal Presence support in StreamOutputCounters
 
 ### Changed
 - [StreamOutputNode has a new field: `presentationTimeOffset` to replace the `msrpAccumulatedLatency` field (which was in StreamDynamicInfo struct)](https://github.com/L-Acoustics/avdecc/issues/147)

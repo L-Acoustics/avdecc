@@ -771,6 +771,7 @@ DEFINE_AEM_TREE_NODE(Entity);
 %template(StreamInputCounters) std::map<la::avdecc::entity::StreamInputCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(StreamOutputCountersMilan12) std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::model::DescriptorCounter>;
 %template(StreamOutputCounters17221) std::map<la::avdecc::entity::StreamOutputCounterValidFlag17221, la::avdecc::entity::model::DescriptorCounter>;
+%template(StreamOutputCountersMilanSignalPresence) std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence, la::avdecc::entity::model::DescriptorCounter>;
 %template(AvbInterfaceCounters) std::map<la::avdecc::entity::AvbInterfaceCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(ClockDomainCounters) std::map<la::avdecc::entity::ClockDomainCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(LocalizedStringMap) std::unordered_map<la::avdecc::entity::model::StringsIndex, la::avdecc::entity::model::AvdeccFixedString>;
@@ -778,18 +779,26 @@ DEFINE_AEM_TREE_NODE(Entity);
 %template(getValidFlags_Milan12) la::avdecc::entity::model::StreamOutputCounters::getValidFlags<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>;
 // Enable templated la::avdecc::entity::model::StreamOutputCounters::getValidFlags for StreamOutputCounterValidFlags17221 type
 %template(getValidFlags_17221) la::avdecc::entity::model::StreamOutputCounters::getValidFlags<la::avdecc::entity::StreamOutputCounterValidFlags17221>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::getValidFlags for StreamOutputCounterValidFlagsMilanSignalPresence type
+%template(getValidFlags_MilanSignalPresence) la::avdecc::entity::model::StreamOutputCounters::getValidFlags<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>;
 // Enable templated la::avdecc::entity::model::StreamOutputCounters::getCounters for StreamOutputCounterValidFlagsMilan12 type
 %template(getCounters_Milan12) la::avdecc::entity::model::StreamOutputCounters::getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12, std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::model::DescriptorCounter>>;
 // Enable templated la::avdecc::entity::model::StreamOutputCounters::getCounters for StreamOutputCounterValidFlags17221 type
 %template(getCounters_17221) la::avdecc::entity::model::StreamOutputCounters::getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221, std::map<la::avdecc::entity::StreamOutputCounterValidFlag17221, la::avdecc::entity::model::DescriptorCounter>>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::getCounters for StreamOutputCounterValidFlagsMilanSignalPresence type
+%template(getCounters_MilanSignalPresence) la::avdecc::entity::model::StreamOutputCounters::getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence, std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence, la::avdecc::entity::model::DescriptorCounter>>;
 // Enable templated la::avdecc::entity::model::StreamOutputCounters::convertCounters for StreamOutputCounterValidFlagsMilan12 type
 %template(convertCounters_Milan12) la::avdecc::entity::model::StreamOutputCounters::convertCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12, std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::model::DescriptorCounter>>;
 // Enable templated la::avdecc::entity::model::StreamOutputCounters::convertCounters for StreamOutputCounterValidFlags17221 type
 %template(convertCounters_17221) la::avdecc::entity::model::StreamOutputCounters::convertCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221, std::map<la::avdecc::entity::StreamOutputCounterValidFlag17221, la::avdecc::entity::model::DescriptorCounter>>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::convertCounters for StreamOutputCounterValidFlagsMilanSignalPresence type
+%template(convertCounters_MilanSignalPresence) la::avdecc::entity::model::StreamOutputCounters::convertCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence, std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence, la::avdecc::entity::model::DescriptorCounter>>;
 // Enable templated la::avdecc::entity::model::StreamOutputCounters::setCounters for StreamOutputCountersMilan12 type
 %template(setCounters_Milan12) la::avdecc::entity::model::StreamOutputCounters::setCounters<std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::model::DescriptorCounter>, la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>;
 // Enable templated la::avdecc::entity::model::StreamOutputCounters::setCounters for StreamOutputCounters17221 type
 %template(setCounters_17221) la::avdecc::entity::model::StreamOutputCounters::setCounters<std::map<la::avdecc::entity::StreamOutputCounterValidFlag17221, la::avdecc::entity::model::DescriptorCounter>, la::avdecc::entity::StreamOutputCounterValidFlag17221, la::avdecc::entity::StreamOutputCounterValidFlags17221>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::setCounters for StreamOutputCountersMilanSignalPresence type
+%template(setCounters_MilanSignalPresence) la::avdecc::entity::model::StreamOutputCounters::setCounters<std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence, la::avdecc::entity::model::DescriptorCounter>, la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence, la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>;
 
 ////////////////////////////////////////
 // JSON SERIALIZATION

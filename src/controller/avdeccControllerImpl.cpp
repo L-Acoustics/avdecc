@@ -1530,10 +1530,20 @@ entity::model::StreamOutputCounters::CounterType ControllerImpl::getStreamOutput
 	if (milanInfo)
 	{
 		// At least Milan 1.0, use the Milan type counters
-		if (milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 })
+		// This changed since Milan 1.3 to use the same mechanism as IEEE 1722.1 devices
+		if (milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 } && milanInfo->specificationVersion < entity::model::MilanVersion{ 1, 3 })
 		{
 			return entity::model::StreamOutputCounters::CounterType::Milan_12;
 		}
+
+		// Check for the TalkerSignalPresence flag, if present use the special SignalPresence counters
+		if (milanInfo->featuresFlags.test(entity::MilanInfoFeaturesFlag::TalkerSignalPresence))
+		{
+			return entity::model::StreamOutputCounters::CounterType::Milan_SignalPresence;
+		}
+
+		// Otherwise use the 1722.1 type counters
+		return entity::model::StreamOutputCounters::CounterType::IEEE17221_2021;
 	}
 
 	// Otherwise use the 1722.1 type counters
@@ -1554,22 +1564,58 @@ void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlled
 		// If Milan compatible device, validate counters values
 		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 		{
-			try
+			try // Should not be needed, but just in case
 			{
-#pragma message("TODO: Handle Milan 1.3 counters")
-				auto milan12Counters = streamCounters->getCounters<entity::StreamOutputCounterValidFlagsMilan12>();
-				// StreamStop should either be equal to StreamStart or be one more (Milan 1.2 Clause 5.3.7.7)
-				// We are safe to get those counters, check for their presence during first enumeration has already been done
-				auto const startValue = milan12Counters[entity::StreamOutputCounterValidFlagMilan12::StreamStart];
-				auto const stopValue = milan12Counters[entity::StreamOutputCounterValidFlagMilan12::StreamStop];
-				if (startValue != stopValue && startValue != (stopValue + 1))
+				switch (streamCounters->getCounterType())
 				{
-					removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.7.7", "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT: " + std::to_string(streamIndex) + " (" + std::to_string(startValue) + " / " + std::to_string(stopValue) + ")");
+					case entity::model::StreamOutputCounters::CounterType::Milan_12: // Milan 1.0 to 1.3 (exclusive)
+					{
+						auto milan12Counters = streamCounters->getCounters<entity::StreamOutputCounterValidFlagsMilan12>();
+						// StreamStop should either be equal to StreamStart or be one more (Milan 1.2 Clause 5.3.7.7)
+						// We are safe to get those counters, check for their presence during first enumeration has already been done
+						auto const startValue = milan12Counters[entity::StreamOutputCounterValidFlagMilan12::StreamStart];
+						auto const stopValue = milan12Counters[entity::StreamOutputCounterValidFlagMilan12::StreamStop];
+						if (startValue != stopValue && startValue != (stopValue + 1))
+						{
+							removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.7.7", "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT: " + std::to_string(streamIndex) + " (" + std::to_string(startValue) + " / " + std::to_string(stopValue) + ")");
+						}
+						break;
+					}
+					case entity::model::StreamOutputCounters::CounterType::IEEE17221_2021: // Milan 1.3 and later
+					{
+						auto milan13Counters = streamCounters->getCounters<entity::StreamOutputCounterValidFlags17221>();
+						// StreamStop should either be equal to StreamStart or be one more (Milan 1.3 Clause 5.3.7.7)
+						// We are safe to get those counters, check for their presence during first enumeration has already been done
+						auto const startValue = milan13Counters[entity::StreamOutputCounterValidFlag17221::StreamStart];
+						auto const stopValue = milan13Counters[entity::StreamOutputCounterValidFlag17221::StreamStop];
+						if (startValue != stopValue && startValue != (stopValue + 1))
+						{
+							removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.3 - 5.3.7.7", "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT: " + std::to_string(streamIndex) + " (" + std::to_string(startValue) + " / " + std::to_string(stopValue) + ")");
+						}
+						break;
+					}
+					case entity::model::StreamOutputCounters::CounterType::Milan_SignalPresence: // Milan 1.3 and later (With TalkerSignalPresence flag set)
+					{
+						auto milanSignalPresenceCounters = streamCounters->getCounters<entity::StreamOutputCounterValidFlagsMilanSignalPresence>();
+						// StreamStop should either be equal to StreamStart or be one more (Milan 1.3 Clause 5.3.7.7)
+						// We are safe to get those counters, check for their presence during first enumeration has already been done
+						auto const startValue = milanSignalPresenceCounters[entity::StreamOutputCounterValidFlagMilanSignalPresence::StreamStart];
+						auto const stopValue = milanSignalPresenceCounters[entity::StreamOutputCounterValidFlagMilanSignalPresence::StreamStop];
+						if (startValue != stopValue && startValue != (stopValue + 1))
+						{
+							removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.3 - 5.3.7.7", "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT: " + std::to_string(streamIndex) + " (" + std::to_string(startValue) + " / " + std::to_string(stopValue) + ")");
+						}
+						break;
+					}
+					default: // Unsupported type
+						AVDECC_ASSERT(false, "Unsupported StreamOutputCounters type");
+						LOG_CONTROLLER_DEBUG(controlledEntity.getEntity().getEntityID(), "Unsupported StreamOutputCounters type: {}", utils::to_integral(streamCounters->getCounterType()));
+						break;
 				}
 			}
 			catch (std::invalid_argument const&)
 			{
-				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.7.7", "Invalid STREAM_OUTPUT counters type");
+				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.3 - 5.3.7.7", "Invalid STREAM_OUTPUT counters type");
 			}
 		}
 

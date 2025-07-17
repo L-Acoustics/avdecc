@@ -417,12 +417,13 @@ struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
 			switch (counters.getCounterType())
 			{
 				case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12:
-				{
 					writeStreamOutputCounter<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>(counters, object);
 					break;
-				}
 				case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
 					writeStreamOutputCounter<la::avdecc::entity::StreamOutputCounterValidFlags17221>(counters, object);
+					break;
+				case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_SignalPresence:
+					writeStreamOutputCounter<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>(counters, object);
 					break;
 				default:
 					AVDECC_ASSERT(false, "Unsupported StreamOutputCounterValidFlags type");
@@ -457,6 +458,11 @@ struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
 			case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
 			{
 				readStreamOutputCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>(*objectToRead, counters);
+				break;
+			}
+			case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_SignalPresence:
+			{
+				readStreamOutputCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>(*objectToRead, counters);
 				break;
 			}
 			default:
@@ -849,6 +855,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(model::StreamOutputCounters::CounterType, {
 																																				 { model::StreamOutputCounters::CounterType::Unknown, "UNKNOWN" },
 																																				 { model::StreamOutputCounters::CounterType::Milan_12, "MILAN_12" },
 																																				 { model::StreamOutputCounters::CounterType::IEEE17221_2021, "IEEE17221_2021" },
+																																				 { model::StreamOutputCounters::CounterType::Milan_SignalPresence, "MILAN_SIGNAL_PRESENCE" },
 																																			 });
 /* StreamOutputCounterValidFlagMilan12 conversion */
 NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlagMilan12, {
@@ -880,6 +887,29 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlag17221, {
 																																	{ StreamOutputCounterValidFlag17221::EntitySpecific2, "ENTITY_SPECIFIC_2" },
 																																	{ StreamOutputCounterValidFlag17221::EntitySpecific1, "ENTITY_SPECIFIC_1" },
 																																});
+
+/* StreamOutputCounterValidFlagMilanSignalPresence conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlagMilanSignalPresence, {
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::None, "UNKNOWN" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::StreamStart, "STREAM_START" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::StreamStop, "STREAM_STOP" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::StreamInterrupted, "STREAM_INTERRUPTED" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::MediaReset, "MEDIA_RESET" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::TimestampUncertain, "TIMESTAMP_UNCERTAIN" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::TimestampValid, "TIMESTAMP_VALID" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::TimestampNotValid, "TIMESTAMP_NOT_VALID" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::FramesTx, "FRAMES_TX" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::SignalPresence2, "SIGNAL_PRESENCE_2" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::SignalPresence1, "SIGNAL_PRESENCE_1" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific8, "ENTITY_SPECIFIC_8" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific7, "ENTITY_SPECIFIC_7" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific6, "ENTITY_SPECIFIC_6" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific5, "ENTITY_SPECIFIC_5" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific4, "ENTITY_SPECIFIC_4" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific3, "ENTITY_SPECIFIC_3" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific2, "ENTITY_SPECIFIC_2" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific1, "ENTITY_SPECIFIC_1" },
+																																							});
 
 /* MilanInfoFeaturesFlag conversion */
 NLOHMANN_JSON_SERIALIZE_ENUM(MilanInfoFeaturesFlag, {
