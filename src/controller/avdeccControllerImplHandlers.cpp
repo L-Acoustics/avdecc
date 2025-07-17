@@ -3243,7 +3243,7 @@ void ControllerImpl::onGetMaxTransitTimeResult(entity::controller::Interface con
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetMaxTransitTime, streamIndex, 0u, MilanRequirements{}))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetMaxTransitTime, streamIndex, 0u, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 3 }, std::nullopt, entity::model::MilanVersion{ 1, 2 } } }))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::GetMaxTransitTime);

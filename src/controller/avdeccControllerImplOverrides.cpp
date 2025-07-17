@@ -2320,17 +2320,21 @@ void ControllerImpl::smartSetMaxTransitTime(UniqueIdentifier const targetEntityI
 	if (controlledEntity)
 	{
 		// Check for Milan devices that use the msrpAccumulatedLatency field from SET_STREAM_INFO
+		// This changed since Milan 1.3 to use the same mechanism as IEEE 1722.1 devices
 		auto const milanInfo = controlledEntity->getMilanInfo();
-		if (milanInfo && (*milanInfo).specificationVersion >= entity::model::MilanVersion{ 1, 0 })
+		if (milanInfo)
 		{
-			// If entity is virtual, don't try to use SET_STREAM_INFO as it probably won't be supported by the VirtualProxy (it needs to respond with a full StreamInfo which might be very difficult to provide)
-			if (!controlledEntity->isVirtual())
+			if (milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 } && milanInfo->specificationVersion < entity::model::MilanVersion{ 1, 3 })
 			{
-				auto streamInfo = entity::model::StreamInfo{};
-				streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::MsrpAccLatValid);
-				streamInfo.msrpAccumulatedLatency = static_cast<decltype(streamInfo.msrpAccumulatedLatency)>(maxTransitTime.count());
-				setStreamOutputInfo(targetEntityID, streamIndex, streamInfo, handler);
-				return;
+				// If entity is virtual, don't try to use SET_STREAM_INFO as it probably won't be supported by the VirtualProxy (it needs to respond with a full StreamInfo which might be very difficult to provide)
+				if (!controlledEntity->isVirtual())
+				{
+					auto streamInfo = entity::model::StreamInfo{};
+					streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::MsrpAccLatValid);
+					streamInfo.msrpAccumulatedLatency = static_cast<decltype(streamInfo.msrpAccumulatedLatency)>(maxTransitTime.count());
+					setStreamOutputInfo(targetEntityID, streamIndex, streamInfo, handler);
+					return;
+				}
 			}
 		}
 

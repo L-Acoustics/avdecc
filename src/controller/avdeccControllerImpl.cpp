@@ -758,11 +758,15 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 				[this, &controlledEntity, streamIndex, notFoundBehavior](std::uint32_t const msrpAccumulatedLatency)
 				{
 					// Milan devices use the msrpAccumulatedLatency value to compute the Max Transit Time
+					// This changed since Milan 1.3 to use the same mechanism as IEEE 1722.1 devices
 					auto const milanInfo = controlledEntity.getMilanInfo();
-					if (milanInfo && (*milanInfo).specificationVersion >= entity::model::MilanVersion{ 1, 0 })
+					if (milanInfo)
 					{
-						// Forward to updateMaxTransitTime method
-						updateMaxTransitTime(controlledEntity, streamIndex, std::chrono::nanoseconds{ msrpAccumulatedLatency }, notFoundBehavior);
+						if (milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 } && milanInfo->specificationVersion < entity::model::MilanVersion{ 1, 3 })
+						{
+							// Forward to updateMaxTransitTime method
+							updateMaxTransitTime(controlledEntity, streamIndex, std::chrono::nanoseconds{ msrpAccumulatedLatency }, notFoundBehavior);
+						}
 					}
 				},
 				[this, &controlledEntity, streamIndex](entity::model::StreamDynamicInfo const& streamDynamicInfo)
@@ -2839,8 +2843,13 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			: _controller{ controller }
 			, _entity{ entity }
 			, _usePackedDynamicInfo{ _entity->isPackedDynamicInfoSupported() }
-			, _milanVersion{ _entity->getMilanCompatibilityVersion() }
+			, _milanCompatibilityVersion{ _entity->getMilanCompatibilityVersion() }
 		{
+			auto const milanInfo = _entity->getMilanInfo();
+			if (milanInfo)
+			{
+				_milanSpecVersion = milanInfo->specificationVersion;
+			}
 		}
 
 		entity::controller::DynamicInfoParameters const& getDynamicInfoParameters() const noexcept
@@ -2857,8 +2866,9 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 	private:
 		bool shouldGetMaxTransitTime() const noexcept
 		{
-			// If device is Milan, do not try to get MaxTransitTime as we are using GET_STREAM_INFO to report it
-			if (_milanVersion >= entity::model::MilanVersion{ 1, 0 })
+			// Milan devices are using GET_STREAM_INFO to report MaxTransitTime, so we do not need to query GET_MAX_TRANSIT_TIME
+			// This changed since Milan 1.3 to use the same mechanism as IEEE 1722.1 devices
+			if (_milanSpecVersion >= entity::model::MilanVersion{ 1, 0 } && _milanSpecVersion < entity::model::MilanVersion{ 1, 3 })
 			{
 				return false;
 			}
@@ -2892,7 +2902,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			}
 
 			// Get Milan global dynamic information (for Milan >= 1.2 devices)
-			if (_milanVersion >= entity::model::MilanVersion{ 1, 2 })
+			if (_milanCompatibilityVersion >= entity::model::MilanVersion{ 1, 2 })
 			{
 				// Get SystemUniqueID
 				_controller->queryInformation(_entity, entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetSystemUniqueID, entity::model::getInvalidDescriptorIndex());
@@ -3010,7 +3020,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, node.descriptorIndex);
 			}
 			// Get MediaClockReferenceInfo information (for Milan >= 1.2 devices)
-			if (_milanVersion >= entity::model::MilanVersion{ 1, 2 })
+			if (_milanCompatibilityVersion >= entity::model::MilanVersion{ 1, 2 })
 			{
 				_controller->queryInformation(_entity, entity::model::getInvalidDescriptorIndex(), ControlledEntityImpl::DynamicInfoType::GetMediaClockReferenceInfo, node.descriptorIndex);
 			}
@@ -3035,7 +3045,8 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 		ControlledEntityImpl* _entity{ nullptr };
 		entity::model::ConfigurationIndex _currentConfigurationIndex{ entity::model::getInvalidDescriptorIndex() };
 		bool _usePackedDynamicInfo{ false };
-		entity::model::MilanVersion _milanVersion{};
+		entity::model::MilanVersion _milanCompatibilityVersion{};
+		entity::model::MilanVersion _milanSpecVersion{};
 		entity::controller::DynamicInfoParameters _dynamicInfoParameters{};
 	};
 

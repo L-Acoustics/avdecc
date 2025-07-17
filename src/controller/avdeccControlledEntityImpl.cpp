@@ -3258,13 +3258,17 @@ void ControlledEntityImpl::setDefaultPresentationTimes(model::ConfigurationNode&
 			}
 
 			// Check for Milan devices that use the msrpAccumulatedLatency field
+			// This changed since Milan 1.3 to use the same mechanism as IEEE 1722.1 devices
 			auto const milanInfo = getMilanInfo();
-			if (milanInfo && (*milanInfo).specificationVersion >= entity::model::MilanVersion{ 1, 0 })
+			if (milanInfo)
 			{
-				if (dynamicModel.streamDynamicInfo && (*dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
+				if (milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 } && milanInfo->specificationVersion < entity::model::MilanVersion{ 1, 3 })
 				{
-					auto const msrpValueAsNs = std::chrono::nanoseconds{ *(*dynamicModel.streamDynamicInfo).msrpAccumulatedLatency };
-					defaultValue = std::chrono::duration_cast<decltype(defaultValue)>(msrpValueAsNs);
+					if (dynamicModel.streamDynamicInfo && (*dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
+					{
+						auto const msrpValueAsNs = std::chrono::nanoseconds{ *(*dynamicModel.streamDynamicInfo).msrpAccumulatedLatency };
+						defaultValue = std::chrono::duration_cast<decltype(defaultValue)>(msrpValueAsNs);
+					}
 				}
 			}
 
