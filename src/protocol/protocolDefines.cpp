@@ -320,6 +320,8 @@ AemCommandType::operator std::string() const noexcept
 		{ AemCommandType::SetStreamBackup.getValue(), "SET_STREAM_BACKUP" },
 		{ AemCommandType::GetStreamBackup.getValue(), "GET_STREAM_BACKUP" },
 		{ AemCommandType::GetDynamicInfo.getValue(), "GET_DYNAMIC_INFO" },
+		{ AemCommandType::SetMaxTransitTime.getValue(), "SET_MAX_TRANSIT_TIME" },
+		{ AemCommandType::GetMaxTransitTime.getValue(), "GET_MAX_TRANSIT_TIME" },
 		{ AemCommandType::Expansion.getValue(), "EXPANSION" },
 		{ AemCommandType::InvalidCommandType.getValue(), "INVALID_COMMAND_TYPE" },
 	};
