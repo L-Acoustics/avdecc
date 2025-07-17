@@ -564,7 +564,7 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 						else if (commandType == la::avdecc::protocol::AemCommandType::GetMaxTransitTime)
 						{
 							auto const streamIndex = std::any_cast<entity::model::StreamIndex>(arguments.at(0));
-							auto const maxTransitTime = std::any_cast<std::chrono::nanoseconds>(arguments.at(1));
+							auto const maxTransitTime = std::chrono::nanoseconds{ std::any_cast<std::uint64_t>(arguments.at(1)) };
 							updateMaxTransitTime(*controlledEntity, streamIndex, maxTransitTime, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 						}
 						else

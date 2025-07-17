@@ -2935,7 +2935,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			{
 				if (_usePackedDynamicInfo)
 				{
-					_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetMaxTransitTime, { entity::model::DescriptorType::StreamOutput, node.descriptorIndex } });
+					_dynamicInfoParameters.emplace_back(entity::controller::DynamicInfoParameter{ entity::LocalEntity::AemCommandStatus::Success, protocol::AemCommandType::GetMaxTransitTime, { node.descriptorIndex } });
 				}
 				else
 				{
@@ -3559,6 +3559,7 @@ void ControllerImpl::flushPackedDynamicInfoQueries(ControlledEntityImpl* const e
 		{ protocol::AemCommandType::GetCounters, protocol::aemPayload::AecpAemGetCountersResponsePayloadSize }, // GetCounters
 		{ protocol::AemCommandType::GetMemoryObjectLength, protocol::aemPayload::AecpAemGetMemoryObjectLengthResponsePayloadSize }, // GetMemoryObjectLength
 		// GetStreamBackup
+		{ protocol::AemCommandType::GetMaxTransitTime, protocol::aemPayload::AecpAemGetMaxTransitTimeResponsePayloadSize }, // GetMaxTransitTime
 	};
 
 	auto packetID = std::uint16_t{ 0u };
@@ -3598,6 +3599,7 @@ void ControllerImpl::flushPackedDynamicInfoQueries(ControlledEntityImpl* const e
 		}
 		else
 		{
+			LOG_CONTROLLER_DEBUG(entity->getEntity().getEntityID(), "ControllerImpl::flushPackedDynamicInfoQueries: Unhandled AemCommandType: {}", static_cast<std::string>(param.commandType));
 			AVDECC_ASSERT(false, "Unhandled AemCommandType");
 		}
 
