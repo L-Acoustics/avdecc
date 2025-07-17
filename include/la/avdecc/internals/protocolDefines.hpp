@@ -272,8 +272,11 @@ class MvuAecpStatus : public AecpStatus
 public:
 	using AecpStatus::AecpStatus;
 
-	static LA_AVDECC_API MvuAecpStatus const PayloadError;
+	static LA_AVDECC_API MvuAecpStatus const NoSuchDescriptor;
+	static LA_AVDECC_API MvuAecpStatus const EntityLocked;
 	static LA_AVDECC_API MvuAecpStatus const BadArguments;
+	static LA_AVDECC_API MvuAecpStatus const EntityMisbehaving;
+	static LA_AVDECC_API MvuAecpStatus const PayloadTooShort;
 
 	LA_AVDECC_API operator std::string() const noexcept;
 };

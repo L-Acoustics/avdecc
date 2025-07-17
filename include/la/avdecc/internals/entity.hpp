@@ -386,8 +386,14 @@ public:
 		// Milan Vendor Unique Protocol Error Codes
 		Success = 0, /**< The PAAD-AE successfully performed the command and has valid results. */
 		NotImplemented = 1, /**< The PAAD-AE does not support the command type. */
-		PayloadError = 2, /**< The payload of the received command has not the correct format. */
-		BadArguments = 3, /**< One or more of the values in the fields of the frame were deemed to be bad by the AVDECC Entity (unsupported, incorrect combination, etc.). */
+		NoSuchDescriptor = 2, /**< A descriptor with the descriptor_type and descriptor_index specified does not exist. */
+		EntityLocked = 3, /**< The AVDECC Entity has been locked by another AVDECC Controller. */
+		/* 4 to 6 reserved for future use */
+		BadArguments = 7, /**< One or more of the values in the fields of the frame were deemed to be bad by the AVDECC Entity (unsupported, incorrect combination, etc.). */
+		/* 8 to 9 reserved for future use */
+		EntityMisbehaving = 10, /**< The AVDECC Entity generated an internal error while trying to process the command. */
+		/* 11 to 12 reserved for future use */
+		PayloadTooShort = 13, /**< The received command doesn't provide enough bytes to be correctly processed. */
 		// Library Error Codes
 		BaseProtocolViolation = 991, /**< The entity sent a message that violates the base protocol */
 		PartialImplementation = 992, /**< The library does not fully implement this command, please report this */

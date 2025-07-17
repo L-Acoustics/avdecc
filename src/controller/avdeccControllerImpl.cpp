@@ -5255,6 +5255,12 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForMvuCommandStatu
 {
 	switch (status)
 	{
+		// Cases where the device seems busy
+		case entity::ControllerEntity::MvuCommandStatus::EntityLocked: // Should not happen for a read operation but some devices are bugged, so retry anyway
+		{
+			return FailureAction::Busy;
+		}
+
 		// Query timed out
 		case entity::ControllerEntity::MvuCommandStatus::TimedOut:
 		{
@@ -5268,13 +5274,15 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForMvuCommandStatu
 		}
 
 		// Cases we want to flag as error (should not have happened, we have a possible non certified entity) but continue enumeration
+		case entity::ControllerEntity::MvuCommandStatus::NoSuchDescriptor:
+			[[fallthrough]];
 		case entity::ControllerEntity::MvuCommandStatus::ProtocolError:
 		{
 			return FailureAction::ErrorContinue;
 		}
 
 		// Case inbetween NotSupported and actual device error that should not happen
-		case entity::ControllerEntity::MvuCommandStatus::PayloadError:
+		case entity::ControllerEntity::MvuCommandStatus::PayloadTooShort:
 			[[fallthrough]];
 		case entity::ControllerEntity::MvuCommandStatus::BadArguments:
 		{
@@ -5295,6 +5303,8 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForMvuCommandStatu
 
 		// Cases that are errors and we want to discard this entity
 		case entity::ControllerEntity::MvuCommandStatus::UnknownEntity:
+			[[fallthrough]];
+		case entity::ControllerEntity::MvuCommandStatus::EntityMisbehaving:
 			[[fallthrough]];
 		case entity::ControllerEntity::MvuCommandStatus::NetworkError:
 			[[fallthrough]];

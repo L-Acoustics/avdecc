@@ -2843,9 +2843,15 @@ static entity::ControllerEntity::ControlStatus convertMvuStatusToControlStatus(e
 			return entity::ControllerEntity::ControlStatus::Success;
 		case entity::LocalEntity::MvuCommandStatus::NotImplemented:
 			return entity::ControllerEntity::ControlStatus::NotSupported;
-		case entity::LocalEntity::MvuCommandStatus::PayloadError:
-			return entity::ControllerEntity::ControlStatus::NotSupported;
+		case entity::LocalEntity::MvuCommandStatus::NoSuchDescriptor:
+			return entity::ControllerEntity::ControlStatus::ListenerUnknownID;
+		case entity::LocalEntity::MvuCommandStatus::EntityLocked:
+			return entity::ControllerEntity::ControlStatus::ControllerNotAuthorized;
 		case entity::LocalEntity::MvuCommandStatus::BadArguments:
+			return entity::ControllerEntity::ControlStatus::NotSupported;
+		case entity::LocalEntity::MvuCommandStatus::EntityMisbehaving:
+			return entity::ControllerEntity::ControlStatus::ListenerMisbehaving;
+		case entity::LocalEntity::MvuCommandStatus::PayloadTooShort:
 			return entity::ControllerEntity::ControlStatus::NotSupported;
 		case entity::LocalEntity::MvuCommandStatus::BaseProtocolViolation:
 			return entity::ControllerEntity::ControlStatus::BaseProtocolViolation;

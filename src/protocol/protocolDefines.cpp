@@ -136,6 +136,8 @@ AemAecpStatus const AemAecpStatus::StreamIsRunning{ 12 };
 AemAecpStatus::operator std::string() const noexcept
 {
 	static std::unordered_map<AemAecpStatus::value_type, std::string> s_AemAecpStatusMapping = {
+		{ AemAecpStatus::Success.getValue(), "SUCCESS" },
+		{ AemAecpStatus::NotImplemented.getValue(), "NOT_IMPLEMENTED" },
 		{ AemAecpStatus::NoSuchDescriptor.getValue(), "NO_SUCH_DESCRIPTOR" },
 		{ AemAecpStatus::EntityLocked.getValue(), "ENTITY_LOCKED" },
 		{ AemAecpStatus::EntityAcquired.getValue(), "ENTITY_ACQUIRED" },
@@ -400,6 +402,8 @@ AaAecpStatus const AaAecpStatus::Unsupported{ 7 };
 AaAecpStatus::operator std::string() const noexcept
 {
 	static std::unordered_map<AaAecpStatus::value_type, std::string> s_AaAecpStatusMapping = {
+		{ AaAecpStatus::Success.getValue(), "SUCCESS" },
+		{ AaAecpStatus::NotImplemented.getValue(), "NOT_IMPLEMENTED" },
 		{ AaAecpStatus::AddressTooLow.getValue(), "ADDRESS_TOO_LOW" },
 		{ AaAecpStatus::AddressTooHigh.getValue(), "ADDRESS_TOO_HIGH" },
 		{ AaAecpStatus::AddressInvalid.getValue(), "ADDRESS_INVALID" },
@@ -417,16 +421,26 @@ AaAecpStatus::operator std::string() const noexcept
 }
 
 /** Milan Vendor Unique AECP Status - Milan 1.3 Clause 5.4.3.3 */
-MvuAecpStatus const MvuAecpStatus::PayloadError{ 2 };
-MvuAecpStatus const MvuAecpStatus::BadArguments{ 3 };
+MvuAecpStatus const MvuAecpStatus::NoSuchDescriptor{ 2 };
+MvuAecpStatus const MvuAecpStatus::EntityLocked{ 3 };
+/* 4 to 6 reserved for future use */
+MvuAecpStatus const MvuAecpStatus::BadArguments{ 7 };
+/* 8 to 9 reserved for future use */
+MvuAecpStatus const MvuAecpStatus::EntityMisbehaving{ 10 };
+/* 11 to 12 reserved for future use */
+MvuAecpStatus const MvuAecpStatus::PayloadTooShort{ 13 };
+
 
 MvuAecpStatus::operator std::string() const noexcept
 {
 	static std::unordered_map<MvuAecpStatus::value_type, std::string> s_MvuAecpStatusMapping = {
 		{ MvuAecpStatus::Success.getValue(), "SUCCESS" },
 		{ MvuAecpStatus::NotImplemented.getValue(), "NOT_IMPLEMENTED" },
-		{ MvuAecpStatus::PayloadError.getValue(), "PAYLOAD_ERROR" },
+		{ MvuAecpStatus::NoSuchDescriptor.getValue(), "NO_SUCH_DESCRIPTOR" },
+		{ MvuAecpStatus::EntityLocked.getValue(), "ENTITY_LOCKED" },
 		{ MvuAecpStatus::BadArguments.getValue(), "BAD_ARGUMENTS" },
+		{ MvuAecpStatus::EntityMisbehaving.getValue(), "ENTITY_MISBEHAVING" },
+		{ MvuAecpStatus::PayloadTooShort.getValue(), "PAYLOAD_TOO_SHORT" },
 	};
 
 	auto const& it = s_MvuAecpStatusMapping.find(getValue());
