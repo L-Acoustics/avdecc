@@ -12,8 +12,6 @@
 	$result = new $1_ltype($1);
 %}
 #pragma SWIG nowarn=474
-// Marshal all std::string as UTF8Str
-%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
 // Expose internal constructor and methods publicly, some dependant modules may need it
 #	if !defined(SWIGIMPORTED)
 #	define PUBLIC_BUT_HIDDEN [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)] public
@@ -35,7 +33,7 @@
 // Ignore warning %extend defined for an undeclared class 'name'.
 #pragma SWIG nowarn=303
 
-
+// Include some SWIG typemaps
 %include <stl.i>
 %include <std_string.i>
 %include <std_set.i>
@@ -72,6 +70,11 @@
 // Force define AVDECC C/C++ API Macros to nothing
 #define LA_AVDECC_API
 #define LA_AVDECC_CALL_CONVENTION
+
+#if defined(SWIGCSHARP)
+// Marshal all std::string as UTF8Str
+%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
+#endif
 
 ////////////////////////////////////////
 // Utils
