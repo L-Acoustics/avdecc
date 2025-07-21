@@ -4589,6 +4589,7 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 
 				for (auto const& [streamIndex, streamNode] : streams)
 				{
+					auto streamHasAAFFormat = false;
 					auto streamHasAVnuBaseFormat = false;
 					auto streamHasAVnuCrf = false;
 					for (auto const& format : streamNode.staticModel.formats)
@@ -4597,16 +4598,16 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 						switch (f->getType())
 						{
 							case entity::model::StreamFormatInfo::Type::AAF:
-								// Milan 1.2 - Clause 6.2
-								if (milanSpecificationVersion >= entity::model::MilanVersion{ 1, 0 } && isMilanBaseAudioFormat(*f))
+								streamHasAAFFormat = true;
+								if (isMilanBaseAudioFormat(*f))
 								{
 									streamHasAVnuBaseFormat = true;
 									avnuAudioCapableStreams[streamIndex] = true;
 								}
 								break;
 							case entity::model::StreamFormatInfo::Type::ClockReference:
-								// Milan 1.2 - Clause 7.3
-								if (milanSpecificationVersion >= entity::model::MilanVersion{ 1, 0 } && format.getValue() == 0x041060010000BB80)
+								// Milan 1.3 - Clause 7.3
+								if (format.getValue() == 0x041060010000BB80)
 								{
 									streamHasAVnuCrf = true;
 									avnuCrfCapableStreams[streamIndex] = true;
@@ -4616,11 +4617,25 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 								break;
 						}
 					}
-					// [Milan 1.2 Clause 5.3.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa
-					if (streamHasAVnuBaseFormat && streamHasAVnuCrf)
+					// Check Milan 1.3 specific requirements
+					if (milanSpecificationVersion >= entity::model::MilanVersion{ 1, 3 })
 					{
-						// Remove "Milan compatibility"
-						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.3.4", " If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa");
+						// [Milan 1.3 Clause 5.3.3.4] If a Stream Input/Output supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support any other AAF Audio Stream Formats, and vice versa
+						if (streamHasAAFFormat && streamHasAVnuCrf) // Since Milan 1.3, all AAF variants are mutually exclusive with AVnu CRF
+						{
+							// Decrease "Milan compatibility" down to 1.2 (for now)
+							decreaseMilanCompatibilityVersion(nullptr, controlledEntity, entity::model::MilanVersion{ 1, 2 }, "Milan 1.3 - 5.3.3.4", "If a Stream Input/Output supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support any other AAF Audio Stream Formats, and vice versa");
+						}
+					}
+					// Now check Milan 1.2 specific requirements which is less restrictive
+					if (milanSpecificationVersion >= entity::model::MilanVersion{ 1, 0 })
+					{
+						// [Milan 1.2 Clause 5.3.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa
+						if (streamHasAVnuBaseFormat && streamHasAVnuCrf)
+						{
+							// Remove "Milan compatibility"
+							removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.3.4", " If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa");
+						}
 					}
 				}
 				return std::make_pair(avnuAudioCapableStreams, avnuCrfCapableStreams);
