@@ -4418,6 +4418,51 @@ void ControllerImpl::validateRedundancy(ControlledEntityImpl& controlledEntity) 
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 }
 
+static bool isMilanBaseAudioFormat(entity::model::StreamFormatInfo const& formatInfo) noexcept
+{
+	// Milan Base Audio Format has either 1, 2, 4, 6 or 8 channels
+	switch (formatInfo.getChannelsCount())
+	{
+		case 1:
+		case 2:
+		case 4:
+		case 6:
+		case 8:
+			break;
+		default:
+			// Check for up-to
+			if (formatInfo.isUpToChannelsCount() && formatInfo.getChannelsCount() >= 1)
+			{
+				break;
+			}
+			// Not a Milan Base Audio Format
+			return false;
+	}
+
+	// Milan Base Audio Format has either 48, 96 or 192 kHz sample rate
+	auto const [pull, freq] = formatInfo.getSamplingRate().getPullBaseFrequency();
+	if (pull != 0)
+	{
+		return false;
+	}
+	switch (freq)
+	{
+		case 48000:
+		case 96000:
+		case 192000:
+			break;
+		default:
+			return false;
+	}
+
+	// Milan Base Audio Format has 32 bits depth
+	if (formatInfo.getSampleBitDepth() != 32)
+	{
+		return false;
+	}
+	return true;
+}
+
 void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity) noexcept
 {
 	auto const& e = controlledEntity.getEntity();
@@ -4495,41 +4540,49 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 		try
 		{
 			using CapableStreams = std::map<entity::model::StreamIndex, bool>;
-			auto const validateStreamFormats = [](auto const& entityID, auto& controlledEntity, auto const& streams)
+			auto const validateStreamFormats = [](auto const& entityID, auto& controlledEntity, auto const& streams, auto const& milanSpecificationVersion)
 			{
-				auto aafCapableStreams = CapableStreams{};
-				auto crfCapableStreams = CapableStreams{};
+				auto avnuAudioCapableStreams = CapableStreams{};
+				auto avnuCrfCapableStreams = CapableStreams{};
 
 				for (auto const& [streamIndex, streamNode] : streams)
 				{
-					auto streamHasAaf = false;
-					auto streamHasCrf = false;
+					auto streamHasAVnuBaseFormat = false;
+					auto streamHasAVnuCrf = false;
 					for (auto const& format : streamNode.staticModel.formats)
 					{
 						auto const f = entity::model::StreamFormatInfo::create(format);
 						switch (f->getType())
 						{
 							case entity::model::StreamFormatInfo::Type::AAF:
-								streamHasAaf = true;
-								aafCapableStreams[streamIndex] = true;
+								// Milan 1.2 - Clause 6.2
+								if (milanSpecificationVersion >= entity::model::MilanVersion{ 1, 0 } && isMilanBaseAudioFormat(*f))
+								{
+									streamHasAVnuBaseFormat = true;
+									avnuAudioCapableStreams[streamIndex] = true;
+								}
 								break;
 							case entity::model::StreamFormatInfo::Type::ClockReference:
-								streamHasCrf = true;
-								crfCapableStreams[streamIndex] = true;
+								// Milan 1.2 - Clause 7.3
+								if (milanSpecificationVersion >= entity::model::MilanVersion{ 1, 0 } && format.getValue() == 0x041060010000BB80)
+								{
+									streamHasAVnuCrf = true;
+									avnuCrfCapableStreams[streamIndex] = true;
+								}
 								break;
 							default:
 								break;
 						}
 					}
 					// [Milan 1.2 Clause 5.3.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa
-					if (streamHasAaf && streamHasCrf)
+					if (streamHasAVnuBaseFormat && streamHasAVnuCrf)
 					{
 						LOG_CONTROLLER_WARN(entityID, "[Milan 1.2 Clause 5.3.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa");
 						// Remove "Milan compatibility"
 						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 					}
 				}
-				return std::make_pair(aafCapableStreams, crfCapableStreams);
+				return std::make_pair(avnuAudioCapableStreams, avnuCrfCapableStreams);
 			};
 
 			auto const countCapableStreamsForDomain = [](auto const& streams, auto const& redundantStreams, auto const& capableStreams, auto const domainIndex)
@@ -4571,77 +4624,87 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 			// Milan devices AEM validation
 			if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 			{
-				auto const& configurationNode = controlledEntity.getCurrentConfigurationNode();
+				auto const milanInfo = controlledEntity.getMilanInfo();
+				if (milanInfo)
+				{
+					auto const& configurationNode = controlledEntity.getCurrentConfigurationNode();
 
-				auto aafInputStreams = CapableStreams{};
-				auto crfInputStreams = CapableStreams{};
-				auto aafOutputStreams = CapableStreams{};
-				auto crfOutputStreams = CapableStreams{};
-				auto isAafMediaListener = false;
-				auto isAafMediaTalker = false;
-				// Validate stream formats
-				if (!configurationNode.streamInputs.empty())
-				{
-					auto caps = validateStreamFormats(entityID, controlledEntity, configurationNode.streamInputs);
-					aafInputStreams = std::move(caps.first);
-					crfInputStreams = std::move(caps.second);
-					isAafMediaListener = !aafInputStreams.empty();
-				}
-				if (!configurationNode.streamOutputs.empty())
-				{
-					auto caps = validateStreamFormats(entityID, controlledEntity, configurationNode.streamOutputs);
-					aafOutputStreams = std::move(caps.first);
-					crfOutputStreams = std::move(caps.second);
-					isAafMediaTalker = !aafOutputStreams.empty();
-				}
+					auto avnuAudioInputStreams = CapableStreams{};
+					auto avnuCrfInputStreams = CapableStreams{};
+					auto avnuAudioOutputStreams = CapableStreams{};
+					auto avnuCrfOutputStreams = CapableStreams{};
+					auto isAVnuAudioMediaListener = false;
+					auto isAVnuAudioMediaTalker = false;
+					// Validate stream formats
+					if (!configurationNode.streamInputs.empty())
+					{
+						auto caps = validateStreamFormats(entityID, controlledEntity, configurationNode.streamInputs, milanInfo->specificationVersion);
+						avnuAudioInputStreams = std::move(caps.first);
+						avnuCrfInputStreams = std::move(caps.second);
+						isAVnuAudioMediaListener = !avnuAudioInputStreams.empty();
+					}
+					if (!configurationNode.streamOutputs.empty())
+					{
+						auto caps = validateStreamFormats(entityID, controlledEntity, configurationNode.streamOutputs, milanInfo->specificationVersion);
+						avnuAudioOutputStreams = std::move(caps.first);
+						avnuCrfOutputStreams = std::move(caps.second);
+						isAVnuAudioMediaTalker = !avnuAudioOutputStreams.empty();
+					}
 
-				// Validate AAF requirements
-				// [Milan Formats] A PAAD-AE shall have at least one Configuration that contains at least one Stream which advertises support for a Base format in its list of supported formats
-				if (!isAafMediaListener && !isAafMediaTalker)
+					// Validate AAF requirements
+					// [Milan Formats] A PAAD-AE shall have at least one Configuration that contains at least one Stream which advertises support for a Base format in its list of supported formats
+					if (!isAVnuAudioMediaListener && !isAVnuAudioMediaTalker)
+					{
+						LOG_CONTROLLER_WARN(entityID, "[Milan Formats] A PAAD-AE shall have at least one Configuration that contains at least one Stream which advertises support for a Base format in its list of supported formats");
+						// Remove "Milan compatibility"
+						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+					}
+
+					// Validate CRF requirements for domains
+					for (auto const& [domainIndex, domainNode] : configurationNode.clockDomains)
+					{
+						auto const avnuAudioInputStreamsForDomain = countCapableStreamsForDomain(configurationNode.streamInputs, configurationNode.redundantStreamInputs, avnuAudioInputStreams, domainIndex);
+						auto const avnuCrfInputStreamsForDomain = countCapableStreamsForDomain(configurationNode.streamInputs, configurationNode.redundantStreamInputs, avnuCrfInputStreams, domainIndex);
+						auto const avnuCrfOutputStreamsForDomain = countCapableStreamsForDomain(configurationNode.streamOutputs, configurationNode.redundantStreamOutputs, avnuCrfOutputStreams, domainIndex);
+						if (isAVnuAudioMediaListener)
+						{
+							if (avnuAudioInputStreamsForDomain >= 2)
+							{
+								// [Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input
+								if (avnuCrfInputStreamsForDomain == 0u)
+								{
+									LOG_CONTROLLER_WARN(entityID, "[Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input");
+									// Remove "Milan compatibility"
+									removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+								}
+								// [Milan 1.2 Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output
+								if (avnuCrfOutputStreamsForDomain == 0u)
+								{
+									LOG_CONTROLLER_WARN(entityID, "[Milan 1.2 Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output");
+									// Remove "Milan compatibility"
+									removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+								}
+							}
+						}
+						if (isAVnuAudioMediaTalker)
+						{
+							// [Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input
+							if (avnuCrfInputStreamsForDomain == 0u)
+							{
+								LOG_CONTROLLER_WARN(entityID, "[Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input");
+								// Remove "Milan compatibility"
+								removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+							}
+							// [Milan 1.2 Clause 7.2.3] For each supported clock domain, an AAF Media Talker capable of synchronizing to an external clock source (not an AVB stream) shall implement a CRF Media Clock Output
+							// TODO
+						}
+					}
+				}
+				else
 				{
-					LOG_CONTROLLER_WARN(entityID, "[Milan Formats] A PAAD-AE shall have at least one Configuration that contains at least one Stream which advertises support for a Base format in its list of supported formats");
-					// Remove "Milan compatibility"
+					LOG_CONTROLLER_WARN(entityID, "MilanInfo is not available for this entity although it is advertised as Milan compatible");
+					// Flag the entity as "Not Milan compliant"
 					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
-				}
-
-				// Validate CRF requirements for domains
-				for (auto const& [domainIndex, domainNode] : configurationNode.clockDomains)
-				{
-					auto const aafInputStreamsForDomain = countCapableStreamsForDomain(configurationNode.streamInputs, configurationNode.redundantStreamInputs, aafInputStreams, domainIndex);
-					auto const crfInputStreamsForDomain = countCapableStreamsForDomain(configurationNode.streamInputs, configurationNode.redundantStreamInputs, crfInputStreams, domainIndex);
-					auto const crfOutputStreamsForDomain = countCapableStreamsForDomain(configurationNode.streamOutputs, configurationNode.redundantStreamOutputs, crfOutputStreams, domainIndex);
-					if (isAafMediaListener)
-					{
-						if (aafInputStreamsForDomain >= 2)
-						{
-							// [Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input
-							if (crfInputStreamsForDomain == 0u)
-							{
-								LOG_CONTROLLER_WARN(entityID, "[Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input");
-								// Remove "Milan compatibility"
-								removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
-							}
-							// [Milan 1.2 Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output
-							if (crfOutputStreamsForDomain == 0u)
-							{
-								LOG_CONTROLLER_WARN(entityID, "[Milan 1.2 Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output");
-								// Remove "Milan compatibility"
-								removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
-							}
-						}
-					}
-					if (isAafMediaTalker)
-					{
-						// [Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input
-						if (crfInputStreamsForDomain == 0u)
-						{
-							LOG_CONTROLLER_WARN(entityID, "[Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input");
-							// Remove "Milan compatibility"
-							removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
-						}
-						// [Milan 1.2 Clause 7.2.3] For each supported clock domain, an AAF Media Talker capable of synchronizing to an external clock source (not an AVB stream) shall implement a CRF Media Clock Output
-						// TODO
-					}
 				}
 			}
 		}
