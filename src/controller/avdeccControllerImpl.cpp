@@ -617,8 +617,23 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4.15/7.4.16", "StreamFormatValid bit set but invalid stream_format field in STREAM_INFO response");
 		}
 	}
+
+	// Check if the entity is implementing Milan but less than 1.3
+	auto isImplementingMilanButLessThan1_3 = false;
+	{
+		auto const milanInfo = controlledEntity.getMilanInfo();
+		if (milanInfo)
+		{
+			if (milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 } && milanInfo->specificationVersion < entity::model::MilanVersion{ 1, 3 })
+			{
+				isImplementingMilanButLessThan1_3 = true;
+			}
+		}
+	}
+
 	// If Milan Extended Information is required (for GetStreamInfo, not SetStreamInfo) and entity is Milan compatible, check if it's present
-	if (milanExtendedRequired && controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+	// This is only required for Milan devices up to 1.2, Milan 1.3 and later devices should always send the IEEE variants
+	if (milanExtendedRequired && isImplementingMilanButLessThan1_3)
 	{
 		if (!info.streamInfoFlagsEx || !info.probingStatus || !info.acmpStatus)
 		{
@@ -726,8 +741,23 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4.15/7.4.16", "StreamFormatValid bit set but invalid stream_format field in GET_STREAM_INFO response");
 		}
 	}
+
+	// Check if the entity is implementing Milan but less than 1.3
+	auto isImplementingMilanButLessThan1_3 = false;
+	{
+		auto const milanInfo = controlledEntity.getMilanInfo();
+		if (milanInfo)
+		{
+			if (milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 } && milanInfo->specificationVersion < entity::model::MilanVersion{ 1, 3 })
+			{
+				isImplementingMilanButLessThan1_3 = true;
+			}
+		}
+	}
+
 	// If Milan Extended Information is required (for GetStreamInfo, not SetStreamInfo) and entity is Milan compatible, check if it's present
-	if (milanExtendedRequired && controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+	// This is only required for Milan devices up to 1.2, Milan 1.3 and later devices should always send the IEEE variants
+	if (milanExtendedRequired && isImplementingMilanButLessThan1_3)
 	{
 		if (!info.streamInfoFlagsEx || !info.probingStatus || !info.acmpStatus)
 		{
@@ -755,18 +785,14 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 		if (streamDynamicModel)
 		{
 			updateStreamDynamicInfoData(streamDynamicModel, info,
-				[this, &controlledEntity, streamIndex, notFoundBehavior](std::uint32_t const msrpAccumulatedLatency)
+				[this, &controlledEntity, streamIndex, notFoundBehavior, isImplementingMilanButLessThan1_3](std::uint32_t const msrpAccumulatedLatency)
 				{
 					// Milan devices use the msrpAccumulatedLatency value to compute the Max Transit Time
 					// This changed since Milan 1.3 to use the same mechanism as IEEE 1722.1 devices
-					auto const milanInfo = controlledEntity.getMilanInfo();
-					if (milanInfo)
+					if (isImplementingMilanButLessThan1_3)
 					{
-						if (milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 } && milanInfo->specificationVersion < entity::model::MilanVersion{ 1, 3 })
-						{
-							// Forward to updateMaxTransitTime method
-							updateMaxTransitTime(controlledEntity, streamIndex, std::chrono::nanoseconds{ msrpAccumulatedLatency }, notFoundBehavior);
-						}
+						// Forward to updateMaxTransitTime method
+						updateMaxTransitTime(controlledEntity, streamIndex, std::chrono::nanoseconds{ msrpAccumulatedLatency }, notFoundBehavior);
 					}
 				},
 				[this, &controlledEntity, streamIndex](entity::model::StreamDynamicInfo const& streamDynamicInfo)
