@@ -235,6 +235,7 @@ public:
 	using GetMediaClockReferenceInfoHandler = std::function<void(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::DefaultMediaClockReferencePriority const defaultPriority, la::avdecc::entity::model::MediaClockReferenceInfo const& mcrInfo)>;
 	using BindStreamHandler = std::function<void(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::BindStreamFlags const flags)>;
 	using UnbindStreamHandler = std::function<void(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex)>;
+	using GetStreamInputInfoExHandler = std::function<void(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamInputInfoEx const& streamInputInfoEx)>;
 	/* Connection Management Protocol (ACMP) handlers */
 	using ConnectStreamHandler = std::function<void(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status)>;
 	using DisconnectStreamHandler = std::function<void(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status)>;
@@ -371,6 +372,7 @@ public:
 	virtual void getMediaClockReferenceInfo(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, GetMediaClockReferenceInfoHandler const& handler) const noexcept = 0;
 	virtual void bindStream(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::BindStreamFlags const flags, BindStreamHandler const& handler) const noexcept = 0;
 	virtual void unbindStream(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::StreamIndex const streamIndex, UnbindStreamHandler const& handler) const noexcept = 0;
+	virtual void getStreamInputInfoEx(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::StreamIndex const streamIndex, GetStreamInputInfoExHandler const& handler) const noexcept = 0;
 
 	/* Connection Management Protocol (ACMP) */
 	virtual void connectStream(la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept = 0;
@@ -534,6 +536,8 @@ public:
 	virtual void onBindStream(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::BindStreamFlags const flags) noexcept = 0;
 	/** Called when a controller unbind stream request has been successfully processed. */
 	virtual void onUnbindStream(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex) noexcept = 0;
+	/** Called when the StreamInputInfoEx has changed. */
+	virtual void onStreamInputInfoExChanged(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamInputInfoEx const& info) noexcept = 0;
 
 	/* Identification notifications */
 	/** Called when an entity emits an identify notification. */
@@ -707,6 +711,8 @@ public:
 	virtual void onBindStream(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::model::StreamIndex const /*streamIndex*/, la::avdecc::entity::model::StreamIdentification const& /*talkerStream*/, la::avdecc::entity::BindStreamFlags const /*flags*/) noexcept override {}
 	/** Called when a controller unbind stream request has been successfully processed. */
 	virtual void onUnbindStream(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::model::StreamIndex const /*streamIndex*/) noexcept override {}
+	/** Called when the StreamInputInfoEx has changed. */
+	virtual void onStreamInputInfoExChanged(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::model::StreamIndex const /*streamIndex*/, la::avdecc::entity::model::StreamInputInfoEx const& /*info*/) noexcept override {}
 
 	/* Identification notifications */
 	/** Called when an entity emits an identify notification. */

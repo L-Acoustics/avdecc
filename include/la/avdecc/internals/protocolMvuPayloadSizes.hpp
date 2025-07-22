@@ -100,6 +100,12 @@ constexpr size_t AecpMvuUnbindStreamCommandPayloadSize = 6u;
 /** UNBIND_STREAM Response - Milan 1.3 Clause 5.4.4.7 */
 constexpr size_t AecpMvuUnbindStreamResponsePayloadSize = 6u;
 
+/** GET_STREAM_INPUT_INFO_EX Command - Milan 1.3 Clause 5.4.4.8 */
+constexpr size_t AecpMvuGetStreamInputInfoExCommandPayloadSize = 6u;
+
+/** GET_STREAM_INPUT_INFO_EX Response - Milan 1.3 Clause 5.4.4.8 */
+constexpr size_t AecpMvuGetStreamInputInfoExResponsePayloadSize = 18u;
+
 } // namespace mvuPayload
 } // namespace protocol
 } // namespace avdecc

@@ -55,6 +55,7 @@ static model::AsPath const s_emptyAsPath{}; // Empty AsPath used by timeout call
 static model::AvdeccFixedString const s_emptyAvdeccFixedString{}; // Empty AvdeccFixedString used by timeout callback (needs a ref to a std::string)
 static model::MilanInfo const s_emptyMilanInfo{}; // Empty MilanInfo used by timeout callback (need a ref to a MilanInfo)
 static model::MediaClockReferenceInfo const s_emptyMediaClockReferenceInfo{}; // Empty MediaClockReferenceInfo used by timeout callback (need a ref to a MediaClockReferenceInfo)
+static model::StreamInputInfoEx const s_emptyStreamInputInfoEx{}; // Empty StreamInputInfoEx used by timeout callback (need a ref to a StreamInputInfoEx)
 static DynamicInfoParameters const s_emptyDynamicInfoParameters{}; // Empty DynamicInfoParameters used by timeout callback (need a ref to a DynamicInfoParameters)
 static model::StreamIdentification const s_emptyStreamIdentification{}; // Empty StreamIdentification used by timeout callback
 
@@ -2164,6 +2165,20 @@ void CapabilityDelegate::unbindStream(UniqueIdentifier const targetEntityID, mod
 	}
 }
 
+void CapabilityDelegate::getStreamInputInfoEx(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, Interface::GetStreamInputInfoExHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInputInfoEx);
+	try
+	{
+		auto const ser = protocol::mvuPayload::serializeGetStreamInputInfoExCommand(entity::model::DescriptorType::StreamInput, streamIndex);
+		sendMvuAecpCommand(targetEntityID, protocol::MvuCommandType::GetStreamInputInfoEx, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getStreamInputInfoEx: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::MvuCommandStatus::ProtocolError);
+	}
+}
 
 /* Connection Management Protocol (ACMP) */
 void CapabilityDelegate::connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, Interface::ConnectStreamHandler const& handler) const noexcept
@@ -4826,6 +4841,27 @@ void CapabilityDelegate::processMvuAecpResponse(protocol::MvuCommandType const c
 					utils::invokeProtectedMethod(&controller::Delegate::onUnbindStream, delegate, controllerInterface, targetID, descriptorIndex);
 				}
 			} },
+			// GetStreamInputInfoEx
+			{ protocol::MvuCommandType::GetStreamInputInfoEx.getValue(),
+				[](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+				{
+					auto const [descriptorType, descriptorIndex, streamInputInfo] = protocol::mvuPayload::deserializeGetStreamInputInfoExResponse(status, mvu.getPayload());
+					auto const targetID = mvu.getTargetEntityID();
+
+					// Validate values
+					if (descriptorType != model::DescriptorType::StreamInput)
+					{
+							throw InvalidDescriptorTypeException();
+					}
+
+					// Notify handlers
+					answerCallback.invoke<controller::Interface::GetStreamInputInfoExHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, streamInputInfo);
+					if (mvu.getUnsolicited() && delegate && !!status)
+					{
+						utils::invokeProtectedMethod(&controller::Delegate::onStreamInputInfoExChanged, delegate, controllerInterface, targetID, descriptorIndex, streamInputInfo);
+					}
+				}
+			},
 	};
 
 	auto const& it = s_Dispatch.find(responseCommandType.getValue());

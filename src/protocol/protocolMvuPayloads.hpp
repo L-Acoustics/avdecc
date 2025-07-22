@@ -114,4 +114,12 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 Serializer<AecpMvuUnbindStreamResponsePayloadSize> serializeUnbindStreamResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex);
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeUnbindStreamResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload);
 
+/** GET_STREAM_INPUT_INFO_EX Command - Milan 1.3 Clause 5.4.4.8 */
+Serializer<AecpMvuGetStreamInputInfoExCommandPayloadSize> serializeGetStreamInputInfoExCommand(entity::model::DescriptorType const descriptorType, entity::model::StreamIndex const streamIndex);
+std::tuple<entity::model::DescriptorType, entity::model::StreamIndex> deserializeGetStreamInputInfoExCommand(MvuAecpdu::Payload const& payload);
+
+/** GET_STREAM_INPUT_INFO_EX Response - Milan 1.3 Clause 5.4.4.8 */
+Serializer<AecpMvuGetStreamInputInfoExResponsePayloadSize> serializeGetStreamInputInfoExResponse(entity::model::DescriptorType const descriptorType, entity::model::StreamIndex const streamIndex, entity::model::StreamInputInfoEx const& streamInputInfoEx);
+std::tuple<entity::model::DescriptorType, entity::model::StreamIndex, entity::model::StreamInputInfoEx> deserializeGetStreamInputInfoExResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload);
+
 } // namespace la::avdecc::protocol::mvuPayload

@@ -460,4 +460,88 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 	return deserializeUnbindStreamCommand(payload);
 }
 
+/** GET_STREAM_INPUT_INFO_EX Command - Milan 1.3 Clause 5.4.4.8 */
+Serializer<AecpMvuGetStreamInputInfoExCommandPayloadSize> serializeGetStreamInputInfoExCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	auto ser = Serializer<AecpMvuGetStreamInputInfoExCommandPayloadSize>{};
+	auto const reserved16 = std::uint16_t{ 0u };
+
+	ser << reserved16;
+	ser << descriptorType << descriptorIndex;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeGetStreamInputInfoExCommand(MvuAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpMvuGetStreamInputInfoExCommandPayloadSize) // Malformed packet
+	{
+		throw IncorrectPayloadSizeException();
+	}
+
+	// Check payload
+	auto des = Deserializer{ commandPayload, commandPayloadLength };
+	auto reserved16 = std::uint16_t{ 0u };
+	auto descriptorType = entity::model::DescriptorType{};
+	auto descriptorIndex = entity::model::DescriptorIndex{};
+
+	des >> reserved16;
+	des >> descriptorType >> descriptorIndex;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetStreamInputInfoExCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex);
+}
+
+/** GET_STREAM_INPUT_INFO_EX Response - Milan 1.3 Clause 5.4.4.8 */
+Serializer<AecpMvuGetStreamInputInfoExResponsePayloadSize> serializeGetStreamInputInfoExResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInputInfoEx const& streamInputInfoEx)
+{
+	auto ser = Serializer<AecpMvuGetStreamInputInfoExResponsePayloadSize>{};
+	auto const reserved8 = std::uint8_t{ 0u };
+	auto const reserved16 = std::uint16_t{ 0u };
+
+	ser << reserved16;
+	ser << descriptorType << descriptorIndex;
+	ser << streamInputInfoEx.talkerStream.entityID << streamInputInfoEx.talkerStream.streamIndex;
+	ser << static_cast<std::uint8_t>(((utils::to_integral(streamInputInfoEx.probingStatus) << 5) & 0xe0) | ((streamInputInfoEx.acmpStatus).getValue() & 0x1f)) << reserved8;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamInputInfoEx> deserializeGetStreamInputInfoExResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	checkResponsePayload(payload, status, AecpMvuGetStreamInputInfoExCommandPayloadSize, AecpMvuGetStreamInputInfoExResponsePayloadSize);
+
+	// Check payload
+	auto des = Deserializer{ commandPayload, commandPayloadLength };
+	auto reserved8 = std::uint8_t{ 0u };
+	auto reserved16 = std::uint16_t{ 0u };
+	auto descriptorType = entity::model::DescriptorType{};
+	auto descriptorIndex = entity::model::DescriptorIndex{};
+	auto streamInputInfoEx = entity::model::StreamInputInfoEx{};
+	auto probing_acmp_status = std::uint8_t{ 0u };
+
+	des >> reserved16;
+	des >> descriptorType >> descriptorIndex;
+	des >> streamInputInfoEx.talkerStream.entityID >> streamInputInfoEx.talkerStream.streamIndex;
+	des >> probing_acmp_status >> reserved8;
+
+	streamInputInfoEx.probingStatus = static_cast<entity::model::ProbingStatus>((probing_acmp_status & 0xe0) >> 5);
+	streamInputInfoEx.acmpStatus = static_cast<AcmpStatus>(probing_acmp_status & 0x1f);
+
+	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetStreamInputInfoExResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex, streamInputInfoEx);
+}
+
 } // namespace la::avdecc::protocol::mvuPayload

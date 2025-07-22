@@ -429,6 +429,7 @@ DEFINE_AEM_STRUCT(AsPath);
 DEFINE_AEM_STRUCT(MilanInfo);
 DEFINE_AEM_STRUCT(MilanDynamicState);
 DEFINE_AEM_STRUCT(MediaClockReferenceInfo);
+DEFINE_AEM_STRUCT(StreamInputInfoEx);
 
 // Some ignores
 %ignore la::avdecc::entity::model::makeEntityModelID; // Ignore, not needed

@@ -188,6 +188,7 @@ private:
 	virtual void getMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, GetMediaClockReferenceInfoHandler const& handler) const noexcept override;
 	virtual void bindStream(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamIdentification const& talkerStream, BindStreamFlags const flags, BindStreamHandler const& handler) const noexcept override;
 	virtual void unbindStream(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, UnbindStreamHandler const& handler) const noexcept override;
+	virtual void getStreamInputInfoEx(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamInputInfoExHandler const& handler) const noexcept override;
 	/* Connection Management Protocol (ACMP) */
 	virtual void connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept override;
 	virtual void disconnectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, DisconnectStreamHandler const& handler) const noexcept override;

@@ -1078,6 +1078,14 @@ void AggregateEntityImpl::unbindStream(UniqueIdentifier const targetEntityID, mo
 	}
 }
 
+void AggregateEntityImpl::getStreamInputInfoEx(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamInputInfoExHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getStreamInputInfoEx(targetEntityID, streamIndex, handler);
+	}
+}
+
 /* Connection Management Protocol (ACMP) */
 void AggregateEntityImpl::connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept
 {

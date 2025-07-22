@@ -1932,6 +1932,48 @@ void ControllerImpl::updateMediaClockReferenceInfo(ControlledEntityImpl& control
 	}
 }
 
+void ControllerImpl::updateStreamInputInfoEx(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInputInfoEx const& streamInputInfoEx, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (!currentConfigurationIndexOpt)
+	{
+		return;
+	}
+
+	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamInputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+	if (streamDynamicModel)
+	{
+		// Create streamDynamicInfo if not already created
+		if (!streamDynamicModel->streamDynamicInfo.has_value())
+		{
+			streamDynamicModel->streamDynamicInfo = entity::model::StreamDynamicInfo{};
+			// Should probably not happen if the entity has been advertised
+			if (controlledEntity.wasAdvertised())
+			{
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Received GET_STREAM_INPUT_INFO_EX update");
+			}
+		}
+
+		// Update connection status
+		handleListenerStreamStateNotification(streamInputInfoEx.talkerStream, entity::model::StreamIdentification{ controlledEntity.getEntity().getEntityID(), streamIndex }, !!streamInputInfoEx.talkerStream.entityID, std::nullopt, true);
+
+		// Update Milan specific fields in StreamDynamicInfo
+		auto const dynamicInfoChanged = (streamDynamicModel->streamDynamicInfo->probingStatus != streamInputInfoEx.probingStatus) || (streamDynamicModel->streamDynamicInfo->acmpStatus != streamInputInfoEx.acmpStatus);
+		if (dynamicInfoChanged)
+		{
+			streamDynamicModel->streamDynamicInfo->probingStatus = streamInputInfoEx.probingStatus;
+			streamDynamicModel->streamDynamicInfo->acmpStatus = streamInputInfoEx.acmpStatus;
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputDynamicInfoChanged, this, &controlledEntity, streamIndex, *(streamDynamicModel->streamDynamicInfo));
+			}
+		}
+	}
+}
+
 
 /* ************************************************************ */
 /* Private methods                                              */
@@ -2590,6 +2632,13 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 				controller->getMediaClockReferenceInfo(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetMediaClockReferenceInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
+		case ControlledEntityImpl::DynamicInfoType::InputStreamInfoEx:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getStreamInputInfoEx (StreamIndex={})", descriptorIndex);
+				controller->getStreamInputInfoEx(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetStreamInputInfoExResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+			};
+			break;
 		default:
 			AVDECC_ASSERT(false, "Unhandled DynamicInfoType");
 			break;
@@ -2936,6 +2985,16 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 		DynamicInfoVisitor& operator=(DynamicInfoVisitor&&) = delete;
 
 	private:
+		bool shouldGetStreamInputInfoEx() const noexcept
+		{
+			// Milan devices are using an extended version of AEM-GET_STREAM_INFO and ACMP-RX_STATE to report connection status and some extra fields required by Milan
+			// This changed since Milan 1.3 to use a MVU specific command for both
+			if (_milanSpecVersion >= entity::model::MilanVersion{ 1, 3 })
+			{
+				return true;
+			}
+			return false;
+		}
 		bool shouldGetMaxTransitTime() const noexcept
 		{
 			// Milan devices are using GET_STREAM_INFO to report MaxTransitTime, so we do not need to query GET_MAX_TRANSIT_TIME
@@ -3000,8 +3059,16 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters, node.descriptorIndex);
 			}
 
-			// RX_STATE
-			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, node.descriptorIndex);
+			if (shouldGetStreamInputInfoEx())
+			{
+				// StreamInputInfoEx
+				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfoEx, node.descriptorIndex);
+			}
+			else
+			{
+				// RX_STATE
+				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, node.descriptorIndex);
+			}
 		}
 		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::StreamOutputNode const& node) noexcept override
 		{
@@ -6406,7 +6473,7 @@ bool ControllerImpl::fetchCorrespondingDescriptor(ControlledEntityImpl* const en
 	return false;
 }
 
-void ControllerImpl::handleListenerStreamStateNotification(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, bool const isConnected, entity::ConnectionFlags const flags, bool const changedByOther) const noexcept
+void ControllerImpl::handleListenerStreamStateNotification(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, bool const isConnected, std::optional<entity::ConnectionFlags> const flags, bool const changedByOther) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
@@ -6416,7 +6483,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 	{
 		conState = entity::model::StreamInputConnectionInfo::State::Connected;
 	}
-	else if (flags.test(entity::ConnectionFlag::FastConnect))
+	else if (flags && flags->test(entity::ConnectionFlag::FastConnect))
 	{
 		conState = entity::model::StreamInputConnectionInfo::State::FastConnecting;
 	}

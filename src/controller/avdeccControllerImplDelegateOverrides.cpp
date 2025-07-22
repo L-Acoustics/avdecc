@@ -927,6 +927,18 @@ void ControllerImpl::onUnbindStream(entity::controller::Interface const* const /
 	handleListenerStreamStateNotification({}, entity::model::StreamIdentification{ entityID, streamIndex }, false, entity::ConnectionFlags{}, true);
 }
 
+void ControllerImpl::onStreamInputInfoExChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInputInfoEx const& streamInputInfoEx) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updateStreamInputInfoEx(entity, streamIndex, streamInputInfoEx, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	}
+}
+
 /* Identification notifications */
 void ControllerImpl::onEntityIdentifyNotification(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID) noexcept
 {

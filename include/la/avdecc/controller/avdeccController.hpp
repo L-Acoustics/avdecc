@@ -170,6 +170,7 @@ public:
 		GetMilanInfo,
 		GetSystemUniqueID,
 		GetMediaClockReferenceInfo,
+		GetStreamInputInfoEx,
 		EntityDescriptor,
 		ConfigurationDescriptor,
 		AudioUnitDescriptor,

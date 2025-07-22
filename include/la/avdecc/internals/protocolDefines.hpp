@@ -294,6 +294,7 @@ public:
 	static LA_AVDECC_API MvuCommandType const GetMediaClockReferenceInfo;
 	static LA_AVDECC_API MvuCommandType const BindStream;
 	static LA_AVDECC_API MvuCommandType const UnbindStream;
+	static LA_AVDECC_API MvuCommandType const GetStreamInputInfoEx;
 
 	static LA_AVDECC_API MvuCommandType const InvalidCommandType;
 

@@ -399,6 +399,24 @@ constexpr bool operator!=(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
 	return !(lhs == rhs);
 }
 
+/** GET_STREAM_INPUT_INFO_EX Dynamic Information - Milan 1.3 Clause 5.4.4.8 */
+struct StreamInputInfoEx
+{
+	StreamIdentification talkerStream{};
+	ProbingStatus probingStatus{ ProbingStatus::Disabled };
+	protocol::AcmpStatus acmpStatus{ protocol::AcmpStatus::Success };
+};
+
+constexpr bool operator==(StreamInputInfoEx const& lhs, StreamInputInfoEx const& rhs) noexcept
+{
+	return (lhs.talkerStream == rhs.talkerStream) && (lhs.probingStatus == rhs.probingStatus) && (lhs.acmpStatus == rhs.acmpStatus);
+}
+
+constexpr bool operator!=(StreamInputInfoEx const& lhs, StreamInputInfoEx const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
 /** GET_AVB_INFO Dynamic Information - IEEE1722.1-2013 Clause 7.4.40.2 */
 struct AvbInfo
 {

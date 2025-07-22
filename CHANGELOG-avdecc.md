@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Extended GET_MILAN_INFO command
   - BIND_STREAM and UNBIND_STREAM commands
   - Extended GET_SYSTEM_UNIQUE_ID and SET_SYSTEM_UNIQUE_ID commands
+  - GET_STREAM_INPUT_INFO_EX command
 
 ### Changed
 - Changed AvdeccFixedString::data() method to return a tuple of a pointer and a size (to help prevent misuse)

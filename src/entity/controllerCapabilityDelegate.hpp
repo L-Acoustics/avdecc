@@ -179,6 +179,7 @@ public:
 	void getMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, Interface::GetMediaClockReferenceInfoHandler const& handler) const noexcept;
 	void bindStream(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamIdentification const& talkerStream, BindStreamFlags const flags, Interface::BindStreamHandler const& handler) const noexcept;
 	void unbindStream(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, Interface::UnbindStreamHandler const& handler) const noexcept;
+	void getStreamInputInfoEx(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, Interface::GetStreamInputInfoExHandler const& handler) const noexcept;
 
 	/* Connection Management Protocol (ACMP) */
 	void connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, Interface::ConnectStreamHandler const& handler) const noexcept;

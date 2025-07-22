@@ -694,6 +694,11 @@ void ControllerEntityImpl::unbindStream(UniqueIdentifier const targetEntityID, m
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).unbindStream(targetEntityID, streamIndex, handler);
 }
 
+void ControllerEntityImpl::getStreamInputInfoEx(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamInputInfoExHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getStreamInputInfoEx(targetEntityID, streamIndex, handler);
+}
+
 /* Connection Management Protocol (ACMP) */
 void ControllerEntityImpl::connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept
 {

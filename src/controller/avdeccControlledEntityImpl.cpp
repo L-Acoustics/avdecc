@@ -2942,6 +2942,8 @@ std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const 
 			return protocol::MvuCommandType::GetSystemUniqueID;
 		case DynamicInfoType::GetMediaClockReferenceInfo:
 			return protocol::MvuCommandType::GetMediaClockReferenceInfo;
+		case DynamicInfoType::InputStreamInfoEx:
+			return protocol::MvuCommandType::GetStreamInputInfoEx;
 		default:
 			return "Unknown DynamicInfoType";
 	}

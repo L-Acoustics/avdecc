@@ -459,6 +459,7 @@ MvuCommandType const MvuCommandType::SetMediaClockReferenceInfo{ 0x0003 };
 MvuCommandType const MvuCommandType::GetMediaClockReferenceInfo{ 0x0004 };
 MvuCommandType const MvuCommandType::BindStream{ 0x0005 };
 MvuCommandType const MvuCommandType::UnbindStream{ 0x0006 };
+MvuCommandType const MvuCommandType::GetStreamInputInfoEx{ 0x0007 };
 
 MvuCommandType const MvuCommandType::InvalidCommandType{ 0xffff };
 
@@ -472,6 +473,7 @@ MvuCommandType::operator std::string() const noexcept
 		{ MvuCommandType::GetMediaClockReferenceInfo.getValue(), "GET_MEDIA_CLOCK_REFERENCE_INFO" },
 		{ MvuCommandType::BindStream.getValue(), "BIND_STREAM" },
 		{ MvuCommandType::UnbindStream.getValue(), "UNBIND_STREAM" },
+		{ MvuCommandType::GetStreamInputInfoEx.getValue(), "GET_STREAM_INPUT_INFO_EX" },
 		{ MvuCommandType::InvalidCommandType.getValue(), "INVALID_COMMAND_TYPE" },
 	};
 

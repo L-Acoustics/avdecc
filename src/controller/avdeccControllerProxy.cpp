@@ -2506,6 +2506,7 @@ void ControllerVirtualProxy::bindStream(UniqueIdentifier const targetEntityID, e
 		_realInterface->bindStream(targetEntityID, streamIndex, talkerStream, flags, handler);
 	}
 }
+
 void ControllerVirtualProxy::unbindStream(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, UnbindStreamHandler const& handler) const noexcept
 {
 	auto const isVirtual = isVirtualEntity(targetEntityID);
@@ -2523,6 +2524,26 @@ void ControllerVirtualProxy::unbindStream(UniqueIdentifier const targetEntityID,
 	{
 		// Forward call to real interface
 		_realInterface->unbindStream(targetEntityID, streamIndex, handler);
+	}
+}
+
+void ControllerVirtualProxy::getStreamInputInfoEx(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, GetStreamInputInfoExHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, streamIndex, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->getStreamInputInfoEx(targetEntityID, streamIndex, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->getStreamInputInfoEx(targetEntityID, streamIndex, handler);
 	}
 }
 
