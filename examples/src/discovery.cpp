@@ -86,10 +86,16 @@ public:
 		dynamicModel.entityName = la::avdecc::entity::model::AvdeccFixedString{ "Test entity" };
 		dynamicModel.currentConfiguration = ActiveConfigurationIndex;
 	}
-	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& compatibilityFlags) noexcept override
+	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& compatibilityFlags, la::avdecc::entity::model::MilanVersion& milanCompatibilityVersion) noexcept override
 	{
 		compatibilityFlags.set(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221);
 		compatibilityFlags.set(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan);
+		milanCompatibilityVersion = la::avdecc::entity::model::MilanVersion{ 1, 2 };
+	}
+	virtual void build(la::avdecc::entity::model::MilanInfo& milanInfo, la::avdecc::entity::model::MilanDynamicState& /*milanDynamicState*/) noexcept override
+	{
+		milanInfo.protocolVersion = 1;
+		milanInfo.specificationVersion = la::avdecc::entity::model::MilanVersion{ 1, 2 };
 	}
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ConfigurationIndex const descriptorIndex, la::avdecc::entity::model::ConfigurationNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::ConfigurationNodeDynamicModel& dynamicModel) noexcept override
 	{

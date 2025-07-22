@@ -589,6 +589,11 @@ public:
 		}
 		milanCompatibilityVersion = _milanCompatibilityVersion;
 	}
+	virtual void build(la::avdecc::entity::model::MilanInfo& milanInfo, la::avdecc::entity::model::MilanDynamicState& /*milanDynamicState*/) noexcept override
+	{
+		milanInfo.protocolVersion = 1;
+		milanInfo.specificationVersion = _milanCompatibilityVersion;
+	}
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::EntityNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::EntityNodeDynamicModel& dynamicModel) noexcept override
 	{
 		dynamicModel.entityName = la::avdecc::entity::model::AvdeccFixedString{ "Test entity" };
