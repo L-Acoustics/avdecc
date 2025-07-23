@@ -28,6 +28,7 @@
 
 #include <la/avdecc/controller/avdeccController.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
+#include <la/avdecc/internals/streamFormatInfo.hpp>
 #ifdef ENABLE_AVDECC_FEATURE_JSON
 #	include <la/avdecc/internals/jsonTypes.hpp>
 #endif // ENABLE_AVDECC_FEATURE_JSON
@@ -121,7 +122,17 @@ public:
 		if (_isConfigurationActive)
 		{
 			// Choose the first stream format
-			dynamicModel.streamFormat = staticModel.formats.empty() ? la::avdecc::entity::model::StreamFormat{} : *staticModel.formats.begin();
+			if (staticModel.formats.empty())
+			{
+				dynamicModel.streamFormat = la::avdecc::entity::model::StreamFormat{};
+			}
+			else
+			{
+				auto const firstFormat = *staticModel.formats.begin();
+				auto const sfi = la::avdecc::entity::model::StreamFormatInfo::create(firstFormat);
+				auto const adaptedFormat = sfi->getAdaptedStreamFormat(sfi->getChannelsCount());
+				dynamicModel.streamFormat = adaptedFormat;
+			}
 		}
 	}
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*descriptorIndex*/, la::avdecc::entity::model::StreamNodeStaticModel const& staticModel, la::avdecc::entity::model::StreamOutputNodeDynamicModel& dynamicModel) noexcept override

@@ -28,6 +28,7 @@
 #include <la/avdecc/internals/protocolAemAecpdu.hpp>
 #include <la/avdecc/internals/protocolAemPayloadSizes.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
+#include <la/avdecc/internals/streamFormatInfo.hpp>
 
 // Internal API
 #include "controller/avdeccControlledEntityImpl.hpp"
@@ -43,6 +44,7 @@
 #include <future>
 #include <vector>
 #include <cstdint>
+#include <functional>
 
 static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
 
@@ -549,9 +551,11 @@ namespace
 class Builder : public la::avdecc::controller::model::DefaultedVirtualEntityBuilder
 {
 public:
-	Builder(la::avdecc::controller::ControlledEntity::CompatibilityFlags const flags, la::avdecc::entity::model::MilanVersion const& milanCompatibilityVersion) noexcept
+	using StreamFormatChooser = std::function<la::avdecc::entity::model::StreamFormat(la::avdecc::entity::model::StreamNodeStaticModel const& staticModel)>;
+	Builder(la::avdecc::controller::ControlledEntity::CompatibilityFlags const flags, la::avdecc::entity::model::MilanVersion const& milanCompatibilityVersion, StreamFormatChooser const& streamFormatChooser) noexcept
 		: _compatibilityFlags{ flags }
 		, _milanCompatibilityVersion{ milanCompatibilityVersion }
+		, _streamFormatChooser{ streamFormatChooser }
 	{
 	}
 
@@ -623,7 +627,7 @@ public:
 		if (_isConfigurationActive)
 		{
 			// Choose the first stream format
-			dynamicModel.streamFormat = staticModel.formats.empty() ? la::avdecc::entity::model::StreamFormat{} : *staticModel.formats.begin();
+			dynamicModel.streamFormat = _streamFormatChooser(staticModel);
 		}
 	}
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*descriptorIndex*/, la::avdecc::entity::model::StreamNodeStaticModel const& staticModel, la::avdecc::entity::model::StreamOutputNodeDynamicModel& dynamicModel) noexcept override
@@ -632,7 +636,7 @@ public:
 		if (_isConfigurationActive)
 		{
 			// Choose the first stream format
-			dynamicModel.streamFormat = staticModel.formats.empty() ? la::avdecc::entity::model::StreamFormat{} : *staticModel.formats.begin();
+			dynamicModel.streamFormat = _streamFormatChooser(staticModel);
 		}
 	}
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AvbInterfaceIndex const /*descriptorIndex*/, la::avdecc::entity::model::AvbInterfaceNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::AvbInterfaceNodeDynamicModel& dynamicModel) noexcept override
@@ -664,20 +668,26 @@ private:
 	bool _isConfigurationActive{ false };
 	la::avdecc::controller::ControlledEntity::CompatibilityFlags _compatibilityFlags{};
 	la::avdecc::entity::model::MilanVersion _milanCompatibilityVersion{};
+	StreamFormatChooser _streamFormatChooser{};
 };
 } // namespace
 
-inline void doVirtualEntityFromEntityModelFile(Controller_F* self, std::string const& fileName)
+inline std::tuple<la::avdecc::jsonSerializer::DeserializationError, std::string> doCreateVirtualEntityFromEntityModelFile(Controller_F* self, std::string const& fileName, Builder::StreamFormatChooser const& streamFormatChooser)
+{
+	auto const CompatibilityFlags = la::avdecc::controller::ControlledEntity::CompatibilityFlags{ la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221, la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan };
+
+	auto builder = Builder{ CompatibilityFlags, la::avdecc::entity::model::MilanVersion{ 1, 0 }, streamFormatChooser };
+
+	auto& controller = self->getController();
+	return controller.createVirtualEntityFromEntityModelFile(fileName, &builder, false);
+}
+
+inline void doValidateVirtualEntityFromEntityModelFile(Controller_F* self, la::avdecc::controller::ControlledEntity::CompatibilityFlags const compatibilityFlags)
 {
 	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x0102030405060708 };
-	auto const compatibilityFlags = la::avdecc::controller::ControlledEntity::CompatibilityFlags{ la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221, la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan };
-	auto builder = Builder{ compatibilityFlags, la::avdecc::entity::model::MilanVersion{ 1, 0 } };
-	auto& controller = self->getController();
-	auto const [error, message] = controller.createVirtualEntityFromEntityModelFile(fileName, &builder, false);
-	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
-	EXPECT_STREQ("", message.c_str());
 
 	// Validate entity
+	auto& controller = self->getController();
 	auto const entity = controller.getControlledEntityGuard(EntityID);
 	ASSERT_TRUE(!!entity);
 
@@ -686,22 +696,118 @@ inline void doVirtualEntityFromEntityModelFile(Controller_F* self, std::string c
 
 	// Check compatibility flags
 	EXPECT_EQ(compatibilityFlags, entity->getCompatibilityFlags());
+}
+
+TEST_F(Controller_F, VirtualEntityFromEntityModelFileV1)
+{
+	auto const [error, message] = doCreateVirtualEntityFromEntityModelFile(this, "data/SimpleEntityModelV1.json",
+		[](la::avdecc::entity::model::StreamNodeStaticModel const& staticModel)
+		{
+			// Choose the first stream format
+			return *staticModel.formats.begin();
+		});
+	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	doValidateVirtualEntityFromEntityModelFile(this, la::avdecc::controller::ControlledEntity::CompatibilityFlags{ la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221, la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan });
 
 	// Serialize the virtual entity
 	{
+		auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x0102030405060708 };
+		auto& controller = getController();
 		auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDiagnostics /*, la::avdecc::entity::model::jsonSerializer::Flag::BinaryFormat*/ };
 		controller.serializeControlledEntityAsJson(EntityID, "OutputVirtualEntity.json", flags, "Unit Test");
 	}
 }
 
-TEST_F(Controller_F, VirtualEntityFromEntityModelFileV1)
-{
-	doVirtualEntityFromEntityModelFile(this, "data/SimpleEntityModelV1.json");
-}
-
 TEST_F(Controller_F, VirtualEntityFromEntityModelFileV2)
 {
-	doVirtualEntityFromEntityModelFile(this, "data/SimpleEntityModelV2.json");
+	auto const [error, message] = doCreateVirtualEntityFromEntityModelFile(this, "data/SimpleEntityModelV2.json",
+		[](la::avdecc::entity::model::StreamNodeStaticModel const& staticModel)
+		{
+			// Choose the first stream format
+			return *staticModel.formats.begin();
+		});
+	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	doValidateVirtualEntityFromEntityModelFile(this, la::avdecc::controller::ControlledEntity::CompatibilityFlags{ la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221, la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan });
+
+	// Serialize the virtual entity
+	{
+		auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x0102030405060708 };
+		auto& controller = getController();
+		auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDiagnostics /*, la::avdecc::entity::model::jsonSerializer::Flag::BinaryFormat*/ };
+		controller.serializeControlledEntityAsJson(EntityID, "OutputVirtualEntity.json", flags, "Unit Test");
+	}
+}
+
+TEST_F(Controller_F, VirtualEntityFromEntityModelFile_InvalidFormat)
+{
+	auto const [error, message] = doCreateVirtualEntityFromEntityModelFile(this, "data/SimpleEntityModelV2.json",
+		[](la::avdecc::entity::model::StreamNodeStaticModel const& /*staticModel*/)
+		{
+			// Invalid Format
+			return la::avdecc::entity::model::StreamFormat{};
+		});
+	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::MissingInformation, error);
+}
+
+TEST_F(Controller_F, VirtualEntityFromEntityModelFile_UpToBit_PassUpToBitFormat)
+{
+	auto const [error, message] = doCreateVirtualEntityFromEntityModelFile(this, "data/EntityModel_UpToBit.json",
+		[](la::avdecc::entity::model::StreamNodeStaticModel const& staticModel)
+		{
+			auto const firstFormat = *staticModel.formats.begin();
+			auto const sfi = la::avdecc::entity::model::StreamFormatInfo::create(firstFormat);
+			EXPECT_TRUE(sfi->isUpToChannelsCount());
+			return firstFormat;
+		});
+	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::MissingInformation, error);
+}
+
+TEST_F(Controller_F, VirtualEntityFromEntityModelFile_UpToBit_PassAdaptedFormat)
+{
+	auto const [error, message] = doCreateVirtualEntityFromEntityModelFile(this, "data/EntityModel_UpToBit.json",
+		[](la::avdecc::entity::model::StreamNodeStaticModel const& staticModel)
+		{
+			auto const firstFormat = *staticModel.formats.begin();
+			auto const sfi = la::avdecc::entity::model::StreamFormatInfo::create(firstFormat);
+			EXPECT_TRUE(sfi->isUpToChannelsCount());
+			auto const adaptedFormat = sfi->getAdaptedStreamFormat(sfi->getChannelsCount());
+			EXPECT_TRUE(adaptedFormat.isValid());
+			return adaptedFormat;
+		});
+	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+}
+
+TEST_F(Controller_F, VirtualEntityFromEntityModelFile_UpToBit_PassAboveUpToFormat)
+{
+	auto const [error, message] = doCreateVirtualEntityFromEntityModelFile(this, "data/EntityModel_UpToBit.json",
+		[](la::avdecc::entity::model::StreamNodeStaticModel const& staticModel)
+		{
+			auto const firstFormat = *staticModel.formats.begin();
+			auto const sfi = la::avdecc::entity::model::StreamFormatInfo::create(firstFormat);
+			EXPECT_TRUE(sfi->isUpToChannelsCount());
+			EXPECT_EQ(8u, sfi->getChannelsCount());
+			return la::avdecc::entity::model::StreamFormat{ 0x020702200400C000 }; // 16 channels
+		});
+	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::MissingInformation, error);
+}
+
+TEST_F(Controller_F, VirtualEntityFromEntityModelFile_NotUpToBit_PassAdaptedFormat)
+{
+	auto const [error, message] = doCreateVirtualEntityFromEntityModelFile(this, "data/EntityModel_NotUpToBit.json",
+		[](la::avdecc::entity::model::StreamNodeStaticModel const& staticModel)
+		{
+			auto const firstFormat = *staticModel.formats.begin();
+			auto const sfi = la::avdecc::entity::model::StreamFormatInfo::create(firstFormat);
+			EXPECT_FALSE(sfi->isUpToChannelsCount());
+			auto const adaptedFormat = sfi->getAdaptedStreamFormat(sfi->getChannelsCount());
+			EXPECT_TRUE(adaptedFormat.isValid());
+			return adaptedFormat;
+		});
+	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
 }
 
 /*

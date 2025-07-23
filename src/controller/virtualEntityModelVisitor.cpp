@@ -25,6 +25,7 @@
 #include "virtualEntityModelVisitor.hpp"
 
 #include <la/avdecc/internals/endian.hpp>
+#include <la/avdecc/internals/streamFormatInfo.hpp>
 #include <la/avdecc/utils.hpp>
 
 #include <cstdint>
@@ -259,28 +260,72 @@ void VirtualEntityModelVisitor::validate() noexcept
 
 		// Check StreamNodeDynamicModel.streamFormat for the active configuration
 		{
+			auto const validateFormat = [](la::avdecc::entity::model::StreamFormats const& supportedFormats, la::avdecc::entity::model::StreamFormat const& streamFormat) -> bool
+			{
+				// Check streamFormat is set to one of the supported stream formats
+				// We need to properly handle formats with the up-to-bit set:
+				//  - A dynamic format must NOT have the up-to-bit set
+				//  - A dynamic format must be matched against all the static formats that have the up-to-bit set
+				// If a format cannot be parsed by StreamFormatInfo, it is considered valid.
+				auto const sfi = la::avdecc::entity::model::StreamFormatInfo::create(streamFormat);
+				if (!sfi)
+				{
+					// If the StreamFormatInfo cannot be created, we consider the format valid
+					return true;
+				}
+				if (sfi->isUpToChannelsCount())
+				{
+					// A dynamic format must not have the up-to-bit set
+					return false;
+				}
+				if (std::find(supportedFormats.begin(), supportedFormats.end(), streamFormat) != supportedFormats.end())
+				{
+					// The format is directly supported
+					return true;
+				}
+				// Check if the format is supported by any of the static formats that have the up-to-bit set
+				for (auto const& supportedFormat : supportedFormats)
+				{
+					auto const supportedSfi = la::avdecc::entity::model::StreamFormatInfo::create(supportedFormat);
+					if (!supportedSfi)
+					{
+						// If the StreamFormatInfo cannot be created, we consider the provided format valid as it may match this one
+						return true;
+					}
+					if (supportedSfi->isUpToChannelsCount())
+					{
+						// Get the adapted format for the provided channels count
+						auto const adaptedFormat = supportedSfi->getAdaptedStreamFormat(sfi->getChannelsCount());
+						// Check if the adapted format matches the provided format
+						if (adaptedFormat == streamFormat)
+						{
+							// The provided format matches the adapted format of a supported format with the up-to-bit set
+							return true;
+						}
+					}
+				}
+				// The provided format is not valid (doesn't match any of the supported formats)
+				return false;
+			};
+
 			auto const* const configurationNode = _controlledEntity->getConfigurationNode(activeConfigurationIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
 			for (auto const& [streamIndex, streamNode] : configurationNode->streamInputs)
 			{
 				// Check streamFormat is set to one of the supported stream formats
-				auto const& supportedStreamFormats = streamNode.staticModel.formats;
-				auto const& streamFormat = streamNode.dynamicModel.streamFormat;
-				if (std::find(supportedStreamFormats.begin(), supportedStreamFormats.end(), streamFormat) == supportedStreamFormats.end())
+				if (!validateFormat(streamNode.staticModel.formats, streamNode.dynamicModel.streamFormat))
 				{
 					_isError = true;
-					_errorMessage = "StreamInputNode[" + std::to_string(streamIndex) + "].dynamicModel.streamFormat is not in the supported stream formats: " + std::to_string(streamFormat);
+					_errorMessage = "StreamInputNode[" + std::to_string(streamIndex) + "].dynamicModel.streamFormat is not in the supported stream formats: " + std::to_string(streamNode.dynamicModel.streamFormat);
 					return;
 				}
 			}
 			for (auto const& [streamIndex, streamNode] : configurationNode->streamOutputs)
 			{
 				// Check streamFormat is set to one of the supported stream formats
-				auto const& supportedStreamFormats = streamNode.staticModel.formats;
-				auto const& streamFormat = streamNode.dynamicModel.streamFormat;
-				if (std::find(supportedStreamFormats.begin(), supportedStreamFormats.end(), streamFormat) == supportedStreamFormats.end())
+				if (!validateFormat(streamNode.staticModel.formats, streamNode.dynamicModel.streamFormat))
 				{
 					_isError = true;
-					_errorMessage = "StreamOutputNode[" + std::to_string(streamIndex) + "].dynamicModel.streamFormat is not in the supported stream formats: " + std::to_string(streamFormat);
+					_errorMessage = "StreamOutputNode[" + std::to_string(streamIndex) + "].dynamicModel.streamFormat is not in the supported stream formats: " + std::to_string(streamNode.dynamicModel.streamFormat);
 					return;
 				}
 			}
