@@ -65,6 +65,7 @@
 	#include <la/avdecc/internals/endStation.hpp>
 	#include <la/avdecc/internals/protocolVuAecpdu.hpp>
 	#include <la/avdecc/internals/protocolInterface.hpp>
+	#include <la/avdecc/internals/streamFormatInfo.hpp>
 %}
 
 // Force define AVDECC C/C++ API Macros to nothing
@@ -212,6 +213,35 @@ public:
 
 // Import entity model
 %import "la/avdecc/internals/entityModel.i"
+
+
+////////////////////////////////////////
+// StreamFormatInfo
+////////////////////////////////////////
+// Bind enums
+DEFINE_ENUM_CLASS(la::avdecc::entity::model::StreamFormatInfo::Type, "int")
+DEFINE_ENUM_CLASS(la::avdecc::entity::model::StreamFormatInfo::SampleFormat, "int")
+
+// Bind structs and classes
+%rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
+
+%nspace la::avdecc::entity::model::StreamFormatInfo;
+%rename("%s") la::avdecc::entity::model::StreamFormatInfo; // Unignore class
+%unique_ptr(la::avdecc::entity::model::StreamFormatInfo) // Define unique_ptr for StreamFormatInfo
+// Extend the class
+%extend la::avdecc::entity::model::StreamFormatInfo
+{
+public:
+	static std::unique_ptr<la::avdecc::entity::model::StreamFormatInfo> create(la::avdecc::entity::model::StreamFormat const& streamFormat)
+	{
+		return std::unique_ptr<la::avdecc::entity::model::StreamFormatInfo>{ la::avdecc::entity::model::StreamFormatInfo::create(streamFormat).release() };
+	}
+};
+%ignore la::avdecc::entity::model::StreamFormatInfo::create; // Ignore it, will be wrapped (because std::unique_ptr doesn't support custom deleters - Ticket #2411)
+
+// Include c++ declaration file
+%include "la/avdecc/internals/streamFormatInfo.hpp"
+%rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
 
 ////////////////////////////////////////

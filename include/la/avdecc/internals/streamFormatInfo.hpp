@@ -146,12 +146,12 @@ public:
 	StreamFormatInfo& operator=(StreamFormatInfo const&) = default;
 	StreamFormatInfo& operator=(StreamFormatInfo&&) = default;
 
+	/** Destructor */
+	virtual ~StreamFormatInfo() noexcept = default;
+
 protected:
 	/** Constructor */
 	StreamFormatInfo() noexcept = default;
-
-	/** Destructor */
-	virtual ~StreamFormatInfo() noexcept = default;
 
 private:
 	/** Entry point */
