@@ -20,3 +20,5 @@
 # Ignore user cmake presets
 /CMakeUserPresets.json
 
+**/secrets.env
+
