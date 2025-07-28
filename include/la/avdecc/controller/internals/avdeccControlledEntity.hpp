@@ -115,10 +115,25 @@ public:
 		std::set<entity::model::StreamIndex> streamInputOverLatency{}; /** List of StreamInput whose MSRP Latency is greater than Talker's Presentation Time */
 	};
 
+	/** Compatibility change event information */
+	struct CompatibilityChangedEvent
+	{
+		CompatibilityFlags previousFlags{}; /** Previous compatibility flags */
+		entity::model::MilanVersion previousMilanVersion{}; /** Previous Milan version */
+		CompatibilityFlags newFlags{}; /** New compatibility flags */
+		entity::model::MilanVersion newMilanVersion{}; /** New Milan version */
+		std::string specClause{}; /** Specification clause */
+		std::string message{}; /** Message describing the change */
+		std::chrono::system_clock::time_point timestamp{ std::chrono::system_clock::now() }; /** Timestamp of the event */ // Must be in system_clock (not steady_clock)
+	};
+	using CompatibilityChangedEvents = std::vector<CompatibilityChangedEvent>;
+
+
 	// Getters
 	virtual bool isVirtual() const noexcept = 0; // True if the entity is a virtual one (la::avdecc::controller::Controller methods won't succeed due to the entity not actually been discovered)
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept = 0;
 	virtual entity::model::MilanVersion getMilanCompatibilityVersion() const noexcept = 0;
+	virtual CompatibilityChangedEvents const& getCompatibilityChangedEvents() const noexcept = 0; // Returns the list of compatibility changes that happened since the entity was discovered
 	virtual bool isMilanRedundant() const noexcept = 0; // True if the entity is currently in Milan Redundancy mode (ie. current configuration has at least one redundant stream)
 	virtual bool gotFatalEnumerationError() const noexcept = 0; // True if the controller had a fatal error during entity information retrieval (leading to Exception::Type::EnumerationError if any throwing method is called).
 	virtual bool isPackedDynamicInfoSupported() const noexcept = 0; // True if the entity supports GET_DYNAMIC_INFO

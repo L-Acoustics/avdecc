@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - smartSetMaxTransitTime method to Controller, which automatically uses the correct method to set the presentation time offset based on the detected entity capabilities
+- New API to ControlledEntity to retrieve compatibility change events: `getCompatibilityChangedEvents()`
 
 ### Changed
 - [StreamOutputNode has a new field: `presentationTimeOffset` to replace the `msrpAccumulatedLatency` field (which was in StreamDynamicInfo struct)](https://github.com/L-Acoustics/avdecc/issues/147)

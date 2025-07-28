@@ -198,6 +198,7 @@ public:
 	virtual bool isVirtual() const noexcept override;
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept override;
 	virtual entity::model::MilanVersion getMilanCompatibilityVersion() const noexcept override;
+	virtual CompatibilityChangedEvents const& getCompatibilityChangedEvents() const noexcept override;
 	virtual bool isMilanRedundant() const noexcept override;
 	virtual bool gotFatalEnumerationError() const noexcept override;
 	virtual bool isPackedDynamicInfoSupported() const noexcept override;
@@ -448,6 +449,7 @@ public:
 	void clearEnumerationStep(EnumerationStep const step) noexcept;
 	void setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept;
 	void setMilanCompatibilityVersion(entity::model::MilanVersion const version) noexcept;
+	void addCompatibilityChangedEvent(CompatibilityChangedEvent const& event) noexcept;
 	void setMilanRedundant(bool const isMilanRedundant) noexcept;
 	void setGetFatalEnumerationError() noexcept;
 	void setPackedDynamicInfoSupported(bool const isSupported) noexcept;
@@ -515,6 +517,7 @@ private:
 	EnumerationSteps _enumerationSteps{};
 	CompatibilityFlags _compatibilityFlags{ CompatibilityFlag::IEEE17221 }; // Entity is IEEE1722.1 compatible by default
 	entity::model::MilanVersion _milanCompatibilityVersion{};
+	CompatibilityChangedEvents _compatibilityChangedEvents{};
 	bool _isMilanRedundant{ false }; // Current configuration has at least one redundant stream
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
 	bool _isPackedDynamicInfoSupported{ false }; // Is the GET_DYNAMIC_INFO command supported
