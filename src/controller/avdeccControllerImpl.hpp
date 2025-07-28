@@ -349,8 +349,8 @@ private:
 	/* ************************************************************ */
 	void updateEntity(ControlledEntityImpl& controlledEntity, entity::Entity const& entity) const noexcept;
 	static void addCompatibilityFlag(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) noexcept;
-	static void removeCompatibilityFlag(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) noexcept;
-	static void decreaseMilanCompatibilityVersion(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::MilanVersion const& version) noexcept;
+	static void removeCompatibilityFlag(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag, std::string const& specClause, std::string const& message) noexcept;
+	static void decreaseMilanCompatibilityVersion(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::MilanVersion const& version, std::string const& specClause, std::string const& message) noexcept;
 	void updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed) const noexcept;
 	void updateAcquiredState(ControlledEntityImpl& controlledEntity, model::AcquireState const acquireState, UniqueIdentifier const owningEntity) const noexcept;
 	void updateLockedState(ControlledEntityImpl& controlledEntity, model::LockState const lockState, UniqueIdentifier const lockingEntity) const noexcept;
@@ -614,7 +614,7 @@ private:
 		MisbehaveContinue, /**< The entity misbehaved, flag it, ignore and continue to next one. */
 		ErrorFatal, /**< This query returned a fatal error, enumeration should be stopped immediately. */
 	};
-	enum class DynamicControlValuesValidationResult
+	enum class DynamicControlValuesValidationResultKind
 	{
 		Valid,
 		CurrentValueOutOfRange, /**< current value is out of min-max range - This is not considered an error for some ControlType */
@@ -630,6 +630,12 @@ private:
 	/* ************************************************************ */
 	/* Private types                                                */
 	/* ************************************************************ */
+	struct DynamicControlValuesValidationResult
+	{
+		DynamicControlValuesValidationResultKind kind{ DynamicControlValuesValidationResultKind::Valid };
+		std::string specClause{}; /**< The spec clause that was violated, if any */
+		std::string message{}; /**< A message describing the error, if any */
+	};
 	using DelayedQueryHandler = std::function<void(entity::ControllerEntity*)>;
 	struct DelayedQuery
 	{
@@ -717,7 +723,7 @@ private:
 	void onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
 	void onPostAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
 	void onPreUnadvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
-	void checkMilanRequirements(ControlledEntityImpl* const entity, MilanRequirements const& milanRequirements, std::string const& logMessage) noexcept;
+	void checkMilanRequirements(ControlledEntityImpl* const entity, MilanRequirements const& milanRequirements, std::string const& specClause, std::string const& message) noexcept;
 	FailureAction getFailureActionForMvuCommandStatus(entity::ControllerEntity::MvuCommandStatus const status) const noexcept;
 	FailureAction getFailureActionForAemCommandStatus(entity::ControllerEntity::AemCommandStatus const status) const noexcept;
 	FailureAction getFailureActionForControlStatus(entity::ControllerEntity::ControlStatus const status) const noexcept;
