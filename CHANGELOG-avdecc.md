@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- New logging level: `Compat` for compatibility changes
+
 ### Changed
 - Changed AvdeccFixedString::data() method to return a tuple of a pointer and a size (to help prevent misuse)
 - [la::avdecc::entity::model::StreamOutputCounters and la::avdecc::entity::StreamOutputCounterValidFlags modified to accommodate the different types of counters (IEEE and Milan)](https://github.com/L-Acoustics/avdecc/issues/171)
