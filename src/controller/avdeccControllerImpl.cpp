@@ -6748,6 +6748,18 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 				// Fallback to Milan 1.2 compatibility if the device has the Milan flag but there is no MilanCompatibilityVersion field (older dump). The compatibility version may be downgraded later during loading
 				entity.setMilanCompatibilityVersion(entity::model::MilanVersion{ 1, 2 });
 			}
+			if (auto const it = object.find(jsonSerializer::keyName::ControlledEntity_CompatibilityEvents); it != object.end())
+			{
+				// Check if the CompatibilityEvents is an array
+				if (it->is_array())
+				{
+					auto const& events = it->get<std::vector<ControlledEntity::CompatibilityChangedEvent>>();
+					for (auto const& event : events)
+					{
+						entity.addCompatibilityChangedEvent(event);
+					}
+				}
+			}
 		}
 
 		// Read Milan information, if present
