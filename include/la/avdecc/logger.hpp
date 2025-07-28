@@ -58,6 +58,7 @@ enum class Level
 	Info = 2, /**< Information level */
 	Warn = 3, /**< Warning level */
 	Error = 4, /**< Error level */
+	Compat = 5, /**< Compatibility level (used for compatibility changes) */
 	None = 99, /**< No logging level */
 };
 

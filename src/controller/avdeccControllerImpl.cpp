@@ -230,12 +230,14 @@ void ControllerImpl::addCompatibilityFlag(ControllerImpl const* const controller
 	}
 }
 
-void ControllerImpl::removeCompatibilityFlag(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) noexcept
+void ControllerImpl::removeCompatibilityFlag(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag, std::string const& specClause, std::string const& message) noexcept
 {
 	auto const oldFlags = controlledEntity.getCompatibilityFlags();
 	auto const oldMilanCompatibilityVersion = controlledEntity.getMilanCompatibilityVersion();
 	auto newFlags = oldFlags;
 	auto newMilanCompatibilityVersion = oldMilanCompatibilityVersion;
+
+	LOG_CONTROLLER_COMPAT(controlledEntity.getEntity().getEntityID(), "[{}] {}", specClause, message);
 
 	switch (flag)
 	{
@@ -243,7 +245,7 @@ void ControllerImpl::removeCompatibilityFlag(ControllerImpl const* const control
 			// If device was IEEE1722.1 compliant
 			if (newFlags.test(ControlledEntity::CompatibilityFlag::IEEE17221))
 			{
-				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity not fully IEEE1722.1 compliant");
+				LOG_CONTROLLER_COMPAT(controlledEntity.getEntity().getEntityID(), "Entity not fully IEEE1722.1 compliant");
 				newFlags.reset(flag);
 			}
 			// A non compliant IEEE1722.1 device is not Milan compliant either
@@ -252,7 +254,7 @@ void ControllerImpl::removeCompatibilityFlag(ControllerImpl const* const control
 			// If device was Milan compliant
 			if (newFlags.test(ControlledEntity::CompatibilityFlag::Milan))
 			{
-				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity not fully Milan compliant");
+				LOG_CONTROLLER_COMPAT(controlledEntity.getEntity().getEntityID(), "Entity not fully Milan compliant");
 				newMilanCompatibilityVersion = entity::model::MilanVersion{};
 				newFlags.reset(flag);
 			}
@@ -279,6 +281,8 @@ void ControllerImpl::removeCompatibilityFlag(ControllerImpl const* const control
 		if (controller)
 		{
 			AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+			// Create a compatibilityChanged event
+			controlledEntity.addCompatibilityChangedEvent(ControlledEntity::CompatibilityChangedEvent{ oldFlags, oldMilanCompatibilityVersion, newFlags, newMilanCompatibilityVersion, specClause, message });
 			// Entity was advertised to the user, notify observers
 			if (controlledEntity.wasAdvertised())
 			{
@@ -288,7 +292,7 @@ void ControllerImpl::removeCompatibilityFlag(ControllerImpl const* const control
 	}
 }
 
-void ControllerImpl::decreaseMilanCompatibilityVersion(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::MilanVersion const& version) noexcept
+void ControllerImpl::decreaseMilanCompatibilityVersion(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::MilanVersion const& version, std::string const& specClause, std::string const& message) noexcept
 {
 	auto const oldMilanCompatibilityVersion = controlledEntity.getMilanCompatibilityVersion();
 
@@ -301,19 +305,22 @@ void ControllerImpl::decreaseMilanCompatibilityVersion(ControllerImpl const* con
 	// If version gets down to 0, remove the Milan flag from the CompatibilityFlags
 	if (version == entity::model::MilanVersion{})
 	{
-		LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Downgrading Milan compatibility version from {} to {}", oldMilanCompatibilityVersion.to_string(), version.to_string());
-		removeCompatibilityFlag(controller, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+		removeCompatibilityFlag(controller, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, specClause, message);
 		return;
 	}
 
 	if (oldMilanCompatibilityVersion != version)
 	{
-		LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Downgrading Milan compatibility version from {} to {}", oldMilanCompatibilityVersion.to_string(), version.to_string());
+		LOG_CONTROLLER_COMPAT(controlledEntity.getEntity().getEntityID(), "[{}] {}", specClause, message);
+		LOG_CONTROLLER_COMPAT(controlledEntity.getEntity().getEntityID(), "Downgrading Milan compatibility version from {} to {}", oldMilanCompatibilityVersion.to_string(), version.to_string());
 		controlledEntity.setMilanCompatibilityVersion(version);
 
 		if (controller)
 		{
 			AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+			// Create a compatibilityChanged event
+			auto const compatibilityFlags = controlledEntity.getCompatibilityFlags();
+			controlledEntity.addCompatibilityChangedEvent(ControlledEntity::CompatibilityChangedEvent{ compatibilityFlags, oldMilanCompatibilityVersion, compatibilityFlags, version, specClause, message });
 			// Entity was advertised to the user, notify observers
 			if (controlledEntity.wasAdvertised())
 			{
@@ -575,21 +582,19 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 		// No StreamFormatValid bit
 		if (!hasStreamFormat)
 		{
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set in GET_STREAM_INFO response");
-			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4.15/7.4.16", "StreamFormatValid bit not set in STREAM_INFO response");
 			// Check if we have something that looks like a valid streamFormat in the field
 			auto const formatType = entity::model::StreamFormatInfo::create(info.streamFormat)->getType();
 			if (formatType != entity::model::StreamFormatInfo::Type::None && formatType != entity::model::StreamFormatInfo::Type::Unsupported)
 			{
-				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set but stream_format field appears to contain a valid value in GET_STREAM_INFO response");
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set but stream_format field appears to contain a valid value in STREAM_INFO response");
 			}
 		}
 		// Or Invalid StreamFormat
 		else if (!info.streamFormat)
 		{
 			hasStreamFormat = false;
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit set but invalid stream_format field in GET_STREAM_INFO response");
-			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4.15/7.4.16", "StreamFormatValid bit set but invalid stream_format field in STREAM_INFO response");
 		}
 	}
 	// If Milan Extended Information is required (for GetStreamInfo, not SetStreamInfo) and entity is Milan compatible, check if it's present
@@ -597,8 +602,7 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 	{
 		if (!info.streamInfoFlagsEx || !info.probingStatus || !info.acmpStatus)
 		{
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Milan mandatory extended GetStreamInfo not found");
-			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.4.2.9/5.4.2.10", "Milan mandatory extended GET_STREAM_INFO not found");
 		}
 	}
 
@@ -687,21 +691,19 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 		// No StreamFormatValid bit
 		if (!hasStreamFormat)
 		{
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set in GET_STREAM_INFO response");
-			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4.15/7.4.16", "StreamFormatValid bit not set in STREAM_INFO response");
 			// Check if we have something that looks like a valid streamFormat in the field
 			auto const formatType = entity::model::StreamFormatInfo::create(info.streamFormat)->getType();
 			if (formatType != entity::model::StreamFormatInfo::Type::None && formatType != entity::model::StreamFormatInfo::Type::Unsupported)
 			{
-				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set but stream_format field appears to contain a valid value in GET_STREAM_INFO response");
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set but stream_format field appears to contain a valid value in STREAM_INFO response");
 			}
 		}
 		// Or Invalid StreamFormat
 		else if (!info.streamFormat)
 		{
 			hasStreamFormat = false;
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit set but invalid stream_format field in GET_STREAM_INFO response");
-			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4.15/7.4.16", "StreamFormatValid bit set but invalid stream_format field in GET_STREAM_INFO response");
 		}
 	}
 	// If Milan Extended Information is required (for GetStreamInfo, not SetStreamInfo) and entity is Milan compatible, check if it's present
@@ -709,8 +711,7 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 	{
 		if (!info.streamInfoFlagsEx || !info.probingStatus || !info.acmpStatus)
 		{
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Milan mandatory extended GetStreamInfo not found");
-			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.4.2.9/5.4.2.10", "Milan mandatory extended GET_STREAM_INFO not found");
 		}
 	}
 
@@ -1004,8 +1005,7 @@ void ControllerImpl::updateAssociationID(ControlledEntityImpl& controlledEntity,
 
 	if (!caps.test(entity::EntityCapability::AssociationIDSupported))
 	{
-		LOG_CONTROLLER_WARN(entity.getEntityID(), "Entity changed its ASSOCIATION_ID but it said ASSOCIATION_ID_NOT_SUPPORTED in ADPDU");
-		removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+		removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 6.2.2.9", "Entity changed its ASSOCIATION_ID but it said ASSOCIATION_ID_NOT_SUPPORTED in ADPDU");
 	}
 
 	// Only do checks if entity was advertised to the user (we already changed the values anyway)
@@ -1110,15 +1110,15 @@ bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity,
 			auto const& controlValues = *controlValuesOpt;
 
 			// Validate ControlValues
-			auto const validationResult = validateControlValues(controlledEntity.getEntity().getEntityID(), controlIndex, controlType, controlValueType, controlStaticModel->values, controlValues);
+			auto const [validationResult, specClause, message] = validateControlValues(controlledEntity.getEntity().getEntityID(), controlIndex, controlType, controlValueType, controlStaticModel->values, controlValues);
 			auto isOutOfBounds = false;
 			switch (validationResult)
 			{
-				case DynamicControlValuesValidationResult::InvalidValues:
+				case DynamicControlValuesValidationResultKind::InvalidValues:
 					// Flag the entity as "Not fully IEEE1722.1 compliant"
-					removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, specClause, message);
 					break;
-				case DynamicControlValuesValidationResult::CurrentValueOutOfRange:
+				case DynamicControlValuesValidationResultKind::CurrentValueOutOfRange:
 					isOutOfBounds = true;
 					break;
 				default:
@@ -1417,8 +1417,7 @@ void ControllerImpl::updateAvbInterfaceCounters(ControlledEntityImpl& controlled
 			auto const downValue = counters[validCounters.getPosition(entity::AvbInterfaceCounterValidFlag::LinkDown)];
 			if (upValue != downValue && upValue != (downValue + 1))
 			{
-				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid LINK_UP / LINK_DOWN counters value on AVB_INTERFACE:{} ({} / {})", avbInterfaceIndex, upValue, downValue);
-				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.6.3", "Invalid LINK_UP / LINK_DOWN counters value on AVB_INTERFACE: " + std::to_string(avbInterfaceIndex) + " (" + std::to_string(upValue) + " / " + std::to_string(downValue) + ")");
 			}
 		}
 
@@ -1453,8 +1452,7 @@ void ControllerImpl::updateClockDomainCounters(ControlledEntityImpl& controlledE
 			auto const unlockedValue = (*clockDomainCounters)[entity::ClockDomainCounterValidFlag::Unlocked];
 			if (lockedValue != unlockedValue && lockedValue != (unlockedValue + 1))
 			{
-				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid LOCKED / UNLOCKED counters value on CLOCK_DOMAIN:{} ({} / {})", clockDomainIndex, lockedValue, unlockedValue);
-				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.11.2", "Invalid LOCKED / UNLOCKED counters value on CLOCK_DOMAIN: " + std::to_string(clockDomainIndex) + " (" + std::to_string(lockedValue) + " / " + std::to_string(unlockedValue) + ")");
 			}
 		}
 
@@ -1489,8 +1487,7 @@ void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledE
 			auto const unlockedValue = (*streamCounters)[entity::StreamInputCounterValidFlag::MediaUnlocked];
 			if (lockedValue != unlockedValue && lockedValue != (unlockedValue + 1))
 			{
-				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid MEDIA_LOCKED / MEDIA_UNLOCKED counters value on STREAM_INPUT:{} ({} / {})", streamIndex, lockedValue, unlockedValue);
-				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.8.10", "Invalid MEDIA_LOCKED / MEDIA_UNLOCKED counters value on STREAM_INPUT: " + std::to_string(streamIndex) + " (" + std::to_string(lockedValue) + " / " + std::to_string(unlockedValue) + ")");
 			}
 		}
 
@@ -1542,14 +1539,12 @@ void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlled
 				auto const stopValue = milan12Counters[entity::StreamOutputCounterValidFlagMilan12::StreamStop];
 				if (startValue != stopValue && startValue != (stopValue + 1))
 				{
-					LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT:{} ({} / {})", streamIndex, startValue, stopValue);
-					removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+					removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.7.7", "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT: " + std::to_string(streamIndex) + " (" + std::to_string(startValue) + " / " + std::to_string(stopValue) + ")");
 				}
 			}
 			catch (std::invalid_argument const&)
 			{
-				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid STREAM_OUTPUT counters type");
-				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.7.7", "Invalid STREAM_OUTPUT counters type");
 			}
 		}
 
@@ -1571,8 +1566,7 @@ void ControllerImpl::updateMemoryObjectLength(ControlledEntityImpl& controlledEn
 		// Validate some fields
 		if (length > memoryObjectNode->staticModel.maximumLength)
 		{
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid MemoryObject.length value (greater than MemoryObject.maximumLength value): {} > {}", length, memoryObjectNode->staticModel.maximumLength);
-			ControllerImpl::removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4.72/7.4.73", "MemoryObject length is greater than maximumLength: " + std::to_string(length) + " > " + std::to_string(memoryObjectNode->staticModel.maximumLength));
 			controlledEntity.setIgnoreCachedEntityModel();
 		}
 	}
@@ -1813,8 +1807,7 @@ void ControllerImpl::validateDefaultMediaClockReferencePriority(ControlledEntity
 		// Check if defaultPriority has changed after the entity has been advertised this is a critical error from the device
 		if (domainNode->staticModel.defaultMediaClockPriority != defaultPriority)
 		{
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Read-only 'DefaultMediaClockReferencePriority' value changed for CLOCK_DOMAIN:{} ({} -> {})", clockDomainIndex, utils::to_integral(domainNode->staticModel.defaultMediaClockPriority), utils::to_integral(defaultPriority));
-			ControllerImpl::decreaseMilanCompatibilityVersion(this, controlledEntity, entity::model::MilanVersion{ 1, 0 });
+			ControllerImpl::decreaseMilanCompatibilityVersion(this, controlledEntity, entity::model::MilanVersion{ 1, 0 }, "Milan 1.2 - 5.4.4.4/5.4.4.5", "Read-only 'DefaultMediaClockReferencePriority' value changed for CLOCK_DOMAIN: " + std::to_string(clockDomainIndex) + " (" + std::to_string(utils::to_integral(domainNode->staticModel.defaultMediaClockPriority)) + " -> " + std::to_string(utils::to_integral(defaultPriority)) + ")");
 		}
 	}
 }
@@ -2014,8 +2007,7 @@ std::tuple<model::AcquireState, UniqueIdentifier> ControllerImpl::getAcquiredInf
 			// Remove "Milan compatibility" as device does support a forbidden command
 			if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 			{
-				LOG_CONTROLLER_WARN(entity.getEntity().getEntityID(), "Milan must not implement ACQUIRE_ENTITY");
-				removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan);
+				removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.4.2.1", "Milan device must not implement ACQUIRE_ENTITY");
 			}
 			break;
 		case entity::ControllerEntity::AemCommandStatus::AcquiredByOther:
@@ -2024,8 +2016,7 @@ std::tuple<model::AcquireState, UniqueIdentifier> ControllerImpl::getAcquiredInf
 			// Remove "Milan compatibility" as device does support a forbidden command
 			if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 			{
-				LOG_CONTROLLER_WARN(entity.getEntity().getEntityID(), "Milan device must not implement ACQUIRE_ENTITY");
-				removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan);
+				removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.4.2.1", "Milan device must not implement ACQUIRE_ENTITY");
 			}
 			break;
 		case entity::ControllerEntity::AemCommandStatus::BadArguments:
@@ -2091,8 +2082,7 @@ std::tuple<model::LockState, UniqueIdentifier> ControllerImpl::getLockedInfoFrom
 			// Remove "Milan compatibility" as device doesn't support a mandatory command
 			if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 			{
-				LOG_CONTROLLER_WARN(entity.getEntity().getEntityID(), "Milan device must implement LOCK_ENTITY");
-				removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan);
+				removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.4.2.2", "Milan device must implement LOCK_ENTITY");
 			}
 			break;
 
@@ -4025,8 +4015,6 @@ entity::model::AudioMappings ControllerImpl::validateMappings(ControlledEntityIm
 bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEntity, model::ControlNode const& identifyControlNode) noexcept
 {
 	AVDECC_ASSERT(entity::model::StandardControlType::Identify == identifyControlNode.staticModel.controlType.getValue(), "validateIdentifyControl should only be called on an IDENTIFY Control Descriptor Type");
-	auto const& e = controlledEntity.getEntity();
-	auto const entityID = e.getEntityID();
 	auto const controlIndex = identifyControlNode.descriptorIndex;
 
 	try
@@ -4049,9 +4037,8 @@ bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEnt
 							// Warning only checks
 							if (identifyControlNode.staticModel.signalType != entity::model::DescriptorType::Invalid || identifyControlNode.staticModel.signalIndex != 0)
 							{
-								LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: SignalType should be set to INVALID and SignalIndex to 0", controlIndex);
 								// Flag the entity as "Not fully IEEE1722.1 compliant"
-								removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+								removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.2.22", "ControlDescriptor at Index " + std::to_string(controlIndex) + " is not a valid Identify Control: SignalType should be set to INVALID and SignalIndex to 0");
 							}
 
 							// All (or almost) ok
@@ -4059,50 +4046,43 @@ bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEnt
 						}
 						else
 						{
-							LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: CurrentValue should either be 0 or 255 but is {}", controlIndex, dynamicValue.currentValue);
 							// Flag the entity as "Not fully IEEE1722.1 compliant"
-							removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+							removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.2.22", "ControlDescriptor at Index " + std::to_string(controlIndex) + " is not a valid Identify Control: CurrentValue should either be 0 or 255 but is " + std::to_string(dynamicValue.currentValue));
 						}
 					}
 					else
 					{
-						LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: Should only contain one value but has {}", controlIndex, dynamicValues.countValues());
 						// Flag the entity as "Not fully IEEE1722.1 compliant"
-						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.2.22", "ControlDescriptor at Index " + std::to_string(controlIndex) + " is not a valid Identify Control: DynamicValues should only contain one value but has " + std::to_string(dynamicValues.countValues()));
 					}
 				}
 				else
 				{
-					LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: One or many fields are incorrect and should be min=0, max=255, step=255, Unit=UNITLESS/0", controlIndex);
 					// Flag the entity as "Not fully IEEE1722.1 compliant"
-					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.2.22", "ControlDescriptor at Index " + std::to_string(controlIndex) + " is not a valid Identify Control: One or many fields are incorrect and should be min=0, max=255, step=255, Unit=UNITLESS/0");
 				}
 			}
 			else
 			{
-				LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: Should only contain one value but has {}", controlIndex, staticValues.countValues());
 				// Flag the entity as "Not fully IEEE1722.1 compliant"
-				removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+				removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.2.22", "ControlDescriptor at Index " + std::to_string(controlIndex) + " is not a valid Identify Control: Should only contain one value but has " + std::to_string(staticValues.countValues()));
 			}
 		}
 		else
 		{
-			LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: ControlValueType should be CONTROL_LINEAR_UINT8 but is {}", controlIndex, entity::model::controlValueTypeToString(controlValueType));
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.2.22", "ControlDescriptor at Index " + std::to_string(controlIndex) + " is not a valid Identify Control: ControlValueType should be CONTROL_LINEAR_UINT8 but is " + entity::model::controlValueTypeToString(controlValueType));
 		}
 	}
 	catch (std::invalid_argument const& e)
 	{
-		LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: {}", controlIndex, e.what());
 		// Flag the entity as "Not fully IEEE1722.1 compliant"
-		removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+		removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.2.22", "ControlDescriptor at Index " + std::to_string(controlIndex) + " is not a valid Identify Control: " + e.what());
 	}
 	catch (...)
 	{
-		LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: Unknown exception trying to read descriptor", controlIndex);
 		// Flag the entity as "Not fully IEEE1722.1 compliant"
-		removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+		removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.2.22", "ControlDescriptor at Index " + std::to_string(controlIndex) + " is not a valid Identify Control: Unknown exception trying to read descriptor");
 	}
 
 	return false;
@@ -4113,27 +4093,23 @@ ControllerImpl::DynamicControlValuesValidationResult ControllerImpl::validateCon
 	if (!staticValues)
 	{
 		// Returning true here because uninitialized values may be due to a type unknown to the library
-		LOG_CONTROLLER_WARN(entityID, "StaticValues (type {}) for ControlDescriptor at Index {} are not initialized (probably unhandled type)", entity::model::controlValueTypeToString(controlValueType), controlIndex);
-		return DynamicControlValuesValidationResult::Valid;
+		return DynamicControlValuesValidationResult{ DynamicControlValuesValidationResultKind::Valid, "INTERNAL", "StaticValues (type " + entity::model::controlValueTypeToString(controlValueType) + ") for ControlDescriptor at Index " + std::to_string(controlIndex) + " are not initialized (probably unhandled type)" };
 	}
 
 	if (staticValues.areDynamicValues())
 	{
-		LOG_CONTROLLER_WARN(entityID, "StaticValues for ControlDescriptor at Index {} are dynamic instead of static", controlIndex);
-		return DynamicControlValuesValidationResult::InvalidValues;
+		return DynamicControlValuesValidationResult{ DynamicControlValuesValidationResultKind::InvalidValues, "INTERNAL", "StaticValues for ControlDescriptor at Index " + std::to_string(controlIndex) + " are dynamic instead of static" };
 	}
 
 	if (!dynamicValues)
 	{
 		// Returning true here because uninitialized values may be due to a type unknown to the library
-		LOG_CONTROLLER_WARN(entityID, "DynamicValues (type {}) for ControlDescriptor at Index {} are not initialized (probably unhandled type)", entity::model::controlValueTypeToString(controlValueType), controlIndex);
-		return DynamicControlValuesValidationResult::InvalidValues;
+		return DynamicControlValuesValidationResult{ DynamicControlValuesValidationResultKind::InvalidValues, "INTERNAL", "DynamicValues (type " + entity::model::controlValueTypeToString(controlValueType) + ") for ControlDescriptor at Index " + std::to_string(controlIndex) + " are not initialized (probably unhandled type)" };
 	}
 
 	if (!dynamicValues.areDynamicValues())
 	{
-		LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are static instead of dynamic", controlIndex);
-		return DynamicControlValuesValidationResult::InvalidValues;
+		return DynamicControlValuesValidationResult{ DynamicControlValuesValidationResultKind::InvalidValues, "INTERNAL", "DynamicValues for ControlDescriptor at Index " + std::to_string(controlIndex) + " are static instead of dynamic" };
 	}
 
 	auto const [result, errMessage] = entity::model::validateControlValues(staticValues, dynamicValues);
@@ -4141,7 +4117,7 @@ ControllerImpl::DynamicControlValuesValidationResult ControllerImpl::validateCon
 	// No error during validation
 	if (result == entity::model::ControlValuesValidationResult::Valid)
 	{
-		return DynamicControlValuesValidationResult::Valid;
+		return DynamicControlValuesValidationResult{ DynamicControlValuesValidationResultKind::Valid, "", "" };
 	}
 
 	// Checking for special (allowed) cases that are only warnings
@@ -4156,13 +4132,13 @@ ControllerImpl::DynamicControlValuesValidationResult ControllerImpl::validateCon
 				case utils::to_integral(entity::model::StandardControlType::FanStatus):
 				case utils::to_integral(entity::model::StandardControlType::Temperature):
 					LOG_CONTROLLER_DEBUG(entityID, "Warning for DynamicValues for ControlDescriptor at Index {}: {}", controlIndex, errMessage);
-					return DynamicControlValuesValidationResult::CurrentValueOutOfRange;
+					return DynamicControlValuesValidationResult{ DynamicControlValuesValidationResultKind::CurrentValueOutOfRange, "", "" };
 				default:
 					// Also return CurrentValueOutOfRange for non-standard controls
 					if (controlType.getVendorID() != entity::model::StandardControlTypeVendorID)
 					{
 						LOG_CONTROLLER_DEBUG(entityID, "Warning for DynamicValues for Non-Standard ControlDescriptor at Index {}: {}", controlIndex, errMessage);
-						return DynamicControlValuesValidationResult::CurrentValueOutOfRange;
+						return DynamicControlValuesValidationResult{ DynamicControlValuesValidationResultKind::CurrentValueOutOfRange, "", "" };
 					}
 					break;
 			}
@@ -4171,8 +4147,7 @@ ControllerImpl::DynamicControlValuesValidationResult ControllerImpl::validateCon
 			break;
 	}
 
-	LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are not valid: {}", controlIndex, errMessage);
-	return DynamicControlValuesValidationResult::InvalidValues;
+	return DynamicControlValuesValidationResult{ DynamicControlValuesValidationResultKind::InvalidValues, "INTERNAL", "DynamicValues for ControlDescriptor at Index " + std::to_string(controlIndex) + " are not valid: " + errMessage };
 }
 
 void ControllerImpl::validateControlDescriptors(ControlledEntityImpl& controlledEntity) noexcept
@@ -4190,9 +4165,8 @@ void ControllerImpl::validateControlDescriptors(ControlledEntityImpl& controlled
 				_adpIdentifyControlIndex = _entity.getIdentifyControlIndex();
 				if (!_adpIdentifyControlIndex)
 				{
-					LOG_CONTROLLER_WARN(_entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: CONTROL index not defined in ADP");
 					// Flag the entity as "Not fully IEEE1722.1 compliant"
-					removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 6.2.2", "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: CONTROL index not defined in ADP");
 				}
 			}
 		}
@@ -4202,9 +4176,8 @@ void ControllerImpl::validateControlDescriptors(ControlledEntityImpl& controlled
 			// Check we found a valid Identify Control at either Configuration or Jack level, if ADP contains a valid Identify Control Index
 			if (_adpIdentifyControlIndex && !_foundADPIdentifyControlIndex)
 			{
-				LOG_CONTROLLER_WARN(_entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: No valid CONTROL at index {}", *_adpIdentifyControlIndex);
 				// Flag the entity as "Not fully IEEE1722.1 compliant"
-				removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+				removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 6.2.2", "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: No valid CONTROL at index " + std::to_string(*_adpIdentifyControlIndex));
 			}
 		}
 
@@ -4254,9 +4227,8 @@ void ControllerImpl::validateControlDescriptors(ControlledEntityImpl& controlled
 				}
 				else
 				{
-					LOG_CONTROLLER_WARN(_entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: ControlType should be IDENTIFY but is {}", entity::model::controlTypeToString(node.staticModel.controlType));
 					// Flag the entity as "Not fully IEEE1722.1 compliant"
-					removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 6.2.2", "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: ControlType should be IDENTIFY but is " + entity::model::controlTypeToString(node.staticModel.controlType));
 				}
 			}
 			return false;
@@ -4277,9 +4249,8 @@ void ControllerImpl::validateControlDescriptors(ControlledEntityImpl& controlled
 					}
 					else
 					{
-						LOG_CONTROLLER_WARN(_entityID, "ControlDescriptor at Index {} is a valid Identify Control but it's neither at CONFIGURATION nor JACK level", controlIndex);
 						// Flag the entity as "Not fully IEEE1722.1 compliant"
-						removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+						removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 6.2.2", "ControlDescriptor at Index " + std::to_string(controlIndex) + " is a valid Identify Control but it's neither at CONFIGURATION nor JACK level");
 					}
 				}
 				// Note: No need to remove compatibility flag or log a warning in else statement, the validateIdentifyControl method already did it
@@ -4289,21 +4260,20 @@ void ControllerImpl::validateControlDescriptors(ControlledEntityImpl& controlled
 			auto const controlType = node.staticModel.controlType;
 			if (!controlType.isValid())
 			{
-				LOG_CONTROLLER_WARN(_entityID, "control_type for CONTROL descriptor at index {} is not a valid EUI-64: {}", controlIndex, utils::toHexString(controlType));
 				// Flag the entity as "Not fully IEEE1722.1 compliant"
-				removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+				removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.2.22", "control_type for CONTROL descriptor at index " + std::to_string(controlIndex) + " is not a valid EUI-64: " + utils::toHexString(controlType));
 			}
 
 			// Validate ControlValues
-			auto const validationResult = validateControlValues(_entityID, controlIndex, controlType, node.staticModel.controlValueType.getType(), node.staticModel.values, node.dynamicModel.values);
+			auto const [validationResult, specClause, message] = validateControlValues(_entityID, controlIndex, controlType, node.staticModel.controlValueType.getType(), node.staticModel.values, node.dynamicModel.values);
 			auto isOutOfBounds = false;
 			switch (validationResult)
 			{
-				case DynamicControlValuesValidationResult::InvalidValues:
+				case DynamicControlValuesValidationResultKind::InvalidValues:
 					// Flag the entity as "Not fully IEEE1722.1 compliant"
-					removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, specClause, message);
 					break;
-				case DynamicControlValuesValidationResult::CurrentValueOutOfRange:
+				case DynamicControlValuesValidationResultKind::CurrentValueOutOfRange:
 					isOutOfBounds = true;
 					break;
 				default:
@@ -4475,9 +4445,8 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 		// IEEE1722.1-2013 Clause 7.2.1 - A device is required to have at least one Configuration Descriptor
 		if (!controlledEntity.hasAnyConfiguration())
 		{
-			LOG_CONTROLLER_WARN(entityID, "[IEEE1722.1-2013 Clause 7.2.1] A device is required to have at least one Configuration Descriptor");
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.2.1", "A device is required to have at least one Configuration Descriptor");
 			return;
 		}
 
@@ -4525,9 +4494,8 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 		{
 			if (e.getError() == avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex)
 			{
-				LOG_CONTROLLER_WARN(entityID, "[IEEE1722.1-2013 Clause 7.2] Invalid Descriptor Numbering: {}", e.what());
 				// Flag the entity as "Not fully IEEE1722.1 compliant"
-				removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+				removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2013 - 7.2", "Invalid Descriptor Numbering: " + std::string{ e.what() });
 			}
 		}
 		catch (...)
@@ -4577,9 +4545,8 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 					// [Milan 1.2 Clause 5.3.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa
 					if (streamHasAVnuBaseFormat && streamHasAVnuCrf)
 					{
-						LOG_CONTROLLER_WARN(entityID, "[Milan 1.2 Clause 5.3.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa");
 						// Remove "Milan compatibility"
-						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.3.4", " If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa");
 					}
 				}
 				return std::make_pair(avnuAudioCapableStreams, avnuCrfCapableStreams);
@@ -4655,9 +4622,8 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 					// [Milan Formats] A PAAD-AE shall have at least one Configuration that contains at least one Stream which advertises support for a Base format in its list of supported formats
 					if (!isAVnuAudioMediaListener && !isAVnuAudioMediaTalker)
 					{
-						LOG_CONTROLLER_WARN(entityID, "[Milan Formats] A PAAD-AE shall have at least one Configuration that contains at least one Stream which advertises support for a Base format in its list of supported formats");
 						// Remove "Milan compatibility"
-						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 6.3/6.4", "A PAAD-AE shall have at least one Configuration that contains at least one Stream which advertises support for a Base format in its list of supported formats");
 					}
 
 					// Validate CRF requirements for domains
@@ -4673,16 +4639,14 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 								// [Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input
 								if (avnuCrfInputStreamsForDomain == 0u)
 								{
-									LOG_CONTROLLER_WARN(entityID, "[Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input");
 									// Remove "Milan compatibility"
-									removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+									removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 7.2.2", "For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input");
 								}
 								// [Milan 1.2 Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output
 								if (avnuCrfOutputStreamsForDomain == 0u)
 								{
-									LOG_CONTROLLER_WARN(entityID, "[Milan 1.2 Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output");
 									// Remove "Milan compatibility"
-									removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+									removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 7.2.3", "For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output");
 								}
 							}
 						}
@@ -4691,9 +4655,8 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 							// [Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input
 							if (avnuCrfInputStreamsForDomain == 0u)
 							{
-								LOG_CONTROLLER_WARN(entityID, "[Milan 1.2 Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input");
 								// Remove "Milan compatibility"
-								removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+								removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 7.2.2", "For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input");
 							}
 							// [Milan 1.2 Clause 7.2.3] For each supported clock domain, an AAF Media Talker capable of synchronizing to an external clock source (not an AVB stream) shall implement a CRF Media Clock Output
 							// TODO
@@ -4702,17 +4665,15 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 				}
 				else
 				{
-					LOG_CONTROLLER_WARN(entityID, "MilanInfo is not available for this entity although it is advertised as Milan compatible");
 					// Flag the entity as "Not Milan compliant"
-					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.4.4.1", "MilanInfo is not available for this entity although it is advertised as Milan compatible");
 				}
 			}
 		}
 		catch (ControlledEntity::Exception const&)
 		{
-			LOG_CONTROLLER_WARN(entityID, "Invalid current CONFIGURATION descriptor");
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021", "Invalid current CONFIGURATION descriptor");
 		}
 		catch (...)
 		{
@@ -5209,7 +5170,7 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 }
 
 /* This method handles Milan Requirements when a command is not supported by the entity, removing associated compatibility flag. */
-void ControllerImpl::checkMilanRequirements(ControlledEntityImpl* const entity, MilanRequirements const& milanRequirements, std::string const& logMessage) noexcept
+void ControllerImpl::checkMilanRequirements(ControlledEntityImpl* const entity, MilanRequirements const& milanRequirements, std::string const& specClause, std::string const& message) noexcept
 {
 	auto const milanCompatibilityVersion = entity->getMilanCompatibilityVersion();
 	auto downgradeToVersion = entity::model::MilanVersion{};
@@ -5253,8 +5214,7 @@ void ControllerImpl::checkMilanRequirements(ControlledEntityImpl* const entity, 
 			if (!requiredVersions.requiredUntil || milanCompatibilityVersion <= *requiredVersions.requiredUntil)
 			{
 				// Command should be supported but it's not, downgrade the compatibility version
-				LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), logMessage);
-				decreaseMilanCompatibilityVersion(this, *entity, requiredVersions.downgradeTo ? *requiredVersions.downgradeTo : downgradeToVersion);
+				decreaseMilanCompatibilityVersion(this, *entity, requiredVersions.downgradeTo ? *requiredVersions.downgradeTo : downgradeToVersion, specClause, message);
 				return;
 			}
 		}
@@ -5482,7 +5442,6 @@ bool ControllerImpl::processEmptyGetDynamicInfoFailureStatus(entity::ControllerE
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
-	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForAemCommandStatus(status);
 	switch (action)
 	{
@@ -5500,7 +5459,7 @@ bool ControllerImpl::processEmptyGetDynamicInfoFailureStatus(entity::ControllerE
 		case FailureAction::WarningContinue:
 			return true;
 		case FailureAction::NotSupported:
-			checkMilanRequirements(entity, milanRequirements, "Milan mandatory command not supported by the entity: GET_DYNAMIC_INFO");
+			checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.4.2.29", "Milan mandatory command not supported by the entity: GET_DYNAMIC_INFO");
 			return true;
 		case FailureAction::TimedOut:
 			[[fallthrough]];
@@ -5516,7 +5475,7 @@ bool ControllerImpl::processEmptyGetDynamicInfoFailureStatus(entity::ControllerE
 				// Too many retries, result depends on FailureAction and AemCommandStatus
 				if (action == FailureAction::TimedOut)
 				{
-					checkMilanRequirements(entity, milanRequirements, "Too many timeouts for Milan mandatory command: GET_DYNAMIC_INFO");
+					checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.4.2.29", "Too many timeouts for Milan mandatory command: GET_DYNAMIC_INFO");
 				}
 				else if (action == FailureAction::Busy)
 				{
@@ -5526,9 +5485,8 @@ bool ControllerImpl::processEmptyGetDynamicInfoFailureStatus(entity::ControllerE
 							[[fallthrough]];
 						case entity::ControllerEntity::AemCommandStatus::AcquiredByOther: // Should not happen for a read operation but some devices are bugged
 						{
-							LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for AEM command: GET_DYNAMIC_INFO ({})", entity::LocalEntity::statusToString(status));
 							// Flag the entity as "Not fully IEEE1722.1 compliant"
-							removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+							removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4.76", "Too many unexpected errors for AEM command: GET_DYNAMIC_INFO (" + entity::LocalEntity::statusToString(status) + ")");
 							break;
 						}
 						default:
@@ -5574,7 +5532,7 @@ ControllerImpl::PackedDynamicInfoFailureAction ControllerImpl::processGetDynamic
 		case FailureAction::WarningContinue:
 			return PackedDynamicInfoFailureAction::Continue;
 		case FailureAction::NotSupported:
-			checkMilanRequirements(entity, milanRequirements, "Milan mandatory command not supported by the entity: GET_DYNAMIC_INFO");
+			checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.4.2.29", "Milan mandatory command not supported by the entity: GET_DYNAMIC_INFO");
 			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::TimedOut:
@@ -5605,7 +5563,7 @@ ControllerImpl::PackedDynamicInfoFailureAction ControllerImpl::processGetDynamic
 			// Too many retries, result depends on FailureAction and AemCommandStatus
 			if (action == FailureAction::TimedOut)
 			{
-				checkMilanRequirements(entity, milanRequirements, "Too many timeouts for Milan mandatory command: GET_DYNAMIC_INFO");
+				checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.4.2.29", "Too many timeouts for Milan mandatory command: GET_DYNAMIC_INFO");
 			}
 			else if (action == FailureAction::Busy)
 			{
@@ -5615,9 +5573,8 @@ ControllerImpl::PackedDynamicInfoFailureAction ControllerImpl::processGetDynamic
 						[[fallthrough]];
 					case entity::ControllerEntity::AemCommandStatus::AcquiredByOther: // Should not happen for a read operation but some devices are bugged
 					{
-						LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for AEM command: GET_DYNAMIC_INFO ({})", entity::LocalEntity::statusToString(status));
 						// Flag the entity as "Not fully IEEE1722.1 compliant"
-						removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+						removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4.76", "Too many unexpected errors for AEM command: GET_DYNAMIC_INFO (" + entity::LocalEntity::statusToString(status) + ")");
 						break;
 					}
 					default:
@@ -5676,7 +5633,6 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
-	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForAemCommandStatus(status);
 	switch (action)
 	{
@@ -5688,8 +5644,7 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 			[[fallthrough]];
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			LOG_CONTROLLER_WARN(entityID, "Error registering for unsolicited notifications: {}", entity::LocalEntity::statusToString(status));
-			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4.37", "Error registering for unsolicited notifications: " + entity::LocalEntity::statusToString(status));
 			return true;
 		case FailureAction::NotAuthenticated:
 			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
@@ -5697,7 +5652,7 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 		case FailureAction::WarningContinue:
 			return true;
 		case FailureAction::NotSupported:
-			checkMilanRequirements(entity, milanRequirements, "Milan mandatory command not supported by the entity: REGISTER_UNSOLICITED_NOTIFICATION");
+			checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.4.2.21", "Milan mandatory command not supported by the entity: REGISTER_UNSOLICITED_NOTIFICATION");
 			// Remove "Unsolicited notifications supported" as device does not support the command
 			entity->setUnsolicitedNotificationsSupported(false);
 			return true;
@@ -5715,7 +5670,7 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 				// Too many retries, result depends on FailureAction and AemCommandStatus
 				if (action == FailureAction::TimedOut)
 				{
-					checkMilanRequirements(entity, milanRequirements, "Too many timeouts for Milan mandatory command: REGISTER_UNSOLICITED_NOTIFICATION");
+					checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.4.2.21", "Too many timeouts for Milan mandatory command: REGISTER_UNSOLICITED_NOTIFICATION");
 				}
 				else if (action == FailureAction::Busy)
 				{
@@ -5725,9 +5680,8 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 							[[fallthrough]];
 						case entity::ControllerEntity::AemCommandStatus::AcquiredByOther: // Should not happen for a read operation but some devices are bugged
 						{
-							LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for AEM command: REGISTER_UNSOLICITED_NOTIFICATION ({})", entity::LocalEntity::statusToString(status));
 							// Flag the entity as "Not fully IEEE1722.1 compliant"
-							removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+							removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4.37", "Error registering for unsolicited notifications: " + entity::LocalEntity::statusToString(status));
 							break;
 						}
 						default:
@@ -5749,7 +5703,6 @@ bool ControllerImpl::processGetMilanInfoFailureStatus(entity::ControllerEntity::
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
-	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForMvuCommandStatus(status);
 	switch (action)
 	{
@@ -5763,8 +5716,7 @@ bool ControllerImpl::processGetMilanInfoFailureStatus(entity::ControllerEntity::
 			// Remove "Milan compatibility" as device does not properly implement mandatory MVU
 			if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 			{
-				LOG_CONTROLLER_WARN(entityID, "Milan mandatory MVU command not properly implemented by the entity");
-				removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Milan);
+				removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.4.3", "Milan mandatory MVU command not properly implemented by the entity");
 			}
 			return true;
 		case FailureAction::NotAuthenticated:
@@ -5773,7 +5725,7 @@ bool ControllerImpl::processGetMilanInfoFailureStatus(entity::ControllerEntity::
 		case FailureAction::WarningContinue:
 			return true;
 		case FailureAction::NotSupported:
-			checkMilanRequirements(entity, milanRequirements, "Milan mandatory MVU command not supported by the entity");
+			checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.4.4.1", "Milan mandatory MVU command not supported by the entity: GET_MILAN_INFO");
 			return true;
 		case FailureAction::TimedOut:
 			[[fallthrough]];
@@ -5789,13 +5741,12 @@ bool ControllerImpl::processGetMilanInfoFailureStatus(entity::ControllerEntity::
 				// Too many retries, result depends on FailureAction and MvuCommandStatus
 				if (action == FailureAction::TimedOut)
 				{
-					checkMilanRequirements(entity, milanRequirements, "Too many timeouts for Milan mandatory MVU command");
+					checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.4.4.1", "Too many timeouts for Milan mandatory MVU command: GET_MILAN_INFO");
 				}
 				else if (action == FailureAction::Busy)
 				{
-					LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for AEM command: REGISTER_UNSOLICITED_NOTIFICATION ({})", entity::LocalEntity::statusToString(status));
 					// Flag the entity as "Not fully IEEE1722.1 compliant"
-					removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4.37", "Too many unexpected errors for AEM command: REGISTER_UNSOLICITED_NOTIFICATION (" + entity::LocalEntity::statusToString(status) + ")");
 				}
 			}
 			return true;
@@ -5812,7 +5763,6 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
-	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForAemCommandStatus(status);
 	switch (action)
 	{
@@ -5822,8 +5772,7 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 			return true;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 mandatory descriptor ({}): {}", entity::model::descriptorTypeToString(descriptorType), entity::LocalEntity::statusToString(status));
-			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4", "Error getting IEEE1722.1 mandatory descriptor (" + entity::model::descriptorTypeToString(descriptorType) + "): " + entity::LocalEntity::statusToString(status));
 			return true;
 		case FailureAction::NotAuthenticated:
 			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
@@ -5836,8 +5785,7 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 			// Remove "Milan compatibility" as device does not support mandatory descriptor
 			if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 			{
-				LOG_CONTROLLER_WARN(entityID, "Milan mandatory descriptor not supported by the entity: {}", entity::model::descriptorTypeToString(descriptorType));
-				removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Milan);
+				removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.2", "Milan mandatory descriptor not supported by the entity: " + entity::model::descriptorTypeToString(descriptorType));
 			}
 			return true;
 		case FailureAction::TimedOut:
@@ -5857,8 +5805,7 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 					// Remove "Milan compatibility" as device does not respond to mandatory command
 					if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 					{
-						LOG_CONTROLLER_WARN(entityID, "Too many timeouts for Milan mandatory descriptor: {}", entity::model::descriptorTypeToString(descriptorType));
-						removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Milan);
+						removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.2", "Milan mandatory descriptor not supported by the entity: " + entity::model::descriptorTypeToString(descriptorType));
 					}
 				}
 				else if (action == FailureAction::Busy)
@@ -5871,9 +5818,8 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 							[[fallthrough]];
 						case entity::ControllerEntity::AemCommandStatus::NoResources: // Should not happen for a read operation but some devices are bugged
 						{
-							LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for READ_DESCRIPTOR on {}: {}", entity::model::descriptorTypeToString(descriptorType), entity::LocalEntity::statusToString(status));
 							// Flag the entity as "Not fully IEEE1722.1 compliant"
-							removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+							removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4", "Too many unexpected errors for AEM command: READ_DESCRIPTOR (" + entity::LocalEntity::statusToString(status) + ")");
 							break;
 						}
 						default:
@@ -5895,7 +5841,6 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
-	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForAemCommandStatus(status);
 	switch (action)
 	{
@@ -5905,8 +5850,7 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 			return true;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 dynamic info ({}): {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
-			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4", "Error getting IEEE1722.1 dynamic info (" + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType) + "): " + entity::LocalEntity::statusToString(status));
 			return true;
 		case FailureAction::NotAuthenticated:
 			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
@@ -5916,7 +5860,7 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 		case FailureAction::BadArguments: // Getting the AECP dynamic info of an entity is not mandatory in 1722.1, thus we can ignore a BadArguments status
 			[[fallthrough]];
 		case FailureAction::NotSupported:
-			checkMilanRequirements(entity, milanRequirements, "Milan mandatory dynamic info not supported by the entity: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+			checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.4.4", "Milan mandatory dynamic info not supported by the entity: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 			return true;
 		case FailureAction::TimedOut:
 			[[fallthrough]];
@@ -5932,7 +5876,7 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 				// Too many retries, result depends on FailureAction and AemCommandStatus
 				if (action == FailureAction::TimedOut)
 				{
-					checkMilanRequirements(entity, milanRequirements, "Too many timeouts for Milan mandatory dynamic info: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+					checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.4.4", "Too many timeouts for Milan mandatory dynamic info: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 				}
 				else if (action == FailureAction::Busy)
 				{
@@ -5944,9 +5888,8 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 							[[fallthrough]];
 						case entity::ControllerEntity::AemCommandStatus::NoResources: // Should not happen for a read operation but some devices are bugged
 						{
-							LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for dynamic info query {}: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
 							// Flag the entity as "Not fully IEEE1722.1 compliant"
-							removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+							removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4", "Too many unexpected errors for dynamic info query " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType) + ": " + entity::LocalEntity::statusToString(status));
 							break;
 						}
 						default:
@@ -5985,7 +5928,7 @@ bool ControllerImpl::processGetMvuDynamicInfoFailureStatus(entity::ControllerEnt
 		case FailureAction::BadArguments:
 			[[fallthrough]];
 		case FailureAction::NotSupported:
-			checkMilanRequirements(entity, milanRequirements, "Milan mandatory dynamic info not supported by the entity: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+			checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.4.2", "Milan mandatory dynamic info not supported by the entity: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 			return true;
 		case FailureAction::TimedOut:
 			[[fallthrough]];
@@ -6001,7 +5944,7 @@ bool ControllerImpl::processGetMvuDynamicInfoFailureStatus(entity::ControllerEnt
 				// Too many retries, result depends on FailureAction and AemCommandStatus
 				if (action == FailureAction::TimedOut)
 				{
-					checkMilanRequirements(entity, milanRequirements, "Too many timeouts for Milan mandatory dynamic info: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+					checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.4.2", "Too many timeouts for Milan mandatory dynamic info: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 				}
 			}
 			return true;
@@ -6018,7 +5961,6 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
-	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForControlStatus(status);
 	switch (action)
 	{
@@ -6028,8 +5970,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 			return true;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 mandatory ACMP info ({}): {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
-			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 8.2", "Error getting IEEE1722.1 mandatory ACMP info (" + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType) + "): " + entity::LocalEntity::statusToString(status));
 			return true;
 		case FailureAction::NotAuthenticated:
 			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
@@ -6037,7 +5978,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 		case FailureAction::WarningContinue:
 			return true;
 		case FailureAction::NotSupported:
-			checkMilanRequirements(entity, milanRequirements, "Milan mandatory ACMP command not supported by the entity: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+			checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.5", "Milan mandatory ACMP command not supported by the entity: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 			return true;
 		case FailureAction::TimedOut:
 			[[fallthrough]];
@@ -6053,7 +5994,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 				// Too many retries, result depends on FailureAction and ControlStatus
 				if (action == FailureAction::TimedOut)
 				{
-					checkMilanRequirements(entity, milanRequirements, "Too many timeouts for Milan mandatory ACMP command: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+					checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.5", "Too many timeouts for Milan mandatory ACMP command: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 				}
 				else if (action == FailureAction::Busy)
 				{
@@ -6063,9 +6004,8 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 							[[fallthrough]];
 						case entity::ControllerEntity::ControlStatus::CouldNotSendMessage:
 						{
-							LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for ACMP command {}: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
 							// Flag the entity as "Not fully IEEE1722.1 compliant"
-							removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+							removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 8.2", "Too many unexpected errors for ACMP command " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType) + ": " + entity::LocalEntity::statusToString(status));
 							break;
 						}
 						default:
@@ -6087,7 +6027,6 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
-	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForControlStatus(status);
 	switch (action)
 	{
@@ -6097,8 +6036,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 			return true;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 mandatory ACMP info ({}): {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
-			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 8.2", "Error getting IEEE1722.1 mandatory ACMP info (" + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType) + "): " + entity::LocalEntity::statusToString(status));
 			return true;
 		case FailureAction::NotAuthenticated:
 			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
@@ -6106,7 +6044,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 		case FailureAction::WarningContinue:
 			return true;
 		case FailureAction::NotSupported:
-			checkMilanRequirements(entity, milanRequirements, "Milan mandatory ACMP command not supported by the entity: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+			checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.5", "Milan mandatory ACMP command not supported by the entity: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 			return true;
 		case FailureAction::TimedOut:
 			[[fallthrough]];
@@ -6122,7 +6060,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 				// Too many retries, result depends on FailureAction and ControlStatus
 				if (action == FailureAction::TimedOut)
 				{
-					checkMilanRequirements(entity, milanRequirements, "Too many timeouts for Milan mandatory ACMP command: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+					checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.5", "Too many timeouts for Milan mandatory ACMP command: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 				}
 				else if (action == FailureAction::Busy)
 				{
@@ -6132,9 +6070,8 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 							[[fallthrough]];
 						case entity::ControllerEntity::ControlStatus::CouldNotSendMessage:
 						{
-							LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for ACMP command {}: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
 							// Flag the entity as "Not fully IEEE1722.1 compliant"
-							removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+							removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 8.2", "Too many unexpected errors for ACMP command " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType) + ": " + entity::LocalEntity::statusToString(status));
 							break;
 						}
 						default:
@@ -6170,8 +6107,7 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 			break;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 descriptor dynamic info ({}): {}", ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType), entity::LocalEntity::statusToString(status));
-			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4", "Error getting IEEE1722.1 descriptor dynamic info (" + ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType) + "): " + entity::LocalEntity::statusToString(status));
 			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::NotAuthenticated:
@@ -6188,7 +6124,7 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::NotSupported:
-			checkMilanRequirements(entity, milanRequirements, "Milan mandatory AECP command not supported by the entity: " + ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType));
+			checkMilanRequirements(entity, milanRequirements, "Milan 1.2 - 5.4.2", "Milan mandatory AECP command not supported by the entity: " + ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType));
 			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::ErrorFatal:
@@ -6811,6 +6747,18 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 			{
 				// Fallback to Milan 1.2 compatibility if the device has the Milan flag but there is no MilanCompatibilityVersion field (older dump). The compatibility version may be downgraded later during loading
 				entity.setMilanCompatibilityVersion(entity::model::MilanVersion{ 1, 2 });
+			}
+			if (auto const it = object.find(jsonSerializer::keyName::ControlledEntity_CompatibilityEvents); it != object.end())
+			{
+				// Check if the CompatibilityEvents is an array
+				if (it->is_array())
+				{
+					auto const& events = it->get<std::vector<ControlledEntity::CompatibilityChangedEvent>>();
+					for (auto const& event : events)
+					{
+						entity.addCompatibilityChangedEvent(event);
+					}
+				}
 			}
 		}
 

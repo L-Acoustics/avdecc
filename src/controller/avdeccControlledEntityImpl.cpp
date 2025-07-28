@@ -114,6 +114,11 @@ entity::model::MilanVersion ControlledEntityImpl::getMilanCompatibilityVersion()
 	return _milanCompatibilityVersion;
 }
 
+ControlledEntity::CompatibilityChangedEvents const& ControlledEntityImpl::getCompatibilityChangedEvents() const noexcept
+{
+	return _compatibilityChangedEvents;
+}
+
 bool ControlledEntityImpl::isMilanRedundant() const noexcept
 {
 	return _isMilanRedundant;
@@ -2753,6 +2758,11 @@ void ControlledEntityImpl::setCompatibilityFlags(CompatibilityFlags const compat
 void ControlledEntityImpl::setMilanCompatibilityVersion(entity::model::MilanVersion const version) noexcept
 {
 	_milanCompatibilityVersion = version;
+}
+
+void ControlledEntityImpl::addCompatibilityChangedEvent(CompatibilityChangedEvent const& event) noexcept
+{
+	_compatibilityChangedEvents.push_back(event);
 }
 
 void ControlledEntityImpl::setMilanRedundant(bool const isMilanRedundant) noexcept

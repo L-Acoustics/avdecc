@@ -88,6 +88,7 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 		{
 			object[keyName::ControlledEntity_CompatibilityFlags] = entity.getCompatibilityFlags();
 			object[keyName::ControlledEntity_MilanCompatibilityVersion] = static_cast<std::string>(entity.getMilanCompatibilityVersion());
+			object[keyName::ControlledEntity_CompatibilityEvents] = entity.getCompatibilityChangedEvents();
 		}
 
 		// Dump AEM if supported

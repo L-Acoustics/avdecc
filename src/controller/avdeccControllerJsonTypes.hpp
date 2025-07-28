@@ -28,6 +28,7 @@
 
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/controller/avdeccController.hpp"
+#include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"
 
 #include <nlohmann/json.hpp>
 
@@ -91,6 +92,15 @@ constexpr auto ControlledEntityStatistics_EnumerationTime = "enumeration_time";
 constexpr auto ControlledEntityDiagnostics_RedundancyWarning = "redundancy_warning";
 constexpr auto ControlledEntityDiagnostics_StreamInputLatencyErrors = "stream_input_latency_errors";
 
+/* ControlledEntityCompatibilityChangedEvent */
+constexpr auto ControlledEntityCompatibilityChangedEvent_PreviousFlags = "previous_flags";
+constexpr auto ControlledEntityCompatibilityChangedEvent_NewFlags = "new_flags";
+constexpr auto ControlledEntityCompatibilityChangedEvent_PreviousMilanVersion = "previous_milan_version";
+constexpr auto ControlledEntityCompatibilityChangedEvent_NewMilanVersion = "new_milan_version";
+constexpr auto ControlledEntityCompatibilityChangedEvent_SpecClause = "spec_clause";
+constexpr auto ControlledEntityCompatibilityChangedEvent_Message = "message";
+constexpr auto ControlledEntityCompatibilityChangedEvent_Timestamp = "timestamp";
+
 } // namespace keyName
 
 /* ControlledEntity::CompatibilityFlag conversion */
@@ -102,6 +112,35 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ControlledEntity::CompatibilityFlag, {
 																																		{ ControlledEntity::CompatibilityFlag::MilanWarning, "MILANWARNING" },
 																																		{ ControlledEntity::CompatibilityFlag::Misbehaving, "MISBEHAVING" },
 																																	});
+
+/* CompatibilityChangedEvent conversion */
+inline void to_json(json& j, ControlledEntity::CompatibilityChangedEvent const& event)
+{
+	j[keyName::ControlledEntityCompatibilityChangedEvent_PreviousFlags] = event.previousFlags;
+	j[keyName::ControlledEntityCompatibilityChangedEvent_NewFlags] = event.newFlags;
+	j[keyName::ControlledEntityCompatibilityChangedEvent_PreviousMilanVersion] = static_cast<std::string>(event.previousMilanVersion);
+	j[keyName::ControlledEntityCompatibilityChangedEvent_NewMilanVersion] = static_cast<std::string>(event.newMilanVersion);
+	j[keyName::ControlledEntityCompatibilityChangedEvent_SpecClause] = event.specClause;
+	j[keyName::ControlledEntityCompatibilityChangedEvent_Message] = event.message;
+	j[keyName::ControlledEntityCompatibilityChangedEvent_Timestamp] = event.timestamp.time_since_epoch().count();
+}
+inline void from_json(json const& j, ControlledEntity::CompatibilityChangedEvent& event)
+{
+	j.at(keyName::ControlledEntityCompatibilityChangedEvent_PreviousFlags).get_to(event.previousFlags);
+	j.at(keyName::ControlledEntityCompatibilityChangedEvent_NewFlags).get_to(event.newFlags);
+	{
+		auto const str = j.at(keyName::ControlledEntityCompatibilityChangedEvent_PreviousMilanVersion).get<std::string>();
+		event.previousMilanVersion = entity::model::MilanVersion{ str };
+	}
+	{
+		auto const str = j.at(keyName::ControlledEntityCompatibilityChangedEvent_NewMilanVersion).get<std::string>();
+		event.newMilanVersion = entity::model::MilanVersion{ str };
+	}
+	j.at(keyName::ControlledEntityCompatibilityChangedEvent_SpecClause).get_to(event.specClause);
+	j.at(keyName::ControlledEntityCompatibilityChangedEvent_Message).get_to(event.message);
+	event.timestamp = std::chrono::system_clock::time_point{ std::chrono::system_clock::duration{ j.at(keyName::ControlledEntityCompatibilityChangedEvent_Timestamp).get<std::chrono::system_clock::duration::rep>() } };
+}
+
 
 namespace jsonSerializer
 {
@@ -117,6 +156,7 @@ constexpr auto ControlledEntity_DumpVersion = "dump_version";
 constexpr auto ControlledEntity_Schema = "$schema";
 constexpr auto ControlledEntity_CompatibilityFlags = "compatibility_flags";
 constexpr auto ControlledEntity_MilanCompatibilityVersion = "milan_compatibility_version";
+constexpr auto ControlledEntity_CompatibilityEvents = "compatibility_events";
 constexpr auto ControlledEntity_AdpInformation = "adp_information";
 constexpr auto ControlledEntity_EntityModel = "entity_model";
 constexpr auto ControlledEntity_EntityModelID = "entity_model_id";
