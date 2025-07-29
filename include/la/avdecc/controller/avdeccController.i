@@ -47,6 +47,7 @@
 #ifdef SWIGCSHARP
 %include <arrays_csharp.i>
 #endif
+%include "la/avdecc/internals/chrono.i"
 
 // Generated wrapper file needs to include our header file (include as soon as possible using 'insert(runtime)' as target language exceptions are defined early in the generated wrapper file)
 %insert(runtime) %{
@@ -211,6 +212,22 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity::CompatibilityFlag, "
 #endif
 };
 
+%nspace la::avdecc::controller::ControlledEntity::CompatibilityChangedEvent;
+%rename("%s") la::avdecc::controller::ControlledEntity::CompatibilityChangedEvent; // Unignore class
+%ignore operator==(CompatibilityChangedEvent const& lhs, CompatibilityChangedEvent const& rhs) noexcept; // Ignore operator==
+%ignore operator!=(CompatibilityChangedEvent const& lhs, CompatibilityChangedEvent const& rhs) noexcept; // Ignore operator!=
+// Extend the struct
+%extend la::avdecc::controller::ControlledEntity::CompatibilityChangedEvent
+{
+#if defined(SWIGCSHARP)
+	// Provide a more native Equals() method
+	bool Equals(la::avdecc::controller::ControlledEntity::CompatibilityChangedEvent const& other) const noexcept
+	{
+		return *$self == other;
+	}
+#endif
+};
+
 %nspace la::avdecc::controller::ControlledEntityGuard;
 %rename("%s") la::avdecc::controller::ControlledEntityGuard; // Unignore class
 %ignore la::avdecc::controller::ControlledEntityGuard::operator bool; // Ignore operator bool, isValid() is already defined
@@ -263,6 +280,7 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity::CompatibilityFlag, "
 // Define templates
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller::ControlledEntity, CompatibilityFlags, CompatibilityFlag, std::uint8_t)
 %template("StreamPortInvalidAudioMappings") std::map<la::avdecc::entity::model::StreamPortIndex, la::avdecc::entity::model::AudioMappings>;
+%template("CompatibilityChangedEvents") std::vector<la::avdecc::controller::ControlledEntity::CompatibilityChangedEvent>;
 
 
 ////////////////////////////////////////

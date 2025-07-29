@@ -113,6 +113,15 @@ public:
 		bool redundancyWarning{ false }; /** Flag indicating a Milan redundant device has both interfaces connected to the same network */
 		std::set<entity::model::ControlIndex> controlCurrentValueOutOfBounds{}; /** List of Controls whose current value is outside the specified min-max range */
 		std::set<entity::model::StreamIndex> streamInputOverLatency{}; /** List of StreamInput whose MSRP Latency is greater than Talker's Presentation Time */
+
+		friend bool operator==(Diagnostics const& lhs, Diagnostics const& rhs) noexcept
+		{
+			return lhs.redundancyWarning == rhs.redundancyWarning && lhs.controlCurrentValueOutOfBounds == rhs.controlCurrentValueOutOfBounds && lhs.streamInputOverLatency == rhs.streamInputOverLatency;
+		}
+		friend bool operator!=(Diagnostics const& lhs, Diagnostics const& rhs) noexcept
+		{
+			return !(lhs == rhs);
+		}
 	};
 
 	/** Compatibility change event information */
@@ -125,6 +134,15 @@ public:
 		std::string specClause{}; /** Specification clause */
 		std::string message{}; /** Message describing the change */
 		std::chrono::system_clock::time_point timestamp{ std::chrono::system_clock::now() }; /** Timestamp of the event */ // Must be in system_clock (not steady_clock)
+
+		friend bool operator==(CompatibilityChangedEvent const& lhs, CompatibilityChangedEvent const& rhs) noexcept
+		{
+			return lhs.previousFlags == rhs.previousFlags && lhs.previousMilanVersion == rhs.previousMilanVersion && lhs.newFlags == rhs.newFlags && lhs.newMilanVersion == rhs.newMilanVersion && lhs.specClause == rhs.specClause && lhs.message == rhs.message && lhs.timestamp == rhs.timestamp;
+		}
+		friend bool operator!=(CompatibilityChangedEvent const& lhs, CompatibilityChangedEvent const& rhs) noexcept
+		{
+			return !(lhs == rhs);
+		}
 	};
 	using CompatibilityChangedEvents = std::vector<CompatibilityChangedEvent>;
 
