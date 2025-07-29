@@ -122,7 +122,7 @@ inline void to_json(json& j, ControlledEntity::CompatibilityChangedEvent const& 
 	j[keyName::ControlledEntityCompatibilityChangedEvent_NewMilanVersion] = static_cast<std::string>(event.newMilanVersion);
 	j[keyName::ControlledEntityCompatibilityChangedEvent_SpecClause] = event.specClause;
 	j[keyName::ControlledEntityCompatibilityChangedEvent_Message] = event.message;
-	j[keyName::ControlledEntityCompatibilityChangedEvent_Timestamp] = event.timestamp.time_since_epoch().count();
+	j[keyName::ControlledEntityCompatibilityChangedEvent_Timestamp] = std::chrono::duration_cast<std::chrono::milliseconds>(event.timestamp.time_since_epoch()).count(); // Force as milliseconds, as system_clock::time_point is implementation defined
 }
 inline void from_json(json const& j, ControlledEntity::CompatibilityChangedEvent& event)
 {
@@ -138,7 +138,11 @@ inline void from_json(json const& j, ControlledEntity::CompatibilityChangedEvent
 	}
 	j.at(keyName::ControlledEntityCompatibilityChangedEvent_SpecClause).get_to(event.specClause);
 	j.at(keyName::ControlledEntityCompatibilityChangedEvent_Message).get_to(event.message);
-	event.timestamp = std::chrono::system_clock::time_point{ std::chrono::system_clock::duration{ j.at(keyName::ControlledEntityCompatibilityChangedEvent_Timestamp).get<std::chrono::system_clock::duration::rep>() } };
+	{
+		auto const durationAsMs = j.at(keyName::ControlledEntityCompatibilityChangedEvent_Timestamp).get<std::chrono::milliseconds::rep>(); // Get as milliseconds
+		// Convert to system_clock::time_point (which is implementation defined)
+		event.timestamp = std::chrono::system_clock::time_point{ std::chrono::system_clock::duration{ durationAsMs } };
+	}
 }
 
 
