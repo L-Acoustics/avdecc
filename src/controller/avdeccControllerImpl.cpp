@@ -4088,7 +4088,7 @@ bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEnt
 	return false;
 }
 
-ControllerImpl::DynamicControlValuesValidationResult ControllerImpl::validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, UniqueIdentifier const& controlType, entity::model::ControlValueType::Type const controlValueType, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept
+ControllerImpl::DynamicControlValuesValidationResult ControllerImpl::validateControlValues([[maybe_unused]] UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, UniqueIdentifier const& controlType, entity::model::ControlValueType::Type const controlValueType, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept
 {
 	if (!staticValues)
 	{
@@ -4508,7 +4508,7 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 		try
 		{
 			using CapableStreams = std::map<entity::model::StreamIndex, bool>;
-			auto const validateStreamFormats = [](auto const& entityID, auto& controlledEntity, auto const& streams, auto const& milanSpecificationVersion)
+			auto const validateStreamFormats = [](auto const& /*entityID*/, auto& controlledEntity, auto const& streams, auto const& milanSpecificationVersion)
 			{
 				auto avnuAudioCapableStreams = CapableStreams{};
 				auto avnuCrfCapableStreams = CapableStreams{};
