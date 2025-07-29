@@ -1,0 +1,42 @@
+name: Release stage
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+  checks: write
+  packages: write
+  id-token: write
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+.[0-9]+'
+
+  workflow_dispatch:
+    inputs:
+      release_linux:
+        description: 'Release the linux package'
+        type: boolean
+        default: true
+      release_windows:
+        description: 'Release the windows package'
+        type: boolean
+        default: true
+      release_macos:
+        description: 'Release the macos package'
+        type: boolean
+        default: true
+
+jobs:
+  release-stage:
+    uses: L-Acoustics/la-mw-gh-action/.github/workflows/release_stage.yml@main
+    with:
+      release_linux: ${{inputs.release_linux}}
+      release_windows: ${{inputs.release_windows}}
+      release_macos: ${{inputs.release_macos}}
+    secrets:
+      GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      KEYCHAIN_PASSWORD: ${{secrets.KEYCHAIN_PASSWORD}}
+      APPLE_CERTIFICATES_P12_BASE64_PASSWORD: ${{secrets.APPLE_CERTIFICATES_P12_BASE64_PASSWORD}}
+      APPLE_CERTIFICATES_P12_BASE64: ${{secrets.APPLE_CERTIFICATES_P12_BASE64}}

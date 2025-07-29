@@ -1,0 +1,21 @@
+name: Commit stage
+
+on :
+  push:
+    branches: [ dev, main ]
+  pull_request:
+    branches: [ dev ]
+    paths-ignore:
+      - 'Docker'
+      - '**/README.md'
+      - '**/LICENCE'
+
+jobs:
+  commit-stage:
+    uses: L-Acoustics/la-mw-gh-action/.github/workflows/commit_stage.yml@main
+    secrets:
+      GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      KEYCHAIN_PASSWORD: ${{secrets.KEYCHAIN_PASSWORD}}
+      APPLE_CERTIFICATES_P12_BASE64_PASSWORD: ${{secrets.APPLE_CERTIFICATES_P12_BASE64_PASSWORD}}
+      APPLE_CERTIFICATES_P12_BASE64: ${{secrets.APPLE_CERTIFICATES_P12_BASE64}}
+
