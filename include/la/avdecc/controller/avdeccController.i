@@ -105,12 +105,12 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::model::MediaClockChainNode::Status, "b
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::EntityModelVisitor)
-%ignore la::avdecc::entity::controller::EntityModelVisitor::EntityModelVisitor(EntityModelVisitor&&); // Ignore move constructor
-%ignore la::avdecc::entity::controller::EntityModelVisitor::operator=; // Ignore copy operator
+%ignore la::avdecc::controller::model::EntityModelVisitor::EntityModelVisitor(EntityModelVisitor&&); // Ignore move constructor
+%ignore la::avdecc::controller::model::EntityModelVisitor::operator=; // Ignore assignment operator
 
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::DefaultedEntityModelVisitor)
-%ignore la::avdecc::entity::controller::DefaultedEntityModelVisitor::DefaultedEntityModelVisitor(DefaultedEntityModelVisitor&&); // Ignore move constructor
-%ignore la::avdecc::entity::controller::DefaultedEntityModelVisitor::operator=; // Ignore copy operator
+%ignore la::avdecc::controller::model::DefaultedEntityModelVisitor::DefaultedEntityModelVisitor(DefaultedEntityModelVisitor&&); // Ignore move constructor
+%ignore la::avdecc::controller::model::DefaultedEntityModelVisitor::operator=; // Ignore assignment operator
 
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(MediaClockChain)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE()
@@ -190,6 +190,8 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity::CompatibilityFlag, "
 
 %nspace la::avdecc::controller::ControlledEntity::Diagnostics;
 %rename("%s") la::avdecc::controller::ControlledEntity::Diagnostics; // Unignore class
+%ignore operator==(Diagnostics const& lhs, Diagnostics const& rhs) noexcept; // Ignore operator==
+%ignore operator!=(Diagnostics const& lhs, Diagnostics const& rhs) noexcept; // Ignore operator!=
 // Extend the struct
 %extend la::avdecc::controller::ControlledEntity::Diagnostics
 {
@@ -207,7 +209,7 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity::CompatibilityFlag, "
   // Provide a more native Equals() method
   bool Equals(la::avdecc::controller::ControlledEntity::Diagnostics const& other) const noexcept
   {
-    return $self->redundancyWarning == other.redundancyWarning && $self->streamInputOverLatency == other.streamInputOverLatency;
+    return *$self == other;
   }
 #endif
 };
@@ -230,6 +232,7 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity::CompatibilityFlag, "
 
 %nspace la::avdecc::controller::ControlledEntityGuard;
 %rename("%s") la::avdecc::controller::ControlledEntityGuard; // Unignore class
+%ignore la::avdecc::controller::ControlledEntityGuard::operator=; // Ignore assignment operator
 %ignore la::avdecc::controller::ControlledEntityGuard::operator bool; // Ignore operator bool, isValid() is already defined
 
 // Throw typemap
@@ -290,12 +293,12 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller::ControlledEntity, Compatibili
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::VirtualEntityBuilder)
-%ignore la::avdecc::entity::controller::VirtualEntityBuilder::VirtualEntityBuilder(VirtualEntityBuilder&&); // Ignore move constructor
-%ignore la::avdecc::entity::controller::VirtualEntityBuilder::operator=; // Ignore copy operator
+%ignore la::avdecc::controller::model::VirtualEntityBuilder::VirtualEntityBuilder(VirtualEntityBuilder&&); // Ignore move constructor
+%ignore la::avdecc::controller::model::VirtualEntityBuilder::operator=; // Ignore assignment operator
 
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::DefaultedVirtualEntityBuilder)
-%ignore la::avdecc::entity::controller::DefaultedVirtualEntityBuilder::DefaultedVirtualEntityBuilder(DefaultedVirtualEntityBuilder&&); // Ignore move constructor
-%ignore la::avdecc::entity::controller::DefaultedVirtualEntityBuilder::operator=; // Ignore copy operator
+%ignore la::avdecc::controller::model::DefaultedVirtualEntityBuilder::DefaultedVirtualEntityBuilder(DefaultedVirtualEntityBuilder&&); // Ignore move constructor
+%ignore la::avdecc::controller::model::DefaultedVirtualEntityBuilder::operator=; // Ignore assignment operator
 
 // Include c++ declaration file
 %include "la/avdecc/controller/internals/virtualEntityBuilder.hpp"
@@ -454,6 +457,8 @@ DEFINE_OBSERVER_CLASS(la::avdecc::controller::Controller::DefaultedObserver)
 #endif
 %std_function(Handler_bool_bool, bool, bool const isDesiredClockSync, bool const isAvailableClockSync);
 
+// Additional ignore methods
+%ignore la::avdecc::controller::operator!(Controller::Error const error); // Ignore operator!
 
 // Include c++ declaration file
 %include "la/avdecc/controller/avdeccController.hpp"

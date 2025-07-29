@@ -76,7 +76,7 @@
 %rename("isLess") operator<(UniqueIdentifier const& lhs, UniqueIdentifier const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
 %ignore la::avdecc::UniqueIdentifier::hash::operator(); // Ignore hash functor
 %ignore la::avdecc::UniqueIdentifier::UniqueIdentifier(UniqueIdentifier&&); // Ignore move constructor
-%ignore la::avdecc::UniqueIdentifier::operator=; // Ignore copy operator
+%ignore la::avdecc::UniqueIdentifier::operator=; // Ignore assignment operator
 // Extend the class
 %extend la::avdecc::UniqueIdentifier
 {
@@ -124,7 +124,7 @@
 	%nspace la::avdecc::entity::model::name;
 	%rename("%s") la::avdecc::entity::model::name; // Unignore class
 	%ignore la::avdecc::entity::model::name::name(name&&); // Ignore move constructor
-	%ignore la::avdecc::entity::model::name::operator=; // Ignore copy operator
+	%ignore la::avdecc::entity::model::name::operator=; // Ignore assignment operator
 %enddef
 %define DEFINE_AEM_TYPES_CLASS(name)
 	DEFINE_AEM_TYPES_CLASS_BASE(name)
