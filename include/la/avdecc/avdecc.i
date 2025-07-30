@@ -249,6 +249,9 @@ public:
 %include "la/avdecc/internals/streamFormatInfo.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
+// Define templates
+%template(StreamFormatPair) std::pair<la::avdecc::entity::model::StreamFormat, la::avdecc::entity::model::StreamFormat>;
+
 
 ////////////////////////////////////////
 // Entity/LocalEntity
