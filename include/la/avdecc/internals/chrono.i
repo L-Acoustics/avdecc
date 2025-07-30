@@ -105,3 +105,5 @@ namespace std::chrono {
 %template(milliseconds) std::chrono::duration<long long, std::milli>;
 %template(seconds) std::chrono::duration<long long>;
 %template(system_clock_time_point) std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<long long, std::micro>>;
+
+// WARNING: Currently, this file should not be included more than once in a project as it will cause multiple definitions of the same types.

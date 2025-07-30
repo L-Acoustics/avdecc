@@ -47,7 +47,7 @@
 #ifdef SWIGCSHARP
 %include <arrays_csharp.i>
 #endif
-%include "la/avdecc/internals/chrono.i"
+// %include "la/avdecc/internals/chrono.i" // Do not include chrono.i here (although it is used in the code), it has been included in avdecc.i already and will cause duplicate definitions
 
 // Generated wrapper file needs to include our header file (include as soon as possible using 'insert(runtime)' as target language exceptions are defined early in the generated wrapper file)
 %insert(runtime) %{
