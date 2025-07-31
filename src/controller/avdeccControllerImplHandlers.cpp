@@ -478,7 +478,7 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 									{
 										if ((validCounters & s_MilanMandatoryStreamInputCounters) != s_MilanMandatoryStreamInputCounters)
 										{
-											removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 7.3.8.10", "Milan mandatory counters missing for STREAM_INPUT descriptor");
+											removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.8.10", "Milan mandatory counters missing for STREAM_INPUT descriptor");
 										}
 									}
 
@@ -496,13 +496,13 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 									{
 										if (counterType != entity::model::StreamOutputCounters::CounterType::Milan_12)
 										{
-											removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 7.3.7.7", "Device is Milan compatible but doesn't have Milan type STREAM_OUTPUT counters");
+											removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.7.7", "Device is Milan compatible but doesn't have Milan type STREAM_OUTPUT counters");
 										}
 										else
 										{
 											if ((validCounters.get<entity::StreamOutputCounterValidFlagsMilan12>() & s_Milan12MandatoryStreamOutputCounters) != s_Milan12MandatoryStreamOutputCounters)
 											{
-												removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 7.3.7.7", "Milan 1.2 mandatory counters missing for STREAM_OUTPUT descriptor");
+												removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.7.7", "Milan 1.2 mandatory counters missing for STREAM_OUTPUT descriptor");
 											}
 										}
 									}
@@ -520,7 +520,7 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 									{
 										if ((validCounters & s_MilanMandatoryClockDomainCounters) != s_MilanMandatoryClockDomainCounters)
 										{
-											removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 7.3.11.2", "Milan mandatory counters missing for CLOCK_DOMAIN descriptor");
+											removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.11.2", "Milan mandatory counters missing for CLOCK_DOMAIN descriptor");
 										}
 									}
 
@@ -537,7 +537,7 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 									{
 										if ((validCounters & s_MilanMandatoryAvbInterfaceCounters) != s_MilanMandatoryAvbInterfaceCounters)
 										{
-											removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 7.3.16.3", "Milan mandatory counters missing for AVB_INTERFACE descriptor");
+											removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.6.3", "Milan mandatory counters missing for AVB_INTERFACE descriptor");
 										}
 									}
 
@@ -2347,7 +2347,7 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interfa
 				{
 					if ((validCounters & s_MilanMandatoryAvbInterfaceCounters) != s_MilanMandatoryAvbInterfaceCounters)
 					{
-						removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 7.3.3.3", "Milan mandatory counters missing for AVB_INTERFACE descriptor");
+						removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.6.3", "Milan mandatory counters missing for AVB_INTERFACE descriptor");
 					}
 				}
 
@@ -2395,7 +2395,7 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::controller::Interfac
 				{
 					if ((validCounters & s_MilanMandatoryClockDomainCounters) != s_MilanMandatoryClockDomainCounters)
 					{
-						removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 7.3.11.2", "Milan mandatory counters missing for CLOCK_DOMAIN descriptor");
+						removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.11.2", "Milan mandatory counters missing for CLOCK_DOMAIN descriptor");
 					}
 				}
 
@@ -2443,7 +2443,7 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interfac
 				{
 					if ((validCounters & s_MilanMandatoryStreamInputCounters) != s_MilanMandatoryStreamInputCounters)
 					{
-						removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 7.3.8.10", "Milan mandatory counters missing for STREAM_INPUT descriptor");
+						removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.8.10", "Milan mandatory counters missing for STREAM_INPUT descriptor");
 					}
 				}
 
@@ -2493,13 +2493,13 @@ void ControllerImpl::onGetStreamOutputCountersResult(entity::controller::Interfa
 				{
 					if (counterType != entity::model::StreamOutputCounters::CounterType::Milan_12)
 					{
-						removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 7.3.7.7", "Device is Milan compatible but doesn't have Milan type STREAM_OUTPUT counters");
+						removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.7.7", "Device is Milan compatible but doesn't have Milan type STREAM_OUTPUT counters");
 					}
 					else
 					{
 						if ((validCounters.get<entity::StreamOutputCounterValidFlagsMilan12>() & s_Milan12MandatoryStreamOutputCounters) != s_Milan12MandatoryStreamOutputCounters)
 						{
-							removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 7.3.7.7", "Milan 1.2 mandatory counters missing for STREAM_OUTPUT descriptor");
+							removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.3.7.7", "Milan 1.2 mandatory counters missing for STREAM_OUTPUT descriptor");
 						}
 					}
 				}
