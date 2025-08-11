@@ -141,6 +141,56 @@ namespace avdecc
 namespace utils
 {
 /**
+* @brief Reverses the bits in an integer value.
+* @details This function reverses all bits in the given integer value. For example,
+*          with a 32-bit value, bit 0 becomes bit 31, bit 1 becomes bit 30, etc.
+*          The function is optimized using bit manipulation techniques and works at compile-time.
+* @tparam T The integer type (must be unsigned and have power-of-2 size: 8, 16, 32, or 64 bits).
+* @param[in] value The integer value whose bits should be reversed.
+* @return The value with all bits reversed.
+* @note This function is constexpr and can be evaluated at compile-time.
+* @example reverseBits(0x12345678u) returns 0x1E6A2C48u for a 32-bit value.
+*/
+template<typename T>
+constexpr std::enable_if_t<std::is_unsigned_v<T> && (sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8), T> reverseBits(T value) noexcept
+{
+	// 8-bit specialization
+	if constexpr (sizeof(T) == 1)
+	{
+		value = ((value & 0xAA) >> 1) | ((value & 0x55) << 1);
+		value = ((value & 0xCC) >> 2) | ((value & 0x33) << 2);
+		return (value >> 4) | (value << 4);
+	}
+	// 16-bit specialization
+	else if constexpr (sizeof(T) == 2)
+	{
+		value = ((value & 0xAAAA) >> 1) | ((value & 0x5555) << 1);
+		value = ((value & 0xCCCC) >> 2) | ((value & 0x3333) << 2);
+		value = ((value & 0xF0F0) >> 4) | ((value & 0x0F0F) << 4);
+		return (value >> 8) | (value << 8);
+	}
+	// 32-bit specialization
+	else if constexpr (sizeof(T) == 4)
+	{
+		value = ((value & 0xAAAAAAAA) >> 1) | ((value & 0x55555555) << 1);
+		value = ((value & 0xCCCCCCCC) >> 2) | ((value & 0x33333333) << 2);
+		value = ((value & 0xF0F0F0F0) >> 4) | ((value & 0x0F0F0F0F) << 4);
+		value = ((value & 0xFF00FF00) >> 8) | ((value & 0x00FF00FF) << 8);
+		return (value >> 16) | (value << 16);
+	}
+	// 64-bit specialization
+	else if constexpr (sizeof(T) == 8)
+	{
+		value = ((value & 0xAAAAAAAAAAAAAAAA) >> 1) | ((value & 0x5555555555555555) << 1);
+		value = ((value & 0xCCCCCCCCCCCCCCCC) >> 2) | ((value & 0x3333333333333333) << 2);
+		value = ((value & 0xF0F0F0F0F0F0F0F0) >> 4) | ((value & 0x0F0F0F0F0F0F0F0F) << 4);
+		value = ((value & 0xFF00FF00FF00FF00) >> 8) | ((value & 0x00FF00FF00FF00FF) << 8);
+		value = ((value & 0xFFFF0000FFFF0000) >> 16) | ((value & 0x0000FFFF0000FFFF) << 16);
+		return (value >> 32) | (value << 32);
+	}
+}
+
+/**
 * @brief Constexpr to compute a pow(x,y) at compile-time.
 * @details Computes the pow of 2 types at compile-time.<BR>
 *          Example: pow(2,8) will compute 256
@@ -151,7 +201,6 @@ namespace utils
 *       Example to get pow(2, 15) as a std::uint32_t at compile-time:<BR>
 *       std::integral_constant<std::uint32_t, pow(2,15)>::value
 */
-
 template<class T>
 inline constexpr T pow(T const base, std::uint8_t const exponent)
 {

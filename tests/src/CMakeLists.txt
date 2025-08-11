@@ -31,6 +31,7 @@ set(TESTS_SOURCE
 	protocolVuAecpduProtocolIdentifier_tests.cpp
 	streamFormat_tests.cpp
 	uniqueIdentifier_tests.cpp
+	utils_tests.cpp
 )
 list(APPEND ADD_LINK_LIBRARIES la_avdecc_static)
 
