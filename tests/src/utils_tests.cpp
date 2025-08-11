@@ -196,3 +196,13 @@ TEST_F(UtilsTest, ReverseBits_DoubleReverse)
 		EXPECT_EQ(value, doubleReversed) << "Double reverse failed for 64-bit value 0x" << std::hex << value;
 	}
 }
+
+TEST_F(UtilsTest, Pow)
+{
+	// Test compile-time pow with integral_constant
+	constexpr auto pow2_8 = std::integral_constant<std::uint32_t, la::avdecc::utils::pow(2, 8)>::value;
+	constexpr auto pow2_15 = std::integral_constant<std::uint32_t, la::avdecc::utils::pow(2, 15)>::value;
+
+	EXPECT_EQ(256u, pow2_8);
+	EXPECT_EQ(32768u, pow2_15);
+}
