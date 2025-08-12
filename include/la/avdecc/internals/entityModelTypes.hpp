@@ -40,6 +40,7 @@
 #include <optional>
 #include <cstring> // std::memcpy
 #include <tuple>
+#include <bitset>
 
 namespace la
 {
@@ -83,6 +84,8 @@ using DescriptorCounter = std::uint32_t; /** Counter - IEEE1722.1-2013 Clause 7.
 using OperationID = std::uint16_t; /** OperationID for OPERATIONS returned by an entity to a controller - IEEE1722.1-2013 Clause 7.4.53 */
 using BridgeIdentifier = std::uint64_t;
 using MediaClockReferencePriority = std::uint8_t; /** Media Clock Reference Priority - Milan 1.3 Clause 5.4.4.4 */
+using SignalPresenceChannelsUnderlyingType = std::uint64_t; /** Signal Presence Channels - Milan 1.3 Clause 5.3.7.7.1 */
+using SignalPresenceChannels = std::bitset<sizeof(SignalPresenceChannelsUnderlyingType) * 8>; /** Signal Presence - Milan 1.3 Clause 5.3.7.7.1 */
 
 constexpr DescriptorIndex getInvalidDescriptorIndex() noexcept
 {

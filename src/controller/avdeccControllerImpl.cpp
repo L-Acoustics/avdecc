@@ -41,6 +41,7 @@
 #include <la/avdecc/internals/protocolAemPayloadSizes.hpp>
 #include <la/avdecc/internals/protocolInterface.hpp>
 #include <la/avdecc/executor.hpp>
+#include <la/avdecc/utils.hpp>
 
 #include <fstream>
 #include <unordered_set>
@@ -1576,6 +1577,41 @@ entity::model::StreamOutputCounters::CounterType ControllerImpl::getStreamOutput
 	return entity::model::StreamOutputCounters::CounterType::IEEE17221_2021;
 }
 
+void ControllerImpl::updateSignalPresenceCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::DescriptorCounter const signalPresence1, entity::model::DescriptorCounter const signalPresence2, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (!currentConfigurationIndexOpt)
+	{
+		return;
+	}
+
+	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+	if (streamDynamicModel)
+	{
+		// Convert signalPresence counters to SignalPresenceChannels by reversing the bits and combining them into a std::bitset.
+
+		// Convert and reverse bit order
+		auto const sp1_reversed = utils::reverseBits(static_cast<std::uint32_t>(signalPresence1)); // signalPresence1: MSB = channel 0, LSB = channel 31
+		auto const sp2_reversed = utils::reverseBits(static_cast<std::uint32_t>(signalPresence2)); // signalPresence2: MSB = channel 32, LSB = channel 63
+
+		// Combine into 64-bit value: channels 0-31 in lower 32 bits, channels 32-63 in upper 32 bits
+		auto const signalPresence = entity::model::SignalPresenceChannels{ static_cast<entity::model::SignalPresenceChannelsUnderlyingType>(sp1_reversed) | (static_cast<entity::model::SignalPresenceChannelsUnderlyingType>(sp2_reversed) << 32) };
+
+		if (streamDynamicModel->signalPresence != signalPresence)
+		{
+			streamDynamicModel->signalPresence = signalPresence;
+
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputSignalPresenceChanged, this, &controlledEntity, streamIndex, signalPresence);
+			}
+		}
+	}
+}
+
 void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamOutputCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
@@ -1631,6 +1667,7 @@ void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlled
 						{
 							removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.3 - 5.3.7.7", "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT: " + std::to_string(streamIndex) + " (" + std::to_string(startValue) + " / " + std::to_string(stopValue) + ")");
 						}
+						updateSignalPresenceCounters(controlledEntity, streamIndex, milanSignalPresenceCounters[entity::StreamOutputCounterValidFlagMilanSignalPresence::SignalPresence1], milanSignalPresenceCounters[entity::StreamOutputCounterValidFlagMilanSignalPresence::SignalPresence2], notFoundBehavior);
 						break;
 					}
 					default: // Unsupported type

@@ -307,6 +307,7 @@ struct StreamOutputNodeDynamicModel : public StreamNodeDynamicModel
 	model::StreamConnections connections{};
 	std::chrono::nanoseconds presentationTimeOffset{ 0 };
 	std::optional<StreamOutputCounters> counters{ std::nullopt };
+	std::optional<SignalPresenceChannels> signalPresence{ std::nullopt };
 };
 
 struct JackNodeDynamicModel
