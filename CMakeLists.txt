@@ -232,6 +232,10 @@ if(BUILD_AVDECC_INTERFACE_PCAP)
 			link_directories(${LA_WINPCAP_LIB_DIR})
 		endif()
 	endif()
+	if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+		find_package(PkgConfig REQUIRED)
+		pkg_check_modules(PCAP REQUIRED IMPORTED_TARGET GLOBAL libpcap)
+	endif()
 endif()
 
 ############ Add projects
