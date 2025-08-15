@@ -117,7 +117,7 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 	# Setup libfmt
 	if(ENABLE_AVDECC_USE_FMTLIB)
 		target_compile_options(${PROJECT_NAME}_cxx PRIVATE -DHAVE_FMT)
-		target_link_libraries(${PROJECT_NAME}_cxx PRIVATE fmt-header-only)
+		target_link_libraries(${PROJECT_NAME}_cxx PRIVATE fmt::fmt-header-only)
 	endif()
 
 	# Setup json
