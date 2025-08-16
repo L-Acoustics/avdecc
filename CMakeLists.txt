@@ -171,7 +171,10 @@ endif()
 if(ENABLE_AVDECC_FEATURE_JSON)
 	set(JSON_BuildTests OFF CACHE INTERNAL "Disable JSON unit tests")
 	set(JSON_Install (${INSTALL_AVDECC_LIB_SHARED_CXX} OR ${INSTALL_AVDECC_LIB_STATIC} OR ${INSTALL_AVDECC_HEADERS}) CACHE INTERNAL "Install JSON library")
-	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/json EXCLUDE_FROM_ALL)
+	FetchContent_Declare(nlohmann_json URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+	  FIND_PACKAGE_ARGS NAMES nlohmann_json
+	)
+	FetchContent_MakeAvailable(nlohmann_json)
 endif()
 
 # Override nih options
