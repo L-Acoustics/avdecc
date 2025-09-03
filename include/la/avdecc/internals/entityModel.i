@@ -214,6 +214,26 @@ DEFINE_AEM_TYPES_CLASS(ControlValueType);
 DEFINE_AEM_TYPES_CLASS_BASE(ControlValues);
 %ignore la::avdecc::entity::model::ControlValues::operator bool() const noexcept;
 
+// Map SignalPresenceChannels (std:bitset) to underlying type (until std::bitset is supported by SWIG)
+%apply unsigned long long { la::avdecc::entity::model::SignalPresenceChannels, la::avdecc::entity::model::SignalPresenceChannels const&, la::avdecc::entity::model::SignalPresenceChannels& };
+%typemap(out) la::avdecc::entity::model::SignalPresenceChannels {
+	$result = (unsigned long long)$1.to_ullong();
+}
+%typemap(out) la::avdecc::entity::model::SignalPresenceChannels const&, la::avdecc::entity::model::SignalPresenceChannels& {
+	$result = (unsigned long long)$1->to_ullong();
+}
+%typemap(in) la::avdecc::entity::model::SignalPresenceChannels {
+	$1 = la::avdecc::entity::model::SignalPresenceChannels((unsigned long long)$input);
+}
+%typemap(in) la::avdecc::entity::model::SignalPresenceChannels const&, la::avdecc::entity::model::SignalPresenceChannels& {
+	static la::avdecc::entity::model::SignalPresenceChannels tmp((unsigned long long)$input);
+	$1 = &tmp;
+}
+%typemap(directorin) la::avdecc::entity::model::SignalPresenceChannels const&, la::avdecc::entity::model::SignalPresenceChannels& {
+	$input = (unsigned long long)$1.to_ullong();
+}
+%optional_arithmetic(la::avdecc::entity::model::SignalPresenceChannels, OptSignalPresenceChannels)
+
 // Include c++ declaration file
 %include "la/avdecc/internals/entityModelTypes.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
