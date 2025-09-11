@@ -201,14 +201,8 @@ void ControllerImpl::addCompatibilityFlag(ControllerImpl const* const controller
 			}
 			break;
 		case ControlledEntity::CompatibilityFlag::Misbehaving:
-			newFlags.reset(ControlledEntity::CompatibilityFlag::IEEE17221); // A misbehaving device is not IEEE1722.1 compatible
-			newFlags.reset(ControlledEntity::CompatibilityFlag::Milan); // A misbehaving is not Milan compatible
-			if (!newFlags.test(ControlledEntity::CompatibilityFlag::Misbehaving))
-			{
-				newFlags.set(flag);
-				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity is sending incoherent values (misbehaving)");
-			}
-			break;
+			setMisbehavingCompatibilityFlag(controller, controlledEntity, "IEEE1722.1-2021", "Entity is sending incoherent values (misbehaving) in violation of the standard");
+			return;
 		default:
 			AVDECC_ASSERT(false, "Unknown CompatibilityFlag");
 			return;
@@ -225,6 +219,32 @@ void ControllerImpl::addCompatibilityFlag(ControllerImpl const* const controller
 			if (controlledEntity.wasAdvertised())
 			{
 				controller->notifyObserversMethod<Controller::Observer>(&Controller::Observer::onCompatibilityChanged, controller, &controlledEntity, newFlags, controlledEntity.getMilanCompatibilityVersion());
+			}
+		}
+	}
+}
+
+void ControllerImpl::setMisbehavingCompatibilityFlag(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, std::string const& specClause, std::string const& message) noexcept
+{
+	// If entity was not already marked as misbehaving
+	if (!controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Misbehaving))
+	{
+		// A misbehaving device is not IEEE1722.1 compatible (so also not Milan compatible)
+		removeCompatibilityFlag(controller, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221, specClause, message);
+
+		// Now set the Misbehaving flag
+		auto flags = controlledEntity.getCompatibilityFlags();
+		flags.set(ControlledEntity::CompatibilityFlag::Misbehaving);
+		LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity is sending incoherent values (misbehaving)");
+		controlledEntity.setCompatibilityFlags(flags);
+
+		if (controller)
+		{
+			AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
+			{
+				controller->notifyObserversMethod<Controller::Observer>(&Controller::Observer::onCompatibilityChanged, controller, &controlledEntity, flags, controlledEntity.getMilanCompatibilityVersion());
 			}
 		}
 	}
@@ -3993,16 +4013,14 @@ entity::model::AudioMappings ControllerImpl::validateMappings(ControlledEntityIm
 	{
 		if (mapping.streamIndex >= maxStreams)
 		{
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid Mapping received: StreamIndex is greater than maximum declared streams in ADP ({} >= {})", mapping.streamIndex, maxStreams);
 			// Flag the entity as "Misbehaving"
-			addCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			setMisbehavingCompatibilityFlag(this, controlledEntity, "IEEE1722.1-2021 - 6.2.2.10/6.2.2.12", "Invalid Mapping received: StreamIndex is greater than maximum declared streams in ADP");
 			continue;
 		}
 		if (mapping.clusterOffset >= maxClusters)
 		{
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid Mapping received: ClusterOffset is greater than cluster in the StreamPort ({} >= {})", mapping.clusterOffset, maxClusters);
 			// Flag the entity as "Misbehaving"
-			addCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			setMisbehavingCompatibilityFlag(this, controlledEntity, "IEEE1722.1-2021 - 7.2.13", "Invalid Mapping received: ClusterOffset is greater than cluster in the StreamPort");
 			continue;
 		}
 
@@ -6317,9 +6335,8 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 			auto const maxSinks = listenerEntity->getEntity().getCommonInformation().listenerStreamSinks;
 			if (listenerStream.streamIndex >= maxSinks)
 			{
-				LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Listener entity {} sent an invalid CONNECTION STATE (with status=SUCCESS) for StreamIndex={} although it only has {} sinks", utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, maxSinks);
 				// Flag the entity as "Misbehaving"
-				addCompatibilityFlag(this, *listenerEntity, ControlledEntity::CompatibilityFlag::Misbehaving);
+				setMisbehavingCompatibilityFlag(this, *listenerEntity, "IEEE1722.1-2021 - 6.2.2.12", "Invalid CONNECTION STATE: StreamIndex is greater than maximum declared streams in ADP");
 				return;
 			}
 			auto const previousInfo = listenerEntity->setStreamInputConnectionInformation(listenerStream.streamIndex, info, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
