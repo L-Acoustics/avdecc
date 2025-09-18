@@ -532,7 +532,7 @@ static void updateStreamDynamicInfoData(entity::model::StreamNodeDynamicModel* c
 	dynamicInfo.hasSavedState = info.streamInfoFlags.test(entity::StreamInfoFlag::SavedState);
 	dynamicInfo.doesSupportEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::SupportsEncrypted);
 	dynamicInfo.arePdusEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::EncryptedPdu);
-	dynamicInfo.hasTalkerFailed = info.streamInfoFlags.test(entity::StreamInfoFlag::TalkerFailed);
+	dynamicInfo.hasSrpRegistrationFailed = info.streamInfoFlags.test(entity::StreamInfoFlag::SrpRegistrationFailed);
 	dynamicInfo._streamInfoFlags = info.streamInfoFlags;
 
 	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamIDValid))

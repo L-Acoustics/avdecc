@@ -135,8 +135,7 @@ enum class LA_AVDECC_API ConnectionFlag : std::uint16_t
 	StreamingWait = 1u << 3, /**< The AVDECC Talker does not start streaming until explicitly being told to by the control protocol. */
 	SupportsEncrypted = 1u << 4, /**< Indicates that the Stream supports streaming with encrypted PDUs. */
 	EncryptedPdu = 1u << 5, /**< Indicates that the Stream is using encrypted PDUs. */
-	TalkerFailed = 1u << 6, /**< IEEE1722.1-2013 - Indicates that the listener has registered an SRP Talker Failed attribute for the Stream. */
-	SrpRegistrationFailed = 1u << 6, /**< IEEE1722.1-2021 - Indicates that the listener has registered an SRP Talker Failed attribute for the stream or that the talker has registered an SRP Listener Asking Failed attribute for the stream (used in Get State only). */
+	SrpRegistrationFailed = 1u << 6, /**< Indicates that the listener has registered an SRP Talker Failed attribute for the stream or that the talker has registered an SRP Listener Asking Failed attribute for the stream (used in Get State only). */
 	ClEntriesValid = 1u << 7, /**< Indicates that the connected_listeners_entries field in the ACM-PDU is valid. */
 	NoSrp = 1u << 8, /**< Indicates that SRP is not being used for the stream. The Talker will not register a Talker Advertise nor wait for a Listener registration before streaming. */
 	Udp = 1u << 9, /**< Indicates that the stream is using UDP based transport and not Layer 2 AVTPDUs. */
@@ -265,10 +264,11 @@ enum class LA_AVDECC_API StreamInfoFlag : std::uint32_t
 	StreamingWait = 1u << 3, /**< The Stream is presently in STREAMING_WAIT, either it was connected with STREAMING_WAIT flag set or it was stopped with STOP_STREAMING command. */
 	SupportsEncrypted = 1u << 4, /**< Indicates that the Stream supports streaming with encrypted PDUs. */
 	EncryptedPdu = 1u << 5, /**< Indicates that the Stream is using encrypted PDUs. */
-	TalkerFailed = 1u << 6, /**< Indicates that the Listener has registered an SRP Talker Failed attribute for the Stream. */
-	/* Bit 24 reserved for future use */
+	SrpRegistrationFailed = 1u << 6, /**< Indicates that the listener has registered an SRP Talker Failed attribute for the stream or that the talker has registered an SRP Listener Asking Failed attribute for the stream (used in Get State only). */
+	ClEntriesValid = 1u << 7, /**< Indicates that the connected_listeners_entries field in the ACM-PDU is valid. */
 	NoSrp = 1u << 8, /**< Indicates that SRP is not being used for the stream. The Talker will not register a Talker Advertise nor wait for a Listener registration before streaming. */
-	/* Bits 13 to 22 reserved for future use */
+	Udp = 1u << 9, /**< Indicates that the stream is using UDP based transport and not Layer 2 AVTPDUs. */
+	/* Bits 13 to 21 reserved for future use */
 	IpFlagsValid = 1u << 19, /**< The value in the ip_flags field is valid. */
 	IpSrcPortValid = 1u << 20, /**< The value in the source_port field is valid. */
 	IpDstPortValid = 1u << 21, /**< The value in the destination_port field is valid. */

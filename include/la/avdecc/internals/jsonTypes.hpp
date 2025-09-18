@@ -638,7 +638,6 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ConnectionFlag, {
 																							 { ConnectionFlag::StreamingWait, "STREAMING_WAIT" },
 																							 { ConnectionFlag::SupportsEncrypted, "SUPPORTS_ENCRYPTED" },
 																							 { ConnectionFlag::EncryptedPdu, "ENCRYPTED_PDU" },
-																							 { ConnectionFlag::TalkerFailed, "TALKER_FAILED" },
 																							 { ConnectionFlag::SrpRegistrationFailed, "SRP_REGISTRATION_FAILED" },
 																							 { ConnectionFlag::ClEntriesValid, "CL_ENTRIES_VALID" },
 																							 { ConnectionFlag::NoSrp, "NO_SRP" },
@@ -745,8 +744,10 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamInfoFlag, {
 																							 { StreamInfoFlag::StreamingWait, "STREAMING_WAIT" },
 																							 { StreamInfoFlag::SupportsEncrypted, "SUPPORTS_ENCRYPTED" },
 																							 { StreamInfoFlag::EncryptedPdu, "ENCRYPTED_PDU" },
-																							 { StreamInfoFlag::TalkerFailed, "TALKER_FAILED" },
+																							 { StreamInfoFlag::SrpRegistrationFailed, "SRP_REGISTRATION_FAILED" },
+																							 { StreamInfoFlag::ClEntriesValid, "CL_ENTRIES_VALID" },
 																							 { StreamInfoFlag::NoSrp, "NO_SRP" },
+																							 { StreamInfoFlag::Udp, "UDP" },
 																							 { StreamInfoFlag::IpFlagsValid, "IP_FLAGS_VALID" },
 																							 { StreamInfoFlag::IpSrcPortValid, "IP_SRC_PORT_VALID" },
 																							 { StreamInfoFlag::IpDstPortValid, "IP_DST_PORT_VALID" },
@@ -1244,7 +1245,8 @@ constexpr auto StreamDynamicInfo_IsClassB = "is_class_b";
 constexpr auto StreamDynamicInfo_HasSavedState = "has_saved_state";
 constexpr auto StreamDynamicInfo_DoesSupportEncrypted = "does_support_encrypted";
 constexpr auto StreamDynamicInfo_ArePdusEncrypted = "are_pdus_encrypted";
-constexpr auto StreamDynamicInfo_HasTalkerFailed = "has_talker_failed";
+constexpr auto StreamDynamicInfo_HasTalkerFailed = "has_talker_failed"; // Legacy name
+constexpr auto StreamDynamicInfo_HasSrpRegistrationFailed = "has_srp_registration_failed"; // New name for has_talker_failed
 constexpr auto StreamDynamicInfo_Flags = "last_received_flags";
 constexpr auto StreamDynamicInfo_StreamID = "stream_id";
 constexpr auto StreamDynamicInfo_MsrpAccumulatedLatency = "msrp_accumulated_latency";
@@ -1694,7 +1696,7 @@ inline void to_json(json& j, StreamDynamicInfo const& info)
 	j[keyName::StreamDynamicInfo_HasSavedState] = info.hasSavedState;
 	j[keyName::StreamDynamicInfo_DoesSupportEncrypted] = info.doesSupportEncrypted;
 	j[keyName::StreamDynamicInfo_ArePdusEncrypted] = info.arePdusEncrypted;
-	j[keyName::StreamDynamicInfo_HasTalkerFailed] = info.hasTalkerFailed;
+	j[keyName::StreamDynamicInfo_HasSrpRegistrationFailed] = info.hasSrpRegistrationFailed;
 	j[keyName::StreamDynamicInfo_Flags] = info._streamInfoFlags;
 	j[keyName::StreamDynamicInfo_StreamID] = info.streamID;
 	j[keyName::StreamDynamicInfo_MsrpAccumulatedLatency] = info.msrpAccumulatedLatency;
@@ -1719,8 +1721,43 @@ inline void from_json(json const& j, StreamDynamicInfo& info)
 	j.at(keyName::StreamDynamicInfo_HasSavedState).get_to(info.hasSavedState);
 	j.at(keyName::StreamDynamicInfo_DoesSupportEncrypted).get_to(info.doesSupportEncrypted);
 	j.at(keyName::StreamDynamicInfo_ArePdusEncrypted).get_to(info.arePdusEncrypted);
-	j.at(keyName::StreamDynamicInfo_HasTalkerFailed).get_to(info.hasTalkerFailed);
-	get_optional_value(j, keyName::StreamDynamicInfo_Flags, info._streamInfoFlags);
+	{
+		// Legacy support: Check for old field name (StreamDynamicInfo_HasTalkerFailed)
+		if (auto const it = j.find(keyName::StreamDynamicInfo_HasTalkerFailed); it != j.end())
+		{
+			info.hasSrpRegistrationFailed = *it;
+		}
+		else
+		{
+			j.at(keyName::StreamDynamicInfo_HasSrpRegistrationFailed).get_to(info.hasSrpRegistrationFailed);
+		}
+	}
+	{
+		if (auto const it = j.find(keyName::StreamDynamicInfo_Flags); it != j.end())
+		{
+			// Make a copy of the flags so we can modify it if needed
+			auto flags = *it;
+			// Loop over all flags looking for legacy flag names to replace
+			std::optional<std::size_t> talkerFailedIndex;
+			auto index = std::size_t{ 0u };
+			for (auto const& [name, value] : flags.items())
+			{
+				if (value.is_string() && value.get<std::string>() == "TALKER_FAILED")
+				{
+					talkerFailedIndex = index;
+					break;
+				}
+				++index;
+			}
+			// Legacy support: Check if 'TALKER_FAILED' is present, if so replace with the new flag (SRP_REGISTRATION_FAILED)
+			if (talkerFailedIndex)
+			{
+				flags.erase(*talkerFailedIndex);
+				flags.push_back("SRP_REGISTRATION_FAILED");
+			}
+			flags.get_to(info._streamInfoFlags);
+		}
+	}
 	get_optional_value(j, keyName::StreamDynamicInfo_StreamID, info.streamID);
 	get_optional_value(j, keyName::StreamDynamicInfo_MsrpAccumulatedLatency, info.msrpAccumulatedLatency);
 	{

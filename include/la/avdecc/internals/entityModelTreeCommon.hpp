@@ -74,7 +74,7 @@ struct StreamDynamicInfo
 	bool hasSavedState{ false }; /** Connection has saved ACMP state. */
 	bool doesSupportEncrypted{ false }; /** Indicates that the Stream supports streaming with encrypted PDUs. */
 	bool arePdusEncrypted{ false }; /** Indicates that the Stream is using encrypted PDUs. */
-	bool hasTalkerFailed{ false }; /** Indicates that the Listener has registered an SRP Talker Failed attribute for the Stream. */
+	bool hasSrpRegistrationFailed{ false }; /** Indicates that the listener has registered an SRP Talker Failed attribute for the stream or that the talker has registered an SRP Listener Asking Failed attribute for the stream. */
 	StreamInfoFlags _streamInfoFlags{}; /** LEGACY FIELD - Last received StreamInfoFlags */
 	std::optional<UniqueIdentifier> streamID{ std::nullopt };
 	std::optional<std::uint32_t> msrpAccumulatedLatency{ std::nullopt };
@@ -90,7 +90,7 @@ struct StreamDynamicInfo
 
 constexpr bool operator==(StreamDynamicInfo const& lhs, StreamDynamicInfo const& rhs) noexcept
 {
-	return (lhs.isClassB == rhs.isClassB) && (lhs.hasSavedState == rhs.hasSavedState) && (lhs.doesSupportEncrypted == rhs.doesSupportEncrypted) && (lhs.arePdusEncrypted == rhs.arePdusEncrypted) && (lhs.hasTalkerFailed == rhs.hasTalkerFailed) && (lhs._streamInfoFlags == rhs._streamInfoFlags) && (lhs.streamID == rhs.streamID) && (lhs.msrpAccumulatedLatency == rhs.msrpAccumulatedLatency) && (lhs.streamDestMac == rhs.streamDestMac) && (lhs.msrpFailureCode == rhs.msrpFailureCode) && (lhs.msrpFailureBridgeID == rhs.msrpFailureBridgeID) && (lhs.streamVlanID == rhs.streamVlanID) && (lhs.streamInfoFlagsEx == rhs.streamInfoFlagsEx) && (lhs.probingStatus == rhs.probingStatus) && (lhs.acmpStatus == rhs.acmpStatus);
+	return (lhs.isClassB == rhs.isClassB) && (lhs.hasSavedState == rhs.hasSavedState) && (lhs.doesSupportEncrypted == rhs.doesSupportEncrypted) && (lhs.arePdusEncrypted == rhs.arePdusEncrypted) && (lhs.hasSrpRegistrationFailed == rhs.hasSrpRegistrationFailed) && (lhs._streamInfoFlags == rhs._streamInfoFlags) && (lhs.streamID == rhs.streamID) && (lhs.msrpAccumulatedLatency == rhs.msrpAccumulatedLatency) && (lhs.streamDestMac == rhs.streamDestMac) && (lhs.msrpFailureCode == rhs.msrpFailureCode) && (lhs.msrpFailureBridgeID == rhs.msrpFailureBridgeID) && (lhs.streamVlanID == rhs.streamVlanID) && (lhs.streamInfoFlagsEx == rhs.streamInfoFlagsEx) && (lhs.probingStatus == rhs.probingStatus) && (lhs.acmpStatus == rhs.acmpStatus);
 }
 
 constexpr bool operator!=(StreamDynamicInfo const& lhs, StreamDynamicInfo const& rhs) noexcept

@@ -530,6 +530,38 @@ TEST_F(Controller_F, VirtualEntityLoad)
 	//ASSERT_NE(std::future_status::timeout, status);
 }
 
+TEST_F(Controller_F, VirtualEntityLoadTalkerFailedLegacyName)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+
+	auto& controller = getController();
+	auto const [error, message] = controller.loadVirtualEntityFromJson("data/EntityTalkerFailedLegacyName.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	// Get the entity
+	auto const entity = controller.getControlledEntityGuard(la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 });
+	ASSERT_TRUE(!!entity);
+
+	// Check if device is Milan compatible
+	EXPECT_TRUE(entity->getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan));
+
+	// Get StreamInputNode
+	auto const& streamNode = entity->getStreamInputNode(entity->getCurrentConfigurationIndex(), la::avdecc::entity::model::StreamIndex{ 0u });
+	ASSERT_TRUE(!!streamNode.dynamicModel.streamDynamicInfo);
+
+	auto const& streamDynamicInfo = *streamNode.dynamicModel.streamDynamicInfo;
+
+	// Check SRP registration failed flag is set (legacy conversion from hasTalkerFailed)
+	EXPECT_TRUE(streamDynamicInfo.hasSrpRegistrationFailed);
+
+	// Check the StreamFormatValid flag is set (to make sure the flags are not all zero)
+	EXPECT_TRUE(streamDynamicInfo._streamInfoFlags.test(la::avdecc::entity::StreamInfoFlag::StreamFormatValid));
+
+	// Check the flag is also set in the bitfield (also a legacy conversion)
+	EXPECT_TRUE(streamDynamicInfo._streamInfoFlags.test(la::avdecc::entity::StreamInfoFlag::SrpRegistrationFailed));
+}
+
 TEST_F(Controller_F, VirtualEntityLoadUTF8)
 {
 	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };

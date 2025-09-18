@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - [StreamOutputNode has a new field: `presentationTimeOffset` to replace the `msrpAccumulatedLatency` field (which was in StreamDynamicInfo struct)](https://github.com/L-Acoustics/avdecc/issues/147)
+- StreamDynamicInfo.hasSrpRegistrationFailed replaces the deprecated hasTalkerFailed field
 
 ### Fixed
 - `computeEntityModelChecksum` not returning a deterministic value for all OSes
