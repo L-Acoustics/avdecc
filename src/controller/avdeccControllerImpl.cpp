@@ -619,15 +619,35 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 		}
 	}
 
-	// Check if the entity is implementing Milan but less than 1.3
+	// Set some compatibility related variables
+	auto isImplementingMilan = false;
 	auto isImplementingMilanButLessThan1_3 = false;
 	{
 		auto const milanInfo = controlledEntity.getMilanInfo();
 		if (milanInfo)
 		{
+			isImplementingMilan = milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 };
 			if (milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 } && milanInfo->specificationVersion < entity::model::MilanVersion{ 1, 3 })
 			{
 				isImplementingMilanButLessThan1_3 = true;
+			}
+		}
+	}
+
+	// If implementing Milan, check some mandatory values for flags
+	if (isImplementingMilan)
+	{
+		// ClEntriesValid must not be set
+		if (info.streamInfoFlags.test(entity::StreamInfoFlag::ClEntriesValid))
+		{
+			// Was a reserved field in Milan < 1.3
+			if (isImplementingMilanButLessThan1_3)
+			{
+				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.4.2.10.1", "StreamInfoFlag bit 24 is reserved and must be set to 0");
+			}
+			else
+			{
+				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.3 - 5.4.2.10.1", "StreamInfoFlag CL_ENTRIES_VALID must not be set");
 			}
 		}
 	}
@@ -743,15 +763,35 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 		}
 	}
 
-	// Check if the entity is implementing Milan but less than 1.3
+	// Set some compatibility related variables
+	auto isImplementingMilan = false;
 	auto isImplementingMilanButLessThan1_3 = false;
 	{
 		auto const milanInfo = controlledEntity.getMilanInfo();
 		if (milanInfo)
 		{
+			isImplementingMilan = milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 };
 			if (milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 } && milanInfo->specificationVersion < entity::model::MilanVersion{ 1, 3 })
 			{
 				isImplementingMilanButLessThan1_3 = true;
+			}
+		}
+	}
+
+	// If implementing Milan, check some mandatory values for flags
+	if (isImplementingMilan)
+	{
+		// ClEntriesValid must not be set
+		if (info.streamInfoFlags.test(entity::StreamInfoFlag::ClEntriesValid))
+		{
+			// Was a reserved field in Milan < 1.3
+			if (isImplementingMilanButLessThan1_3)
+			{
+				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.4.2.10.1", "StreamInfoFlag bit 24 is reserved and must be set to 0");
+			}
+			else
+			{
+				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.3 - 5.4.2.10.1", "StreamInfoFlag CL_ENTRIES_VALID must not be set");
 			}
 		}
 	}
