@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [setMaxTransitTime and getMaxTransitTime not sending any message](https://github.com/L-Acoustics/avdecc/issues/183)
 - [CRF requirement for Milan devices](https://github.com/L-Acoustics/avdecc/issues/182)
 - Dynamic StreamFormat provided by VirtualEntityModelVisitor was not properly checked against the static formats
+- Automatic v1 to v2 conversion not working for multi-configuration entities
 
 ## [4.1.0] - 2025-04-16
 ### Added
