@@ -525,7 +525,7 @@ public:
 	/** Called when the System Unique ID of an Entity changed. */
 	virtual void onSystemUniqueIDChanged(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept = 0;
 	/** Called when Media Clock Reference Info changed. */
-	virtual void onMediaClockReferenceInfoChanged(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::MediaClockReferenceInfo const& mcrInfo) noexcept = 0;
+	virtual void onMediaClockReferenceInfoChanged(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::DefaultMediaClockReferencePriority const defaultPriority, la::avdecc::entity::model::MediaClockReferenceInfo const& mcrInfo) noexcept = 0;
 
 	/* Identification notifications */
 	/** Called when an entity emits an identify notification. */
@@ -694,7 +694,7 @@ public:
 	/** Called when the System Unique ID of an Entity changed. */
 	virtual void onSystemUniqueIDChanged(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::model::SystemUniqueIdentifier const /*systemUniqueID*/) noexcept override {}
 	/** Called when Media Clock Reference Info changed. */
-	virtual void onMediaClockReferenceInfoChanged(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::model::ClockDomainIndex const /*clockDomainIndex*/, la::avdecc::entity::model::MediaClockReferenceInfo const& /*mcrInfo*/) noexcept override {}
+	virtual void onMediaClockReferenceInfoChanged(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::model::ClockDomainIndex const /*clockDomainIndex*/, la::avdecc::entity::model::DefaultMediaClockReferencePriority const /*defaultPriority*/, la::avdecc::entity::model::MediaClockReferenceInfo const& /*mcrInfo*/) noexcept override {}
 
 	/* Identification notifications */
 	/** Called when an entity emits an identify notification. */

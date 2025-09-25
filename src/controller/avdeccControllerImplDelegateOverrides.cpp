@@ -898,7 +898,7 @@ void ControllerImpl::onSystemUniqueIDChanged(entity::controller::Interface const
 	}
 }
 
-void ControllerImpl::onMediaClockReferenceInfoChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::MediaClockReferenceInfo const& mcrInfo) noexcept
+void ControllerImpl::onMediaClockReferenceInfoChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& mcrInfo) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -906,7 +906,9 @@ void ControllerImpl::onMediaClockReferenceInfoChanged(entity::controller::Interf
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateMediaClockReferenceInfo(entity, clockDomainIndex, mcrInfo, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+		auto const behavior = entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull;
+		validateDefaultMediaClockReferencePriority(entity, clockDomainIndex, defaultPriority, behavior);
+		updateMediaClockReferenceInfo(entity, clockDomainIndex, mcrInfo, behavior);
 	}
 }
 

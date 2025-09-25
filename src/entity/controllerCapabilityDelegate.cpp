@@ -4738,7 +4738,7 @@ void CapabilityDelegate::processMvuAecpResponse(protocol::MvuCommandType const c
 				answerCallback.invoke<controller::Interface::SetMediaClockReferenceInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, defaultMcrPrio, mcrInfo);
 				if (mvu.getUnsolicited() && delegate && !!status)
 				{
-					utils::invokeProtectedMethod(&controller::Delegate::onMediaClockReferenceInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, mcrInfo);
+					utils::invokeProtectedMethod(&controller::Delegate::onMediaClockReferenceInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, defaultMcrPrio, mcrInfo);
 				}
 			} },
 		// Get Media Clock Reference Info
