@@ -196,11 +196,8 @@ void ControllerImpl::addCompatibilityFlag(ControllerImpl const* const controller
 			}
 			break;
 		case ControlledEntity::CompatibilityFlag::MilanWarning:
-			if (AVDECC_ASSERT_WITH_RET(newFlags.test(ControlledEntity::CompatibilityFlag::Milan), "Adding MilanWarning flag for a non Milan device"))
-			{
-				newFlags.set(flag);
-			}
-			break;
+			setMilanWarningCompatibilityFlag(controller, controlledEntity, "Milan", "Minor warnings in the model/behavior that do not retrograde a Milan entity");
+			return;
 		case ControlledEntity::CompatibilityFlag::Misbehaving:
 			setMisbehavingCompatibilityFlag(controller, controlledEntity, "IEEE1722.1-2021", "Entity is sending incoherent values (misbehaving) in violation of the standard");
 			return;
@@ -246,6 +243,39 @@ void ControllerImpl::setMisbehavingCompatibilityFlag(ControllerImpl const* const
 			if (controlledEntity.wasAdvertised())
 			{
 				controller->notifyObserversMethod<Controller::Observer>(&Controller::Observer::onCompatibilityChanged, controller, &controlledEntity, flags, controlledEntity.getMilanCompatibilityVersion());
+			}
+		}
+	}
+}
+
+void ControllerImpl::setMilanWarningCompatibilityFlag(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, std::string const& specClause, std::string const& message) noexcept
+{
+	auto const oldFlags = controlledEntity.getCompatibilityFlags();
+	auto const oldMilanCompatibilityVersion = controlledEntity.getMilanCompatibilityVersion();
+	auto newFlags = oldFlags;
+	auto newMilanCompatibilityVersion = oldMilanCompatibilityVersion;
+
+	LOG_CONTROLLER_COMPAT(controlledEntity.getEntity().getEntityID(), "[{}] {}", specClause, message);
+
+	// If entity was not already marked as MilanWarning
+	if (!oldFlags.test(ControlledEntity::CompatibilityFlag::MilanWarning))
+	{
+		if (AVDECC_ASSERT_WITH_RET(oldFlags.test(ControlledEntity::CompatibilityFlag::Milan), "Adding MilanWarning flag for a non Milan device"))
+		{
+			// Set the MilanWarning flag
+			newFlags.set(ControlledEntity::CompatibilityFlag::MilanWarning);
+			controlledEntity.setCompatibilityFlags(newFlags);
+
+			if (controller)
+			{
+				AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+				// Create a compatibilityChanged event
+				controlledEntity.addCompatibilityChangedEvent(ControlledEntity::CompatibilityChangedEvent{ oldFlags, oldMilanCompatibilityVersion, newFlags, newMilanCompatibilityVersion, specClause, message });
+				// Entity was advertised to the user, notify observers
+				if (controlledEntity.wasAdvertised())
+				{
+					controller->notifyObserversMethod<Controller::Observer>(&Controller::Observer::onCompatibilityChanged, controller, &controlledEntity, newFlags, newMilanCompatibilityVersion);
+				}
 			}
 		}
 	}
@@ -643,7 +673,8 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 			// Was a reserved field in Milan < 1.3
 			if (isImplementingMilanButLessThan1_3)
 			{
-				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.4.2.10.1", "StreamInfoFlag bit 24 is reserved and must be set to 0");
+				// Do not downgrade the Milan compatibility to not penalize too much a Milan device that have passed the Milan 1.2 compliance test, just add a warning flag
+				setMilanWarningCompatibilityFlag(this, controlledEntity, "Milan 1.2 - 5.4.2.10.1", "StreamInfoFlag bit 24 is reserved and must be set to 0");
 			}
 			else
 			{
@@ -787,7 +818,8 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 			// Was a reserved field in Milan < 1.3
 			if (isImplementingMilanButLessThan1_3)
 			{
-				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::Milan, "Milan 1.2 - 5.4.2.10.1", "StreamInfoFlag bit 24 is reserved and must be set to 0");
+				// Do not downgrade the Milan compatibility to not penalize too much a Milan device that have passed the Milan 1.2 compliance test, just add a warning flag
+				setMilanWarningCompatibilityFlag(this, controlledEntity, "Milan 1.2 - 5.4.2.10.1", "StreamInfoFlag bit 24 is reserved and must be set to 0");
 			}
 			else
 			{
@@ -2105,7 +2137,6 @@ void ControllerImpl::checkAvbInterfaceLinkStatus(ControllerImpl const* const con
 
 void ControllerImpl::checkRedundancyWarningDiagnostics(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity) noexcept
 {
-	auto& entity = controlledEntity.getEntity();
 	auto isWarning = false;
 
 	// Only for a Milan redundant device
@@ -2121,8 +2152,7 @@ void ControllerImpl::checkRedundancyWarningDiagnostics(ControllerImpl const* con
 		}
 		catch (ControlledEntity::Exception const&)
 		{
-			LOG_CONTROLLER_WARN(entity.getEntityID(), "Entity is declared Milan Redundant but does not have AVB_INTERFACE_0 and AVB_INTERFACE_1");
-			addCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::MilanWarning);
+			setMilanWarningCompatibilityFlag(nullptr, controlledEntity, "Milan 1.3 - 8.2.2", "Entity is declared Milan Redundant but does not have AVB_INTERFACE_0 and AVB_INTERFACE_1");
 		}
 	}
 
@@ -4601,18 +4631,14 @@ void ControllerImpl::validateRedundancy(ControlledEntityImpl& controlledEntity) 
 			auto const milanInfo = controlledEntity.getMilanInfo();
 			if (hasRedundantStream != milanInfo->featuresFlags.test(la::avdecc::entity::MilanInfoFeaturesFlag::Redundancy))
 			{
-				auto const& e = controlledEntity.getEntity();
-				auto const entityID = e.getEntityID();
-
 				if (hasRedundantStream)
 				{
-					LOG_CONTROLLER_WARN(entityID, "Redundant Streams detected, but MilanInfo features_flags does not contain REDUNDANCY bit");
+					setMilanWarningCompatibilityFlag(nullptr, controlledEntity, "Milan 1.3 - 5.4.4.1", "Redundant Streams detected, but MilanInfo features_flags does not contain REDUNDANCY bit");
 				}
 				else
 				{
-					LOG_CONTROLLER_WARN(entityID, "MilanInfo features_flags contains REDUNDANCY bit, but active Configuration does not have a single valid Redundant Stream");
+					setMilanWarningCompatibilityFlag(nullptr, controlledEntity, "Milan 1.3 - 5.4.4.1", "MilanInfo features_flags contains REDUNDANCY bit, but active Configuration does not have a single valid Redundant Stream");
 				}
-				addCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::MilanWarning);
 			}
 
 			// No need to check for AVB Interface association, the buildRedundancyNodesByType method already did the check when creating redundantStreamInputs and redundantStreamOutputs
