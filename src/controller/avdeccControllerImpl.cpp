@@ -1811,35 +1811,7 @@ void ControllerImpl::updateSystemUniqueID(ControlledEntityImpl& controlledEntity
 	}
 }
 
-void ControllerImpl::validateDefaultMediaClockReferencePriority(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
-{
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
-
-	// Only validate if the entity has been advertised
-	// Although we may loose some device inconsistencies during enumeration, it's easier to handle this way
-	// Because this method may be called from onGetMediaClockReferenceInfoResult (response to enumeration query) or from onMediaClockReferenceInfoChanged (unsolicited response) which may actually be received before the controller sends the enumeration query).
-	// And we have no way to detect which one is the case here because the defaultMediaClockPriority variable is construct-initialized to 'Default'
-	if (controlledEntity.wasAdvertised())
-	{
-		auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
-		if (!currentConfigurationIndexOpt)
-		{
-			return;
-		}
-
-		auto* const domainNode = controlledEntity.getModelAccessStrategy().getClockDomainNode(*currentConfigurationIndexOpt, clockDomainIndex, notFoundBehavior);
-		if (domainNode)
-		{
-			// Check if defaultPriority has changed after the entity has been advertised this is a critical error from the device
-			if (domainNode->staticModel.defaultMediaClockPriority != defaultPriority)
-			{
-				ControllerImpl::decreaseMilanCompatibilityVersion(this, controlledEntity, entity::model::MilanVersion{ 1, 0 }, "Milan 1.2 - 5.4.4.4/5.4.4.5", "Read-only 'DefaultMediaClockReferencePriority' value changed for CLOCK_DOMAIN: " + std::to_string(clockDomainIndex) + " (" + std::to_string(utils::to_integral(domainNode->staticModel.defaultMediaClockPriority)) + " -> " + std::to_string(utils::to_integral(defaultPriority)) + ")");
-			}
-		}
-	}
-}
-
-void ControllerImpl::updateMediaClockReferenceInfo(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::MediaClockReferenceInfo const& info, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+void ControllerImpl::updateMediaClockReferenceInfo(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& info, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
@@ -1852,13 +1824,29 @@ void ControllerImpl::updateMediaClockReferenceInfo(ControlledEntityImpl& control
 	auto* const domainNode = controlledEntity.getModelAccessStrategy().getClockDomainNode(*currentConfigurationIndexOpt, clockDomainIndex, notFoundBehavior);
 	if (domainNode)
 	{
+		auto const advertised = controlledEntity.wasAdvertised();
+
+		// Only validate if the entity has been advertised
+		// Although we may loose some device inconsistencies during enumeration, it's easier to handle this way
+		// Because this method may be called from onGetMediaClockReferenceInfoResult (response to enumeration query) or from onMediaClockReferenceInfoChanged (unsolicited response) which may actually be received before the controller sends the enumeration query).
+		// And we have no way to detect which one is the case here because the defaultMediaClockPriority variable is construct-initialized to 'Default'
+		if (advertised)
+		{
+			// Check if defaultPriority has changed after the entity has been advertised this is a critical error from the device
+			if (domainNode->staticModel.defaultMediaClockPriority != defaultPriority)
+			{
+				ControllerImpl::decreaseMilanCompatibilityVersion(this, controlledEntity, entity::model::MilanVersion{ 1, 0 }, "Milan 1.2 - 5.4.4.4/5.4.4.5", "Read-only 'DefaultMediaClockReferencePriority' value changed for CLOCK_DOMAIN: " + std::to_string(clockDomainIndex) + " (" + std::to_string(utils::to_integral(domainNode->staticModel.defaultMediaClockPriority)) + " -> " + std::to_string(utils::to_integral(defaultPriority)) + ")");
+			}
+		}
+		domainNode->staticModel.defaultMediaClockPriority = defaultPriority;
+
 		// Info changed
 		if (domainNode->dynamicModel.mediaClockReferenceInfo != info)
 		{
 			domainNode->dynamicModel.mediaClockReferenceInfo = info;
 
 			// Entity was advertised to the user, notify observers
-			if (controlledEntity.wasAdvertised())
+			if (advertised)
 			{
 				// Notify observers
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onMediaClockReferenceInfoChanged, this, &controlledEntity, clockDomainIndex, info);

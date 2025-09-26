@@ -2795,8 +2795,7 @@ void ControllerImpl::setMediaClockReferenceInfo(UniqueIdentifier const targetEnt
 					// Update media clock reference info
 					if (!!status)
 					{
-						validateDefaultMediaClockReferencePriority(*entity, clockDomainIndex, defaultPriority, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-						updateMediaClockReferenceInfo(*entity, clockDomainIndex, mcrInfo, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+						updateMediaClockReferenceInfo(*entity, clockDomainIndex, defaultPriority, mcrInfo, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler

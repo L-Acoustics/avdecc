@@ -3303,8 +3303,7 @@ void ControllerImpl::onGetMediaClockReferenceInfoResult(entity::controller::Inte
 		{
 			if (!!status)
 			{
-				validateDefaultMediaClockReferencePriority(*controlledEntity, clockDomainIndex, defaultPriority, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-				updateMediaClockReferenceInfo(*controlledEntity, clockDomainIndex, info, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				updateMediaClockReferenceInfo(*controlledEntity, clockDomainIndex, defaultPriority, info, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{

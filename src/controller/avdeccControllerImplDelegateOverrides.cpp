@@ -906,9 +906,7 @@ void ControllerImpl::onMediaClockReferenceInfoChanged(entity::controller::Interf
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		auto const behavior = entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull;
-		validateDefaultMediaClockReferencePriority(entity, clockDomainIndex, defaultPriority, behavior);
-		updateMediaClockReferenceInfo(entity, clockDomainIndex, mcrInfo, behavior);
+		updateMediaClockReferenceInfo(entity, clockDomainIndex, defaultPriority, mcrInfo, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
