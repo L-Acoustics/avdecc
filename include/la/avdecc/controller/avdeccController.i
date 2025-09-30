@@ -319,6 +319,8 @@ class VirtualControlledEntityInterface
 {
 public:
 	virtual ~VirtualControlledEntityInterface() noexcept = default;
+	virtual void setAcquiredState(UniqueIdentifier const targetEntityID, model::AcquireState const acquireState, UniqueIdentifier const owningEntity) noexcept {}
+	virtual void setEntityLockedState(UniqueIdentifier const targetEntityID, la::avdecc::controller::model::LockState const lockState, UniqueIdentifier const lockingEntity) noexcept {}
 	virtual void setEntityCounters(UniqueIdentifier const targetEntityID, entity::model::EntityCounters const& counters) noexcept {}
 	virtual void setAvbInterfaceCounters(UniqueIdentifier const targetEntityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceCounters const& counters) noexcept {}
 	virtual void setClockDomainCounters(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockDomainCounters const& counters) noexcept {}
