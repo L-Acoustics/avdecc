@@ -3416,6 +3416,28 @@ bool ControllerImpl::unloadVirtualEntity(UniqueIdentifier const entityID) noexce
 /* ************************************************************ */
 /* VirtualControlledEntityInterface overrides                   */
 /* ************************************************************ */
+void ControllerImpl::setAcquiredState(UniqueIdentifier const targetEntityID, model::AcquireState const acquireState, UniqueIdentifier const owningEntity) noexcept
+{
+	// Check if targetEntityID is a virtual entity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	if (controlledEntity && controlledEntity->isVirtual())
+	{
+		// Use the "update**" method, there are many things to do
+		updateAcquiredState(*controlledEntity, acquireState, owningEntity);
+	}
+}
+
+void ControllerImpl::setEntityLockedState(UniqueIdentifier const targetEntityID, model::LockState const lockState, UniqueIdentifier const lockingEntity) noexcept
+{
+	// Check if targetEntityID is a virtual entity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	if (controlledEntity && controlledEntity->isVirtual())
+	{
+		// Use the "update**" method, there are many things to do
+		updateLockedState(*controlledEntity, lockState, lockingEntity);
+	}
+}
+
 void ControllerImpl::setEntityCounters(UniqueIdentifier const targetEntityID, entity::model::EntityCounters const& counters) noexcept
 {
 	// Check if targetEntityID is a virtual entity
@@ -3510,7 +3532,6 @@ void ControllerImpl::setStreamOutputCounters(UniqueIdentifier const targetEntity
 		updateStreamOutputCounters(*controlledEntity, streamIndex, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 	}
 }
-
 
 } // namespace controller
 } // namespace avdecc
