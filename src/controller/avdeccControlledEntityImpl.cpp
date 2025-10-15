@@ -4316,6 +4316,11 @@ entity::model::EntityTree const& ControlledEntityImpl::getEntityModelTree() cons
 		accept(&visitor, true);
 	}
 
+	if (!AVDECC_ASSERT_WITH_RET(!!_entityTree, "Entity Tree model is null"))
+	{
+		static auto s_emptyTree = entity::model::EntityTree{};
+		return s_emptyTree;
+	}
 	return *_entityTree;
 }
 
