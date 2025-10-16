@@ -36,6 +36,7 @@
 #include "internals/avdeccVirtualControlledEntityInterface.hpp"
 #include "internals/virtualEntityBuilder.hpp"
 #include "internals/exports.hpp"
+#include "la/avdecc/controller/internals/avdeccControlledEntityModel.hpp"
 
 #include <memory>
 #include <functional>
@@ -261,9 +262,10 @@ public:
 		virtual void onIdentificationStarted(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity) noexcept = 0;
 		virtual void onIdentificationStopped(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity) noexcept = 0;
 
-		// Connection notifications (ACMP)
+		// Connection notifications
 		virtual void onStreamInputConnectionChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamInputConnectionInfo const& info, bool const changedByOther) noexcept = 0;
 		virtual void onStreamOutputConnectionsChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamConnections const& connections) noexcept = 0;
+		virtual void onChannelInputConnectionChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::ClusterIdentification const& clusterIdentification, la::avdecc::controller::model::ChannelIdentification const& talkerChannel) noexcept = 0;
 
 		// Entity model notifications (unsolicited AECP or changes this controller sent)
 		virtual void onAcquireStateChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::AcquireState const acquireState, la::avdecc::UniqueIdentifier const owningEntity) noexcept = 0;
@@ -361,9 +363,10 @@ public:
 		virtual void onIdentificationStarted(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/) noexcept override {}
 		virtual void onIdentificationStopped(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/) noexcept override {}
 
-		// Connection notifications (ACMP)
+		// Connection notifications
 		virtual void onStreamInputConnectionChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*streamIndex*/, la::avdecc::entity::model::StreamInputConnectionInfo const& /*info*/, bool const /*changedByOther*/) noexcept override {}
 		virtual void onStreamOutputConnectionsChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*streamIndex*/, la::avdecc::entity::model::StreamConnections const& /*connections*/) noexcept override {}
+		virtual void onChannelInputConnectionChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ClusterIdentification const& /*clusterIdentification*/, la::avdecc::controller::model::ChannelIdentification const& /*talkerChannel*/) noexcept override {}
 
 		// Entity model notifications (unsolicited AECP or changes this controller sent)
 		virtual void onAcquireStateChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::AcquireState const /*acquireState*/, la::avdecc::UniqueIdentifier const /*owningEntity*/) noexcept override {}

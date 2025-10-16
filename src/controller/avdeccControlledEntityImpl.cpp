@@ -324,6 +324,12 @@ entity::model::ConfigurationIndex ControlledEntityImpl::getCurrentConfigurationI
 	return entityNode.dynamicModel.currentConfiguration;
 }
 
+model::ChannelConnections const& ControlledEntityImpl::getChannelConnections() const
+{
+	auto const& configNode = getCurrentConfigurationNode();
+	return configNode.channelConnections;
+}
+
 model::EntityNode const& ControlledEntityImpl::getEntityNode() const
 {
 	return *_treeModelAccess->getEntityNode(TreeModelAccessStrategy::NotFoundBehavior::Throw);

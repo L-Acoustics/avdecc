@@ -34,6 +34,8 @@
 #include "controller/avdeccControlledEntityImpl.hpp"
 #include "controller/avdeccControllerImpl.hpp"
 #include "entity/controllerEntityImpl.hpp"
+#include "la/avdecc/internals/entityModelTreeCommon.hpp"
+#include "la/avdecc/internals/entityModelTypes.hpp"
 #include "protocolInterface/protocolInterface_virtual.hpp"
 
 #include <gtest/gtest.h>
@@ -3214,6 +3216,1367 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchClockSource)
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
 				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+namespace
+{
+class ChannelConnection_F : public ::testing::Test, public la::avdecc::controller::Controller::DefaultedObserver
+{
+public:
+	virtual void SetUp() override
+	{
+		_controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+	}
+
+	virtual void TearDown() override {}
+
+	void registerMockObserver() noexcept
+	{
+		_controller->registerObserver(this);
+	}
+
+	void unregisterMockObserver() noexcept
+	{
+		_controller->unregisterObserver(this);
+	}
+
+	la::avdecc::controller::Controller& getController() noexcept
+	{
+		return *_controller;
+	}
+
+	la::avdecc::controller::ControllerImpl& getControllerImpl() noexcept
+	{
+		return static_cast<la::avdecc::controller::ControllerImpl&>(*_controller);
+	}
+
+	void loadEntityFile(std::string const& filePath) noexcept
+	{
+		auto const [error, msg] = _controller->loadVirtualEntityFromJson(filePath, la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDiagnostics });
+		ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	}
+
+	void checkAllConnectionsDisconnected(la::avdecc::controller::model::ChannelConnections const& connections)
+	{
+		// Check all connections are fully disconnected (ie. no listener mappings, no connection, no talker mappings)
+		for (auto const& [clusterId, channelId] : connections)
+		{
+			EXPECT_EQ(la::avdecc::controller::model::ChannelIdentification{}, channelId);
+		}
+	}
+
+	// la::avdecc::controller::Controller::Observer Mock overrides
+	MOCK_METHOD(void, onStreamInputConnectionChanged, (la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*streamIndex*/, la::avdecc::entity::model::StreamInputConnectionInfo const& /*info*/, bool const /*changedByOther*/), (noexcept, override));
+	MOCK_METHOD(void, onChannelInputConnectionChanged, (la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ClusterIdentification const& /*clusterIdentification*/, la::avdecc::controller::model::ChannelIdentification const& /*talkerChannel*/), (noexcept, override));
+	MOCK_METHOD(void, onStreamPortInputAudioMappingsChanged, (la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamPortIndex const /*streamPortIndex*/), (noexcept, override));
+	MOCK_METHOD(void, onStreamPortOutputAudioMappingsChanged, (la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamPortIndex const /*streamPortIndex*/), (noexcept, override));
+
+private:
+	la::avdecc::controller::Controller::UniquePointer _controller{ nullptr, nullptr };
+};
+} // namespace
+
+static auto const Mappings_Identity_One = la::avdecc::entity::model::AudioMappings{ la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint8_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint8_t{ 0u } } };
+static auto const Mappings_Identity_Two = la::avdecc::entity::model::AudioMappings{ la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } }, la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint16_t{ 1u }, la::avdecc::entity::model::ClusterIndex{ 1u }, std::uint16_t{ 0u } } };
+static auto constexpr ListenerClusterIdentification = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } };
+static auto constexpr ListenerClusterIdentification2 = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 1u }, std::uint16_t{ 0u } };
+static auto constexpr TalkerClusterIdentification = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 80u }, std::uint16_t{ 0u } };
+static auto constexpr TalkerClusterIdentification2 = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 81u }, std::uint16_t{ 0u } };
+static auto constexpr TalkerStreamIdentification = la::avdecc::entity::model::StreamIdentification{ Entity02, 0u };
+static auto constexpr TalkerStreamIdentification4 = la::avdecc::entity::model::StreamIdentification{ Entity04, 0u };
+static auto constexpr ListenerStreamIdentification = la::avdecc::entity::model::StreamIdentification{ Entity01, 0u };
+
+
+TEST_F(ChannelConnection_F, NoConnection)
+{
+	auto& c = getControllerImpl();
+	// Expect Controller::Observer::onChannelInputConnectionChanged() NOT to be called
+	registerMockObserver();
+	EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, c.getControlledEntityGuard(Entity01).get(), ::testing::_, ::testing::_)).Times(0);
+
+	loadEntityFile("data/ChannelConnection/Entity_0x01.json");
+	loadEntityFile("data/ChannelConnection/Entity_0x02.json");
+
+	try
+	{
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity01);
+			auto const& connections = e.getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity02);
+			auto const& connections = e.getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(ChannelConnection_F, AfterAddMappings)
+{
+	auto& c = getControllerImpl();
+
+	loadEntityFile("data/ChannelConnection/Entity_0x01.json");
+	loadEntityFile("data/ChannelConnection/Entity_0x02.json");
+
+	try
+	{
+		auto e1 = c.getControlledEntityImplGuard(Entity01, true, false);
+		auto e2 = c.getControlledEntityImplGuard(Entity02, true, false);
+		{
+			auto const& connections = e1->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+		{
+			auto const& connections = e2->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+
+		// Expect onChannelInputConnectionChanged() and onStreamPortInputAudioMappingsChanged() to be called when adding listener mappings
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamPortInputAudioMappingsChanged(::testing::_, e1.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(1);
+			EXPECT_CALL(*this, onStreamPortOutputAudioMappingsChanged(::testing::_, e2.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(0);
+
+			// Add listener mappings
+			c.updateStreamPortInputAudioMappingsAdded(*e1, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			unregisterMockObserver();
+
+			// Listener should only have connection with new listener mappings (but not fully connected), the other connections fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_FALSE(channelId.isConnected());
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+
+		// Expect onChannelInputConnectionChanged() NOT to be called when just adding mappings, only onStreamPortOutputAudioMappingsChanged() - Because no stream connection
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ::testing::_, ::testing::_)).Times(0);
+			EXPECT_CALL(*this, onStreamPortInputAudioMappingsChanged(::testing::_, e1.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(0);
+			EXPECT_CALL(*this, onStreamPortOutputAudioMappingsChanged(::testing::_, e2.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(1);
+
+			// Add Talker mappings
+			c.updateStreamPortOutputAudioMappingsAdded(*e2, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			unregisterMockObserver();
+
+			// Listener should only have connection with new listener mappings, the other connections fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(ChannelConnection_F, AfterAddListenerMappingsAndConnectStream)
+{
+	auto& c = getControllerImpl();
+
+	loadEntityFile("data/ChannelConnection/Entity_0x01.json");
+	loadEntityFile("data/ChannelConnection/Entity_0x02.json");
+
+	try
+	{
+		auto e1 = c.getControlledEntityImplGuard(Entity01, true, false);
+		auto e2 = c.getControlledEntityImplGuard(Entity02, true, false);
+		{
+			auto const& connections = e1->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+		{
+			auto const& connections = e2->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+
+		// Expect onChannelInputConnectionChanged() and onStreamPortInputAudioMappingsChanged() to be called when adding listener mappings
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamPortInputAudioMappingsChanged(::testing::_, e1.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(1);
+			EXPECT_CALL(*this, onStreamPortOutputAudioMappingsChanged(::testing::_, e2.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(0);
+
+			// Add listener mappings
+			c.updateStreamPortInputAudioMappingsAdded(*e1, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			unregisterMockObserver();
+
+			// Listener should only have connection with new listener mappings (but not fully connected), the other connections fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_FALSE(channelId.isConnected());
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+
+		// Expect onChannelInputConnectionChanged() to be called when connecting (even without talker mappings)
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamInputConnectionChanged(::testing::_, e1.get(), la::avdecc::entity::model::StreamIndex{ 0u }, la::avdecc::entity::model::StreamInputConnectionInfo{ TalkerStreamIdentification, la::avdecc::entity::model::StreamInputConnectionInfo::State::Connected }, false)).Times(1);
+
+			// Connect stream
+			c.handleListenerStreamStateNotification(TalkerStreamIdentification, ListenerStreamIdentification, true, {}, false);
+
+			unregisterMockObserver();
+
+			// Listener should only have connection with new listener mappings (but not fully connected), the other connections fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_EQ(TalkerStreamIdentification, channelId.streamIdentification);
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_FALSE(channelId.isConnected());
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(ChannelConnection_F, AfterAddListenerMappingsAndTalkerMappingsAndConnectStream)
+{
+	auto& c = getControllerImpl();
+
+	loadEntityFile("data/ChannelConnection/Entity_0x01.json");
+	loadEntityFile("data/ChannelConnection/Entity_0x02.json");
+
+	try
+	{
+		auto e1 = c.getControlledEntityImplGuard(Entity01, true, false);
+		auto e2 = c.getControlledEntityImplGuard(Entity02, true, false);
+		{
+			auto const& connections = e1->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+		{
+			auto const& connections = e2->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+
+		// Expect onChannelInputConnectionChanged() and onStreamPortInputAudioMappingsChanged() to be called when adding listener mappings
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamPortInputAudioMappingsChanged(::testing::_, e1.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(1);
+			EXPECT_CALL(*this, onStreamPortOutputAudioMappingsChanged(::testing::_, e2.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(0);
+
+			// Add listener mappings
+			c.updateStreamPortInputAudioMappingsAdded(*e1, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			unregisterMockObserver();
+
+			// Listener should only have connection with new listener mappings (but not fully connected), the other connections fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_FALSE(channelId.isConnected());
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+
+		// Expect onChannelInputConnectionChanged() NOT to be called when just adding mappings, only onStreamPortOutputAudioMappingsChanged()
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ::testing::_, ::testing::_)).Times(0);
+			EXPECT_CALL(*this, onStreamPortInputAudioMappingsChanged(::testing::_, e1.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(0);
+			EXPECT_CALL(*this, onStreamPortOutputAudioMappingsChanged(::testing::_, e2.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(1);
+
+			// Add Talker mappings
+			c.updateStreamPortOutputAudioMappingsAdded(*e2, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			unregisterMockObserver();
+
+			// Listener should only have connection with new listener mappings (but not fully connected), the other connections fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_FALSE(channelId.isConnected());
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+
+		// Expect onChannelInputConnectionChanged() to be called when connecting
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamInputConnectionChanged(::testing::_, e1.get(), la::avdecc::entity::model::StreamIndex{ 0u }, la::avdecc::entity::model::StreamInputConnectionInfo{ TalkerStreamIdentification, la::avdecc::entity::model::StreamInputConnectionInfo::State::Connected }, false)).Times(1);
+
+			// Connect stream
+			c.handleListenerStreamStateNotification(TalkerStreamIdentification, ListenerStreamIdentification, true, {}, false);
+
+			unregisterMockObserver();
+
+			// Listener should only have connection with new listener mappings (fully connected), the other connections fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_EQ(TalkerStreamIdentification, channelId.streamIdentification);
+					EXPECT_EQ(TalkerClusterIdentification, channelId.clusterIdentification);
+					EXPECT_TRUE(channelId.isConnected());
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(ChannelConnection_F, AfterConnectStreamAndAddListenerMappingsAndTalkerMappings)
+{
+	auto& c = getControllerImpl();
+
+	loadEntityFile("data/ChannelConnection/Entity_0x01.json");
+	loadEntityFile("data/ChannelConnection/Entity_0x02.json");
+
+	try
+	{
+		auto e1 = c.getControlledEntityImplGuard(Entity01, true, false);
+		auto e2 = c.getControlledEntityImplGuard(Entity02, true, false);
+		{
+			auto const& connections = e1->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+		{
+			auto const& connections = e2->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+
+		// Connect stream first (without mappings)
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ::testing::_, ::testing::_)).Times(0);
+			EXPECT_CALL(*this, onStreamInputConnectionChanged(::testing::_, e1.get(), la::avdecc::entity::model::StreamIndex{ 0u }, la::avdecc::entity::model::StreamInputConnectionInfo{ TalkerStreamIdentification, la::avdecc::entity::model::StreamInputConnectionInfo::State::Connected }, false)).Times(1);
+
+			c.handleListenerStreamStateNotification(TalkerStreamIdentification, ListenerStreamIdentification, true, {}, false);
+
+			unregisterMockObserver();
+
+			// Listener should still be fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+
+		// Add listener mappings - should trigger onChannelInputConnectionChanged
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamPortInputAudioMappingsChanged(::testing::_, e1.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(1);
+
+			c.updateStreamPortInputAudioMappingsAdded(*e1, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			unregisterMockObserver();
+
+			// Listener should only have connection with new listener mappings (but not fully connected), the other connections fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_EQ(TalkerStreamIdentification, channelId.streamIdentification);
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_FALSE(channelId.isConnected());
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+
+		// Add talker mappings - should trigger onChannelInputConnectionChanged
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamPortOutputAudioMappingsChanged(::testing::_, e2.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(1);
+
+			c.updateStreamPortOutputAudioMappingsAdded(*e2, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			unregisterMockObserver();
+
+			// Listener should only have connection with new listener mappings (fully connected), the other connections fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_EQ(TalkerStreamIdentification, channelId.streamIdentification);
+					EXPECT_EQ(TalkerClusterIdentification, channelId.clusterIdentification);
+					EXPECT_TRUE(channelId.isConnected());
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(ChannelConnection_F, AfterAddTalkerMappingsAndListenerMappingsAndConnectStream)
+{
+	auto& c = getControllerImpl();
+
+	loadEntityFile("data/ChannelConnection/Entity_0x01.json");
+	loadEntityFile("data/ChannelConnection/Entity_0x02.json");
+
+	try
+	{
+		auto e1 = c.getControlledEntityImplGuard(Entity01, true, false);
+		auto e2 = c.getControlledEntityImplGuard(Entity02, true, false);
+		{
+			auto const& connections = e1->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+		{
+			auto const& connections = e2->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+
+		// Add talker mappings first
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ::testing::_, ::testing::_)).Times(0);
+			EXPECT_CALL(*this, onStreamPortOutputAudioMappingsChanged(::testing::_, e2.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(1);
+
+			c.updateStreamPortOutputAudioMappingsAdded(*e2, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			unregisterMockObserver();
+
+			// Listener should still be fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+
+		// Add listener mappings - should trigger onStreamPortInputAudioMappingsChanged
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamPortInputAudioMappingsChanged(::testing::_, e1.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(1);
+
+			c.updateStreamPortInputAudioMappingsAdded(*e1, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			unregisterMockObserver();
+
+			// Listener should only have connection with new listener mappings (but not fully connected), the other connections fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_FALSE(channelId.isConnected());
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+
+		// Connect stream - should trigger onChannelInputConnectionChanged
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamInputConnectionChanged(::testing::_, e1.get(), la::avdecc::entity::model::StreamIndex{ 0u }, la::avdecc::entity::model::StreamInputConnectionInfo{ TalkerStreamIdentification, la::avdecc::entity::model::StreamInputConnectionInfo::State::Connected }, false)).Times(1);
+
+			c.handleListenerStreamStateNotification(TalkerStreamIdentification, ListenerStreamIdentification, true, {}, false);
+
+			unregisterMockObserver();
+
+			// Listener should only have connection with new listener mappings (fully connected), the other connections fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_EQ(TalkerStreamIdentification, channelId.streamIdentification);
+					EXPECT_EQ(TalkerClusterIdentification, channelId.clusterIdentification);
+					EXPECT_TRUE(channelId.isConnected());
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(ChannelConnection_F, MultipleChannelConnections)
+{
+	auto& c = getControllerImpl();
+
+	loadEntityFile("data/ChannelConnection/Entity_0x01.json");
+	loadEntityFile("data/ChannelConnection/Entity_0x02.json");
+
+	try
+	{
+		auto e1 = c.getControlledEntityImplGuard(Entity01, true, false);
+		auto e2 = c.getControlledEntityImplGuard(Entity02, true, false);
+		{
+			auto const& connections = e1->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+		{
+			auto const& connections = e2->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+
+		// Add listener mappings - should trigger onChannelInputConnectionChanged twice (one for each channel)
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification2, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamPortInputAudioMappingsChanged(::testing::_, e1.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(1);
+
+			c.updateStreamPortInputAudioMappingsAdded(*e1, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_Two, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			unregisterMockObserver();
+
+			// Listener should only have connection with new listener mappings (but not fully connected), the other connections fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_FALSE(channelId.isConnected());
+				}
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification2);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 1u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_FALSE(channelId.isConnected());
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification || clusterId == ListenerClusterIdentification2)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+
+		// Add talker mappings
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ::testing::_, ::testing::_)).Times(0);
+			EXPECT_CALL(*this, onStreamPortOutputAudioMappingsChanged(::testing::_, e2.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(1);
+
+			c.updateStreamPortOutputAudioMappingsAdded(*e2, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_Two, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			unregisterMockObserver();
+
+			// Listener should only have connection with new listener mappings (but not fully connected), the other connections fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_FALSE(channelId.isConnected());
+				}
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification2);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 1u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_FALSE(channelId.isConnected());
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification || clusterId == ListenerClusterIdentification2)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+
+		// Connect stream - should trigger onChannelInputConnectionChanged twice (one for each channel)
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification2, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamInputConnectionChanged(::testing::_, e1.get(), la::avdecc::entity::model::StreamIndex{ 0u }, la::avdecc::entity::model::StreamInputConnectionInfo{ TalkerStreamIdentification, la::avdecc::entity::model::StreamInputConnectionInfo::State::Connected }, false)).Times(1);
+
+			c.handleListenerStreamStateNotification(TalkerStreamIdentification, ListenerStreamIdentification, true, {}, false);
+
+			unregisterMockObserver();
+
+			// Listener should only have connection with new listener mappings (fully connected), the other connections fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_EQ(TalkerStreamIdentification, channelId.streamIdentification);
+					EXPECT_EQ(TalkerClusterIdentification, channelId.clusterIdentification);
+					EXPECT_TRUE(channelId.isConnected());
+				}
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification2);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 1u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_EQ(TalkerStreamIdentification, channelId.streamIdentification);
+					EXPECT_EQ(TalkerClusterIdentification2, channelId.clusterIdentification);
+					EXPECT_TRUE(channelId.isConnected());
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification || clusterId == ListenerClusterIdentification2)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(ChannelConnection_F, DisconnectStreamRemovesChannelConnections)
+{
+	auto& c = getControllerImpl();
+
+	loadEntityFile("data/ChannelConnection/Entity_0x01.json");
+	loadEntityFile("data/ChannelConnection/Entity_0x02.json");
+
+	try
+	{
+		auto e1 = c.getControlledEntityImplGuard(Entity01, true, false);
+		auto e2 = c.getControlledEntityImplGuard(Entity02, true, false);
+		{
+			auto const& connections = e1->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+		{
+			auto const& connections = e2->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+
+		// Setup: Add mappings and connect
+		c.updateStreamPortInputAudioMappingsAdded(*e1, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+		c.updateStreamPortOutputAudioMappingsAdded(*e2, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+		c.handleListenerStreamStateNotification(TalkerStreamIdentification, ListenerStreamIdentification, true, {}, false);
+		// Listener should only have connection with new listener mappings (fully connected), the other connections fully disconnected
+		{
+			auto const& connections = e1->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			{
+				auto const& channelId = connections.at(ListenerClusterIdentification);
+				EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+				EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+				EXPECT_EQ(TalkerStreamIdentification, channelId.streamIdentification);
+				EXPECT_EQ(TalkerClusterIdentification, channelId.clusterIdentification);
+				EXPECT_TRUE(channelId.isConnected());
+			}
+			for (auto const& [clusterId, channelId] : connections)
+			{
+				if (clusterId == ListenerClusterIdentification)
+				{
+					continue;
+				}
+				EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+				EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+				EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+			}
+		}
+		// Talker should still be fully disconnected
+		{
+			auto const& connections = e2->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+
+		// Disconnect stream - should trigger onChannelInputConnectionChanged
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamInputConnectionChanged(::testing::_, e1.get(), la::avdecc::entity::model::StreamIndex{ 0u }, la::avdecc::entity::model::StreamInputConnectionInfo{ TalkerStreamIdentification, la::avdecc::entity::model::StreamInputConnectionInfo::State::NotConnected }, false)).Times(1);
+
+			c.handleListenerStreamStateNotification(TalkerStreamIdentification, ListenerStreamIdentification, false, {}, false);
+
+			unregisterMockObserver();
+
+			// Listener should only have connection with new listener mappings (but not fully connected), the other connections fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_FALSE(channelId.isConnected());
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should still be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(ChannelConnection_F, RemoveListenerMappingsRemovesChannelConnections)
+{
+	auto& c = getControllerImpl();
+
+	loadEntityFile("data/ChannelConnection/Entity_0x01.json");
+	loadEntityFile("data/ChannelConnection/Entity_0x02.json");
+
+	try
+	{
+		auto e1 = c.getControlledEntityImplGuard(Entity01, true, false);
+		auto e2 = c.getControlledEntityImplGuard(Entity02, true, false);
+		{
+			auto const& connections = e1->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+		{
+			auto const& connections = e2->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+
+		// Setup: Add mappings and connect
+		c.updateStreamPortInputAudioMappingsAdded(*e1, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+		c.updateStreamPortOutputAudioMappingsAdded(*e2, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+		c.handleListenerStreamStateNotification(la::avdecc::entity::model::StreamIdentification{ Entity02, 0u }, la::avdecc::entity::model::StreamIdentification{ Entity01, 0u }, true, {}, false);
+		// Listener should only have connection with new listener mappings (fully connected), the other connections fully disconnected
+		{
+			auto const& connections = e1->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			{
+				auto const& channelId = connections.at(ListenerClusterIdentification);
+				EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+				EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+				EXPECT_EQ(TalkerStreamIdentification, channelId.streamIdentification);
+				EXPECT_EQ(TalkerClusterIdentification, channelId.clusterIdentification);
+				EXPECT_TRUE(channelId.isConnected());
+			}
+			for (auto const& [clusterId, channelId] : connections)
+			{
+				if (clusterId == ListenerClusterIdentification)
+				{
+					continue;
+				}
+				EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+				EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+				EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+			}
+		}
+		// Talker should still be fully disconnected
+		{
+			auto const& connections = e2->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+
+		// Remove listener mappings - should trigger onChannelInputConnectionChanged
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamPortInputAudioMappingsChanged(::testing::_, e1.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(1);
+
+			c.updateStreamPortInputAudioMappingsRemoved(*e1, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			unregisterMockObserver();
+
+			// Listener should be fully disconnected
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+			// Talker should be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(ChannelConnection_F, RemoveTalkerMappingsRemovesChannelConnections)
+{
+	auto& c = getControllerImpl();
+
+	loadEntityFile("data/ChannelConnection/Entity_0x01.json");
+	loadEntityFile("data/ChannelConnection/Entity_0x02.json");
+
+	try
+	{
+		auto e1 = c.getControlledEntityImplGuard(Entity01, true, false);
+		auto e2 = c.getControlledEntityImplGuard(Entity02, true, false);
+		{
+			auto const& connections = e1->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+		{
+			auto const& connections = e2->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+
+		// Setup: Add mappings and connect
+		c.updateStreamPortInputAudioMappingsAdded(*e1, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+		c.updateStreamPortOutputAudioMappingsAdded(*e2, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+		c.handleListenerStreamStateNotification(la::avdecc::entity::model::StreamIdentification{ Entity02, 0u }, la::avdecc::entity::model::StreamIdentification{ Entity01, 0u }, true, {}, false);
+		// Listener should only have connection with new listener mappings (fully connected), the other connections fully disconnected
+		{
+			auto const& connections = e1->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			{
+				auto const& channelId = connections.at(ListenerClusterIdentification);
+				EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+				EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+				EXPECT_EQ(TalkerStreamIdentification, channelId.streamIdentification);
+				EXPECT_EQ(TalkerClusterIdentification, channelId.clusterIdentification);
+				EXPECT_TRUE(channelId.isConnected());
+			}
+			for (auto const& [clusterId, channelId] : connections)
+			{
+				if (clusterId == ListenerClusterIdentification)
+				{
+					continue;
+				}
+				EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+				EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+				EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+			}
+		}
+		// Talker should still be fully disconnected
+		{
+			auto const& connections = e2->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+
+		// Remove talker mappings - should trigger onChannelInputConnectionChanged
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e1.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamPortOutputAudioMappingsChanged(::testing::_, e2.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(1);
+
+			c.updateStreamPortOutputAudioMappingsRemoved(*e2, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			unregisterMockObserver();
+
+			// Listener should have connection with listener mapping but no talker mapping (not fully connected)
+			{
+				auto const& connections = e1->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_EQ(TalkerStreamIdentification, channelId.streamIdentification);
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_FALSE(channelId.isConnected());
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+			// Talker should be fully disconnected
+			{
+				auto const& connections = e2->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(ChannelConnection_F, LoadWithExistingConnectionListenerFirst)
+{
+	auto& c = getControllerImpl();
+
+	loadEntityFile("data/ChannelConnection/Entity_0x03.json");
+	loadEntityFile("data/ChannelConnection/Entity_0x04.json");
+
+	try
+	{
+		auto e3 = c.getControlledEntityImplGuard(Entity03, true, false);
+		auto e4 = c.getControlledEntityImplGuard(Entity04, true, false);
+		// Listener should only have connection (fully connected), the other connections fully disconnected
+		{
+			auto const& connections = e3->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			{
+				auto const& channelId = connections.at(ListenerClusterIdentification);
+				EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+				EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+				EXPECT_EQ(TalkerStreamIdentification4, channelId.streamIdentification);
+				EXPECT_EQ(TalkerClusterIdentification, channelId.clusterIdentification);
+				EXPECT_TRUE(channelId.isConnected());
+			}
+			for (auto const& [clusterId, channelId] : connections)
+			{
+				if (clusterId == ListenerClusterIdentification)
+				{
+					continue;
+				}
+				EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+				EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+				EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+			}
+		}
+		// Talker should be fully disconnected
+		{
+			auto const& connections = e4->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+
+		// Remove listener mappings - should trigger onChannelInputConnectionChanged
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e3.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamPortInputAudioMappingsChanged(::testing::_, e3.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(1);
+
+			c.updateStreamPortInputAudioMappingsRemoved(*e3, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			unregisterMockObserver();
+
+			// Listener should be fully disconnected
+			{
+				auto const& connections = e3->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+			// Talker should be fully disconnected
+			{
+				auto const& connections = e4->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(ChannelConnection_F, LoadWithExistingConnectionTalkerFirst)
+{
+	auto& c = getControllerImpl();
+
+	loadEntityFile("data/ChannelConnection/Entity_0x04.json");
+	loadEntityFile("data/ChannelConnection/Entity_0x03.json");
+
+	try
+	{
+		auto e3 = c.getControlledEntityImplGuard(Entity03, true, false);
+		auto e4 = c.getControlledEntityImplGuard(Entity04, true, false);
+		// Listener should only have connection (fully connected), the other connections fully disconnected
+		{
+			auto const& connections = e3->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			{
+				auto const& channelId = connections.at(ListenerClusterIdentification);
+				EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+				EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+				EXPECT_EQ(TalkerStreamIdentification4, channelId.streamIdentification);
+				EXPECT_EQ(TalkerClusterIdentification, channelId.clusterIdentification);
+				EXPECT_TRUE(channelId.isConnected());
+			}
+			for (auto const& [clusterId, channelId] : connections)
+			{
+				if (clusterId == ListenerClusterIdentification)
+				{
+					continue;
+				}
+				EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+				EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+				EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+			}
+		}
+		// Talker should be fully disconnected
+		{
+			auto const& connections = e4->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+
+		// Remove listener mappings - should trigger onChannelInputConnectionChanged
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e3.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+			EXPECT_CALL(*this, onStreamPortInputAudioMappingsChanged(::testing::_, e3.get(), la::avdecc::entity::model::StreamPortIndex{ 0u })).Times(1);
+
+			c.updateStreamPortInputAudioMappingsRemoved(*e3, la::avdecc::entity::model::StreamPortIndex{ 0u }, Mappings_Identity_One, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			unregisterMockObserver();
+
+			// Listener should be fully disconnected
+			{
+				auto const& connections = e3->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
+			}
+			// Talker should be fully disconnected
+			{
+				auto const& connections = e4->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				checkAllConnectionsDisconnected(connections);
 			}
 		}
 	}
