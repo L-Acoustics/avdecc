@@ -5007,6 +5007,47 @@ void ControllerImpl::validateEntity(ControlledEntityImpl& controlledEntity) noex
 	checkRedundancyWarningDiagnostics(nullptr, controlledEntity);
 }
 
+std::optional<entity::model::AudioMapping> ControllerImpl::getMappingForClusterIdentification(model::StreamPortNode const& streamPortNode, model::ClusterIdentification const& clusterIdentification) noexcept
+{
+	auto const baseClusterIndex = streamPortNode.staticModel.baseCluster;
+	auto const numberOfClusters = streamPortNode.staticModel.numberOfClusters;
+	auto const globalClusterIndex = clusterIdentification.clusterIndex;
+	auto const clusterChannel = clusterIdentification.clusterChannel;
+
+	// Ensure the clusterIndex is in the valid range for this StreamPort
+	if (!AVDECC_ASSERT_WITH_RET(globalClusterIndex >= baseClusterIndex && globalClusterIndex < static_cast<entity::model::ClusterIndex>(baseClusterIndex + numberOfClusters), "ClusterIndex is out of range for this StreamPort"))
+	{
+		return std::nullopt;
+	}
+
+	// Calculate the clusterOffset (relative to baseCluster)
+	auto const clusterOffset = static_cast<entity::model::ClusterIndex>(globalClusterIndex - baseClusterIndex);
+
+	// Search in static mappings (AudioMaps)
+	for (auto const& [audioMapIndex, audioMapNode] : streamPortNode.audioMaps)
+	{
+		for (auto const& mapping : audioMapNode.staticModel.mappings)
+		{
+			if (mapping.clusterOffset == clusterOffset && mapping.clusterChannel == clusterChannel)
+			{
+				return mapping;
+			}
+		}
+	}
+
+	// Search in dynamic mappings
+	for (auto const& mapping : streamPortNode.dynamicModel.dynamicAudioMap)
+	{
+		if (mapping.clusterOffset == clusterOffset && mapping.clusterChannel == clusterChannel)
+		{
+			return mapping;
+		}
+	}
+
+	// No mapping found
+	return std::nullopt;
+}
+
 // _lock should be taken when calling this method
 void ControllerImpl::computeAndUpdateMediaClockChain(ControlledEntityImpl& controlledEntity, model::ClockDomainNode& clockDomainNode, UniqueIdentifier const continueFromEntityID, entity::model::ClockDomainIndex const continueFromEntityDomainIndex, std::optional<entity::model::StreamIndex> const continueFromStreamOutputIndex, UniqueIdentifier const beingAdvertisedEntity) const noexcept
 {

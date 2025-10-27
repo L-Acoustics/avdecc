@@ -4696,3 +4696,182 @@ TEST(Controller, HashEntityModelV5)
 	EXPECT_EQ(64u, checksum.value().size());
 	EXPECT_STREQ("068D4565E93A67323C3D83A23ABC407FBCF7ED2FE7CFF6D29766938A3264F30D", checksum.value().c_str());
 }
+
+TEST(Controller, GetMappingForClusterIdentification_ValidMappingInStaticAudioMaps)
+{
+	// Setup StreamPortNode with static audio mappings
+	la::avdecc::controller::model::StreamPortInputNode streamPortNode{ 0u };
+
+	// Configure static model with base cluster 10, 4 clusters
+	streamPortNode.staticModel.baseCluster = 10u;
+	streamPortNode.staticModel.numberOfClusters = 4u;
+
+	// Create AudioMapNode with a mapping
+	la::avdecc::controller::model::AudioMapNode audioMapNode{ la::avdecc::entity::model::DescriptorIndex{ 0u } };
+	auto& mappings = audioMapNode.staticModel.mappings;
+
+	// Add a mapping: streamIndex=0, streamChannel=1, clusterOffset=2, clusterChannel=3
+	// This corresponds to global clusterIndex=12 (baseCluster 10 + clusterOffset 2)
+	mappings.push_back({ 0u, 1u, 2u, 3u });
+
+	streamPortNode.audioMaps.emplace(0u, std::move(audioMapNode));
+
+	// Test: Look for cluster 12 (baseCluster 10 + clusterOffset 2), channel 3
+	la::avdecc::controller::model::ClusterIdentification clusterIdent{ 12u, 3u };
+	auto const mapping = la::avdecc::controller::ControllerImpl::getMappingForClusterIdentification(streamPortNode, clusterIdent);
+
+	// Verify mapping was found
+	ASSERT_TRUE(mapping.has_value());
+	EXPECT_EQ(0u, mapping->streamIndex);
+	EXPECT_EQ(1u, mapping->streamChannel);
+	EXPECT_EQ(2u, mapping->clusterOffset);
+	EXPECT_EQ(3u, mapping->clusterChannel);
+}
+
+TEST(Controller, GetMappingForClusterIdentification_ValidMappingInDynamicAudioMap)
+{
+	// Setup StreamPortNode with dynamic audio mappings
+	la::avdecc::controller::model::StreamPortInputNode streamPortNode{ 0u };
+
+	// Configure static model
+	streamPortNode.staticModel.baseCluster = 5u;
+	streamPortNode.staticModel.numberOfClusters = 10u;
+
+	// Add dynamic mapping: streamIndex=2, streamChannel=4, clusterOffset=3, clusterChannel=1
+	// This corresponds to global clusterIndex=8 (baseCluster 5 + clusterOffset 3)
+	auto& dynamicMappings = streamPortNode.dynamicModel.dynamicAudioMap;
+	dynamicMappings.push_back({ 2u, 4u, 3u, 1u });
+
+	// Test: Look for cluster 8 (baseCluster 5 + clusterOffset 3), channel 1
+	la::avdecc::controller::model::ClusterIdentification clusterIdent{ 8u, 1u };
+	auto const mapping = la::avdecc::controller::ControllerImpl::getMappingForClusterIdentification(streamPortNode, clusterIdent);
+
+	// Verify mapping was found in dynamic mappings
+	ASSERT_TRUE(mapping.has_value());
+	EXPECT_EQ(2u, mapping->streamIndex);
+	EXPECT_EQ(4u, mapping->streamChannel);
+	EXPECT_EQ(3u, mapping->clusterOffset);
+	EXPECT_EQ(1u, mapping->clusterChannel);
+}
+
+TEST(Controller, GetMappingForClusterIdentification_OutOfRangeLow)
+{
+	// Setup StreamPortNode
+	la::avdecc::controller::model::StreamPortInputNode streamPortNode{ 0u };
+
+	// Configure static model: baseCluster 10, 5 clusters (valid range: 10-14)
+	streamPortNode.staticModel.baseCluster = 10u;
+	streamPortNode.staticModel.numberOfClusters = 5u;
+
+	// Add a mapping
+	la::avdecc::controller::model::AudioMapNode audioMapNode{ la::avdecc::entity::model::DescriptorIndex{ 0u } };
+	audioMapNode.staticModel.mappings.push_back({ 0u, 0u, 0u, 0u });
+	streamPortNode.audioMaps.emplace(0u, std::move(audioMapNode));
+
+	// Test: ClusterIndex 9 is below baseCluster (10)
+	la::avdecc::controller::model::ClusterIdentification clusterIdent{ 9u, 0u };
+	auto const mapping = la::avdecc::controller::ControllerImpl::getMappingForClusterIdentification(streamPortNode, clusterIdent);
+
+	// Should return nullopt for out of range
+	EXPECT_FALSE(mapping.has_value());
+}
+
+TEST(Controller, GetMappingForClusterIdentification_OutOfRangeHigh)
+{
+	// Setup StreamPortNode
+	la::avdecc::controller::model::StreamPortInputNode streamPortNode{ 0u };
+
+	// Configure static model: baseCluster 10, 5 clusters (valid range: 10-14)
+	streamPortNode.staticModel.baseCluster = 10u;
+	streamPortNode.staticModel.numberOfClusters = 5u;
+
+	// Add a mapping
+	la::avdecc::controller::model::AudioMapNode audioMapNode{ la::avdecc::entity::model::DescriptorIndex{ 0u } };
+	audioMapNode.staticModel.mappings.push_back({ 0u, 0u, 0u, 0u });
+	streamPortNode.audioMaps.emplace(0u, std::move(audioMapNode));
+
+	// Test: ClusterIndex 15 is >= baseCluster + numberOfClusters (10 + 5 = 15)
+	la::avdecc::controller::model::ClusterIdentification clusterIdent{ 15u, 0u };
+	auto const mapping = la::avdecc::controller::ControllerImpl::getMappingForClusterIdentification(streamPortNode, clusterIdent);
+
+	// Should return nullopt for out of range
+	EXPECT_FALSE(mapping.has_value());
+}
+
+TEST(Controller, GetMappingForClusterIdentification_NoMatchingMapping)
+{
+	// Setup StreamPortNode
+	la::avdecc::controller::model::StreamPortInputNode streamPortNode{ 0u };
+
+	// Configure static model
+	streamPortNode.staticModel.baseCluster = 0u;
+	streamPortNode.staticModel.numberOfClusters = 10u;
+
+	// Add mappings that don't match what we're looking for
+	la::avdecc::controller::model::AudioMapNode audioMapNode{ la::avdecc::entity::model::DescriptorIndex{ 0u } };
+	audioMapNode.staticModel.mappings.push_back({ 0u, 0u, 2u, 1u }); // clusterOffset=2, channel=1
+	audioMapNode.staticModel.mappings.push_back({ 0u, 1u, 5u, 3u }); // clusterOffset=5, channel=3
+	streamPortNode.audioMaps.emplace(0u, std::move(audioMapNode));
+
+	// Test: Look for clusterIndex=2, channel=2 (no mapping exists for this channel)
+	la::avdecc::controller::model::ClusterIdentification clusterIdent{ 2u, 2u };
+	auto const mapping = la::avdecc::controller::ControllerImpl::getMappingForClusterIdentification(streamPortNode, clusterIdent);
+
+	// Should return nullopt when no matching mapping exists
+	EXPECT_FALSE(mapping.has_value());
+}
+
+TEST(Controller, GetMappingForClusterIdentification_ZeroBaseCluster)
+{
+	// Setup StreamPortNode with baseCluster=0
+	la::avdecc::controller::model::StreamPortInputNode streamPortNode{ 0u };
+
+	// Configure static model with baseCluster=0, 8 clusters
+	streamPortNode.staticModel.baseCluster = 0u;
+	streamPortNode.staticModel.numberOfClusters = 8u;
+
+	// Add a mapping at clusterOffset=0 (global cluster 0)
+	la::avdecc::controller::model::AudioMapNode audioMapNode{ la::avdecc::entity::model::DescriptorIndex{ 0u } };
+	audioMapNode.staticModel.mappings.push_back({ 1u, 2u, 0u, 5u });
+	streamPortNode.audioMaps.emplace(0u, std::move(audioMapNode));
+
+	// Test: Look for global cluster 0, channel 5
+	la::avdecc::controller::model::ClusterIdentification clusterIdent{ 0u, 5u };
+	auto const mapping = la::avdecc::controller::ControllerImpl::getMappingForClusterIdentification(streamPortNode, clusterIdent);
+
+	// Verify mapping was found
+	ASSERT_TRUE(mapping.has_value());
+	EXPECT_EQ(1u, mapping->streamIndex);
+	EXPECT_EQ(2u, mapping->streamChannel);
+	EXPECT_EQ(0u, mapping->clusterOffset);
+	EXPECT_EQ(5u, mapping->clusterChannel);
+}
+
+TEST(Controller, GetMappingForClusterIdentification_PriorityStaticOverDynamic)
+{
+	// Setup StreamPortNode with both static and dynamic mappings for same cluster
+	la::avdecc::controller::model::StreamPortInputNode streamPortNode{ 0u };
+
+	// Configure static model
+	streamPortNode.staticModel.baseCluster = 0u;
+	streamPortNode.staticModel.numberOfClusters = 10u;
+
+	// Add static mapping for clusterOffset=3, channel=2
+	la::avdecc::controller::model::AudioMapNode audioMapNode{ la::avdecc::entity::model::DescriptorIndex{ 0u } };
+	audioMapNode.staticModel.mappings.push_back({ 10u, 20u, 3u, 2u });
+	streamPortNode.audioMaps.emplace(0u, std::move(audioMapNode));
+
+	// Add dynamic mapping for same clusterOffset=3, channel=2
+	streamPortNode.dynamicModel.dynamicAudioMap.push_back({ 30u, 40u, 3u, 2u });
+
+	// Test: Look for cluster 3, channel 2
+	la::avdecc::controller::model::ClusterIdentification clusterIdent{ 3u, 2u };
+	auto const mapping = la::avdecc::controller::ControllerImpl::getMappingForClusterIdentification(streamPortNode, clusterIdent);
+
+	// Should return the static mapping (priority over dynamic)
+	ASSERT_TRUE(mapping.has_value());
+	EXPECT_EQ(10u, mapping->streamIndex);
+	EXPECT_EQ(20u, mapping->streamChannel);
+	EXPECT_EQ(3u, mapping->clusterOffset);
+	EXPECT_EQ(2u, mapping->clusterChannel);
+}

@@ -729,6 +729,7 @@ private:
 	static void validateRedundancy(ControlledEntityImpl& controlledEntity) noexcept;
 	static void validateEntityModel(ControlledEntityImpl& controlledEntity) noexcept;
 	static void validateEntity(ControlledEntityImpl& controlledEntity) noexcept;
+	static std::optional<entity::model::AudioMapping> getMappingForClusterIdentification(model::StreamPortNode const& streamPortNode, model::ClusterIdentification const& clusterIdentification) noexcept;
 	void computeAndUpdateMediaClockChain(ControlledEntityImpl& controlledEntity, model::ClockDomainNode& clockDomainNode, UniqueIdentifier const continueFromEntityID, entity::model::ClockDomainIndex const continueFromEntityDomainIndex, std::optional<entity::model::StreamIndex> const continueFromStreamOutputIndex, UniqueIdentifier const beingAdvertisedEntity) const noexcept;
 	void onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
 	void onPostAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
