@@ -3198,7 +3198,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchClockSource)
 		EXPECT_CALL(*this, onMediaClockChainChanged(::testing::_, c.getControlledEntityGuard(Entity01).get(), la::avdecc::entity::model::ClockDomainIndex{ 0u }, ::testing::_));
 
 		// Change the clock source
-		c.updateClockSource(*c.getControlledEntityImplGuard(Entity01, true, false), la::avdecc::entity::model::ClockDomainIndex{ 0u }, la::avdecc::entity::model::ClockSourceIndex{ 1u }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::Throw);
+		c.updateClockSource(*c.getControlledEntityImplGuard(Entity01, true, false), la::avdecc::entity::model::ClockDomainIndex{ 0u }, la::avdecc::entity::model::ClockSourceIndex{ 1u }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 
 		// Validate chain has been updated
 		{
