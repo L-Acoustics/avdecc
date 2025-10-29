@@ -5048,6 +5048,33 @@ std::optional<entity::model::AudioMapping> ControllerImpl::getMappingForClusterI
 	return std::nullopt;
 }
 
+std::optional<entity::model::AudioMapping> ControllerImpl::getMappingForStreamChannelIdentification(model::StreamPortNode const& streamPortNode, entity::model::StreamIndex const streamIndex, std::uint16_t const streamChannel) noexcept
+{
+	// Search in static mappings (AudioMaps)
+	for (auto const& [audioMapIndex, audioMapNode] : streamPortNode.audioMaps)
+	{
+		for (auto const& mapping : audioMapNode.staticModel.mappings)
+		{
+			if (mapping.streamIndex == streamIndex && mapping.streamChannel == streamChannel)
+			{
+				return mapping;
+			}
+		}
+	}
+
+	// Search in dynamic mappings
+	for (auto const& mapping : streamPortNode.dynamicModel.dynamicAudioMap)
+	{
+		if (mapping.streamIndex == streamIndex && mapping.streamChannel == streamChannel)
+		{
+			return mapping;
+		}
+	}
+
+	// No mapping found
+	return std::nullopt;
+}
+
 // _lock should be taken when calling this method
 void ControllerImpl::computeAndUpdateMediaClockChain(ControlledEntityImpl& controlledEntity, model::ClockDomainNode& clockDomainNode, UniqueIdentifier const continueFromEntityID, entity::model::ClockDomainIndex const continueFromEntityDomainIndex, std::optional<entity::model::StreamIndex> const continueFromStreamOutputIndex, UniqueIdentifier const beingAdvertisedEntity) const noexcept
 {
