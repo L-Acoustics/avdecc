@@ -5221,103 +5221,31 @@ void ControllerImpl::computeAndUpdateMediaClockChain(ControlledEntityImpl& contr
 /** Actions to be done on the entity, just before advertising, which require looking at other already advertised entities (only for attached entities) */
 void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	auto const& e = controlledEntity.getEntity();
 	auto const entityID = e.getEntityID();
 	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
 	auto const hasAnyConfiguration = controlledEntity.hasAnyConfiguration();
 	auto const isVirtualEntity = controlledEntity.isVirtual();
+	auto const hasTalkerCapabilities = e.getTalkerCapabilities().test(entity::TalkerCapability::Implemented);
+	auto const hasListenerCapabilities = e.getListenerCapabilities().test(entity::ListenerCapability::Implemented);
 
 	// Lock to protect _controlledEntities
 	auto const lg = std::lock_guard{ _lock };
 
+	// Now that this entity is ready to be advertised, update states that are linked to the connection with another entity, in case it was not advertised during processing
 	if (isAemSupported && hasAnyConfiguration)
 	{
-		// Now that this entity is ready to be advertised, update states that are linked to the connection with another entity, in case it was not advertised during processing
-		// States related to Talker capabilities
-		if (e.getTalkerCapabilities().test(entity::TalkerCapability::Implemented))
-		{
-			AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
-
-			try
-			{
-				auto const& talkerConfigurationNode = controlledEntity.getCurrentConfigurationNode();
-
-				// Process all entities that are connected to any of our output streams
-				for (auto const& entityKV : _controlledEntities)
-				{
-					auto const listenerEntityID = entityKV.first;
-					auto& listenerEntity = *(entityKV.second);
-
-					// Don't process self, not yet advertised entities, nor different virtual/physical kind
-					if (listenerEntityID == entityID || !listenerEntity.wasAdvertised() || isVirtualEntity != listenerEntity.isVirtual())
-					{
-						continue;
-					}
-
-					// We need the AEM to check for Listener connections
-					if (listenerEntity.getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && listenerEntity.hasAnyConfiguration())
-					{
-						try
-						{
-							auto const& configurationNode = listenerEntity.getCurrentConfigurationNode();
-
-							// Check each of this Listener's Input Streams
-							for (auto const& [streamIndex, streamInputNode] : configurationNode.streamInputs)
-							{
-								// If the Stream is Connected
-								if (streamInputNode.dynamicModel.connectionInfo.state == entity::model::StreamInputConnectionInfo::State::Connected)
-								{
-									// Check against all the Talker's Output Streams
-									for (auto const& [streamOutputIndex, streamOutputNode] : talkerConfigurationNode.streamOutputs)
-									{
-										auto const talkerIdentification = entity::model::StreamIdentification{ entityID, streamOutputIndex };
-
-										// Connected to our talker
-										if (streamInputNode.dynamicModel.connectionInfo.talkerStream == talkerIdentification)
-										{
-											// We want to build an accurate list of connections, based on the known listeners (already advertised only, the other ones will update once ready to advertise themselves)
-											{
-												// Add this listener to our list of connected entities
-												controlledEntity.addStreamOutputConnection(streamOutputIndex, { listenerEntityID, streamIndex }, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-												// Do not trigger onStreamOutputConnectionsChanged notification, we are just about to advertise the entity
-											}
-
-											// Check for Latency Error (if the Listener was advertised before this Talker, it couldn't check Talker's PresentationTime, so do it now)
-											// If we have StreamDynamicInfo data
-											if (streamInputNode.dynamicModel.streamDynamicInfo)
-											{
-												auto const isOverLatency = computeIsOverLatency(streamOutputNode.dynamicModel.presentationTimeOffset, (*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency);
-												updateStreamInputLatency(listenerEntity, streamIndex, isOverLatency);
-											}
-										}
-									}
-								}
-							}
-						}
-						catch (...)
-						{
-							AVDECC_ASSERT(false, "Unexpected exception");
-						}
-					}
-				}
-			}
-			catch (...)
-			{
-				AVDECC_ASSERT(false, "Unexpected exception");
-			}
-		}
+		auto* const controlledEntityConfigurationNode = controlledEntity.getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 
 		// States related to Listener capabilities
-		if (e.getListenerCapabilities().test(entity::ListenerCapability::Implemented))
+		if (hasListenerCapabilities && controlledEntityConfigurationNode != nullptr)
 		{
-			AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
-
 			try
 			{
-				auto const& listenerConfigurationNode = controlledEntity.getCurrentConfigurationNode();
-
 				// Process all our input streams that are connected to another talker
-				for (auto const& [streamIndex, streamInputNode] : listenerConfigurationNode.streamInputs)
+				for (auto const& [streamIndex, streamInputNode] : controlledEntityConfigurationNode->streamInputs)
 				{
 					auto isOverLatency = false;
 
@@ -5371,53 +5299,90 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 			}
 		}
 
-		// Compute Media Clock Chain and update all entities for which the chain ends on this newly added entity
+		// Compute Media Clock Chain for this newly advertised entity
+		if (controlledEntityConfigurationNode != nullptr)
 		{
-			// Process the newly added entity and update media clock if needed
+			for (auto& [clockDomainIndex, clockDomainNode] : controlledEntityConfigurationNode->clockDomains)
 			{
-				auto* const configNode = controlledEntity.getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-				if (configNode != nullptr)
+				computeAndUpdateMediaClockChain(controlledEntity, clockDomainNode, entityID, clockDomainIndex, std::nullopt, entityID);
+			}
+		}
+
+		// States related to Talker capabilities, Media Clock Chain and Channel Connections
+		// For these, we need to process all other entities that may be connected to us
+		for (auto& [eid, entity] : _controlledEntities)
+		{
+			// Don't process self, not yet advertised entities, non AEM, without configuration, nor different virtual/physical kind
+			if (eid == entityID || !entity->wasAdvertised() || !entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) || !entity->hasAnyConfiguration() || isVirtualEntity != entity->isVirtual())
+			{
+				continue;
+			}
+
+			auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+
+			// States related to Talker capabilities
+			if (hasTalkerCapabilities && controlledEntityConfigurationNode != nullptr && configNode != nullptr)
+			{
+				// Check each of this Listener's Input Streams
+				for (auto const& [streamIndex, streamInputNode] : configNode->streamInputs)
 				{
-					for (auto& [clockDomainIndex, clockDomainNode] : configNode->clockDomains)
+					// If the Stream is Connected
+					if (streamInputNode.dynamicModel.connectionInfo.state == entity::model::StreamInputConnectionInfo::State::Connected)
 					{
-						computeAndUpdateMediaClockChain(controlledEntity, clockDomainNode, entityID, clockDomainIndex, std::nullopt, entityID);
+						// Check against all the Talker's Output Streams
+						for (auto const& [streamOutputIndex, streamOutputNode] : controlledEntityConfigurationNode->streamOutputs)
+						{
+							auto const talkerIdentification = entity::model::StreamIdentification{ entityID, streamOutputIndex };
+
+							// Connected to our talker
+							if (streamInputNode.dynamicModel.connectionInfo.talkerStream == talkerIdentification)
+							{
+								// We want to build an accurate list of connections, based on the known listeners (already advertised only, the other ones will update once ready to advertise themselves)
+								{
+									// Add this listener to our list of connected entities
+									controlledEntity.addStreamOutputConnection(streamOutputIndex, { eid, streamIndex }, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+									// Do not trigger onStreamOutputConnectionsChanged notification, we are just about to advertise the entity
+								}
+
+								// Check for Latency Error (if the Listener was advertised before this Talker, it couldn't check Talker's PresentationTime, so do it now)
+								// If we have StreamDynamicInfo data
+								if (streamInputNode.dynamicModel.streamDynamicInfo)
+								{
+									auto const isOverLatency = computeIsOverLatency(streamOutputNode.dynamicModel.presentationTimeOffset, (*streamInputNode.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency);
+									updateStreamInputLatency(*entity, streamIndex, isOverLatency);
+								}
+							}
+						}
 					}
 				}
 			}
 
-			// Process all other entities and update media clock if needed
-			for (auto& [eid, entity] : _controlledEntities)
+			// Media Clock Chain - Update all entities for which the chain ends on this newly added entity
+			if (configNode != nullptr)
 			{
-				if (eid != entityID && entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
+				for (auto& clockDomainKV : configNode->clockDomains)
 				{
-					auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-					if (configNode != nullptr)
+					auto& clockDomainNode = clockDomainKV.second;
+
+					// Get the domain index matching the StreamOutput of this entity
+					if (AVDECC_ASSERT_WITH_RET(!clockDomainNode.mediaClockChain.empty(), "At least one node should be in the chain"))
 					{
-						for (auto& clockDomainKV : configNode->clockDomains)
+						// Check if the chain is incomplete due to this entity being Offline
+						auto const& lastNode = clockDomainNode.mediaClockChain.back();
+						if (lastNode.entityID == entityID && AVDECC_ASSERT_WITH_RET(lastNode.status == model::MediaClockChainNode::Status::EntityOffline, "Newly discovered entity should be offline"))
 						{
-							auto& clockDomainNode = clockDomainKV.second;
+							// Save the domain/stream indexes, we'll continue from it
+							auto const continueDomainIndex = lastNode.clockDomainIndex;
+							auto const continueStreamOutputIndex = lastNode.streamOutputIndex;
+
+							// Remove that entity from the chain, it will be recomputed
+							clockDomainNode.mediaClockChain.pop_back();
 
 							// Get the domain index matching the StreamOutput of this entity
-							if (AVDECC_ASSERT_WITH_RET(!clockDomainNode.mediaClockChain.empty(), "At least one node should be in the chain"))
+							if (AVDECC_ASSERT_WITH_RET(!clockDomainNode.mediaClockChain.empty(), "At least one node should still be in the chain"))
 							{
-								// Check if the chain is incomplete due to this entity being Offline
-								auto const& lastNode = clockDomainNode.mediaClockChain.back();
-								if (lastNode.entityID == entityID && AVDECC_ASSERT_WITH_RET(lastNode.status == model::MediaClockChainNode::Status::EntityOffline, "Newly discovered entity should be offline"))
-								{
-									// Save the domain/stream indexes, we'll continue from it
-									auto const continueDomainIndex = lastNode.clockDomainIndex;
-									auto const continueStreamOutputIndex = lastNode.streamOutputIndex;
-
-									// Remove that entity from the chain, it will be recomputed
-									clockDomainNode.mediaClockChain.pop_back();
-
-									// Get the domain index matching the StreamOutput of this entity
-									if (AVDECC_ASSERT_WITH_RET(!clockDomainNode.mediaClockChain.empty(), "At least one node should still be in the chain"))
-									{
-										// Update the chain starting from this entity
-										computeAndUpdateMediaClockChain(*entity, clockDomainNode, entityID, continueDomainIndex, continueStreamOutputIndex, entityID);
-									}
-								}
+								// Update the chain starting from this entity
+								computeAndUpdateMediaClockChain(*entity, clockDomainNode, entityID, continueDomainIndex, continueStreamOutputIndex, entityID);
 							}
 						}
 					}
