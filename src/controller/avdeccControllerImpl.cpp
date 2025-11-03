@@ -7053,7 +7053,7 @@ void ControllerImpl::runJobOnExecutorAndWait(la::avdecc::ExecutorManager& execut
 	{
 		// Ready to advertise using the network executor
 		executor.pushJob(exName,
-			[this, job]()
+			[this, job = std::move(job)]()
 			{
 				auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
 				job();

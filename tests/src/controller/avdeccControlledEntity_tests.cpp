@@ -598,28 +598,30 @@ namespace
 class JobPusherObserver : public la::avdecc::controller::Controller::DefaultedObserver
 {
 public:
-	JobPusherObserver(la::avdecc::ExecutorManager::ExecutorWrapper* executor)
-		: _executor(executor)
+	JobPusherObserver(la::avdecc::ExecutorManager::ExecutorWrapper* const executor)
+		: _executor{ executor }
 	{
 	}
 	virtual void onEntityOnline(la::avdecc::controller::Controller const* const /* controller */, la::avdecc::controller::ControlledEntity const* const /* entity*/) noexcept override
 	{
 		_executor->pushJob(
-			[this]()
+			[]()
 			{
+				// Empty, just to force a job in the queue
 			});
 	}
 
 	virtual void onEntityOffline(la::avdecc::controller::Controller const* const /* controller */, la::avdecc::controller::ControlledEntity const* const /* entity */) noexcept override
 	{
 		_executor->pushJob(
-			[this]()
+			[]()
 			{
+				// Empty, just to force a job in the queue
 			});
 	}
 
 private:
-	la::avdecc::ExecutorManager::ExecutorWrapper* _executor;
+	la::avdecc::ExecutorManager::ExecutorWrapper* const _executor{ nullptr };
 };
 } // namespace
 
@@ -633,7 +635,7 @@ TEST(ControllerEntity, PushJobToExecutorWhileLoadVirtualEntities)
 
 	// Verify if load does not dead lock
 	auto const future = std::async(std::launch::async,
-		[this, &controller, flags]()
+		[&controller, flags]()
 		{
 			auto const [error, message] = controller->loadVirtualEntityFromJson("data/SimpleEntity.json", flags);
 			EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
@@ -657,7 +659,7 @@ TEST(ControllerEntity, PushJobToExecutorWhileUnloadVirtualEntities)
 
 	// Verify if unload does not dead lock
 	auto const future = std::async(std::launch::async,
-		[this, &controller, flags]()
+		[&controller]()
 		{
 			controller->unloadVirtualEntity(la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 });
 		});
@@ -679,7 +681,7 @@ TEST(ControllerEntity, PushJobToExecutorWhileRefreshVirtualEntities)
 
 	// Verify if refresh does not dead lock
 	auto const future = std::async(std::launch::async,
-		[this, &controller, flags]()
+		[&controller]()
 		{
 			controller->refreshEntity(la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 });
 		});

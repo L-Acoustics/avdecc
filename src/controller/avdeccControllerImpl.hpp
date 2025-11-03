@@ -807,7 +807,7 @@ private:
 		return ControlledEntityImplGuard{ std::move(entity), locked };
 	}
 
-	void runJobOnExecutorAndWait(la::avdecc::ExecutorManager& executor, const std::string& exName, Executor::Job&& job) const noexcept;
+	void runJobOnExecutorAndWait(la::avdecc::ExecutorManager& executor, std::string const& exName, Executor::Job&& job) const noexcept;
 
 	/* ************************************************************ */
 	/* Private members                                              */
