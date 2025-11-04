@@ -6603,45 +6603,15 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
 	auto& executor = ExecutorManager::getInstance();
 
-	// Job to run
-	auto const job = [this, entityID]()
-	{
-		auto controlledEntity = getControlledEntityImplGuard(entityID);
-
-		if (AVDECC_ASSERT_WITH_RET(!!controlledEntity, "Entity should be in the list"))
+	runJobOnExecutorAndWait(executor, exName,
+		[this, entityID]()
 		{
-			checkEnumerationSteps(controlledEntity.get());
-		}
-	};
-
-	// If current thread is Executor thread, directly call handler
-	if (std::this_thread::get_id() == executor.getExecutorThread(exName))
-	{
-		job();
-	}
-	else
-	{
-		// Ready to advertise using the network executor
-		executor.pushJob(exName,
-			[this, job]()
+			auto controlledEntity = getControlledEntityImplGuard(entityID);
+			if (AVDECC_ASSERT_WITH_RET(!!controlledEntity, "Entity should be in the list"))
 			{
-				auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
-
-				job();
-			});
-
-		// Insert a special "marker" job in the queue (and wait for it to be executed) to be sure everything is loaded before returning
-		auto markerPromise = std::promise<void>{};
-		executor.pushJob(exName,
-			[&markerPromise]()
-			{
-				markerPromise.set_value();
-			});
-
-		// Wait for the marker job to be executed
-		[[maybe_unused]] auto const status = markerPromise.get_future().wait_for(std::chrono::seconds{ 30 });
-		AVDECC_ASSERT(status == std::future_status::ready, "Timeout waiting for marker job to be executed");
-	}
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		});
 
 	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Successfully registered virtual entity with ID {}", utils::toHexString(entityID, true));
 
@@ -6676,30 +6646,11 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::deregisterVirtualCont
 	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
 	auto& executor = ExecutorManager::getInstance();
 
-	// Job to run
-	auto const job = [this, entityID]()
-	{
-		onEntityOffline(_controller, entityID);
-	};
-
-	// If current thread is Executor thread, directly call handler
-	if (std::this_thread::get_id() == executor.getExecutorThread(exName))
-	{
-		job();
-	}
-	else
-	{
-		executor.pushJob(exName,
-			[this, job]()
-			{
-				auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
-
-				job();
-			});
-
-		// Flush executor to be sure everything is loaded before returning
-		executor.flush(exName);
-	}
+	runJobOnExecutorAndWait(executor, exName,
+		[this, entityID]()
+		{
+			onEntityOffline(_controller, entityID);
+		});
 
 	// Clear entity as virtual
 	_controllerProxy->clearVirtualEntity(entityID);
@@ -7090,6 +7041,37 @@ void ControllerImpl::setupDetachedVirtualControlledEntity(ControlledEntityImpl& 
 	entity.setAdvertised(true);
 }
 #endif // ENABLE_AVDECC_FEATURE_JSON
+
+void ControllerImpl::runJobOnExecutorAndWait(la::avdecc::ExecutorManager& executor, std::string const& exName, Executor::Job&& job) const noexcept
+{
+	// If current thread is Executor thread, directly call handler
+	if (std::this_thread::get_id() == executor.getExecutorThread(exName))
+	{
+		job();
+	}
+	else
+	{
+		// Ready to advertise using the network executor
+		executor.pushJob(exName,
+			[this, job = std::move(job)]()
+			{
+				auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
+				job();
+			});
+
+		// Insert a special "marker" job in the queue (and wait for it to be executed) to be sure everything is loaded before returning
+		auto markerPromise = std::promise<void>{};
+		executor.pushJob(exName,
+			[&markerPromise]()
+			{
+				markerPromise.set_value();
+			});
+
+		// Wait for the marker job to be executed
+		[[maybe_unused]] auto const status = markerPromise.get_future().wait_for(std::chrono::seconds{ 30 });
+		AVDECC_ASSERT(status == std::future_status::ready, "Timeout waiting for marker job to be executed");
+	}
+}
 
 std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<SharedControlledEntity>> LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::deserializeControlledEntitiesFromJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept
 {

@@ -43,6 +43,7 @@
 #include <deque>
 #include <tuple>
 #include <set>
+#include <la/avdecc/executor.hpp>
 
 namespace la
 {
@@ -805,6 +806,8 @@ private:
 
 		return ControlledEntityImplGuard{ std::move(entity), locked };
 	}
+
+	void runJobOnExecutorAndWait(la::avdecc::ExecutorManager& executor, std::string const& exName, Executor::Job&& job) const noexcept;
 
 	/* ************************************************************ */
 	/* Private members                                              */

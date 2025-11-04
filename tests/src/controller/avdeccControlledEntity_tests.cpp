@@ -37,6 +37,7 @@
 #include <thread>
 #include <chrono>
 #include <future>
+#include <la/avdecc/executor.hpp>
 
 namespace
 {
@@ -77,6 +78,8 @@ private:
 	}
 };
 } // namespace
+
+static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
 
 TEST(ControlledEntity, VirtualEntityLoad)
 {
@@ -588,4 +591,101 @@ TEST(ControlledEntity, VisitorValidation)
 
 	auto visitor = Visitor{};
 	entity->accept(&visitor);
+}
+
+namespace
+{
+class JobPusherObserver : public la::avdecc::controller::Controller::DefaultedObserver
+{
+public:
+	JobPusherObserver(la::avdecc::ExecutorManager::ExecutorWrapper* const executor)
+		: _executor{ executor }
+	{
+	}
+	virtual void onEntityOnline(la::avdecc::controller::Controller const* const /* controller */, la::avdecc::controller::ControlledEntity const* const /* entity*/) noexcept override
+	{
+		_executor->pushJob(
+			[]()
+			{
+				// Empty, just to force a job in the queue
+			});
+	}
+
+	virtual void onEntityOffline(la::avdecc::controller::Controller const* const /* controller */, la::avdecc::controller::ControlledEntity const* const /* entity */) noexcept override
+	{
+		_executor->pushJob(
+			[]()
+			{
+				// Empty, just to force a job in the queue
+			});
+	}
+
+private:
+	la::avdecc::ExecutorManager::ExecutorWrapper* const _executor{ nullptr };
+};
+} // namespace
+
+TEST(ControllerEntity, PushJobToExecutorWhileLoadVirtualEntities)
+{
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+	auto jobPusherObserver = JobPusherObserver(executorWrapper.get());
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, DefaultExecutorName, nullptr);
+	controller->registerObserver(&jobPusherObserver);
+
+	// Verify if load does not dead lock
+	auto const future = std::async(std::launch::async,
+		[&controller, flags]()
+		{
+			auto const [error, message] = controller->loadVirtualEntityFromJson("data/SimpleEntity.json", flags);
+			EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+			EXPECT_STREQ("", message.c_str());
+		});
+
+	auto const status = future.wait_for(std::chrono::seconds(4));
+	ASSERT_NE(std::future_status::timeout, status) << "dead lock!";
+}
+
+TEST(ControllerEntity, PushJobToExecutorWhileUnloadVirtualEntities)
+{
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+	auto jobPusherObserver = JobPusherObserver(executorWrapper.get());
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, DefaultExecutorName, nullptr);
+	controller->registerObserver(&jobPusherObserver);
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/SimpleEntity.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	// Verify if unload does not dead lock
+	auto const future = std::async(std::launch::async,
+		[&controller]()
+		{
+			controller->unloadVirtualEntity(la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 });
+		});
+
+	auto const status = future.wait_for(std::chrono::seconds(4));
+	ASSERT_NE(std::future_status::timeout, status) << "dead lock!";
+}
+
+TEST(ControllerEntity, PushJobToExecutorWhileRefreshVirtualEntities)
+{
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+	auto jobPusherObserver = JobPusherObserver(executorWrapper.get());
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, DefaultExecutorName, nullptr);
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/SimpleEntity.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+	controller->registerObserver(&jobPusherObserver);
+
+	// Verify if refresh does not dead lock
+	auto const future = std::async(std::launch::async,
+		[&controller]()
+		{
+			controller->refreshEntity(la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 });
+		});
+
+	auto const status = future.wait_for(std::chrono::seconds(4));
+	ASSERT_NE(std::future_status::timeout, status) << "dead lock!";
 }

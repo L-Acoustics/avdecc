@@ -3374,8 +3374,9 @@ bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 	}
 
 	// Ready to remove using the network executor
+	auto& executor = ExecutorManager::getInstance();
 	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
-	ExecutorManager::getInstance().pushJob(exName,
+	runJobOnExecutorAndWait(executor, exName,
 		[this, entityID, isVirtual]()
 		{
 			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
@@ -3397,9 +3398,6 @@ bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 				discoverRemoteEntity(entityID);
 			}
 		});
-
-	// Flush executor to be sure everything is loaded before returning
-	ExecutorManager::getInstance().flush(exName);
 
 	return true;
 }
