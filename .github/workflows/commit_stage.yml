@@ -1,6 +1,8 @@
 name: Commit stage
 
 on :
+  # Allows to manually trigger commit stage workflow
+  workflow_dispatch:
   push:
     branches: [ dev, main ]
   pull_request:
