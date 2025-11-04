@@ -1797,6 +1797,33 @@ void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImp
 	{
 		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamPortInputAudioMappingsChanged, this, &controlledEntity, streamPortIndex);
 	}
+
+	// Process all added mappings and update channel connections if needed
+	{
+		auto* const configurationNode = controlledEntity.getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+		if (configurationNode != nullptr)
+		{
+			auto const* const staticModel = controlledEntity.getModelAccessStrategy().getStreamPortInputNodeStaticModel(configurationNode->descriptorIndex, streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			if (staticModel != nullptr)
+			{
+				// Lock to protect _controlledEntities
+				auto const lg = std::lock_guard{ _lock };
+
+				for (auto const& mapping : mappings)
+				{
+					auto const globalClusterIndex = static_cast<entity::model::ClusterIndex>(staticModel->baseCluster + mapping.clusterOffset);
+					auto const clusterIdentification = model::ClusterIdentification{ globalClusterIndex, mapping.clusterChannel };
+					// Get the matching ChannelConnection (should exist)
+					auto const channelConnIt = configurationNode->channelConnections.find(clusterIdentification);
+					if (AVDECC_ASSERT_WITH_RET(channelConnIt != configurationNode->channelConnections.end(), "Failed to find ChannelConnection for updated StreamPortInput AudioMapping"))
+					{
+						auto& channelConnection = channelConnIt->second;
+						computeAndUpdateChannelConnectionFromListenerMapping(controlledEntity, *configurationNode, clusterIdentification, mapping, channelConnection);
+					}
+				}
+			}
+		}
+	}
 }
 
 void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
@@ -1809,6 +1836,33 @@ void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityI
 	if (controlledEntity.wasAdvertised())
 	{
 		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamPortInputAudioMappingsChanged, this, &controlledEntity, streamPortIndex);
+	}
+
+	// Process all removed mappings and update channel connections if needed
+	{
+		auto* const configurationNode = controlledEntity.getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+		if (configurationNode != nullptr)
+		{
+			auto const* const staticModel = controlledEntity.getModelAccessStrategy().getStreamPortInputNodeStaticModel(configurationNode->descriptorIndex, streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			if (staticModel != nullptr)
+			{
+				// Lock to protect _controlledEntities
+				auto const lg = std::lock_guard{ _lock };
+
+				for (auto const& mapping : mappings)
+				{
+					auto const globalClusterIndex = static_cast<entity::model::ClusterIndex>(staticModel->baseCluster + mapping.clusterOffset);
+					auto const clusterIdentification = model::ClusterIdentification{ globalClusterIndex, mapping.clusterChannel };
+					// Get the matching ChannelConnection (should exist)
+					auto const channelConnIt = configurationNode->channelConnections.find(clusterIdentification);
+					if (AVDECC_ASSERT_WITH_RET(channelConnIt != configurationNode->channelConnections.end(), "Failed to find ChannelConnection for updated StreamPortInput AudioMapping"))
+					{
+						auto& channelConnection = channelConnIt->second;
+						computeAndUpdateChannelConnectionFromListenerMapping(controlledEntity, *configurationNode, clusterIdentification, std::nullopt, channelConnection);
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -1823,6 +1877,44 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityIm
 	{
 		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamPortOutputAudioMappingsChanged, this, &controlledEntity, streamPortIndex);
 	}
+
+	// Process all entities and update channel connections if needed
+	{
+		// Get some information about the controlled entity
+		auto const entityID = controlledEntity.getEntity().getEntityID();
+		auto baseClusterIndexOpt = std::optional<entity::model::ClusterIndex>{};
+		{
+			auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			if (currentConfigurationIndexOpt)
+			{
+				auto const* const staticModel = controlledEntity.getModelAccessStrategy().getStreamPortOutputNodeStaticModel(*currentConfigurationIndexOpt, streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (staticModel)
+				{
+					baseClusterIndexOpt = staticModel->baseCluster;
+				}
+			}
+		}
+
+		if (AVDECC_ASSERT_WITH_RET(baseClusterIndexOpt, "Failed to get StreamPortOutput baseClusterIndex"))
+		{
+			auto const baseClusterIndex = *baseClusterIndexOpt;
+
+			// Lock to protect _controlledEntities
+			auto const lg = std::lock_guard{ _lock };
+
+			for (auto& [eid, entity] : _controlledEntities)
+			{
+				if (eid != entityID && entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
+				{
+					auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+					if (configNode != nullptr)
+					{
+						computeAndUpdateChannelConnectionsFromTalkerMappings(*entity, entityID, baseClusterIndex, mappings, configNode->channelConnections, false);
+					}
+				}
+			}
+		}
+	}
 }
 
 void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
@@ -1835,6 +1927,44 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntity
 	if (controlledEntity.wasAdvertised())
 	{
 		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamPortOutputAudioMappingsChanged, this, &controlledEntity, streamPortIndex);
+	}
+
+	// Process all entities and update channel connections if needed
+	{
+		// Get some information about the controlled entity
+		auto const entityID = controlledEntity.getEntity().getEntityID();
+		auto baseClusterIndexOpt = std::optional<entity::model::ClusterIndex>{};
+		{
+			auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			if (currentConfigurationIndexOpt)
+			{
+				auto const* const staticModel = controlledEntity.getModelAccessStrategy().getStreamPortOutputNodeStaticModel(*currentConfigurationIndexOpt, streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (staticModel)
+				{
+					baseClusterIndexOpt = staticModel->baseCluster;
+				}
+			}
+		}
+
+		if (AVDECC_ASSERT_WITH_RET(baseClusterIndexOpt, "Failed to get StreamPortOutput baseClusterIndex"))
+		{
+			auto const baseClusterIndex = *baseClusterIndexOpt;
+
+			// Lock to protect _controlledEntities
+			auto const lg = std::lock_guard{ _lock };
+
+			for (auto& [eid, entity] : _controlledEntities)
+			{
+				if (eid != entityID && entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
+				{
+					auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+					if (configNode != nullptr)
+					{
+						computeAndUpdateChannelConnectionsFromTalkerMappings(*entity, entityID, baseClusterIndex, mappings, configNode->channelConnections, true);
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -5218,6 +5348,153 @@ void ControllerImpl::computeAndUpdateMediaClockChain(ControlledEntityImpl& contr
 	}
 }
 
+// _lock should be taken when calling this method
+void ControllerImpl::computeAndUpdateChannelConnectionFromStreamIdentification(ControlledEntityImpl& controlledEntity, model::ClusterIdentification const& clusterIdentification, entity::model::StreamIdentification const& streamIdentification, model::ChannelIdentification& channelIdentification, bool const otherChangesToNotify) const noexcept
+{
+	auto changed = otherChangesToNotify;
+
+	if (channelIdentification.streamIdentification != streamIdentification)
+	{
+		// Update the Stream Identification
+		channelIdentification.streamIdentification = streamIdentification;
+		changed = true;
+
+		// If not connected, clear Cluster Identification
+		if (!channelIdentification.streamIdentification.entityID)
+		{
+			channelIdentification.clusterIdentification = {};
+		}
+		else
+		{
+			auto talkerEntity = getControlledEntityImplGuard(channelIdentification.streamIdentification.entityID);
+			if (talkerEntity)
+			{
+				auto* const talkerConfigurationNode = talkerEntity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (talkerConfigurationNode && channelIdentification.streamChannelIdentification)
+				{
+					// Process all Audio Units
+					for (auto const& [audioUnitIndex, audioUnitNode] : talkerConfigurationNode->audioUnits)
+					{
+						// Process all Stream Port Outputs
+						for (auto const& [streamPortIndex, streamPortNode] : audioUnitNode.streamPortOutputs)
+						{
+							auto const talkerMapping = getMappingForStreamChannelIdentification(streamPortNode, channelIdentification.streamIdentification.streamIndex, channelIdentification.streamChannelIdentification.streamChannel);
+							if (talkerMapping)
+							{
+								// We have a mapping, set the Cluster Identification
+								channelIdentification.clusterIdentification = model::ClusterIdentification{ static_cast<entity::model::ClusterIndex>(streamPortNode.staticModel.baseCluster + talkerMapping->clusterOffset), talkerMapping->clusterChannel };
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Entity was advertised to the user, notify observers
+	if (changed && controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onChannelInputConnectionChanged, this, &controlledEntity, clusterIdentification, channelIdentification);
+	}
+}
+
+// _lock should be taken when calling this method
+void ControllerImpl::computeAndUpdateChannelConnectionFromListenerMapping(ControlledEntityImpl& controlledEntity, model::ConfigurationNode const& configurationNode, model::ClusterIdentification const& clusterIdentification, std::optional<entity::model::AudioMapping> const& audioMapping, model::ChannelIdentification& channelIdentification) const noexcept
+{
+	auto streamChannelIdentification = model::StreamChannelIdentification{};
+	if (audioMapping)
+	{
+		streamChannelIdentification = model::StreamChannelIdentification{ (*audioMapping).streamIndex, (*audioMapping).streamChannel };
+	}
+
+	if (channelIdentification.streamChannelIdentification != streamChannelIdentification)
+	{
+		// No mapping anymore, clear all fields
+		if (!streamChannelIdentification.isValid())
+		{
+			channelIdentification = model::ChannelIdentification{};
+			// Entity was advertised to the user, notify observers
+			if (controlledEntity.wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onChannelInputConnectionChanged, this, &controlledEntity, clusterIdentification, channelIdentification);
+			}
+		}
+		else
+		{
+			auto const& mapping = *audioMapping;
+
+			// We have a mapping, set the StreamChannel Identification
+			channelIdentification.streamChannelIdentification = streamChannelIdentification;
+
+			// Update the ChannelConnection based on the current stream mapping
+			if (auto const streamInputNodeIt = configurationNode.streamInputs.find(mapping.streamIndex); streamInputNodeIt != configurationNode.streamInputs.end())
+			{
+				auto const& streamInputNode = streamInputNodeIt->second;
+				auto const& connectionInfo = streamInputNode.dynamicModel.connectionInfo;
+				computeAndUpdateChannelConnectionFromStreamIdentification(controlledEntity, clusterIdentification, connectionInfo.talkerStream, channelIdentification, true);
+			}
+		}
+	}
+}
+
+// _lock should be taken when calling this method
+void ControllerImpl::computeAndUpdateChannelConnectionsFromTalkerMappings(ControlledEntityImpl& controlledEntity, UniqueIdentifier const& talkerEntityID, entity::model::ClusterIndex const baseClusterIndex, entity::model::AudioMappings const& mappings, model::ChannelConnections& channelConnections, bool const removeMappings) const noexcept
+{
+	for (auto& [clusterIdentification, channelIdentification] : channelConnections)
+	{
+		// This entity has a connection to the controlledEntity
+		if (channelIdentification.streamIdentification.entityID == talkerEntityID)
+		{
+			// Check if any of the mappings relate to the connection (beware we have to convert controlledEntity's clusterIndex to global index using baseClusterIndex)
+			for (auto const& mapping : mappings)
+			{
+				// This entity has a connection to the mapping's stream index/channel
+				if (channelIdentification.streamIdentification.streamIndex == mapping.streamIndex && channelIdentification.streamChannelIdentification.streamChannel == mapping.streamChannel)
+				{
+					auto const globalClusterIndex = static_cast<entity::model::ClusterIndex>(baseClusterIndex + mapping.clusterOffset);
+					auto const talkerClusterId = removeMappings ? model::ClusterIdentification{} : model::ClusterIdentification{ globalClusterIndex, mapping.clusterChannel };
+
+					// Changed
+					if (talkerClusterId != channelIdentification.clusterIdentification)
+					{
+						// Update the ChannelConnection
+						channelIdentification.clusterIdentification = talkerClusterId;
+
+						// Entity was advertised to the user, notify observers
+						if (controlledEntity.wasAdvertised())
+						{
+							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onChannelInputConnectionChanged, this, &controlledEntity, clusterIdentification, channelIdentification);
+						}
+					}
+					break;
+				}
+			}
+		}
+	}
+}
+
+// _lock should be taken when calling this method
+void ControllerImpl::computeAndUpdateChannelConnectionsFromConfigurationNode(ControlledEntityImpl& controlledEntity, UniqueIdentifier const& talkerEntityID, model::ConfigurationNode const& talkerConfigurationNode, model::ChannelConnections& channelConnections) const noexcept
+{
+	// Process all talker Audio Units
+	for (auto const& [audioUnitIndex, audioUnitNode] : talkerConfigurationNode.audioUnits)
+	{
+		// Process all talker Stream Port Outputs
+		for (auto const& [streamPortIndex, streamPortNode] : audioUnitNode.streamPortOutputs)
+		{
+			// Process static mappings (AudioMaps)
+			for (auto const& [audioMapIndex, audioMapNode] : streamPortNode.audioMaps)
+			{
+				computeAndUpdateChannelConnectionsFromTalkerMappings(controlledEntity, talkerEntityID, streamPortNode.staticModel.baseCluster, audioMapNode.staticModel.mappings, channelConnections, false);
+			}
+
+			// Process dynamic mappings
+			computeAndUpdateChannelConnectionsFromTalkerMappings(controlledEntity, talkerEntityID, streamPortNode.staticModel.baseCluster, streamPortNode.dynamicModel.dynamicAudioMap, channelConnections, false);
+		}
+	}
+}
+
 /** Actions to be done on the entity, just before advertising, which require looking at other already advertised entities (only for attached entities) */
 void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept
 {
@@ -5308,6 +5585,32 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 			}
 		}
 
+		// Compute Channel Connections for this newly advertised entity
+		if (controlledEntityConfigurationNode != nullptr)
+		{
+			// Process all Audio Units
+			for (auto const& [audioUnitIndex, audioUnitNode] : controlledEntityConfigurationNode->audioUnits)
+			{
+				// Process all Stream Port Inputs
+				for (auto const& [streamPortIndex, streamPortNode] : audioUnitNode.streamPortInputs)
+				{
+					// Process all Audio Clusters
+					for (auto const& [clusterIndex, clusterNode] : streamPortNode.audioClusters)
+					{
+						// Process all Channels
+						for (auto clusterChannel = std::uint16_t{ 0u }; clusterChannel < clusterNode.staticModel.channelCount; ++clusterChannel)
+						{
+							auto const clusterIdentification = model::ClusterIdentification{ clusterIndex, clusterChannel };
+							auto const mapping = getMappingForClusterIdentification(streamPortNode, clusterIdentification);
+							// Insert default ChannelConnection (should not exist)
+							auto& channelConnection = controlledEntityConfigurationNode->channelConnections[clusterIdentification];
+							computeAndUpdateChannelConnectionFromListenerMapping(controlledEntity, *controlledEntityConfigurationNode, clusterIdentification, mapping, channelConnection);
+						}
+					}
+				}
+			}
+		}
+
 		// States related to Talker capabilities, Media Clock Chain and Channel Connections
 		// For these, we need to process all other entities that may be connected to us
 		for (auto& [eid, entity] : _controlledEntities)
@@ -5357,7 +5660,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 				}
 			}
 
-			// Media Clock Chain - Update all entities for which the chain ends on this newly added entity
+			// Media Clock Chain - Update entity for which the chain ends on this newly added entity
 			if (configNode != nullptr)
 			{
 				for (auto& clockDomainKV : configNode->clockDomains)
@@ -5387,6 +5690,12 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 						}
 					}
 				}
+			}
+
+			// Channel Connections - Update entity that have connections to our Stream Outputs
+			if (configNode != nullptr)
+			{
+				computeAndUpdateChannelConnectionsFromConfigurationNode(*entity, entityID, *controlledEntityConfigurationNode, configNode->channelConnections);
 			}
 		}
 	}
@@ -6681,7 +6990,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 					}
 				}
 
-				// Process all other entities and update media clock if needed
+				// Process all other entities and update media clock / channel connection if needed
 				{
 					// Lock to protect _controlledEntities
 					auto const lg = std::lock_guard{ _lock };
@@ -6751,6 +7060,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 						AVDECC_ASSERT(false, "Unsupported connection transition");
 					}
 
+					// Run the media clock updates if needed
 					if (updateMediaClockChain)
 					{
 						// Update all entities for which the chain has a node with a connection to that stream
@@ -6765,6 +7075,32 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 									{
 										auto& clockDomainNode = clockDomainKV.second;
 										updateMediaClockChain(*entity, clockDomainNode);
+									}
+								}
+							}
+						}
+					}
+
+					// Run the channel connection updates
+					{
+						auto* const configurationNode = listener.getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+						if (configurationNode != nullptr)
+						{
+							// Process all channel connections that could be impacted
+							for (auto& [clusterIdentification, channelIdentification] : configurationNode->channelConnections)
+							{
+								// Check if this channel connection is linked to that listener stream
+								if (channelIdentification.streamChannelIdentification.streamIndex == listenerStream.streamIndex)
+								{
+									// If we are disconnecting or changing talker, disconnect previous talker stream
+									if (isDisconnecting || isConnectingToDifferentTalker)
+									{
+										computeAndUpdateChannelConnectionFromStreamIdentification(listener, clusterIdentification, entity::model::StreamIdentification{}, channelIdentification);
+									}
+									// If we are connecting or changing talker, connect new talker stream
+									if (isConnecting || isConnectingToDifferentTalker)
+									{
+										computeAndUpdateChannelConnectionFromStreamIdentification(listener, clusterIdentification, talkerStream, channelIdentification);
 									}
 								}
 							}
