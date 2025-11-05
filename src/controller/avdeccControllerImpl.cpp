@@ -5808,6 +5808,44 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 			}
 		}
 	}
+
+#ifdef ENABLE_AVDECC_FEATURE_CBR
+	// Update channel connections for all listeners that were connected to this departing talker
+	{
+		// Lock to protect _controlledEntities
+		auto const lg = std::lock_guard{ _lock };
+
+		for (auto& [eid, entity] : _controlledEntities)
+		{
+			// Skip the departing entity itself
+			if (eid == entityID)
+			{
+				continue;
+			}
+
+			if (entity->wasAdvertised() && entity->getEntity().getListenerCapabilities().test(entity::ListenerCapability::Implemented) && isAemSupported && entity->hasAnyConfiguration())
+			{
+				auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (configNode != nullptr)
+				{
+					// Check all channel connections in this listener
+					for (auto& [clusterIdentification, channelIdentification] : configNode->channelConnections)
+					{
+						// If this channel is connected to the departing talker
+						if (channelIdentification.streamIdentification.entityID == entityID)
+						{
+							// Clear the talker mapping information (since we can't query the offline talker anymore)
+							channelIdentification.clusterIdentification = model::ClusterIdentification{};
+
+							// Notify observers of the channel connection change
+							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onChannelInputConnectionChanged, this, entity.get(), clusterIdentification, channelIdentification);
+						}
+					}
+				}
+			}
+		}
+	}
+#endif // ENABLE_AVDECC_FEATURE_CBR
 }
 
 /* This method handles Milan Requirements when a command is not supported by the entity, removing associated compatibility flag. */

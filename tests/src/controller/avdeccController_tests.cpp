@@ -4587,6 +4587,127 @@ TEST_F(ChannelConnection_F, LoadWithExistingConnectionTalkerFirst)
 		ASSERT_FALSE(true) << "Should not throw";
 	}
 }
+
+TEST_F(ChannelConnection_F, ListenerConnectedToOfflineTalker)
+{
+	auto& c = getControllerImpl();
+
+	// Load only the listener entity (Entity03) - talker (Entity04) is offline
+	loadEntityFile("data/ChannelConnection/Entity_0x03.json");
+
+	try
+	{
+		auto e3 = c.getControlledEntityImplGuard(Entity03, true, false);
+		// Listener should have connection with listener mapping and stream connection, but NO talker mapping (not fully connected) because talker is offline
+		{
+			auto const& connections = e3->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			{
+				auto const& channelId = connections.at(ListenerClusterIdentification);
+				EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+				EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+				EXPECT_EQ(TalkerStreamIdentification4, channelId.streamIdentification);
+				EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{})); // No talker mapping because talker is offline
+				EXPECT_FALSE(channelId.isConnected()); // Not fully connected
+			}
+			for (auto const& [clusterId, channelId] : connections)
+			{
+				if (clusterId == ListenerClusterIdentification)
+				{
+					continue;
+				}
+				EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+				EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+				EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
+TEST_F(ChannelConnection_F, EntityDepartingRemovesChannelConnection)
+{
+	auto& c = getControllerImpl();
+
+	loadEntityFile("data/ChannelConnection/Entity_0x03.json");
+	loadEntityFile("data/ChannelConnection/Entity_0x04.json");
+
+	try
+	{
+		auto e3 = c.getControlledEntityImplGuard(Entity03, true, false);
+		auto e4 = c.getControlledEntityImplGuard(Entity04, true, false);
+		// Listener should have full connection (fully connected), the other connections fully disconnected
+		{
+			auto const& connections = e3->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			{
+				auto const& channelId = connections.at(ListenerClusterIdentification);
+				EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+				EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+				EXPECT_EQ(TalkerStreamIdentification4, channelId.streamIdentification);
+				EXPECT_EQ(TalkerClusterIdentification, channelId.clusterIdentification);
+				EXPECT_TRUE(channelId.isConnected());
+			}
+			for (auto const& [clusterId, channelId] : connections)
+			{
+				if (clusterId == ListenerClusterIdentification)
+				{
+					continue;
+				}
+				EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+				EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+				EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+			}
+		}
+		// Talker should be fully disconnected
+		{
+			auto const& connections = e4->getChannelConnections();
+			EXPECT_EQ(80u, connections.size());
+			checkAllConnectionsDisconnected(connections);
+		}
+
+		// Unload talker entity (simulating device going offline) - should trigger onChannelInputConnectionChanged
+		{
+			registerMockObserver();
+			EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, e3.get(), ListenerClusterIdentification, ::testing::_)).Times(1);
+
+			c.unloadVirtualEntity(Entity04);
+
+			unregisterMockObserver();
+
+			// Listener should have connection with listener mapping and stream connection, but NO talker mapping (not fully connected) because talker is offline
+			{
+				auto const& connections = e3->getChannelConnections();
+				EXPECT_EQ(80u, connections.size());
+				{
+					auto const& channelId = connections.at(ListenerClusterIdentification);
+					EXPECT_TRUE(channelId.streamChannelIdentification.isValid());
+					EXPECT_EQ(std::uint16_t{ 0u }, channelId.streamChannelIdentification.streamChannel);
+					EXPECT_EQ(TalkerStreamIdentification4, channelId.streamIdentification);
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{})); // No talker mapping because talker is offline
+					EXPECT_FALSE(channelId.isConnected()); // Not fully connected
+				}
+				for (auto const& [clusterId, channelId] : connections)
+				{
+					if (clusterId == ListenerClusterIdentification)
+					{
+						continue;
+					}
+					EXPECT_FALSE(channelId.streamChannelIdentification.isValid());
+					EXPECT_TRUE((channelId.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
+					EXPECT_TRUE((channelId.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				}
+			}
+		}
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
 #else // !ENABLE_AVDECC_FEATURE_CBR
 TEST_F(ChannelConnection_F, Disabled)
 {
