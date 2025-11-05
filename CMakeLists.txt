@@ -46,6 +46,7 @@ option(ENABLE_CODE_SIGNING "Enable binaries signing." FALSE)
 # Enable features
 option(ENABLE_AVDECC_FEATURE_REDUNDANCY "Enable 'Network Redundancy' feature as defined by AVnu Alliance." TRUE)
 option(ENABLE_AVDECC_FEATURE_JSON "Enable read/write files in JSON format." TRUE)
+option(ENABLE_AVDECC_FEATURE_CBR "Enable ChannelBasedRouting monitoring." TRUE)
 # Compatibility options
 option(ENABLE_AVDECC_USE_FMTLIB "Use fmtlib" TRUE)
 option(ENABLE_AVDECC_STRICT_2018_REDUNDANCY "Be strict about 'Network Redundancy' feature, using AVnu 2018 specifications." TRUE)

@@ -90,6 +90,10 @@ std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CALL_CONVENTION getCompileOp
 	options.emplace_back(CompileOptionInfo{ CompileOption::EnableJsonSupport, "JSN", "JSON" });
 #endif // ENABLE_AVDECC_FEATURE_JSON
 
+#ifdef ENABLE_AVDECC_FEATURE_CBR
+	options.emplace_back(CompileOptionInfo{ CompileOption::EnableCBRSupport, "CBR", "Channel Based Routing" });
+#endif // ENABLE_AVDECC_FEATURE_CBR
+
 	return options;
 }
 

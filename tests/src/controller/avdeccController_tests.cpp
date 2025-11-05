@@ -3225,6 +3225,18 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchClockSource)
 	}
 }
 
+#ifdef ENABLE_AVDECC_FEATURE_CBR
+static auto const Mappings_Identity_One = la::avdecc::entity::model::AudioMappings{ la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint8_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint8_t{ 0u } } };
+static auto const Mappings_Identity_Two = la::avdecc::entity::model::AudioMappings{ la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } }, la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint16_t{ 1u }, la::avdecc::entity::model::ClusterIndex{ 1u }, std::uint16_t{ 0u } } };
+static auto constexpr ListenerClusterIdentification = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } };
+static auto constexpr ListenerClusterIdentification2 = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 1u }, std::uint16_t{ 0u } };
+static auto constexpr TalkerClusterIdentification = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 80u }, std::uint16_t{ 0u } };
+static auto constexpr TalkerClusterIdentification2 = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 81u }, std::uint16_t{ 0u } };
+static auto constexpr TalkerStreamIdentification = la::avdecc::entity::model::StreamIdentification{ Entity02, 0u };
+static auto constexpr TalkerStreamIdentification4 = la::avdecc::entity::model::StreamIdentification{ Entity04, 0u };
+static auto constexpr ListenerStreamIdentification = la::avdecc::entity::model::StreamIdentification{ Entity01, 0u };
+#endif // ENABLE_AVDECC_FEATURE_CBR
+
 namespace
 {
 class ChannelConnection_F : public ::testing::Test, public la::avdecc::controller::Controller::DefaultedObserver
@@ -3283,17 +3295,7 @@ private:
 };
 } // namespace
 
-static auto const Mappings_Identity_One = la::avdecc::entity::model::AudioMappings{ la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint8_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint8_t{ 0u } } };
-static auto const Mappings_Identity_Two = la::avdecc::entity::model::AudioMappings{ la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } }, la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint16_t{ 1u }, la::avdecc::entity::model::ClusterIndex{ 1u }, std::uint16_t{ 0u } } };
-static auto constexpr ListenerClusterIdentification = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } };
-static auto constexpr ListenerClusterIdentification2 = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 1u }, std::uint16_t{ 0u } };
-static auto constexpr TalkerClusterIdentification = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 80u }, std::uint16_t{ 0u } };
-static auto constexpr TalkerClusterIdentification2 = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 81u }, std::uint16_t{ 0u } };
-static auto constexpr TalkerStreamIdentification = la::avdecc::entity::model::StreamIdentification{ Entity02, 0u };
-static auto constexpr TalkerStreamIdentification4 = la::avdecc::entity::model::StreamIdentification{ Entity04, 0u };
-static auto constexpr ListenerStreamIdentification = la::avdecc::entity::model::StreamIdentification{ Entity01, 0u };
-
-
+#ifdef ENABLE_AVDECC_FEATURE_CBR
 TEST_F(ChannelConnection_F, NoConnection)
 {
 	auto& c = getControllerImpl();
@@ -4585,6 +4587,27 @@ TEST_F(ChannelConnection_F, LoadWithExistingConnectionTalkerFirst)
 		ASSERT_FALSE(true) << "Should not throw";
 	}
 }
+#else // !ENABLE_AVDECC_FEATURE_CBR
+TEST_F(ChannelConnection_F, Disabled)
+{
+	auto& c = getControllerImpl();
+	// Expect Controller::Observer::onChannelInputConnectionChanged() NOT to be called
+	registerMockObserver();
+	EXPECT_CALL(*this, onChannelInputConnectionChanged(::testing::_, c.getControlledEntityGuard(Entity01).get(), ::testing::_, ::testing::_)).Times(0);
+
+	loadEntityFile("data/ChannelConnection/Entity_0x01.json");
+
+	try
+	{
+		auto const& e = *c.getControlledEntityGuard(Entity01);
+		EXPECT_THROW(e.getChannelConnections(), la::avdecc::controller::ControlledEntity::Exception);
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+#endif // ENABLE_AVDECC_FEATURE_CBR
 
 // Test for #125
 TEST_F(MediaClockModel_F, NotCrashing_Issue125)

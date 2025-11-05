@@ -179,7 +179,7 @@ public:
 	virtual bool isIdentifying() const noexcept = 0; // True if the Entity is currently identifying itself
 	virtual bool hasAnyConfiguration() const noexcept = 0; // True if the Entity has at least one Configuration
 	virtual entity::model::ConfigurationIndex getCurrentConfigurationIndex() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity
-	virtual model::ChannelConnections const& getChannelConnections() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity
+	virtual model::ChannelConnections const& getChannelConnections() const = 0; // Throws Exception::NotSupported if feature not enabled or if EM not supported by the Entity
 
 	// Const Node getters
 	virtual model::EntityNode const& getEntityNode() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity

@@ -1798,6 +1798,7 @@ void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImp
 		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamPortInputAudioMappingsChanged, this, &controlledEntity, streamPortIndex);
 	}
 
+#ifdef ENABLE_AVDECC_FEATURE_CBR
 	// Process all added mappings and update channel connections if needed
 	{
 		auto* const configurationNode = controlledEntity.getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
@@ -1824,6 +1825,7 @@ void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImp
 			}
 		}
 	}
+#endif // ENABLE_AVDECC_FEATURE_CBR
 }
 
 void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
@@ -1838,6 +1840,7 @@ void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityI
 		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamPortInputAudioMappingsChanged, this, &controlledEntity, streamPortIndex);
 	}
 
+#ifdef ENABLE_AVDECC_FEATURE_CBR
 	// Process all removed mappings and update channel connections if needed
 	{
 		auto* const configurationNode = controlledEntity.getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
@@ -1864,6 +1867,7 @@ void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityI
 			}
 		}
 	}
+#endif // ENABLE_AVDECC_FEATURE_CBR
 }
 
 void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
@@ -1878,6 +1882,7 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityIm
 		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamPortOutputAudioMappingsChanged, this, &controlledEntity, streamPortIndex);
 	}
 
+#ifdef ENABLE_AVDECC_FEATURE_CBR
 	// Process all entities and update channel connections if needed
 	{
 		// Get some information about the controlled entity
@@ -1915,6 +1920,7 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityIm
 			}
 		}
 	}
+#endif // ENABLE_AVDECC_FEATURE_CBR
 }
 
 void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
@@ -1929,6 +1935,7 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntity
 		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamPortOutputAudioMappingsChanged, this, &controlledEntity, streamPortIndex);
 	}
 
+#ifdef ENABLE_AVDECC_FEATURE_CBR
 	// Process all entities and update channel connections if needed
 	{
 		// Get some information about the controlled entity
@@ -1966,6 +1973,7 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntity
 			}
 		}
 	}
+#endif // ENABLE_AVDECC_FEATURE_CBR
 }
 
 void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete, TreeModelAccessStrategy::NotFoundBehavior const /*notFoundBehavior*/) const noexcept
@@ -5348,6 +5356,7 @@ void ControllerImpl::computeAndUpdateMediaClockChain(ControlledEntityImpl& contr
 	}
 }
 
+#ifdef ENABLE_AVDECC_FEATURE_CBR
 // _lock should be taken when calling this method
 void ControllerImpl::computeAndUpdateChannelConnectionFromStreamIdentification(ControlledEntityImpl& controlledEntity, model::ClusterIdentification const& clusterIdentification, entity::model::StreamIdentification const& streamIdentification, model::ChannelIdentification& channelIdentification, bool const otherChangesToNotify) const noexcept
 {
@@ -5494,6 +5503,7 @@ void ControllerImpl::computeAndUpdateChannelConnectionsFromConfigurationNode(Con
 		}
 	}
 }
+#endif // ENABLE_AVDECC_FEATURE_CBR
 
 /** Actions to be done on the entity, just before advertising, which require looking at other already advertised entities (only for attached entities) */
 void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept
@@ -5585,6 +5595,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 			}
 		}
 
+#ifdef ENABLE_AVDECC_FEATURE_CBR
 		// Compute Channel Connections for this newly advertised entity
 		if (controlledEntityConfigurationNode != nullptr)
 		{
@@ -5610,6 +5621,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 				}
 			}
 		}
+#endif // ENABLE_AVDECC_FEATURE_CBR
 
 		// States related to Talker capabilities, Media Clock Chain and Channel Connections
 		// For these, we need to process all other entities that may be connected to us
@@ -5692,11 +5704,13 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 				}
 			}
 
+#ifdef ENABLE_AVDECC_FEATURE_CBR
 			// Channel Connections - Update entity that have connections to our Stream Outputs
 			if (configNode != nullptr)
 			{
 				computeAndUpdateChannelConnectionsFromConfigurationNode(*entity, entityID, *controlledEntityConfigurationNode, configNode->channelConnections);
 			}
+#endif // ENABLE_AVDECC_FEATURE_CBR
 		}
 	}
 }
@@ -7081,6 +7095,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 						}
 					}
 
+#ifdef ENABLE_AVDECC_FEATURE_CBR
 					// Run the channel connection updates
 					{
 						auto* const configurationNode = listener.getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
@@ -7106,6 +7121,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 							}
 						}
 					}
+#endif // ENABLE_AVDECC_FEATURE_CBR
 				}
 
 				// Check for Diagnostics - Latency Error - Reset Error if stream is not connected

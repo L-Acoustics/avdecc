@@ -93,6 +93,7 @@ enum class CompileOption : std::uint32_t
 	EnableRedundancy = 1u << 15,
 	Strict2018Redundancy = 1u << 16,
 	EnableJsonSupport = 1u << 17,
+	EnableCBRSupport = 1u << 18,
 };
 using CompileOptions = utils::EnumBitfield<CompileOption>;
 

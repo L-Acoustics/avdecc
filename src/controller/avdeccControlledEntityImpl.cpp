@@ -326,8 +326,12 @@ entity::model::ConfigurationIndex ControlledEntityImpl::getCurrentConfigurationI
 
 model::ChannelConnections const& ControlledEntityImpl::getChannelConnections() const
 {
+#ifndef ENABLE_AVDECC_FEATURE_CBR
+	throw Exception(Exception::Type::NotSupported, "Channel Base Routing feature not enabled in this build");
+#else // ENABLE_AVDECC_FEATURE_CBR
 	auto const& configNode = getCurrentConfigurationNode();
 	return configNode.channelConnections;
+#endif // ENABLE_AVDECC_FEATURE_CBR
 }
 
 model::EntityNode const& ControlledEntityImpl::getEntityNode() const
