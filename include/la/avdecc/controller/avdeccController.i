@@ -90,6 +90,34 @@
 	%rename("%s") la::avdecc::controller::model::name##Node; // Unignore class
 	// DO NOT extend the struct with copy-constructor (we don't want to copy the full hierarchy, and also there is no default constructor)
 %enddef
+%define DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(name)
+	%nspace la::avdecc::controller::model::name;
+	%rename("%s") la::avdecc::controller::model::name; // Unignore struct
+	%ignore la::avdecc::controller::model::name::operator bool() const noexcept; // Ignore, don't need it (already have isValid() method)
+	%rename("isEqual") operator==(name const& lhs, name const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
+	%rename("isDifferent") operator!=(name const& lhs, name const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
+	// Extend the class
+	%extend la::avdecc::controller::model::name
+	{
+		// Add default constructor
+		name()
+		{
+			return new la::avdecc::controller::model::name();
+		}
+		// Add a copy-constructor
+		name(la::avdecc::controller::model::name const& other)
+		{
+			return new la::avdecc::controller::model::name(other);
+		}
+#if defined(SWIGCSHARP)
+		// Provide a more native Equals() method
+		bool Equals(la::avdecc::controller::model::name const& other) const noexcept
+		{
+			return *$self == other;
+		}
+#endif
+	}
+%enddef
 
 // Bind enums
 DEFINE_ENUM_CLASS(la::avdecc::controller::model::AcquireState, "byte")
@@ -113,6 +141,9 @@ DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::DefaultedEntityModelVisitor
 %ignore la::avdecc::controller::model::DefaultedEntityModelVisitor::operator=; // Ignore assignment operator
 
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(MediaClockChain)
+DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(StreamChannelIdentification)
+DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(ClusterIdentification)
+DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(ChannelIdentification)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE()
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(EntityModel)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Virtual)
@@ -172,6 +203,7 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Entity)
 %template(RedundantStreamOutputNodeMap) std::map<la::avdecc::controller::model::VirtualIndex, la::avdecc::controller::model::RedundantStreamOutputNode>;
 %template(ConfigurationNodeMap) std::map<la::avdecc::entity::model::ConfigurationIndex, la::avdecc::controller::model::ConfigurationNode>;
 %template(MediaClockChainDeque) std::deque<la::avdecc::controller::model::MediaClockChainNode>;
+%template(ChannelConnectionMap) std::unordered_map<la::avdecc::controller::model::ClusterIdentification, la::avdecc::controller::model::ChannelIdentification, la::avdecc::controller::model::ClusterIdentification::Hash>;
 
 
 ////////////////////////////////////////
