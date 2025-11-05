@@ -5771,81 +5771,69 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 		}
 	}
 
-	// Update all entities for which the chain has a node for that departing entity
+	// Lock to protect _controlledEntities
+	auto const lg = std::lock_guard{ _lock };
+
+	// Update all other entities that may be affected by this departing entity
+	// - Media Clock Chain: entities that have a chain node on the departing entity
+	// - Channel Connections: listeners that are connected to this departing talker
+	for (auto& [eid, entity] : _controlledEntities)
 	{
-		// Lock to protect _controlledEntities
-		auto const lg = std::lock_guard{ _lock };
-
-		for (auto& [eid, entity] : _controlledEntities)
+		// Don't process self (departing entity), not advertised entities, non AEM, without configuration, nor different virtual/physical kind
+		if (eid == entityID || !entity->wasAdvertised() || !entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) || !entity->hasAnyConfiguration() || isVirtualEntity != entity->isVirtual())
 		{
-			if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
+			continue;
+		}
+
+		auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+		if (configNode == nullptr)
+		{
+			continue;
+		}
+
+		// Media Clock Chain - Update entities for which the chain has a node on the departing entity
+		for (auto& clockDomainKV : configNode->clockDomains)
+		{
+			auto& clockDomainNode = clockDomainKV.second;
+			// Check if the chain has a node on that departing entity
+			for (auto nodeIt = clockDomainNode.mediaClockChain.begin(); nodeIt != clockDomainNode.mediaClockChain.end(); ++nodeIt)
 			{
-				auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-				if (configNode != nullptr)
+				if (nodeIt->entityID == entityID)
 				{
-					for (auto& clockDomainKV : configNode->clockDomains)
-					{
-						auto& clockDomainNode = clockDomainKV.second;
-						// Check if the chain has a node on that departing entity
-						for (auto nodeIt = clockDomainNode.mediaClockChain.begin(); nodeIt != clockDomainNode.mediaClockChain.end(); ++nodeIt)
-						{
-							if (nodeIt->entityID == entityID)
-							{
-								// Save the domain/stream indexes, we'll continue from it
-								auto const continueDomainIndex = nodeIt->clockDomainIndex;
-								auto const continueStreamOutputIndex = nodeIt->streamOutputIndex;
+					// Save the domain/stream indexes, we'll continue from it
+					auto const continueDomainIndex = nodeIt->clockDomainIndex;
+					auto const continueStreamOutputIndex = nodeIt->streamOutputIndex;
 
-								// Remove this node and all following nodes
-								clockDomainNode.mediaClockChain.erase(nodeIt, clockDomainNode.mediaClockChain.end());
+					// Remove this node and all following nodes
+					clockDomainNode.mediaClockChain.erase(nodeIt, clockDomainNode.mediaClockChain.end());
 
-								// Update the chain starting from this entity
-								computeAndUpdateMediaClockChain(*entity, clockDomainNode, entityID, continueDomainIndex, continueStreamOutputIndex, {});
-								break;
-							}
-						}
-					}
+					// Update the chain starting from this entity
+					computeAndUpdateMediaClockChain(*entity, clockDomainNode, entityID, continueDomainIndex, continueStreamOutputIndex, {});
+					break;
 				}
 			}
 		}
-	}
 
 #ifdef ENABLE_AVDECC_FEATURE_CBR
-	// Update channel connections for all listeners that were connected to this departing talker
-	{
-		// Lock to protect _controlledEntities
-		auto const lg = std::lock_guard{ _lock };
-
-		for (auto& [eid, entity] : _controlledEntities)
+		// Channel Connections - Update channel connections for listeners that were connected to this departing talker
+		if (entity->getEntity().getListenerCapabilities().test(entity::ListenerCapability::Implemented))
 		{
-			// Skip the departing entity itself
-			if (eid == entityID)
+			// Check all channel connections in this listener
+			for (auto& [clusterIdentification, channelIdentification] : configNode->channelConnections)
 			{
-				continue;
-			}
-
-			if (entity->wasAdvertised() && entity->getEntity().getListenerCapabilities().test(entity::ListenerCapability::Implemented) && isAemSupported && entity->hasAnyConfiguration())
-			{
-				auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-				if (configNode != nullptr)
+				// If this channel is connected to the departing talker
+				if (channelIdentification.streamIdentification.entityID == entityID)
 				{
-					// Check all channel connections in this listener
-					for (auto& [clusterIdentification, channelIdentification] : configNode->channelConnections)
-					{
-						// If this channel is connected to the departing talker
-						if (channelIdentification.streamIdentification.entityID == entityID)
-						{
-							// Clear the talker mapping information (since we can't query the offline talker anymore)
-							channelIdentification.clusterIdentification = model::ClusterIdentification{};
+					// Clear the talker mapping information (since we can't query the offline talker anymore)
+					channelIdentification.clusterIdentification = model::ClusterIdentification{};
 
-							// Notify observers of the channel connection change
-							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onChannelInputConnectionChanged, this, entity.get(), clusterIdentification, channelIdentification);
-						}
-					}
+					// Notify observers of the channel connection change
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onChannelInputConnectionChanged, this, entity.get(), clusterIdentification, channelIdentification);
 				}
 			}
 		}
-	}
 #endif // ENABLE_AVDECC_FEATURE_CBR
+	}
 }
 
 /* This method handles Milan Requirements when a command is not supported by the entity, removing associated compatibility flag. */
