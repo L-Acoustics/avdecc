@@ -189,6 +189,42 @@ constexpr bool operator!=(ClusterIdentification const& lhs, ClusterIdentificatio
 	return !(lhs == rhs);
 }
 
+/** Channel Connection Identification (Listener mapping, Talker connection, Talker mapping) */
+struct ChannelConnectionIdentification
+{
+	StreamChannelIdentification streamChannelIdentification{}; // Stream channel identification of the listener channel or !isValid() if no listener mapping
+	entity::model::StreamIdentification streamIdentification{}; // Stream identification of the talker channel or invalid entityID if no talker connected
+	ClusterIdentification clusterIdentification{}; // Cluster identification of the talker channel or !isValid() if no talker connected or no talker mapping
+
+	/** Returns true if the ChannelConnectionIdentification is valid. */
+	constexpr bool isValid() const noexcept
+	{
+		return streamChannelIdentification.isValid() && streamIdentification.entityID.isValid() && clusterIdentification.isValid();
+	}
+
+	/** Explicit bool operator to check validity (equivalent to isValid()). */
+	explicit constexpr operator bool() const noexcept
+	{
+		return isValid();
+	}
+
+	/** Returns true if the channel is fully connected (has a listener mapping, a talker connected, and a talker mapping). */
+	constexpr bool isConnected() const noexcept
+	{
+		return streamChannelIdentification.isValid() && streamIdentification.entityID.isValid() && clusterIdentification.isValid();
+	}
+};
+
+constexpr bool operator==(ChannelConnectionIdentification const& lhs, ChannelConnectionIdentification const& rhs) noexcept
+{
+	return (lhs.streamChannelIdentification == rhs.streamChannelIdentification) && (lhs.streamIdentification == rhs.streamIdentification) && (lhs.clusterIdentification == rhs.clusterIdentification);
+}
+
+constexpr bool operator!=(ChannelConnectionIdentification const& lhs, ChannelConnectionIdentification const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
 /** Channel Identification (EntityID/ClusterIdentification pair) */
 struct ChannelIdentification
 {

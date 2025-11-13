@@ -5228,3 +5228,241 @@ TEST(Controller, GetMappingForStreamChannelIdentification_MultipleStaticMappings
 	EXPECT_EQ(1u, mapping3Result->clusterOffset);
 	EXPECT_EQ(0u, mapping3Result->clusterChannel);
 }
+
+// Tests for ChannelConnectionIdentification struct
+TEST(ChannelConnectionIdentification, DefaultConstructor_IsInvalid)
+{
+	auto channelConnection = la::avdecc::controller::model::ChannelConnectionIdentification{};
+
+	EXPECT_FALSE(channelConnection.isValid());
+	EXPECT_FALSE(static_cast<bool>(channelConnection));
+	EXPECT_FALSE(channelConnection.isConnected());
+}
+
+TEST(ChannelConnectionIdentification, OnlyListenerMapping_IsInvalid)
+{
+	auto channelConnection = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection.streamChannelIdentification.streamChannel = 2u;
+	// streamIdentification and clusterIdentification remain invalid
+
+	EXPECT_FALSE(channelConnection.isValid());
+	EXPECT_FALSE(static_cast<bool>(channelConnection));
+	EXPECT_FALSE(channelConnection.isConnected());
+}
+
+TEST(ChannelConnectionIdentification, OnlyTalkerConnection_IsInvalid)
+{
+	auto channelConnection = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 0u };
+	// streamChannelIdentification and clusterIdentification remain invalid
+
+	EXPECT_FALSE(channelConnection.isValid());
+	EXPECT_FALSE(static_cast<bool>(channelConnection));
+	EXPECT_FALSE(channelConnection.isConnected());
+}
+
+TEST(ChannelConnectionIdentification, OnlyTalkerMapping_IsInvalid)
+{
+	auto channelConnection = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 0u };
+	channelConnection.clusterIdentification.clusterChannel = 1u;
+	// streamChannelIdentification and streamIdentification remain invalid
+
+	EXPECT_FALSE(channelConnection.isValid());
+	EXPECT_FALSE(static_cast<bool>(channelConnection));
+	EXPECT_FALSE(channelConnection.isConnected());
+}
+
+TEST(ChannelConnectionIdentification, ListenerAndTalkerConnection_NoTalkerMapping_IsInvalid)
+{
+	auto channelConnection = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection.streamChannelIdentification.streamChannel = 2u;
+	channelConnection.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 0u };
+	// clusterIdentification remains invalid
+
+	EXPECT_FALSE(channelConnection.isValid());
+	EXPECT_FALSE(static_cast<bool>(channelConnection));
+	EXPECT_FALSE(channelConnection.isConnected());
+}
+
+TEST(ChannelConnectionIdentification, FullyConnected_IsValid)
+{
+	auto channelConnection = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection.streamChannelIdentification.streamChannel = 2u;
+	channelConnection.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
+	channelConnection.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection.clusterIdentification.clusterChannel = 5u;
+
+	EXPECT_TRUE(channelConnection.isValid());
+	EXPECT_TRUE(static_cast<bool>(channelConnection));
+	EXPECT_TRUE(channelConnection.isConnected());
+}
+
+TEST(ChannelConnectionIdentification, EqualityOperator_SameValues)
+{
+	auto channelConnection1 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection1.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection1.streamChannelIdentification.streamChannel = 2u;
+	channelConnection1.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection1.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
+	channelConnection1.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection1.clusterIdentification.clusterChannel = 5u;
+
+	auto channelConnection2 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection2.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection2.streamChannelIdentification.streamChannel = 2u;
+	channelConnection2.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection2.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
+	channelConnection2.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection2.clusterIdentification.clusterChannel = 5u;
+
+	EXPECT_EQ(channelConnection1, channelConnection2);
+	EXPECT_FALSE(channelConnection1 != channelConnection2);
+}
+
+TEST(ChannelConnectionIdentification, EqualityOperator_DifferentListenerStreamIndex)
+{
+	auto channelConnection1 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection1.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection1.streamChannelIdentification.streamChannel = 2u;
+	channelConnection1.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection1.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
+	channelConnection1.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection1.clusterIdentification.clusterChannel = 5u;
+
+	auto channelConnection2 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection2.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 99u }; // Different listener stream index
+	channelConnection2.streamChannelIdentification.streamChannel = 2u;
+	channelConnection2.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection2.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
+	channelConnection2.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection2.clusterIdentification.clusterChannel = 5u;
+
+	EXPECT_NE(channelConnection1, channelConnection2);
+	EXPECT_TRUE(channelConnection1 != channelConnection2);
+}
+
+TEST(ChannelConnectionIdentification, EqualityOperator_DifferentListenerStreamChannel)
+{
+	auto channelConnection1 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection1.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection1.streamChannelIdentification.streamChannel = 2u;
+	channelConnection1.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection1.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
+	channelConnection1.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection1.clusterIdentification.clusterChannel = 5u;
+
+	auto channelConnection2 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection2.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection2.streamChannelIdentification.streamChannel = 99u; // Different listener stream channel
+	channelConnection2.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection2.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
+	channelConnection2.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection2.clusterIdentification.clusterChannel = 5u;
+
+	EXPECT_NE(channelConnection1, channelConnection2);
+	EXPECT_TRUE(channelConnection1 != channelConnection2);
+}
+
+TEST(ChannelConnectionIdentification, EqualityOperator_DifferentTalkerEntityID)
+{
+	auto channelConnection1 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection1.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection1.streamChannelIdentification.streamChannel = 2u;
+	channelConnection1.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection1.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
+	channelConnection1.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection1.clusterIdentification.clusterChannel = 5u;
+
+	auto channelConnection2 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection2.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection2.streamChannelIdentification.streamChannel = 2u;
+	channelConnection2.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050608 }; // Different talker entity ID
+	channelConnection2.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
+	channelConnection2.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection2.clusterIdentification.clusterChannel = 5u;
+
+	EXPECT_NE(channelConnection1, channelConnection2);
+	EXPECT_TRUE(channelConnection1 != channelConnection2);
+}
+
+TEST(ChannelConnectionIdentification, EqualityOperator_DifferentTalkerStreamIndex)
+{
+	auto channelConnection1 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection1.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection1.streamChannelIdentification.streamChannel = 2u;
+	channelConnection1.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection1.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
+	channelConnection1.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection1.clusterIdentification.clusterChannel = 5u;
+
+	auto channelConnection2 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection2.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection2.streamChannelIdentification.streamChannel = 2u;
+	channelConnection2.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection2.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 99u }; // Different talker stream index
+	channelConnection2.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection2.clusterIdentification.clusterChannel = 5u;
+
+	EXPECT_NE(channelConnection1, channelConnection2);
+	EXPECT_TRUE(channelConnection1 != channelConnection2);
+}
+
+TEST(ChannelConnectionIdentification, EqualityOperator_DifferentClusterIndex)
+{
+	auto channelConnection1 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection1.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection1.streamChannelIdentification.streamChannel = 2u;
+	channelConnection1.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection1.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
+	channelConnection1.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection1.clusterIdentification.clusterChannel = 5u;
+
+	auto channelConnection2 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection2.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection2.streamChannelIdentification.streamChannel = 2u;
+	channelConnection2.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection2.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
+	channelConnection2.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 99u }; // Different cluster index
+	channelConnection2.clusterIdentification.clusterChannel = 5u;
+
+	EXPECT_NE(channelConnection1, channelConnection2);
+	EXPECT_TRUE(channelConnection1 != channelConnection2);
+}
+
+TEST(ChannelConnectionIdentification, EqualityOperator_DifferentClusterChannel)
+{
+	auto channelConnection1 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection1.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection1.streamChannelIdentification.streamChannel = 2u;
+	channelConnection1.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection1.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
+	channelConnection1.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection1.clusterIdentification.clusterChannel = 5u;
+
+	auto channelConnection2 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	channelConnection2.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
+	channelConnection2.streamChannelIdentification.streamChannel = 2u;
+	channelConnection2.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	channelConnection2.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
+	channelConnection2.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection2.clusterIdentification.clusterChannel = 99u; // Different cluster channel
+
+	EXPECT_NE(channelConnection1, channelConnection2);
+	EXPECT_TRUE(channelConnection1 != channelConnection2);
+}
+
+TEST(ChannelConnectionIdentification, EqualityOperator_BothInvalid)
+{
+	auto channelConnection1 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+	auto channelConnection2 = la::avdecc::controller::model::ChannelConnectionIdentification{};
+
+	EXPECT_EQ(channelConnection1, channelConnection2);
+	EXPECT_FALSE(channelConnection1 != channelConnection2);
+}
