@@ -128,6 +128,7 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::model::MediaClockChainNode::Status, "b
 // Define optionals
 %optional(la::avdecc::entity::model::MilanInfo)
 %optional(la::avdecc::entity::model::MilanDynamicState)
+%optional(la::avdecc::controller::model::ChannelConnectionIdentification)
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -143,6 +144,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::DefaultedEntityModelVisitor
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(MediaClockChain)
 DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(StreamChannelIdentification)
 DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(ClusterIdentification)
+DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(ChannelConnectionIdentification)
 DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(ChannelIdentification)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE()
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(EntityModel)
