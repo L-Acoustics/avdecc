@@ -51,9 +51,6 @@
 #define LA_AVDECC_TYPE_INFO_EXPORT
 #define LA_AVDECC_CALL_CONVENTION
 
-// Other defines
-#define ENABLE_AVDECC_FEATURE_REDUNDANCY 1
-
 #if defined(SWIGCSHARP)
 // Marshal all std::string as UTF8Str
 %typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"

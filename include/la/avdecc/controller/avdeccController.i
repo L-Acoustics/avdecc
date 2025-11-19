@@ -159,9 +159,11 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(AudioUnit)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Stream)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(StreamInput)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(StreamOutput)
+#if defined(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(RedundantStream)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(RedundantStreamInput)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(RedundantStreamOutput)
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Jack)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(JackInput)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(JackOutput)
@@ -201,8 +203,10 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Entity)
 %template(TimingNodeMap) std::map<la::avdecc::entity::model::TimingIndex, la::avdecc::controller::model::TimingNode>;
 %template(PtpInstanceNodeMap) std::map<la::avdecc::entity::model::PtpInstanceIndex, la::avdecc::controller::model::PtpInstanceNode>;
 %template(PtpPortNodeMap) std::map<la::avdecc::entity::model::PtpPortIndex, la::avdecc::controller::model::PtpPortNode>;
+#if defined(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 %template(RedundantStreamInputNodeMap) std::map<la::avdecc::controller::model::VirtualIndex, la::avdecc::controller::model::RedundantStreamInputNode>;
 %template(RedundantStreamOutputNodeMap) std::map<la::avdecc::controller::model::VirtualIndex, la::avdecc::controller::model::RedundantStreamOutputNode>;
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 %template(ConfigurationNodeMap) std::map<la::avdecc::entity::model::ConfigurationIndex, la::avdecc::controller::model::ConfigurationNode>;
 %template(MediaClockChainDeque) std::deque<la::avdecc::controller::model::MediaClockChainNode>;
 %template(ChannelConnectionMap) std::unordered_map<la::avdecc::controller::model::ClusterIdentification, la::avdecc::controller::model::ChannelIdentification, la::avdecc::controller::model::ClusterIdentification::Hash>;
@@ -285,8 +289,10 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity::CompatibilityFlag, "
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getAudioUnitNode;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamInputNode;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamOutputNode;
+#if defined(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getRedundantStreamInputNode;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getRedundantStreamOutputNode;
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getJackInputNode;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getJackOutputNode;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getAvbInterfaceNode;

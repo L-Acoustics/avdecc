@@ -5072,13 +5072,15 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 				return std::make_pair(avnuAudioCapableStreams, avnuCrfCapableStreams);
 			};
 
-			auto const countCapableStreamsForDomain = [](auto const& streams, auto const& redundantStreams, auto const& capableStreams, auto const domainIndex)
+			auto const countCapableStreamsForDomain = [](auto const& streams, auto const& capableStreams, auto const domainIndex)
 			{
 				auto countStreams = 0u;
 				// Process non-redundant streams
 				for (auto const& [streamIndex, streamNode] : streams)
 				{
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					if (!streamNode.isRedundant)
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 					{
 						if (streamNode.staticModel.clockDomainIndex == domainIndex)
 						{
@@ -5089,6 +5091,13 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 						}
 					}
 				}
+				return countStreams;
+			};
+
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+			auto const countCapableRedundantStreamsForDomain = [](auto const& streams, auto const& redundantStreams, auto const& capableStreams, auto const domainIndex)
+			{
+				auto countStreams = 0u;
 				// Process redundant streams
 				for (auto const& [virtualIndex, redundantStreamNode] : redundantStreams)
 				{
@@ -5107,6 +5116,7 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 				}
 				return countStreams;
 			};
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 			// Milan devices AEM validation
 			if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
@@ -5149,9 +5159,14 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 					// Validate CRF requirements for domains
 					for (auto const& [domainIndex, domainNode] : configurationNode.clockDomains)
 					{
-						auto const avnuAudioInputStreamsForDomain = countCapableStreamsForDomain(configurationNode.streamInputs, configurationNode.redundantStreamInputs, avnuAudioInputStreams, domainIndex);
-						auto const avnuCrfInputStreamsForDomain = countCapableStreamsForDomain(configurationNode.streamInputs, configurationNode.redundantStreamInputs, avnuCrfInputStreams, domainIndex);
-						auto const avnuCrfOutputStreamsForDomain = countCapableStreamsForDomain(configurationNode.streamOutputs, configurationNode.redundantStreamOutputs, avnuCrfOutputStreams, domainIndex);
+						auto avnuAudioInputStreamsForDomain = countCapableStreamsForDomain(configurationNode.streamInputs, avnuAudioInputStreams, domainIndex);
+						auto avnuCrfInputStreamsForDomain = countCapableStreamsForDomain(configurationNode.streamInputs, avnuCrfInputStreams, domainIndex);
+						auto avnuCrfOutputStreamsForDomain = countCapableStreamsForDomain(configurationNode.streamOutputs, avnuCrfOutputStreams, domainIndex);
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+						avnuAudioInputStreamsForDomain += countCapableRedundantStreamsForDomain(configurationNode.streamInputs, configurationNode.redundantStreamInputs, avnuAudioInputStreams, domainIndex);
+						avnuCrfInputStreamsForDomain += countCapableRedundantStreamsForDomain(configurationNode.streamInputs, configurationNode.redundantStreamInputs, avnuCrfInputStreams, domainIndex);
+						avnuCrfOutputStreamsForDomain += countCapableRedundantStreamsForDomain(configurationNode.streamOutputs, configurationNode.redundantStreamOutputs, avnuCrfOutputStreams, domainIndex);
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 						if (isAVnuAudioMediaListener)
 						{
 							if (avnuAudioInputStreamsForDomain >= 2)

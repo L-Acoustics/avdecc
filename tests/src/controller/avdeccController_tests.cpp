@@ -3226,30 +3226,32 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchClockSource)
 }
 
 #ifdef ENABLE_AVDECC_FEATURE_CBR
-static auto constexpr Entity05_R = la::avdecc::UniqueIdentifier{ 0x0000000000000005 }; // 12X Redundant
-static auto constexpr Entity06_R = la::avdecc::UniqueIdentifier{ 0x0000000000000006 }; // P1 Redundant
-static auto constexpr Entity07_R = la::avdecc::UniqueIdentifier{ 0x0000000000000007 }; // 12X Redundant - Connected to Entity08_R - RedundantListenerMappings_Identity_One set
-static auto constexpr Entity08_R = la::avdecc::UniqueIdentifier{ 0x0000000000000008 }; // P1 Redundant - RedundantTalkerMappings_Identity_One set
 static auto const Mappings_Identity_One = la::avdecc::entity::model::AudioMappings{ la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } } };
 static auto const Mappings_Identity_Two = la::avdecc::entity::model::AudioMappings{ la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } }, la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint16_t{ 1u }, la::avdecc::entity::model::ClusterIndex{ 1u }, std::uint16_t{ 0u } } };
-static auto const RedundantListenerMappings_Identity_One = la::avdecc::entity::model::AudioMappings{ la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } }, la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 1u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } } };
-static auto const RedundantTalkerMappings_Identity_One = la::avdecc::entity::model::AudioMappings{ la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } }, la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 2u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } } };
 static auto constexpr ListenerClusterIdentification = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } };
 static auto constexpr ListenerClusterIdentification2 = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 1u }, std::uint16_t{ 0u } };
 static auto constexpr TalkerClusterIdentification = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 80u }, std::uint16_t{ 0u } };
 static auto constexpr TalkerClusterIdentification2 = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 81u }, std::uint16_t{ 0u } };
-static auto constexpr RedundantTalkerClusterIdentification = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 8u }, std::uint16_t{ 0u } };
 static auto constexpr TalkerStreamIdentification = la::avdecc::entity::model::StreamIdentification{ Entity02, 0u };
 static auto constexpr TalkerStreamIdentification4 = la::avdecc::entity::model::StreamIdentification{ Entity04, 0u };
+static auto constexpr ListenerStreamIdentification = la::avdecc::entity::model::StreamIdentification{ Entity01, 0u };
+#	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+static auto constexpr Entity05_R = la::avdecc::UniqueIdentifier{ 0x0000000000000005 }; // 12X Redundant
+static auto constexpr Entity06_R = la::avdecc::UniqueIdentifier{ 0x0000000000000006 }; // P1 Redundant
+static auto constexpr Entity07_R = la::avdecc::UniqueIdentifier{ 0x0000000000000007 }; // 12X Redundant - Connected to Entity08_R - RedundantListenerMappings_Identity_One set
+static auto constexpr Entity08_R = la::avdecc::UniqueIdentifier{ 0x0000000000000008 }; // P1 Redundant - RedundantTalkerMappings_Identity_One set
+static auto const RedundantListenerMappings_Identity_One = la::avdecc::entity::model::AudioMappings{ la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } }, la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 1u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } } };
+static auto const RedundantTalkerMappings_Identity_One = la::avdecc::entity::model::AudioMappings{ la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 0u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } }, la::avdecc::entity::model::AudioMapping{ la::avdecc::entity::model::StreamIndex{ 2u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ClusterIndex{ 0u }, std::uint16_t{ 0u } } };
+static auto constexpr RedundantTalkerClusterIdentification = la::avdecc::controller::model::ClusterIdentification{ la::avdecc::entity::model::ClusterIndex{ 8u }, std::uint16_t{ 0u } };
 static auto constexpr TalkerPrimaryStreamIdentification6 = la::avdecc::entity::model::StreamIdentification{ Entity06_R, 0u };
 static auto constexpr TalkerSecondaryStreamIdentification6 = la::avdecc::entity::model::StreamIdentification{ Entity06_R, 2u };
 static auto constexpr TalkerPrimaryStreamIdentification8 = la::avdecc::entity::model::StreamIdentification{ Entity08_R, 0u };
 static auto constexpr TalkerSecondaryStreamIdentification8 = la::avdecc::entity::model::StreamIdentification{ Entity08_R, 2u };
-static auto constexpr ListenerStreamIdentification = la::avdecc::entity::model::StreamIdentification{ Entity01, 0u };
 static auto constexpr ListenerPrimaryStreamIdentification5 = la::avdecc::entity::model::StreamIdentification{ Entity05_R, 0u };
 static auto constexpr ListenerSecondaryStreamIdentification5 = la::avdecc::entity::model::StreamIdentification{ Entity05_R, 1u };
 static auto constexpr ListenerPrimaryStreamIdentification7 = la::avdecc::entity::model::StreamIdentification{ Entity07_R, 0u };
 static auto constexpr ListenerSecondaryStreamIdentification7 = la::avdecc::entity::model::StreamIdentification{ Entity07_R, 1u };
+#	endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 #endif // ENABLE_AVDECC_FEATURE_CBR
 
 namespace
