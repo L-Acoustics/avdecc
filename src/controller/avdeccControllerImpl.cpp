@@ -1805,21 +1805,67 @@ void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImp
 		if (configurationNode != nullptr)
 		{
 			auto const* const staticModel = controlledEntity.getModelAccessStrategy().getStreamPortInputNodeStaticModel(configurationNode->descriptorIndex, streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-			if (staticModel != nullptr)
+			auto const* const dynamicModel = controlledEntity.getModelAccessStrategy().getStreamPortInputNodeDynamicModel(configurationNode->descriptorIndex, streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			if (staticModel != nullptr && dynamicModel != nullptr)
 			{
 				// Lock to protect _controlledEntities
 				auto const lg = std::lock_guard{ _lock };
 
-				for (auto const& mapping : mappings)
+				// Get the complete list of mappings (now includes the added ones)
+				auto const& allMappings = dynamicModel->dynamicAudioMap;
+
+				// Track processed cluster+channel combinations to avoid duplicates
+				auto processedClusters = std::unordered_set<model::ClusterIdentification, model::ClusterIdentification::Hash>{};
+
+				for (auto const& addedMapping : mappings)
 				{
-					auto const globalClusterIndex = static_cast<entity::model::ClusterIndex>(staticModel->baseCluster + mapping.clusterOffset);
-					auto const clusterIdentification = model::ClusterIdentification{ globalClusterIndex, mapping.clusterChannel };
-					// Get the matching ChannelConnection (should exist)
+					auto const globalClusterIndex = static_cast<entity::model::ClusterIndex>(staticModel->baseCluster + addedMapping.clusterOffset);
+					auto const clusterIdentification = model::ClusterIdentification{ globalClusterIndex, addedMapping.clusterChannel };
+
+					// Skip if we already processed this cluster+channel combination
+					if (processedClusters.count(clusterIdentification) > 0)
+					{
+						continue;
+					}
+					processedClusters.insert(clusterIdentification);
+
+					// Check if the added mapping stream has a redundant partner
+					auto const redundantIndex = controlledEntity.getRedundantStreamInputIndex(addedMapping.streamIndex);
+					auto primaryMapping = std::optional<entity::model::AudioMapping>{};
+					auto secondaryMapping = std::optional<entity::model::AudioMapping>{};
+
+					if (redundantIndex)
+					{
+						// This is a redundant stream - need to find both primary and secondary mappings
+						for (auto const& mapping : allMappings)
+						{
+							if (mapping.clusterOffset == addedMapping.clusterOffset && mapping.clusterChannel == addedMapping.clusterChannel)
+							{
+								// Determine if it's primary or secondary
+								if (controlledEntity.isRedundantPrimaryStreamInput(mapping.streamIndex))
+								{
+									primaryMapping = mapping;
+								}
+								else
+								{
+									secondaryMapping = mapping;
+								}
+							}
+						}
+					}
+					else
+					{
+						// Non-redundant stream, treat as primary
+						primaryMapping = addedMapping;
+					}
+
+					// Get the matching ChannelConnection (should exist) and update it
 					auto const channelConnIt = configurationNode->channelConnections.find(clusterIdentification);
 					if (AVDECC_ASSERT_WITH_RET(channelConnIt != configurationNode->channelConnections.end(), "Failed to find ChannelConnection for updated StreamPortInput AudioMapping"))
 					{
 						auto& channelConnection = channelConnIt->second;
-						computeAndUpdateChannelConnectionFromListenerMapping(controlledEntity, *configurationNode, clusterIdentification, mapping, channelConnection);
+						auto const mappingsInfo = std::make_tuple(!!redundantIndex, primaryMapping, secondaryMapping);
+						computeAndUpdateChannelConnectionFromListenerMapping(controlledEntity, *configurationNode, clusterIdentification, mappingsInfo, channelConnection);
 					}
 				}
 			}
@@ -1847,21 +1893,72 @@ void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityI
 		if (configurationNode != nullptr)
 		{
 			auto const* const staticModel = controlledEntity.getModelAccessStrategy().getStreamPortInputNodeStaticModel(configurationNode->descriptorIndex, streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-			if (staticModel != nullptr)
+			auto const* const dynamicModel = controlledEntity.getModelAccessStrategy().getStreamPortInputNodeDynamicModel(configurationNode->descriptorIndex, streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			if (staticModel != nullptr && dynamicModel != nullptr)
 			{
 				// Lock to protect _controlledEntities
 				auto const lg = std::lock_guard{ _lock };
 
-				for (auto const& mapping : mappings)
+				// Get the current list of mappings (after removal)
+				auto const& remainingMappings = dynamicModel->dynamicAudioMap;
+
+				// Track processed cluster+channel combinations to avoid duplicates
+				auto processedClusters = std::unordered_set<model::ClusterIdentification, model::ClusterIdentification::Hash>{};
+
+				for (auto const& removedMapping : mappings)
 				{
-					auto const globalClusterIndex = static_cast<entity::model::ClusterIndex>(staticModel->baseCluster + mapping.clusterOffset);
-					auto const clusterIdentification = model::ClusterIdentification{ globalClusterIndex, mapping.clusterChannel };
-					// Get the matching ChannelConnection (should exist)
+					auto const globalClusterIndex = static_cast<entity::model::ClusterIndex>(staticModel->baseCluster + removedMapping.clusterOffset);
+					auto const clusterIdentification = model::ClusterIdentification{ globalClusterIndex, removedMapping.clusterChannel };
+
+					// Skip if we already processed this cluster+channel combination
+					if (processedClusters.count(clusterIdentification) > 0)
+					{
+						continue;
+					}
+					processedClusters.insert(clusterIdentification);
+
+					// Check if there are still mappings (including redundant state) for this cluster+channel after removal
+					auto redundantIndex = controlledEntity.getRedundantStreamInputIndex(removedMapping.streamIndex);
+					auto primaryMapping = std::optional<entity::model::AudioMapping>{};
+					auto secondaryMapping = std::optional<entity::model::AudioMapping>{};
+
+					// If this is a redundant stream, we need to see if the partner mapping still exists
+					if (redundantIndex)
+					{
+						// Look for remaining mappings for this cluster+channel combination
+						for (auto const& mapping : remainingMappings)
+						{
+							if (mapping.clusterOffset == removedMapping.clusterOffset && mapping.clusterChannel == removedMapping.clusterChannel)
+							{
+								// This is the redundant partner that remains - determine if it's primary or secondary
+								if (controlledEntity.isRedundantPrimaryStreamInput(mapping.streamIndex))
+								{
+									primaryMapping = mapping;
+								}
+								else
+								{
+									secondaryMapping = mapping;
+								}
+								// No need to continue searching
+								break;
+							}
+						}
+						// Neither primary nor secondary mapping found, means both were removed
+						if (!primaryMapping && !secondaryMapping)
+						{
+							// No more mappings for this cluster+channel, clear redundantIndex
+							redundantIndex = std::nullopt;
+						}
+					}
+					// Non-redundant stream, nothing to do as primaryMapping is already empty if removed
+
+					// Get the matching ChannelConnection (should exist) and update it
 					auto const channelConnIt = configurationNode->channelConnections.find(clusterIdentification);
 					if (AVDECC_ASSERT_WITH_RET(channelConnIt != configurationNode->channelConnections.end(), "Failed to find ChannelConnection for updated StreamPortInput AudioMapping"))
 					{
 						auto& channelConnection = channelConnIt->second;
-						computeAndUpdateChannelConnectionFromListenerMapping(controlledEntity, *configurationNode, clusterIdentification, std::nullopt, channelConnection);
+						auto const mappingsInfo = std::make_tuple(!!redundantIndex, primaryMapping, secondaryMapping);
+						computeAndUpdateChannelConnectionFromListenerMapping(controlledEntity, *configurationNode, clusterIdentification, mappingsInfo, channelConnection);
 					}
 				}
 			}
@@ -5145,7 +5242,7 @@ void ControllerImpl::validateEntity(ControlledEntityImpl& controlledEntity) noex
 	checkRedundancyWarningDiagnostics(nullptr, controlledEntity);
 }
 
-std::optional<entity::model::AudioMapping> ControllerImpl::getMappingForClusterIdentification(model::StreamPortNode const& streamPortNode, model::ClusterIdentification const& clusterIdentification) noexcept
+std::tuple<bool, std::optional<entity::model::AudioMapping>, std::optional<entity::model::AudioMapping>> ControllerImpl::getMappingForInputClusterIdentification(model::StreamPortInputNode const& streamPortNode, model::ClusterIdentification const& clusterIdentification, std::function<bool(entity::model::StreamIndex)> const& isRedundantPrimaryStreamInput, std::function<bool(entity::model::StreamIndex)> const& isRedundantSecondaryStreamInput) noexcept
 {
 	auto const baseClusterIndex = streamPortNode.staticModel.baseCluster;
 	auto const numberOfClusters = streamPortNode.staticModel.numberOfClusters;
@@ -5155,35 +5252,62 @@ std::optional<entity::model::AudioMapping> ControllerImpl::getMappingForClusterI
 	// Ensure the clusterIndex is in the valid range for this StreamPort
 	if (!AVDECC_ASSERT_WITH_RET(globalClusterIndex >= baseClusterIndex && globalClusterIndex < static_cast<entity::model::ClusterIndex>(baseClusterIndex + numberOfClusters), "ClusterIndex is out of range for this StreamPort"))
 	{
-		return std::nullopt;
+		return {};
 	}
 
 	// Calculate the clusterOffset (relative to baseCluster)
 	auto const clusterOffset = static_cast<entity::model::ClusterIndex>(globalClusterIndex - baseClusterIndex);
 
-	// Search in static mappings (AudioMaps)
-	for (auto const& [audioMapIndex, audioMapNode] : streamPortNode.audioMaps)
+	// Function to search mappings for redundant pairs
+	auto const searchMappings = [&](entity::model::AudioMappings const& mappings)
 	{
-		for (auto const& mapping : audioMapNode.staticModel.mappings)
+		auto isRedundantMapping = false;
+		auto primaryMapping = std::optional<entity::model::AudioMapping>{};
+		auto secondaryMapping = std::optional<entity::model::AudioMapping>{};
+
+		// Find all mappings with matching cluster offset and channel
+		for (auto const& mapping : mappings)
 		{
 			if (mapping.clusterOffset == clusterOffset && mapping.clusterChannel == clusterChannel)
 			{
-				return mapping;
+				auto const isPrimary = isRedundantPrimaryStreamInput(mapping.streamIndex);
+				auto const isSecondary = isRedundantSecondaryStreamInput(mapping.streamIndex);
+
+				if (isPrimary)
+				{
+					primaryMapping = mapping;
+					isRedundantMapping = true;
+				}
+				else if (isSecondary)
+				{
+					secondaryMapping = mapping;
+					isRedundantMapping = true;
+				}
+				else
+				{
+					// Non-redundant mapping: return in first element (primary), second element remains std::nullopt
+					primaryMapping = mapping;
+					// No need to continue searching
+					break;
+				}
 			}
 		}
-	}
 
-	// Search in dynamic mappings
-	for (auto const& mapping : streamPortNode.dynamicModel.dynamicAudioMap)
+		return std::make_tuple(isRedundantMapping, primaryMapping, secondaryMapping);
+	};
+
+	// Search in static mappings first (AudioMaps) - device can only have static OR dynamic active at a time
+	for (auto const& [audioMapIndex, audioMapNode] : streamPortNode.audioMaps)
 	{
-		if (mapping.clusterOffset == clusterOffset && mapping.clusterChannel == clusterChannel)
+		auto const result = searchMappings(audioMapNode.staticModel.mappings);
+		if (std::get<1>(result).has_value() || std::get<2>(result).has_value())
 		{
-			return mapping;
+			return result;
 		}
 	}
 
-	// No mapping found
-	return std::nullopt;
+	// Search in dynamic mappings - return result directly as it's already {nullopt, nullopt} if nothing found
+	return searchMappings(streamPortNode.dynamicModel.dynamicAudioMap);
 }
 
 std::optional<entity::model::AudioMapping> ControllerImpl::getMappingForStreamChannelIdentification(model::StreamPortNode const& streamPortNode, entity::model::StreamIndex const streamIndex, std::uint16_t const streamChannel) noexcept
@@ -5358,28 +5482,28 @@ void ControllerImpl::computeAndUpdateMediaClockChain(ControlledEntityImpl& contr
 
 #ifdef ENABLE_AVDECC_FEATURE_CBR
 // _lock should be taken when calling this method
-void ControllerImpl::computeAndUpdateChannelConnectionFromStreamIdentification(ControlledEntityImpl& controlledEntity, model::ClusterIdentification const& clusterIdentification, entity::model::StreamIdentification const& streamIdentification, model::ChannelIdentification& channelIdentification, bool const otherChangesToNotify) const noexcept
+bool ControllerImpl::computeAndUpdateChannelConnectionFromStreamIdentification(ControlledEntityImpl& controlledEntity, model::ClusterIdentification const& clusterIdentification, entity::model::StreamIdentification const& streamIdentification, model::ChannelConnectionIdentification& channelConnectionIdentification) const noexcept
 {
-	auto changed = otherChangesToNotify;
+	auto changed = false;
 
-	if (channelIdentification.streamIdentification != streamIdentification)
+	if (channelConnectionIdentification.streamIdentification != streamIdentification)
 	{
 		// Update the Stream Identification
-		channelIdentification.streamIdentification = streamIdentification;
+		channelConnectionIdentification.streamIdentification = streamIdentification;
 		changed = true;
 
 		// If not connected, clear Cluster Identification
-		if (!channelIdentification.streamIdentification.entityID)
+		if (!channelConnectionIdentification.streamIdentification.entityID)
 		{
-			channelIdentification.clusterIdentification = {};
+			channelConnectionIdentification.clusterIdentification = {};
 		}
 		else
 		{
-			auto talkerEntity = getControlledEntityImplGuard(channelIdentification.streamIdentification.entityID);
+			auto talkerEntity = getControlledEntityImplGuard(channelConnectionIdentification.streamIdentification.entityID);
 			if (talkerEntity)
 			{
 				auto* const talkerConfigurationNode = talkerEntity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-				if (talkerConfigurationNode && channelIdentification.streamChannelIdentification)
+				if (talkerConfigurationNode && channelConnectionIdentification.streamChannelIdentification)
 				{
 					// Process all Audio Units
 					for (auto const& [audioUnitIndex, audioUnitNode] : talkerConfigurationNode->audioUnits)
@@ -5387,11 +5511,11 @@ void ControllerImpl::computeAndUpdateChannelConnectionFromStreamIdentification(C
 						// Process all Stream Port Outputs
 						for (auto const& [streamPortIndex, streamPortNode] : audioUnitNode.streamPortOutputs)
 						{
-							auto const talkerMapping = getMappingForStreamChannelIdentification(streamPortNode, channelIdentification.streamIdentification.streamIndex, channelIdentification.streamChannelIdentification.streamChannel);
+							auto const talkerMapping = getMappingForStreamChannelIdentification(streamPortNode, channelConnectionIdentification.streamIdentification.streamIndex, channelConnectionIdentification.streamChannelIdentification.streamChannel);
 							if (talkerMapping)
 							{
 								// We have a mapping, set the Cluster Identification
-								channelIdentification.clusterIdentification = model::ClusterIdentification{ static_cast<entity::model::ClusterIndex>(streamPortNode.staticModel.baseCluster + talkerMapping->clusterOffset), talkerMapping->clusterChannel };
+								channelConnectionIdentification.clusterIdentification = model::ClusterIdentification{ static_cast<entity::model::ClusterIndex>(streamPortNode.staticModel.baseCluster + talkerMapping->clusterOffset), talkerMapping->clusterChannel };
 								break;
 							}
 						}
@@ -5401,7 +5525,76 @@ void ControllerImpl::computeAndUpdateChannelConnectionFromStreamIdentification(C
 		}
 	}
 
-	// Entity was advertised to the user, notify observers
+	return changed;
+}
+
+// _lock should be taken when calling this method
+void ControllerImpl::computeAndUpdateChannelConnectionFromListenerMapping(ControlledEntityImpl& controlledEntity, model::ConfigurationNode const& configurationNode, model::ClusterIdentification const& clusterIdentification, std::tuple<bool, std::optional<entity::model::AudioMapping>, std::optional<entity::model::AudioMapping>> const& audioMappingsInfo, model::ChannelIdentification& channelIdentification) const noexcept
+{
+	auto const updateChannelConnectionIdentification = [this, &controlledEntity, &configurationNode, &clusterIdentification](auto& channelConnectionIdentification, auto const& audioMapping)
+	{
+		auto streamChannelIdentification = model::StreamChannelIdentification{};
+		if (audioMapping)
+		{
+			streamChannelIdentification = model::StreamChannelIdentification{ (*audioMapping).streamIndex, (*audioMapping).streamChannel };
+		}
+
+		if (channelConnectionIdentification.streamChannelIdentification != streamChannelIdentification)
+		{
+			// No mapping anymore, clear all fields
+			if (!streamChannelIdentification.isValid())
+			{
+				channelConnectionIdentification = {};
+			}
+			else
+			{
+				auto const& mapping = *audioMapping;
+
+				// We have a mapping, set the StreamChannel Identification
+				channelConnectionIdentification.streamChannelIdentification = streamChannelIdentification;
+
+				// Update the ChannelConnection based on the current stream mapping
+				if (auto const streamInputNodeIt = configurationNode.streamInputs.find(mapping.streamIndex); streamInputNodeIt != configurationNode.streamInputs.end())
+				{
+					auto const& streamInputNode = streamInputNodeIt->second;
+					auto const& connectionInfo = streamInputNode.dynamicModel.connectionInfo;
+					computeAndUpdateChannelConnectionFromStreamIdentification(controlledEntity, clusterIdentification, connectionInfo.talkerStream, channelConnectionIdentification);
+				}
+			}
+			return true;
+		}
+		return false;
+	};
+
+	auto changed = false;
+
+	// Process single (or primary) mapping
+	auto const& primaryAudioMapping = std::get<1>(audioMappingsInfo);
+
+	changed |= updateChannelConnectionIdentification(channelIdentification.channelConnectionIdentification, primaryAudioMapping);
+
+#	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	auto const isRedundantMapping = std::get<0>(audioMappingsInfo);
+	auto const& secondaryAudioMapping = std::get<2>(audioMappingsInfo);
+	// Check for channelIdentification.secondaryChannelConnectionIdentification creation or deletion
+	if (isRedundantMapping && !channelIdentification.secondaryChannelConnectionIdentification)
+	{
+		channelIdentification.secondaryChannelConnectionIdentification = model::ChannelConnectionIdentification{};
+	}
+	else if (!isRedundantMapping && channelIdentification.secondaryChannelConnectionIdentification)
+	{
+		channelIdentification.secondaryChannelConnectionIdentification = std::nullopt;
+		changed = true;
+	}
+
+	// Process secondary mapping for redundancy, if redundant device
+	if (channelIdentification.secondaryChannelConnectionIdentification)
+	{
+		changed |= updateChannelConnectionIdentification(*channelIdentification.secondaryChannelConnectionIdentification, secondaryAudioMapping);
+	}
+#	endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
+	// Notify if changed
 	if (changed && controlledEntity.wasAdvertised())
 	{
 		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onChannelInputConnectionChanged, this, &controlledEntity, clusterIdentification, channelIdentification);
@@ -5409,75 +5602,55 @@ void ControllerImpl::computeAndUpdateChannelConnectionFromStreamIdentification(C
 }
 
 // _lock should be taken when calling this method
-void ControllerImpl::computeAndUpdateChannelConnectionFromListenerMapping(ControlledEntityImpl& controlledEntity, model::ConfigurationNode const& configurationNode, model::ClusterIdentification const& clusterIdentification, std::optional<entity::model::AudioMapping> const& audioMapping, model::ChannelIdentification& channelIdentification) const noexcept
+void ControllerImpl::computeAndUpdateChannelConnectionsFromTalkerMappings(ControlledEntityImpl& controlledEntity, UniqueIdentifier const& talkerEntityID, entity::model::ClusterIndex const baseClusterIndex, entity::model::AudioMappings const& mappings, model::ChannelConnections& channelConnections, bool const removeMappings) const noexcept
 {
-	auto streamChannelIdentification = model::StreamChannelIdentification{};
-	if (audioMapping)
+	auto const updateChannelConnectionIdentification = [&mappings, baseClusterIndex, removeMappings](auto& channelConnectionIdentification)
 	{
-		streamChannelIdentification = model::StreamChannelIdentification{ (*audioMapping).streamIndex, (*audioMapping).streamChannel };
-	}
-
-	if (channelIdentification.streamChannelIdentification != streamChannelIdentification)
-	{
-		// No mapping anymore, clear all fields
-		if (!streamChannelIdentification.isValid())
+		// Check if any of the mappings relate to the connection (beware we have to convert controlledEntity's clusterIndex to global index using baseClusterIndex)
+		for (auto const& mapping : mappings)
 		{
-			channelIdentification = model::ChannelIdentification{};
+			// This entity has a connection to the mapping's stream index/channel
+			if (channelConnectionIdentification.streamIdentification.streamIndex == mapping.streamIndex && channelConnectionIdentification.streamChannelIdentification.streamChannel == mapping.streamChannel)
+			{
+				auto const globalClusterIndex = static_cast<entity::model::ClusterIndex>(baseClusterIndex + mapping.clusterOffset);
+				auto const talkerClusterId = removeMappings ? model::ClusterIdentification{} : model::ClusterIdentification{ globalClusterIndex, mapping.clusterChannel };
+
+				// Changed
+				if (talkerClusterId != channelConnectionIdentification.clusterIdentification)
+				{
+					// Update the ChannelConnection
+					channelConnectionIdentification.clusterIdentification = talkerClusterId;
+
+					return true;
+				}
+				break;
+			}
+		}
+		return false;
+	};
+
+	for (auto& [clusterIdentification, channelIdentification] : channelConnections)
+	{
+		auto changed = false;
+
+		// This entity has a connection to the controlledEntity
+		if (channelIdentification.channelConnectionIdentification.streamIdentification.entityID == talkerEntityID)
+		{
+			changed |= updateChannelConnectionIdentification(channelIdentification.channelConnectionIdentification);
+		}
+#	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+		// This entity has a secondary connection to the controlledEntity (for redundancy)
+		if (channelIdentification.secondaryChannelConnectionIdentification && channelIdentification.secondaryChannelConnectionIdentification->streamIdentification.entityID == talkerEntityID)
+		{
+			changed |= updateChannelConnectionIdentification(*channelIdentification.secondaryChannelConnectionIdentification);
+		}
+#	endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+		if (changed)
+		{
 			// Entity was advertised to the user, notify observers
 			if (controlledEntity.wasAdvertised())
 			{
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onChannelInputConnectionChanged, this, &controlledEntity, clusterIdentification, channelIdentification);
-			}
-		}
-		else
-		{
-			auto const& mapping = *audioMapping;
-
-			// We have a mapping, set the StreamChannel Identification
-			channelIdentification.streamChannelIdentification = streamChannelIdentification;
-
-			// Update the ChannelConnection based on the current stream mapping
-			if (auto const streamInputNodeIt = configurationNode.streamInputs.find(mapping.streamIndex); streamInputNodeIt != configurationNode.streamInputs.end())
-			{
-				auto const& streamInputNode = streamInputNodeIt->second;
-				auto const& connectionInfo = streamInputNode.dynamicModel.connectionInfo;
-				computeAndUpdateChannelConnectionFromStreamIdentification(controlledEntity, clusterIdentification, connectionInfo.talkerStream, channelIdentification, true);
-			}
-		}
-	}
-}
-
-// _lock should be taken when calling this method
-void ControllerImpl::computeAndUpdateChannelConnectionsFromTalkerMappings(ControlledEntityImpl& controlledEntity, UniqueIdentifier const& talkerEntityID, entity::model::ClusterIndex const baseClusterIndex, entity::model::AudioMappings const& mappings, model::ChannelConnections& channelConnections, bool const removeMappings) const noexcept
-{
-	for (auto& [clusterIdentification, channelIdentification] : channelConnections)
-	{
-		// This entity has a connection to the controlledEntity
-		if (channelIdentification.streamIdentification.entityID == talkerEntityID)
-		{
-			// Check if any of the mappings relate to the connection (beware we have to convert controlledEntity's clusterIndex to global index using baseClusterIndex)
-			for (auto const& mapping : mappings)
-			{
-				// This entity has a connection to the mapping's stream index/channel
-				if (channelIdentification.streamIdentification.streamIndex == mapping.streamIndex && channelIdentification.streamChannelIdentification.streamChannel == mapping.streamChannel)
-				{
-					auto const globalClusterIndex = static_cast<entity::model::ClusterIndex>(baseClusterIndex + mapping.clusterOffset);
-					auto const talkerClusterId = removeMappings ? model::ClusterIdentification{} : model::ClusterIdentification{ globalClusterIndex, mapping.clusterChannel };
-
-					// Changed
-					if (talkerClusterId != channelIdentification.clusterIdentification)
-					{
-						// Update the ChannelConnection
-						channelIdentification.clusterIdentification = talkerClusterId;
-
-						// Entity was advertised to the user, notify observers
-						if (controlledEntity.wasAdvertised())
-						{
-							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onChannelInputConnectionChanged, this, &controlledEntity, clusterIdentification, channelIdentification);
-						}
-					}
-					break;
-				}
 			}
 		}
 	}
@@ -5612,10 +5785,10 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 						for (auto clusterChannel = std::uint16_t{ 0u }; clusterChannel < clusterNode.staticModel.channelCount; ++clusterChannel)
 						{
 							auto const clusterIdentification = model::ClusterIdentification{ clusterIndex, clusterChannel };
-							auto const mapping = getMappingForClusterIdentification(streamPortNode, clusterIdentification);
+							auto const mappingsInfo = getMappingForInputClusterIdentification(streamPortNode, clusterIdentification, std::bind(&ControlledEntityImpl::isRedundantPrimaryStreamInput, &controlledEntity, std::placeholders::_1), std::bind(&ControlledEntityImpl::isRedundantSecondaryStreamInput, &controlledEntity, std::placeholders::_1));
 							// Insert default ChannelConnection (should not exist)
 							auto& channelConnection = controlledEntityConfigurationNode->channelConnections[clusterIdentification];
-							computeAndUpdateChannelConnectionFromListenerMapping(controlledEntity, *controlledEntityConfigurationNode, clusterIdentification, mapping, channelConnection);
+							computeAndUpdateChannelConnectionFromListenerMapping(controlledEntity, *controlledEntityConfigurationNode, clusterIdentification, mappingsInfo, channelConnection);
 						}
 					}
 				}
@@ -5821,12 +5994,25 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 			// Check all channel connections in this listener
 			for (auto& [clusterIdentification, channelIdentification] : configNode->channelConnections)
 			{
+				auto changed = false;
 				// If this channel is connected to the departing talker
-				if (channelIdentification.streamIdentification.entityID == entityID)
+				if (channelIdentification.channelConnectionIdentification.streamIdentification.entityID == entityID)
 				{
 					// Clear the talker mapping information (since we can't query the offline talker anymore)
-					channelIdentification.clusterIdentification = model::ClusterIdentification{};
-
+					channelIdentification.channelConnectionIdentification.clusterIdentification = model::ClusterIdentification{};
+					changed = true;
+				}
+#	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+				// If this channel has a secondary connection to the departing talker
+				if (channelIdentification.secondaryChannelConnectionIdentification && channelIdentification.secondaryChannelConnectionIdentification->streamIdentification.entityID == entityID)
+				{
+					// Clear the talker mapping information (since we can't query the offline talker anymore)
+					channelIdentification.secondaryChannelConnectionIdentification->clusterIdentification = model::ClusterIdentification{};
+					changed = true;
+				}
+#	endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+				if (changed)
+				{
 					// Notify observers of the channel connection change
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onChannelInputConnectionChanged, this, entity.get(), clusterIdentification, channelIdentification);
 				}
@@ -7127,22 +7313,42 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 						auto* const configurationNode = listener.getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 						if (configurationNode != nullptr)
 						{
+							auto const updateChannelConnectionIdentification = [this, &listener, &talkerStream, isConnecting, isDisconnecting, isConnectingToDifferentTalker](auto const& clusterIdentification, auto& channelConnectionIdentification)
+							{
+								auto changed = false;
+								// If we are disconnecting or changing talker, disconnect previous talker stream
+								if (isDisconnecting || isConnectingToDifferentTalker)
+								{
+									changed |= computeAndUpdateChannelConnectionFromStreamIdentification(listener, clusterIdentification, entity::model::StreamIdentification{}, channelConnectionIdentification);
+								}
+								// If we are connecting or changing talker, connect new talker stream
+								if (isConnecting || isConnectingToDifferentTalker)
+								{
+									changed |= computeAndUpdateChannelConnectionFromStreamIdentification(listener, clusterIdentification, talkerStream, channelConnectionIdentification);
+								}
+								return changed;
+							};
+
 							// Process all channel connections that could be impacted
 							for (auto& [clusterIdentification, channelIdentification] : configurationNode->channelConnections)
 							{
+								auto changed = false;
+
 								// Check if this channel connection is linked to that listener stream
-								if (channelIdentification.streamChannelIdentification.streamIndex == listenerStream.streamIndex)
+								if (channelIdentification.channelConnectionIdentification.streamChannelIdentification.streamIndex == listenerStream.streamIndex)
 								{
-									// If we are disconnecting or changing talker, disconnect previous talker stream
-									if (isDisconnecting || isConnectingToDifferentTalker)
-									{
-										computeAndUpdateChannelConnectionFromStreamIdentification(listener, clusterIdentification, entity::model::StreamIdentification{}, channelIdentification);
-									}
-									// If we are connecting or changing talker, connect new talker stream
-									if (isConnecting || isConnectingToDifferentTalker)
-									{
-										computeAndUpdateChannelConnectionFromStreamIdentification(listener, clusterIdentification, talkerStream, channelIdentification);
-									}
+									changed |= updateChannelConnectionIdentification(clusterIdentification, channelIdentification.channelConnectionIdentification);
+								}
+#	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+								// Check if this secondary channel connection is linked to that listener stream
+								if (channelIdentification.secondaryChannelConnectionIdentification && channelIdentification.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex == listenerStream.streamIndex)
+								{
+									changed |= updateChannelConnectionIdentification(clusterIdentification, *channelIdentification.secondaryChannelConnectionIdentification);
+								}
+#	endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+								if (changed)
+								{
+									notifyObserversMethod<Controller::Observer>(&Controller::Observer::onChannelInputConnectionChanged, this, &listener, clusterIdentification, channelIdentification);
 								}
 							}
 						}
