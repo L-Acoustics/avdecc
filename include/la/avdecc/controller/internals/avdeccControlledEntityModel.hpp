@@ -225,23 +225,48 @@ constexpr bool operator!=(ChannelConnectionIdentification const& lhs, ChannelCon
 	return !(lhs == rhs);
 }
 
-/** Channel Identification (EntityID/ClusterIdentification pair) */
+/** Channel Identification */
 struct ChannelIdentification
 {
-	StreamChannelIdentification streamChannelIdentification{}; // Stream channel identification of the listener channel or !isValid() if no listener mapping
-	entity::model::StreamIdentification streamIdentification{}; // Stream identification of the talker channel or invalid entityID if no talker connected
-	ClusterIdentification clusterIdentification{}; // Cluster identification of the talker channel or !isValid() if no talker connected or no talker mapping
+	ChannelConnectionIdentification channelConnectionIdentification{}; // Channel connection identification (listener mappings, stream connection, talker mappings)
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	std::optional<ChannelConnectionIdentification> secondaryChannelConnectionIdentification{}; // Secondary channel connection identification - std::nullopt if there is no active mapping to a secondary stream input or if channelConnectionIdentification.streamChannelIdentification is not mapped to a primary stream input
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	/** Returns true if the channel is fully connected (has a listener mapping, a talker connected, and a talker mapping). */
 	constexpr bool isConnected() const noexcept
 	{
-		return streamChannelIdentification.isValid() && streamIdentification.entityID.isValid() && clusterIdentification.isValid();
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+		return channelConnectionIdentification.isConnected() && (!secondaryChannelConnectionIdentification.has_value() || secondaryChannelConnectionIdentification->isConnected());
+#else // !ENABLE_AVDECC_FEATURE_REDUNDANCY
+		return channelConnectionIdentification.isConnected();
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 	}
+
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	/** Returns true if only one of the redundant pair is fully connected (false if both are connected, both are disconnected, or no redundancy). */
+	constexpr bool isPartiallyConnected() const noexcept
+	{
+		// No redundancy
+		if (!secondaryChannelConnectionIdentification.has_value())
+		{
+			return false;
+		}
+
+		auto const primaryConnected = channelConnectionIdentification.isConnected();
+		auto const secondaryConnected = secondaryChannelConnectionIdentification->isConnected();
+		return (primaryConnected != secondaryConnected);
+	}
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 };
 
 constexpr bool operator==(ChannelIdentification const& lhs, ChannelIdentification const& rhs) noexcept
 {
-	return (lhs.streamChannelIdentification == rhs.streamChannelIdentification) && (lhs.streamIdentification == rhs.streamIdentification) && (lhs.clusterIdentification == rhs.clusterIdentification);
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	return (lhs.channelConnectionIdentification == rhs.channelConnectionIdentification) && (lhs.secondaryChannelConnectionIdentification == rhs.secondaryChannelConnectionIdentification);
+#else // !ENABLE_AVDECC_FEATURE_REDUNDANCY
+	return (lhs.channelConnectionIdentification == rhs.channelConnectionIdentification);
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 }
 
 constexpr bool operator!=(ChannelIdentification const& lhs, ChannelIdentification const& rhs) noexcept
@@ -437,7 +462,7 @@ struct RedundantStreamNode : public VirtualNode
 	entity::model::AvdeccFixedString virtualName{};
 
 	// Children
-	std::set<entity::model::StreamIndex> redundantStreams{}; // Either StreamInputNode or StreamOutputNode, based on Node::descriptorType
+	std::set<entity::model::StreamIndex> redundantStreams{}; // Either StreamInputIndex or StreamOutputIndex, based on Node::descriptorType
 
 	// Quick access to the primary stream (which is also contained in this->redundantStreams)
 	entity::model::StreamIndex primaryStreamIndex{ entity::model::getInvalidDescriptorIndex() };
