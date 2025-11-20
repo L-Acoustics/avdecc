@@ -30,7 +30,7 @@ on:
 
 jobs:
   release-stage:
-    uses: L-Acoustics/la-mw-gh-action/.github/workflows/release_stage.yml@main
+    uses: L-Acoustics/la-mw-gh-action/.github/workflows/release_stage.yml@v2
     with:
       release_linux: ${{inputs.release_linux}}
       release_windows: ${{inputs.release_windows}}
