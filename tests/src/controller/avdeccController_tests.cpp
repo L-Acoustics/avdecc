@@ -3392,7 +3392,7 @@ TEST_F(ChannelConnection_F, ReplaceMappings)
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3407,7 +3407,7 @@ TEST_F(ChannelConnection_F, ReplaceMappings)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3445,7 +3445,7 @@ TEST_F(ChannelConnection_F, ReplaceMappings)
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3460,7 +3460,7 @@ TEST_F(ChannelConnection_F, ReplaceMappings)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3526,7 +3526,7 @@ TEST_F(ChannelConnection_F, AfterAddMappings)
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3541,7 +3541,7 @@ TEST_F(ChannelConnection_F, AfterAddMappings)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3579,7 +3579,7 @@ TEST_F(ChannelConnection_F, AfterAddMappings)
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3594,7 +3594,7 @@ TEST_F(ChannelConnection_F, AfterAddMappings)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3660,7 +3660,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerMappingsAndConnectStream)
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3675,7 +3675,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerMappingsAndConnectStream)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3712,7 +3712,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerMappingsAndConnectStream)
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerStreamIdentification, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3727,7 +3727,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerMappingsAndConnectStream)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3793,7 +3793,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerMappingsAndTalkerMappingsAndConnectS
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3808,7 +3808,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerMappingsAndTalkerMappingsAndConnectS
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3846,7 +3846,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerMappingsAndTalkerMappingsAndConnectS
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3861,7 +3861,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerMappingsAndTalkerMappingsAndConnectS
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3898,7 +3898,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerMappingsAndTalkerMappingsAndConnectS
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerStreamIdentification, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+					EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -3913,7 +3913,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerMappingsAndTalkerMappingsAndConnectS
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4001,7 +4001,7 @@ TEST_F(ChannelConnection_F, AfterConnectStreamAndAddListenerMappingsAndTalkerMap
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerStreamIdentification, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4016,7 +4016,7 @@ TEST_F(ChannelConnection_F, AfterConnectStreamAndAddListenerMappingsAndTalkerMap
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4052,7 +4052,7 @@ TEST_F(ChannelConnection_F, AfterConnectStreamAndAddListenerMappingsAndTalkerMap
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerStreamIdentification, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+					EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4067,7 +4067,7 @@ TEST_F(ChannelConnection_F, AfterConnectStreamAndAddListenerMappingsAndTalkerMap
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4155,7 +4155,7 @@ TEST_F(ChannelConnection_F, AfterAddTalkerMappingsAndListenerMappingsAndConnectS
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4170,7 +4170,7 @@ TEST_F(ChannelConnection_F, AfterAddTalkerMappingsAndListenerMappingsAndConnectS
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4206,7 +4206,7 @@ TEST_F(ChannelConnection_F, AfterAddTalkerMappingsAndListenerMappingsAndConnectS
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerStreamIdentification, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+					EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4221,7 +4221,7 @@ TEST_F(ChannelConnection_F, AfterAddTalkerMappingsAndListenerMappingsAndConnectS
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4286,7 +4286,7 @@ TEST_F(ChannelConnection_F, MultipleChannelConnections)
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4298,7 +4298,7 @@ TEST_F(ChannelConnection_F, MultipleChannelConnections)
 					EXPECT_TRUE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_EQ(std::uint16_t{ 1u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4313,7 +4313,7 @@ TEST_F(ChannelConnection_F, MultipleChannelConnections)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4349,7 +4349,7 @@ TEST_F(ChannelConnection_F, MultipleChannelConnections)
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4361,7 +4361,7 @@ TEST_F(ChannelConnection_F, MultipleChannelConnections)
 					EXPECT_TRUE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_EQ(std::uint16_t{ 1u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4376,7 +4376,7 @@ TEST_F(ChannelConnection_F, MultipleChannelConnections)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4413,7 +4413,7 @@ TEST_F(ChannelConnection_F, MultipleChannelConnections)
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerStreamIdentification, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+					EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4425,7 +4425,7 @@ TEST_F(ChannelConnection_F, MultipleChannelConnections)
 					EXPECT_TRUE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_EQ(std::uint16_t{ 1u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerStreamIdentification, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_EQ(TalkerClusterIdentification2, channelId.channelConnectionIdentification.clusterIdentification);
+					EXPECT_EQ(TalkerClusterIdentification2, channelId.channelConnectionIdentification.talkerClusterIdentification);
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4440,7 +4440,7 @@ TEST_F(ChannelConnection_F, MultipleChannelConnections)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4497,7 +4497,7 @@ TEST_F(ChannelConnection_F, DisconnectStreamRemovesChannelConnections)
 				EXPECT_TRUE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 				EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 				EXPECT_EQ(TalkerStreamIdentification, channelId.channelConnectionIdentification.streamIdentification);
-				EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+				EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4512,7 +4512,7 @@ TEST_F(ChannelConnection_F, DisconnectStreamRemovesChannelConnections)
 				}
 				EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 				EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-				EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4547,7 +4547,7 @@ TEST_F(ChannelConnection_F, DisconnectStreamRemovesChannelConnections)
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4562,7 +4562,7 @@ TEST_F(ChannelConnection_F, DisconnectStreamRemovesChannelConnections)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4620,7 +4620,7 @@ TEST_F(ChannelConnection_F, RemoveListenerMappingsRemovesChannelConnections)
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 				EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 				EXPECT_EQ(TalkerStreamIdentification, channelId.channelConnectionIdentification.streamIdentification);
-				EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+				EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4635,7 +4635,7 @@ TEST_F(ChannelConnection_F, RemoveListenerMappingsRemovesChannelConnections)
 				}
 				EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 				EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-				EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4716,7 +4716,7 @@ TEST_F(ChannelConnection_F, ReplaceListenerMappingsRemovesChannelConnections)
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 				EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 				EXPECT_EQ(TalkerStreamIdentification, channelId.channelConnectionIdentification.streamIdentification);
-				EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+				EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4731,7 +4731,7 @@ TEST_F(ChannelConnection_F, ReplaceListenerMappingsRemovesChannelConnections)
 				}
 				EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 				EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-				EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4767,7 +4767,7 @@ TEST_F(ChannelConnection_F, ReplaceListenerMappingsRemovesChannelConnections)
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4782,7 +4782,7 @@ TEST_F(ChannelConnection_F, ReplaceListenerMappingsRemovesChannelConnections)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4840,7 +4840,7 @@ TEST_F(ChannelConnection_F, RemoveTalkerMappingsRemovesChannelConnections)
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 				EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 				EXPECT_EQ(TalkerStreamIdentification, channelId.channelConnectionIdentification.streamIdentification);
-				EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+				EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4855,7 +4855,7 @@ TEST_F(ChannelConnection_F, RemoveTalkerMappingsRemovesChannelConnections)
 				}
 				EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 				EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-				EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4890,7 +4890,7 @@ TEST_F(ChannelConnection_F, RemoveTalkerMappingsRemovesChannelConnections)
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerStreamIdentification, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4905,7 +4905,7 @@ TEST_F(ChannelConnection_F, RemoveTalkerMappingsRemovesChannelConnections)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4948,7 +4948,7 @@ TEST_F(ChannelConnection_F, LoadWithExistingConnectionListenerFirst)
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 				EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 				EXPECT_EQ(TalkerStreamIdentification4, channelId.channelConnectionIdentification.streamIdentification);
-				EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+				EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -4963,7 +4963,7 @@ TEST_F(ChannelConnection_F, LoadWithExistingConnectionListenerFirst)
 				}
 				EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 				EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-				EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5029,7 +5029,7 @@ TEST_F(ChannelConnection_F, LoadWithExistingConnectionTalkerFirst)
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 				EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 				EXPECT_EQ(TalkerStreamIdentification4, channelId.channelConnectionIdentification.streamIdentification);
-				EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+				EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5044,7 +5044,7 @@ TEST_F(ChannelConnection_F, LoadWithExistingConnectionTalkerFirst)
 				}
 				EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 				EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-				EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5109,7 +5109,7 @@ TEST_F(ChannelConnection_F, ListenerConnectedToOfflineTalker)
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 				EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 				EXPECT_EQ(TalkerStreamIdentification4, channelId.channelConnectionIdentification.streamIdentification);
-				EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{})); // No talker mapping because talker is offline
+				EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{})); // No talker mapping because talker is offline
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5124,7 +5124,7 @@ TEST_F(ChannelConnection_F, ListenerConnectedToOfflineTalker)
 				}
 				EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 				EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-				EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5160,7 +5160,7 @@ TEST_F(ChannelConnection_F, EntityDepartingRemovesChannelConnection)
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 				EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 				EXPECT_EQ(TalkerStreamIdentification4, channelId.channelConnectionIdentification.streamIdentification);
-				EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+				EXPECT_EQ(TalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5175,7 +5175,7 @@ TEST_F(ChannelConnection_F, EntityDepartingRemovesChannelConnection)
 				}
 				EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 				EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-				EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5209,7 +5209,7 @@ TEST_F(ChannelConnection_F, EntityDepartingRemovesChannelConnection)
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerStreamIdentification4, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{})); // No talker mapping because talker is offline
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{})); // No talker mapping because talker is offline
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5224,7 +5224,7 @@ TEST_F(ChannelConnection_F, EntityDepartingRemovesChannelConnection)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5277,7 +5277,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappings)
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					ASSERT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamChannel);
@@ -5292,7 +5292,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappings)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5342,7 +5342,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsInSequencePrimaryFi
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					ASSERT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_TRUE((*channelId.secondaryChannelConnectionIdentification == la::avdecc::controller::model::ChannelConnectionIdentification{}));
 					EXPECT_FALSE(channelId.isConnected());
@@ -5356,7 +5356,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsInSequencePrimaryFi
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5385,7 +5385,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsInSequencePrimaryFi
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					ASSERT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamChannel);
@@ -5400,7 +5400,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsInSequencePrimaryFi
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5449,7 +5449,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsInSequenceSecondary
 					EXPECT_TRUE((channelId.channelConnectionIdentification == la::avdecc::controller::model::ChannelConnectionIdentification{}));
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					ASSERT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamChannel);
@@ -5464,7 +5464,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsInSequenceSecondary
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5493,7 +5493,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsInSequenceSecondary
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					ASSERT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamChannel);
@@ -5508,7 +5508,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsInSequenceSecondary
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5566,7 +5566,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectPrimarySt
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					ASSERT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamChannel);
@@ -5581,7 +5581,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectPrimarySt
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5616,7 +5616,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectPrimarySt
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerPrimaryStreamIdentification6, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamChannel);
@@ -5631,7 +5631,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectPrimarySt
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5695,7 +5695,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectSecondary
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					ASSERT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamChannel);
@@ -5710,7 +5710,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectSecondary
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5745,7 +5745,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectSecondary
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamChannel);
@@ -5761,7 +5761,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectSecondary
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5825,7 +5825,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectRedundant
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					ASSERT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamChannel);
@@ -5840,7 +5840,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectRedundant
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5878,7 +5878,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectRedundant
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerPrimaryStreamIdentification6, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamChannel);
@@ -5894,7 +5894,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectRedundant
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -5968,12 +5968,12 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectPrimarySt
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerPrimaryStreamIdentification6, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+					EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 					EXPECT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.secondaryChannelConnectionIdentification->streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.secondaryChannelConnectionIdentification->clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.secondaryChannelConnectionIdentification->talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.isConnected()); // Not fully connected - secondary stream not connected
 					EXPECT_TRUE(channelId.isPartiallyConnected()); // Partially connected - primary connected
 				}
@@ -5985,7 +5985,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectPrimarySt
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -6053,12 +6053,12 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectSecondary
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerSecondaryStreamIdentification6, channelId.secondaryChannelConnectionIdentification->streamIdentification);
-					EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.secondaryChannelConnectionIdentification->clusterIdentification);
+					EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.secondaryChannelConnectionIdentification->talkerClusterIdentification);
 					EXPECT_FALSE(channelId.isConnected()); // Not fully connected - primary stream not connected
 					EXPECT_TRUE(channelId.isPartiallyConnected()); // Partially connected - secondary connected
 				}
@@ -6070,7 +6070,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectSecondary
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -6141,12 +6141,12 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectRedundant
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerPrimaryStreamIdentification6, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+					EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 					EXPECT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerSecondaryStreamIdentification6, channelId.secondaryChannelConnectionIdentification->streamIdentification);
-					EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.secondaryChannelConnectionIdentification->clusterIdentification);
+					EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.secondaryChannelConnectionIdentification->talkerClusterIdentification);
 					EXPECT_TRUE(channelId.isConnected()); // Fully connected
 					EXPECT_FALSE(channelId.isPartiallyConnected()); // Not partially connected when fully connected
 				}
@@ -6158,7 +6158,7 @@ TEST_F(ChannelConnection_F, AfterAddListenerRedundantMappingsAndConnectRedundant
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -6213,10 +6213,10 @@ TEST_F(ChannelConnection_F, DisconnectSecondaryStreamRemovesChannelConnections)
 					auto const& channelId = connections.at(ListenerClusterIdentification);
 					EXPECT_TRUE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_EQ(TalkerPrimaryStreamIdentification8, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+					EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 					EXPECT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_TRUE((channelId.secondaryChannelConnectionIdentification->streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.secondaryChannelConnectionIdentification->clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.secondaryChannelConnectionIdentification->talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.isConnected()); // Not fully connected
 					EXPECT_TRUE(channelId.isPartiallyConnected()); // Partially connected - primary only
 				}
@@ -6228,7 +6228,7 @@ TEST_F(ChannelConnection_F, DisconnectSecondaryStreamRemovesChannelConnections)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -6282,10 +6282,10 @@ TEST_F(ChannelConnection_F, DisconnectPrimaryStreamRemovesChannelConnections)
 				{
 					auto const& channelId = connections.at(ListenerClusterIdentification);
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(TalkerSecondaryStreamIdentification8, channelId.secondaryChannelConnectionIdentification->streamIdentification);
-					EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.secondaryChannelConnectionIdentification->clusterIdentification);
+					EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.secondaryChannelConnectionIdentification->talkerClusterIdentification);
 					EXPECT_FALSE(channelId.isConnected()); // Not fully connected
 					EXPECT_TRUE(channelId.isPartiallyConnected()); // Partially connected - secondary only
 				}
@@ -6297,7 +6297,7 @@ TEST_F(ChannelConnection_F, DisconnectPrimaryStreamRemovesChannelConnections)
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -6354,10 +6354,10 @@ TEST_F(ChannelConnection_F, DisconnectRedundantStreamPairRemovesChannelConnectio
 					auto const& channelId = connections.at(ListenerClusterIdentification);
 					EXPECT_TRUE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_TRUE((channelId.secondaryChannelConnectionIdentification->streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.secondaryChannelConnectionIdentification->clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.secondaryChannelConnectionIdentification->talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.isConnected()); // Not connected
 					EXPECT_FALSE(channelId.isPartiallyConnected()); // Not partially connected either
 				}
@@ -6369,7 +6369,7 @@ TEST_F(ChannelConnection_F, DisconnectRedundantStreamPairRemovesChannelConnectio
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -6404,10 +6404,10 @@ TEST_F(ChannelConnection_F, LoadWithExistingConnectionRedundantListenerFirst)
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 				EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 				EXPECT_EQ(TalkerPrimaryStreamIdentification8, channelId.channelConnectionIdentification.streamIdentification);
-				EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+				EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 				ASSERT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_EQ(TalkerSecondaryStreamIdentification8, channelId.secondaryChannelConnectionIdentification->streamIdentification);
-				EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.secondaryChannelConnectionIdentification->clusterIdentification);
+				EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.secondaryChannelConnectionIdentification->talkerClusterIdentification);
 				EXPECT_TRUE(channelId.isConnected());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
 			}
@@ -6419,7 +6419,7 @@ TEST_F(ChannelConnection_F, LoadWithExistingConnectionRedundantListenerFirst)
 				}
 				EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 				EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-				EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isConnected());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -6483,10 +6483,10 @@ TEST_F(ChannelConnection_F, LoadWithExistingConnectionRedundantTalkerFirst)
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 				EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 				EXPECT_EQ(TalkerPrimaryStreamIdentification8, channelId.channelConnectionIdentification.streamIdentification);
-				EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+				EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 				ASSERT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_EQ(TalkerSecondaryStreamIdentification8, channelId.secondaryChannelConnectionIdentification->streamIdentification);
-				EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.secondaryChannelConnectionIdentification->clusterIdentification);
+				EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.secondaryChannelConnectionIdentification->talkerClusterIdentification);
 				EXPECT_TRUE(channelId.isConnected());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
 			}
@@ -6498,7 +6498,7 @@ TEST_F(ChannelConnection_F, LoadWithExistingConnectionRedundantTalkerFirst)
 				}
 				EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 				EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-				EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isConnected());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -6571,12 +6571,12 @@ TEST_F(ChannelConnection_F, AfterDelListenerRedundantMappingsInSequencePrimaryFi
 					EXPECT_TRUE((channelId.channelConnectionIdentification == la::avdecc::controller::model::ChannelConnectionIdentification{}));
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					ASSERT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 1u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.secondaryChannelConnectionIdentification->streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerSecondaryStreamIdentification8, channelId.secondaryChannelConnectionIdentification->streamIdentification);
-					EXPECT_TRUE((channelId.secondaryChannelConnectionIdentification->clusterIdentification == la::avdecc::controller::model::ClusterIdentification{})); // No talker mapping because talker is offline
+					EXPECT_TRUE((channelId.secondaryChannelConnectionIdentification->talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{})); // No talker mapping because talker is offline
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
 				}
@@ -6588,7 +6588,7 @@ TEST_F(ChannelConnection_F, AfterDelListenerRedundantMappingsInSequencePrimaryFi
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -6652,7 +6652,7 @@ TEST_F(ChannelConnection_F, AfterDelListenerRedundantMappingsInSequenceSecondary
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerPrimaryStreamIdentification8, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{})); // No talker mapping because talker is offline
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{})); // No talker mapping because talker is offline
 					ASSERT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_TRUE((*channelId.secondaryChannelConnectionIdentification == la::avdecc::controller::model::ChannelConnectionIdentification{}));
 					EXPECT_FALSE(channelId.isConnected());
@@ -6666,7 +6666,7 @@ TEST_F(ChannelConnection_F, AfterDelListenerRedundantMappingsInSequenceSecondary
 					}
 					EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 					EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 					EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_FALSE(channelId.isConnected());
 					EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -6721,10 +6721,10 @@ TEST_F(ChannelConnection_F, RedundantEntityDepartingRemovesChannelConnection)
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 				EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 				EXPECT_EQ(TalkerPrimaryStreamIdentification8, channelId.channelConnectionIdentification.streamIdentification);
-				EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.channelConnectionIdentification.clusterIdentification);
+				EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.channelConnectionIdentification.talkerClusterIdentification);
 				ASSERT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_EQ(TalkerSecondaryStreamIdentification8, channelId.secondaryChannelConnectionIdentification->streamIdentification);
-				EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.secondaryChannelConnectionIdentification->clusterIdentification);
+				EXPECT_EQ(RedundantTalkerClusterIdentification, channelId.secondaryChannelConnectionIdentification->talkerClusterIdentification);
 				EXPECT_TRUE(channelId.isConnected());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
 			}
@@ -6736,7 +6736,7 @@ TEST_F(ChannelConnection_F, RedundantEntityDepartingRemovesChannelConnection)
 				}
 				EXPECT_FALSE(channelId.channelConnectionIdentification.streamChannelIdentification.isValid());
 				EXPECT_TRUE((channelId.channelConnectionIdentification.streamIdentification == la::avdecc::entity::model::StreamIdentification{}));
-				EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
+				EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{}));
 				EXPECT_FALSE(channelId.secondaryChannelConnectionIdentification.has_value());
 				EXPECT_FALSE(channelId.isConnected());
 				EXPECT_FALSE(channelId.isPartiallyConnected());
@@ -6768,10 +6768,10 @@ TEST_F(ChannelConnection_F, RedundantEntityDepartingRemovesChannelConnection)
 					EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamIndex);
 					EXPECT_EQ(std::uint16_t{ 0u }, channelId.channelConnectionIdentification.streamChannelIdentification.streamChannel);
 					EXPECT_EQ(TalkerPrimaryStreamIdentification8, channelId.channelConnectionIdentification.streamIdentification);
-					EXPECT_TRUE((channelId.channelConnectionIdentification.clusterIdentification == la::avdecc::controller::model::ClusterIdentification{})); // No talker mapping because talker is offline
+					EXPECT_TRUE((channelId.channelConnectionIdentification.talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{})); // No talker mapping because talker is offline
 					ASSERT_TRUE(channelId.secondaryChannelConnectionIdentification.has_value());
 					EXPECT_EQ(TalkerSecondaryStreamIdentification8, channelId.secondaryChannelConnectionIdentification->streamIdentification);
-					EXPECT_TRUE((channelId.secondaryChannelConnectionIdentification->clusterIdentification == la::avdecc::controller::model::ClusterIdentification{})); // No talker mapping because talker is offline
+					EXPECT_TRUE((channelId.secondaryChannelConnectionIdentification->talkerClusterIdentification == la::avdecc::controller::model::ClusterIdentification{})); // No talker mapping because talker is offline
 					EXPECT_FALSE(channelId.isConnected()); // Not fully connected
 					EXPECT_FALSE(channelId.isPartiallyConnected());
 				}
@@ -7589,8 +7589,8 @@ TEST(ChannelConnectionIdentification, OnlyTalkerConnection_IsInvalid)
 TEST(ChannelConnectionIdentification, OnlyTalkerMapping_IsInvalid)
 {
 	auto channelConnection = la::avdecc::controller::model::ChannelConnectionIdentification{};
-	channelConnection.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 0u };
-	channelConnection.clusterIdentification.clusterChannel = 1u;
+	channelConnection.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 0u };
+	channelConnection.talkerClusterIdentification.clusterChannel = 1u;
 	// streamChannelIdentification and streamIdentification remain invalid
 
 	EXPECT_FALSE(channelConnection.isValid());
@@ -7619,8 +7619,8 @@ TEST(ChannelConnectionIdentification, FullyConnected_IsValid)
 	channelConnection.streamChannelIdentification.streamChannel = 2u;
 	channelConnection.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	channelConnection.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
-	channelConnection.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
-	channelConnection.clusterIdentification.clusterChannel = 5u;
+	channelConnection.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection.talkerClusterIdentification.clusterChannel = 5u;
 
 	EXPECT_TRUE(channelConnection.isValid());
 	EXPECT_TRUE(static_cast<bool>(channelConnection));
@@ -7634,16 +7634,16 @@ TEST(ChannelConnectionIdentification, EqualityOperator_SameValues)
 	channelConnection1.streamChannelIdentification.streamChannel = 2u;
 	channelConnection1.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	channelConnection1.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
-	channelConnection1.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
-	channelConnection1.clusterIdentification.clusterChannel = 5u;
+	channelConnection1.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection1.talkerClusterIdentification.clusterChannel = 5u;
 
 	auto channelConnection2 = la::avdecc::controller::model::ChannelConnectionIdentification{};
 	channelConnection2.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
 	channelConnection2.streamChannelIdentification.streamChannel = 2u;
 	channelConnection2.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	channelConnection2.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
-	channelConnection2.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
-	channelConnection2.clusterIdentification.clusterChannel = 5u;
+	channelConnection2.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection2.talkerClusterIdentification.clusterChannel = 5u;
 
 	EXPECT_EQ(channelConnection1, channelConnection2);
 	EXPECT_FALSE(channelConnection1 != channelConnection2);
@@ -7656,16 +7656,16 @@ TEST(ChannelConnectionIdentification, EqualityOperator_DifferentListenerStreamIn
 	channelConnection1.streamChannelIdentification.streamChannel = 2u;
 	channelConnection1.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	channelConnection1.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
-	channelConnection1.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
-	channelConnection1.clusterIdentification.clusterChannel = 5u;
+	channelConnection1.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection1.talkerClusterIdentification.clusterChannel = 5u;
 
 	auto channelConnection2 = la::avdecc::controller::model::ChannelConnectionIdentification{};
 	channelConnection2.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 99u }; // Different listener stream index
 	channelConnection2.streamChannelIdentification.streamChannel = 2u;
 	channelConnection2.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	channelConnection2.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
-	channelConnection2.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
-	channelConnection2.clusterIdentification.clusterChannel = 5u;
+	channelConnection2.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection2.talkerClusterIdentification.clusterChannel = 5u;
 
 	EXPECT_NE(channelConnection1, channelConnection2);
 	EXPECT_TRUE(channelConnection1 != channelConnection2);
@@ -7678,16 +7678,16 @@ TEST(ChannelConnectionIdentification, EqualityOperator_DifferentListenerStreamCh
 	channelConnection1.streamChannelIdentification.streamChannel = 2u;
 	channelConnection1.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	channelConnection1.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
-	channelConnection1.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
-	channelConnection1.clusterIdentification.clusterChannel = 5u;
+	channelConnection1.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection1.talkerClusterIdentification.clusterChannel = 5u;
 
 	auto channelConnection2 = la::avdecc::controller::model::ChannelConnectionIdentification{};
 	channelConnection2.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
 	channelConnection2.streamChannelIdentification.streamChannel = 99u; // Different listener stream channel
 	channelConnection2.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	channelConnection2.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
-	channelConnection2.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
-	channelConnection2.clusterIdentification.clusterChannel = 5u;
+	channelConnection2.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection2.talkerClusterIdentification.clusterChannel = 5u;
 
 	EXPECT_NE(channelConnection1, channelConnection2);
 	EXPECT_TRUE(channelConnection1 != channelConnection2);
@@ -7700,16 +7700,16 @@ TEST(ChannelConnectionIdentification, EqualityOperator_DifferentTalkerEntityID)
 	channelConnection1.streamChannelIdentification.streamChannel = 2u;
 	channelConnection1.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	channelConnection1.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
-	channelConnection1.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
-	channelConnection1.clusterIdentification.clusterChannel = 5u;
+	channelConnection1.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection1.talkerClusterIdentification.clusterChannel = 5u;
 
 	auto channelConnection2 = la::avdecc::controller::model::ChannelConnectionIdentification{};
 	channelConnection2.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
 	channelConnection2.streamChannelIdentification.streamChannel = 2u;
 	channelConnection2.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050608 }; // Different talker entity ID
 	channelConnection2.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
-	channelConnection2.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
-	channelConnection2.clusterIdentification.clusterChannel = 5u;
+	channelConnection2.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection2.talkerClusterIdentification.clusterChannel = 5u;
 
 	EXPECT_NE(channelConnection1, channelConnection2);
 	EXPECT_TRUE(channelConnection1 != channelConnection2);
@@ -7722,16 +7722,16 @@ TEST(ChannelConnectionIdentification, EqualityOperator_DifferentTalkerStreamInde
 	channelConnection1.streamChannelIdentification.streamChannel = 2u;
 	channelConnection1.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	channelConnection1.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
-	channelConnection1.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
-	channelConnection1.clusterIdentification.clusterChannel = 5u;
+	channelConnection1.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection1.talkerClusterIdentification.clusterChannel = 5u;
 
 	auto channelConnection2 = la::avdecc::controller::model::ChannelConnectionIdentification{};
 	channelConnection2.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
 	channelConnection2.streamChannelIdentification.streamChannel = 2u;
 	channelConnection2.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	channelConnection2.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 99u }; // Different talker stream index
-	channelConnection2.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
-	channelConnection2.clusterIdentification.clusterChannel = 5u;
+	channelConnection2.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection2.talkerClusterIdentification.clusterChannel = 5u;
 
 	EXPECT_NE(channelConnection1, channelConnection2);
 	EXPECT_TRUE(channelConnection1 != channelConnection2);
@@ -7744,16 +7744,16 @@ TEST(ChannelConnectionIdentification, EqualityOperator_DifferentClusterIndex)
 	channelConnection1.streamChannelIdentification.streamChannel = 2u;
 	channelConnection1.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	channelConnection1.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
-	channelConnection1.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
-	channelConnection1.clusterIdentification.clusterChannel = 5u;
+	channelConnection1.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection1.talkerClusterIdentification.clusterChannel = 5u;
 
 	auto channelConnection2 = la::avdecc::controller::model::ChannelConnectionIdentification{};
 	channelConnection2.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
 	channelConnection2.streamChannelIdentification.streamChannel = 2u;
 	channelConnection2.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	channelConnection2.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
-	channelConnection2.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 99u }; // Different cluster index
-	channelConnection2.clusterIdentification.clusterChannel = 5u;
+	channelConnection2.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 99u }; // Different cluster index
+	channelConnection2.talkerClusterIdentification.clusterChannel = 5u;
 
 	EXPECT_NE(channelConnection1, channelConnection2);
 	EXPECT_TRUE(channelConnection1 != channelConnection2);
@@ -7766,16 +7766,16 @@ TEST(ChannelConnectionIdentification, EqualityOperator_DifferentClusterChannel)
 	channelConnection1.streamChannelIdentification.streamChannel = 2u;
 	channelConnection1.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	channelConnection1.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
-	channelConnection1.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
-	channelConnection1.clusterIdentification.clusterChannel = 5u;
+	channelConnection1.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection1.talkerClusterIdentification.clusterChannel = 5u;
 
 	auto channelConnection2 = la::avdecc::controller::model::ChannelConnectionIdentification{};
 	channelConnection2.streamChannelIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 1u };
 	channelConnection2.streamChannelIdentification.streamChannel = 2u;
 	channelConnection2.streamIdentification.entityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	channelConnection2.streamIdentification.streamIndex = la::avdecc::entity::model::StreamIndex{ 3u };
-	channelConnection2.clusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
-	channelConnection2.clusterIdentification.clusterChannel = 99u; // Different cluster channel
+	channelConnection2.talkerClusterIdentification.clusterIndex = la::avdecc::entity::model::ClusterIndex{ 4u };
+	channelConnection2.talkerClusterIdentification.clusterChannel = 99u; // Different cluster channel
 
 	EXPECT_NE(channelConnection1, channelConnection2);
 	EXPECT_TRUE(channelConnection1 != channelConnection2);

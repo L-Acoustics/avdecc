@@ -5510,7 +5510,7 @@ bool ControllerImpl::computeAndUpdateChannelConnectionFromStreamIdentification(C
 		// If not connected, clear Cluster Identification
 		if (!channelConnectionIdentification.streamIdentification.entityID)
 		{
-			channelConnectionIdentification.clusterIdentification = {};
+			channelConnectionIdentification.talkerClusterIdentification = {};
 		}
 		else
 		{
@@ -5530,7 +5530,7 @@ bool ControllerImpl::computeAndUpdateChannelConnectionFromStreamIdentification(C
 							if (talkerMapping)
 							{
 								// We have a mapping, set the Cluster Identification
-								channelConnectionIdentification.clusterIdentification = model::ClusterIdentification{ static_cast<entity::model::ClusterIndex>(streamPortNode.staticModel.baseCluster + talkerMapping->clusterOffset), talkerMapping->clusterChannel };
+								channelConnectionIdentification.talkerClusterIdentification = model::ClusterIdentification{ static_cast<entity::model::ClusterIndex>(streamPortNode.staticModel.baseCluster + talkerMapping->clusterOffset), talkerMapping->clusterChannel };
 								break;
 							}
 						}
@@ -5631,10 +5631,10 @@ void ControllerImpl::computeAndUpdateChannelConnectionsFromTalkerMappings(Contro
 				auto const talkerClusterId = removeMappings ? model::ClusterIdentification{} : model::ClusterIdentification{ globalClusterIndex, mapping.clusterChannel };
 
 				// Changed
-				if (talkerClusterId != channelConnectionIdentification.clusterIdentification)
+				if (talkerClusterId != channelConnectionIdentification.talkerClusterIdentification)
 				{
 					// Update the ChannelConnection
-					channelConnectionIdentification.clusterIdentification = talkerClusterId;
+					channelConnectionIdentification.talkerClusterIdentification = talkerClusterId;
 
 					return true;
 				}
@@ -6014,7 +6014,7 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 				if (channelIdentification.channelConnectionIdentification.streamIdentification.entityID == entityID)
 				{
 					// Clear the talker mapping information (since we can't query the offline talker anymore)
-					channelIdentification.channelConnectionIdentification.clusterIdentification = model::ClusterIdentification{};
+					channelIdentification.channelConnectionIdentification.talkerClusterIdentification = model::ClusterIdentification{};
 					changed = true;
 				}
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -6022,7 +6022,7 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 				if (channelIdentification.secondaryChannelConnectionIdentification && channelIdentification.secondaryChannelConnectionIdentification->streamIdentification.entityID == entityID)
 				{
 					// Clear the talker mapping information (since we can't query the offline talker anymore)
-					channelIdentification.secondaryChannelConnectionIdentification->clusterIdentification = model::ClusterIdentification{};
+					channelIdentification.secondaryChannelConnectionIdentification->talkerClusterIdentification = model::ClusterIdentification{};
 					changed = true;
 				}
 #	endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
