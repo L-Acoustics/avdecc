@@ -1,0 +1,6764 @@
+{
+	"$schema": "https://raw.githubusercontent.com/L-Acoustics/avdecc/refs/heads/main/resources/schemas/AVE/v2/schema.json",
+	"adp_information": {
+		"common": {
+			"association_id": null,
+			"controller_capabilities": null,
+			"entity_capabilities": [
+				"ADDRESS_ACCESS_SUPPORTED",
+				"AEM_SUPPORTED",
+				"VENDOR_UNIQUE_SUPPORTED",
+				"CLASS_A_SUPPORTED",
+				"GPTP_SUPPORTED",
+				"AEM_IDENTIFY_CONTROL_INDEX_VALID",
+				"AEM_INTERFACE_INDEX_VALID"
+			],
+			"entity_id": "0x0000000000000001",
+			"entity_model_id": "0x001B9200080A0000",
+			"identify_control_index": 0,
+			"listener_capabilities": [
+				"IMPLEMENTED",
+				"MEDIA_CLOCK_SINK",
+				"AUDIO_SINK"
+			],
+			"listener_stream_sinks": 17,
+			"talker_capabilities": [
+				"IMPLEMENTED",
+				"MEDIA_CLOCK_SOURCE",
+				"AUDIO_SOURCE"
+			],
+			"talker_stream_sources": 17
+		},
+		"interfaces": [
+			{
+				"available_index": 1,
+				"avb_interface_index": 0,
+				"gptp_domain_number": 0,
+				"gptp_grandmaster_id": "0x0000000000000001",
+				"mac_address": "00:1B:92:00:00:01",
+				"valid_time": 10
+			}
+		]
+	},
+	"compatibility_events": [],
+	"compatibility_flags": [
+		"IEEE17221",
+		"MILAN"
+	],
+	"diagnostics": {
+		"redundancy_warning": false,
+		"stream_input_latency_errors": []
+	},
+	"dump_version": 2,
+	"entity_model": {
+		"aem_format_version": 2,
+		"entity_descriptor": {
+			"configuration_descriptors": [
+				{
+					"_index (informative)": 0,
+					"audio_unit_descriptors": [
+						{
+							"_index (informative)": 0,
+							"control_descriptors": null,
+							"dynamic": {
+								"current_sampling_rate": "0x0000BB80",
+								"object_name": ""
+							},
+							"static": {
+								"clock_domain_index": 0,
+								"control_counts": 0,
+								"localized_description": {
+									"index": 4,
+									"offset": 0
+								},
+								"sampling_rates": [
+									"0x0000BB80"
+								]
+							},
+							"stream_port_input_descriptors": [
+								{
+									"_index (informative)": 0,
+									"audio_cluster_descriptors": [
+										{
+											"_index (informative)": 0,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 0
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 1,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 0
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 2,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 1
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 3,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 1
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 4,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 1
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 5,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 1
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 6,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 1
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 7,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 1
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 8,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 1
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 9,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 2
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 10,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 2
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 11,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 2
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 12,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 2
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 13,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 2
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 14,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 2
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 15,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 2
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 16,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 3
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 17,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 3
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 18,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 3
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 19,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 3
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 20,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 3
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 21,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 3
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 22,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 3
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 23,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 4
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 24,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 4
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 25,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 4
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 26,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 4
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 27,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 4
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 28,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 4
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 29,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 4
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 30,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 5
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 31,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 5
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 32,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 5
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 33,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 5
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 34,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 5
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 35,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 5
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 36,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 5
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 37,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 6
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 38,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 6
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 39,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 6
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 40,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 6
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 41,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 6
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 42,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 6
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 43,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 6
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 44,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 7
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 45,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 7
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 46,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 7
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 47,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 7
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 48,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 7
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 49,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 7
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 50,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 7
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 51,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 8
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 52,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 8
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 53,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 8
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 54,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 8
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 55,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 8
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 56,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 8
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 57,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 8
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 58,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 9
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 59,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 9
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 60,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 9
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 61,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 9
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 62,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 9
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 63,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 9
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 64,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 9
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 65,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 10
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 66,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 10
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 67,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 10
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 68,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 10
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 69,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 10
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 70,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 10
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 71,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 10
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 72,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 11
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 73,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 11
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 74,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 11
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 75,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 11
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 76,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 11
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 77,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 11
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 78,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 11
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 79,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 12
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										}
+									],
+									"audio_map_descriptors": null,
+									"control_descriptors": null,
+									"dynamic": {
+										"dynamic_mappings": []
+									},
+									"static": {
+										"clock_domain_index": 0,
+										"control_counts": 0,
+										"flags": [
+											"CLOCK_SYNC_SOURCE"
+										]
+									}
+								}
+							],
+							"stream_port_output_descriptors": [
+								{
+									"_index (informative)": 0,
+									"audio_cluster_descriptors": [
+										{
+											"_index (informative)": 80,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 12
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 81,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 12
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 82,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 12
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 83,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 12
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 84,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 12
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 85,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 12
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 86,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 13
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 87,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 13
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 88,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 13
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 89,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 13
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 90,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 13
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 91,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 13
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 92,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 13
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 93,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 14
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 94,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 14
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 95,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 14
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 96,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 14
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 97,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 14
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 98,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 14
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 99,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 14
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 100,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 15
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 101,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 15
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 102,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 15
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 103,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 15
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 104,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 15
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 105,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 15
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 106,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 15
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 107,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 16
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 108,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 16
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 109,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 16
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 110,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 16
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 111,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 16
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 112,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 16
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 113,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 16
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 114,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 17
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 115,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 17
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 116,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 17
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 117,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 17
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 118,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 17
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 119,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 17
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 120,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 17
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 121,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 18
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 122,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 18
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 123,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 18
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 124,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 18
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 125,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 18
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 126,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 18
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 127,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 18
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 128,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 19
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 129,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 19
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 130,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 19
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 131,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 19
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 132,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 19
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 133,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 19
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 134,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 19
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 135,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 20
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 136,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 20
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 137,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 20
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 138,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 20
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 139,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 20
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 140,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 20
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 141,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 20
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 142,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 21
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 143,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 21
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 144,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 21
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 145,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 21
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 146,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 21
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 147,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 21
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 148,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 21
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 149,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 22
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 150,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 22
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 151,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 22
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 152,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 22
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 153,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 4,
+													"offset": 22
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 154,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 5,
+													"offset": 22
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 155,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 6,
+													"offset": 22
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 156,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 0,
+													"offset": 23
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 157,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 1,
+													"offset": 23
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 158,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 2,
+													"offset": 23
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										},
+										{
+											"_index (informative)": 159,
+											"dynamic": {
+												"object_name": ""
+											},
+											"static": {
+												"block_latency": 0,
+												"channel_count": 1,
+												"format": "MBLA",
+												"localized_description": {
+													"index": 3,
+													"offset": 23
+												},
+												"path_latency": 0,
+												"signal_index": 0,
+												"signal_output": 0,
+												"signal_type": "INVALID"
+											}
+										}
+									],
+									"audio_map_descriptors": null,
+									"control_descriptors": null,
+									"dynamic": {
+										"dynamic_mappings": []
+									},
+									"static": {
+										"clock_domain_index": 0,
+										"control_counts": 0,
+										"flags": [
+											"CLOCK_SYNC_SOURCE"
+										]
+									}
+								}
+							]
+						}
+					],
+					"avb_interface_descriptors": [
+						{
+							"_index (informative)": 0,
+							"dynamic": {
+								"as_path": [
+									"0x0000000000000001"
+								],
+								"avb_interface_info": {
+									"flags": [
+										"AS_CAPABLE",
+										"GPTP_ENABLED",
+										"SRP_ENABLED"
+									],
+									"msrp_mappings": [
+										{
+											"priority": 3,
+											"traffic_class": 6,
+											"vlan_id": 2
+										}
+									],
+									"propagation_delay": 0
+								},
+								"clock_accuracy": 34,
+								"clock_class": 248,
+								"clock_identity": "0x0000000000000001",
+								"counters": {
+									"GPTP_GM_CHANGED": 0,
+									"LINK_DOWN": 0,
+									"LINK_UP": 1
+								},
+								"domain_number": 0,
+								"gptp_domain_number": 0,
+								"gptp_grandmaster_id": "0x0000000000000001",
+								"log_announce_interval": 0,
+								"log_pdelay_interval": 0,
+								"log_sync_interval": 253,
+								"mac_address": "00:1B:92:00:00:01",
+								"object_name": "",
+								"offset_scaled_log_variance": 17258,
+								"priority1": 248,
+								"priority2": 248
+							},
+							"static": {
+								"flags": [
+									"GPTP_GRANDMASTER_SUPPORTED",
+									"GPTP_SUPPORTED",
+									"SRP_SUPPORTED"
+								],
+								"localized_description": {
+									"index": 3,
+									"offset": 28
+								},
+								"port_number": 1
+							}
+						}
+					],
+					"clock_domain_descriptors": [
+						{
+							"_index (informative)": 0,
+							"dynamic": {
+								"clock_source_index": 4,
+								"counters": {
+									"LOCKED": 1,
+									"UNLOCKED": 1
+								},
+								"media_clock_reference_info": {
+									"media_clock_domain_name": null,
+									"user_media_clock_priority": null
+								},
+								"object_name": ""
+							},
+							"static": {
+								"clock_sources": [
+									0,
+									1,
+									2,
+									3,
+									4,
+									5,
+									6,
+									7,
+									8,
+									9,
+									10,
+									11,
+									12,
+									13,
+									14,
+									15,
+									16,
+									17,
+									18,
+									19,
+									20
+								],
+								"default_media_clock_priority": 128,
+								"localized_description": {
+									"index": 0,
+									"offset": 32
+								}
+							}
+						}
+					],
+					"clock_source_descriptors": [
+						{
+							"_index (informative)": 0,
+							"dynamic": {
+								"clock_source_flags": null,
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 0,
+								"clock_source_location_type": "AUDIO_UNIT",
+								"clock_source_type": "INTERNAL",
+								"localized_description": {
+									"index": 0,
+									"offset": 29
+								}
+							}
+						},
+						{
+							"_index (informative)": 1,
+							"dynamic": {
+								"clock_source_flags": null,
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 0,
+								"clock_source_location_type": "JACK_INPUT",
+								"clock_source_type": "EXTERNAL",
+								"localized_description": {
+									"index": 1,
+									"offset": 29
+								}
+							}
+						},
+						{
+							"_index (informative)": 2,
+							"dynamic": {
+								"clock_source_flags": null,
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 1,
+								"clock_source_location_type": "JACK_INPUT",
+								"clock_source_type": "EXTERNAL",
+								"localized_description": {
+									"index": 2,
+									"offset": 29
+								}
+							}
+						},
+						{
+							"_index (informative)": 3,
+							"dynamic": {
+								"clock_source_flags": null,
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 2,
+								"clock_source_location_type": "JACK_INPUT",
+								"clock_source_type": "EXTERNAL",
+								"localized_description": {
+									"index": 3,
+									"offset": 29
+								}
+							}
+						},
+						{
+							"_index (informative)": 4,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 0,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 4,
+									"offset": 29
+								}
+							}
+						},
+						{
+							"_index (informative)": 5,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 1,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 5,
+									"offset": 29
+								}
+							}
+						},
+						{
+							"_index (informative)": 6,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 2,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 6,
+									"offset": 29
+								}
+							}
+						},
+						{
+							"_index (informative)": 7,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 3,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 0,
+									"offset": 30
+								}
+							}
+						},
+						{
+							"_index (informative)": 8,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 4,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 1,
+									"offset": 30
+								}
+							}
+						},
+						{
+							"_index (informative)": 9,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 5,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 2,
+									"offset": 30
+								}
+							}
+						},
+						{
+							"_index (informative)": 10,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 6,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 3,
+									"offset": 30
+								}
+							}
+						},
+						{
+							"_index (informative)": 11,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 7,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 4,
+									"offset": 30
+								}
+							}
+						},
+						{
+							"_index (informative)": 12,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 8,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 5,
+									"offset": 30
+								}
+							}
+						},
+						{
+							"_index (informative)": 13,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 9,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 6,
+									"offset": 30
+								}
+							}
+						},
+						{
+							"_index (informative)": 14,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 10,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 0,
+									"offset": 31
+								}
+							}
+						},
+						{
+							"_index (informative)": 15,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 11,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 1,
+									"offset": 31
+								}
+							}
+						},
+						{
+							"_index (informative)": 16,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 12,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 2,
+									"offset": 31
+								}
+							}
+						},
+						{
+							"_index (informative)": 17,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 13,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 3,
+									"offset": 31
+								}
+							}
+						},
+						{
+							"_index (informative)": 18,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 14,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 4,
+									"offset": 31
+								}
+							}
+						},
+						{
+							"_index (informative)": 19,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 15,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 5,
+									"offset": 31
+								}
+							}
+						},
+						{
+							"_index (informative)": 20,
+							"dynamic": {
+								"clock_source_flags": [
+									"LOCAL_ID"
+								],
+								"clock_source_identifier": "0x0000000000000000",
+								"object_name": ""
+							},
+							"static": {
+								"clock_source_location_index": 16,
+								"clock_source_location_type": "STREAM_INPUT",
+								"clock_source_type": "INPUT_STREAM",
+								"localized_description": {
+									"index": 6,
+									"offset": 31
+								}
+							}
+						}
+					],
+					"control_descriptors": [
+						{
+							"_index (informative)": 0,
+							"dynamic": {
+								"object_name": "",
+								"values": {
+									"type": "CONTROL_LINEAR_UINT8",
+									"values": [
+										0
+									]
+								}
+							},
+							"static": {
+								"block_latency": 0,
+								"control_domain": 0,
+								"control_latency": 0,
+								"control_type": "0x90E0F00000000001",
+								"control_value_type": {
+									"read_only": false,
+									"unknown": false,
+									"value_type": "CONTROL_LINEAR_UINT8"
+								},
+								"localized_description": {
+									"index": 4,
+									"offset": 28
+								},
+								"number_of_values": 1,
+								"reset_time": 0,
+								"signal_index": 0,
+								"signal_output": 0,
+								"signal_type": "INVALID",
+								"values": {
+									"type": "CONTROL_LINEAR_UINT8",
+									"values": [
+										{
+											"default": 0,
+											"maximum": 255,
+											"minimum": 0,
+											"step": 255,
+											"string": null,
+											"unit": {
+												"code": "UNITLESS",
+												"multiplier": 0
+											}
+										}
+									]
+								}
+							}
+						}
+					],
+					"dynamic": {
+						"object_name": ""
+					},
+					"jack_input_descriptors": [
+						{
+							"_index (informative)": 0,
+							"control_descriptors": null,
+							"dynamic": {
+								"object_name": ""
+							},
+							"static": {
+								"control_counts": 0,
+								"flags": [
+									"CLOCK_SYNC_SOURCE"
+								],
+								"localized_description": {
+									"index": 1,
+									"offset": 29
+								},
+								"type": "MADI"
+							}
+						},
+						{
+							"_index (informative)": 1,
+							"control_descriptors": null,
+							"dynamic": {
+								"object_name": ""
+							},
+							"static": {
+								"control_counts": 0,
+								"flags": [
+									"CLOCK_SYNC_SOURCE"
+								],
+								"localized_description": {
+									"index": 2,
+									"offset": 29
+								},
+								"type": "AES_EBU"
+							}
+						},
+						{
+							"_index (informative)": 2,
+							"control_descriptors": null,
+							"dynamic": {
+								"object_name": ""
+							},
+							"static": {
+								"control_counts": 0,
+								"flags": [
+									"CLOCK_SYNC_SOURCE"
+								],
+								"localized_description": {
+									"index": 3,
+									"offset": 29
+								},
+								"type": "DIGITAL"
+							}
+						}
+					],
+					"jack_output_descriptors": null,
+					"locale_descriptors": [
+						{
+							"_index (informative)": 0,
+							"static": {
+								"_base_string_descriptor (informative)": 0,
+								"locale_id": "en-US"
+							},
+							"strings_descriptors": [
+								{
+									"_index (informative)": 0,
+									"static": {
+										"strings": [
+											"L-ACOUSTICS",
+											"LC16D",
+											"96 kHz",
+											"48 kHz",
+											"Audio Unit",
+											"AES/EBU 1",
+											"AES/EBU 2"
+										]
+									}
+								},
+								{
+									"_index (informative)": 1,
+									"static": {
+										"strings": [
+											"AES/EBU 3",
+											"AES/EBU 4",
+											"AES/EBU 5",
+											"AES/EBU 6",
+											"AES/EBU 7",
+											"AES/EBU 8",
+											"AES/EBU 9"
+										]
+									}
+								},
+								{
+									"_index (informative)": 2,
+									"static": {
+										"strings": [
+											"AES/EBU 10",
+											"AES/EBU 11",
+											"AES/EBU 12",
+											"AES/EBU 13",
+											"AES/EBU 14",
+											"AES/EBU 15",
+											"AES/EBU 16"
+										]
+									}
+								},
+								{
+									"_index (informative)": 3,
+									"static": {
+										"strings": [
+											"MADI 1",
+											"MADI 2",
+											"MADI 3",
+											"MADI 4",
+											"MADI 5",
+											"MADI 6",
+											"MADI 7"
+										]
+									}
+								},
+								{
+									"_index (informative)": 4,
+									"static": {
+										"strings": [
+											"MADI 8",
+											"MADI 9",
+											"MADI 10",
+											"MADI 11",
+											"MADI 12",
+											"MADI 13",
+											"MADI 14"
+										]
+									}
+								},
+								{
+									"_index (informative)": 5,
+									"static": {
+										"strings": [
+											"MADI 15",
+											"MADI 16",
+											"MADI 17",
+											"MADI 18",
+											"MADI 19",
+											"MADI 20",
+											"MADI 21"
+										]
+									}
+								},
+								{
+									"_index (informative)": 6,
+									"static": {
+										"strings": [
+											"MADI 22",
+											"MADI 23",
+											"MADI 24",
+											"MADI 25",
+											"MADI 26",
+											"MADI 27",
+											"MADI 28"
+										]
+									}
+								},
+								{
+									"_index (informative)": 7,
+									"static": {
+										"strings": [
+											"MADI 29",
+											"MADI 30",
+											"MADI 31",
+											"MADI 32",
+											"MADI 33",
+											"MADI 34",
+											"MADI 35"
+										]
+									}
+								},
+								{
+									"_index (informative)": 8,
+									"static": {
+										"strings": [
+											"MADI 36",
+											"MADI 37",
+											"MADI 38",
+											"MADI 39",
+											"MADI 40",
+											"MADI 41",
+											"MADI 42"
+										]
+									}
+								},
+								{
+									"_index (informative)": 9,
+									"static": {
+										"strings": [
+											"MADI 43",
+											"MADI 44",
+											"MADI 45",
+											"MADI 46",
+											"MADI 47",
+											"MADI 48",
+											"MADI 49"
+										]
+									}
+								},
+								{
+									"_index (informative)": 10,
+									"static": {
+										"strings": [
+											"MADI 50",
+											"MADI 51",
+											"MADI 52",
+											"MADI 53",
+											"MADI 54",
+											"MADI 55",
+											"MADI 56"
+										]
+									}
+								},
+								{
+									"_index (informative)": 11,
+									"static": {
+										"strings": [
+											"MADI 57",
+											"MADI 58",
+											"MADI 59",
+											"MADI 60",
+											"MADI 61",
+											"MADI 62",
+											"MADI 63"
+										]
+									}
+								},
+								{
+									"_index (informative)": 12,
+									"static": {
+										"strings": [
+											"MADI 64",
+											"AES/EBU 1",
+											"AES/EBU 2",
+											"AES/EBU 3",
+											"AES/EBU 4",
+											"AES/EBU 5",
+											"AES/EBU 6"
+										]
+									}
+								},
+								{
+									"_index (informative)": 13,
+									"static": {
+										"strings": [
+											"AES/EBU 7",
+											"AES/EBU 8",
+											"AES/EBU 9",
+											"AES/EBU 10",
+											"AES/EBU 11",
+											"AES/EBU 12",
+											"AES/EBU 13"
+										]
+									}
+								},
+								{
+									"_index (informative)": 14,
+									"static": {
+										"strings": [
+											"AES/EBU 14",
+											"AES/EBU 15",
+											"AES/EBU 16",
+											"MADI 1",
+											"MADI 2",
+											"MADI 3",
+											"MADI 4"
+										]
+									}
+								},
+								{
+									"_index (informative)": 15,
+									"static": {
+										"strings": [
+											"MADI 5",
+											"MADI 6",
+											"MADI 7",
+											"MADI 8",
+											"MADI 9",
+											"MADI 10",
+											"MADI 11"
+										]
+									}
+								},
+								{
+									"_index (informative)": 16,
+									"static": {
+										"strings": [
+											"MADI 12",
+											"MADI 13",
+											"MADI 14",
+											"MADI 15",
+											"MADI 16",
+											"MADI 17",
+											"MADI 18"
+										]
+									}
+								},
+								{
+									"_index (informative)": 17,
+									"static": {
+										"strings": [
+											"MADI 19",
+											"MADI 20",
+											"MADI 21",
+											"MADI 22",
+											"MADI 23",
+											"MADI 24",
+											"MADI 25"
+										]
+									}
+								},
+								{
+									"_index (informative)": 18,
+									"static": {
+										"strings": [
+											"MADI 26",
+											"MADI 27",
+											"MADI 28",
+											"MADI 29",
+											"MADI 30",
+											"MADI 31",
+											"MADI 32"
+										]
+									}
+								},
+								{
+									"_index (informative)": 19,
+									"static": {
+										"strings": [
+											"MADI 33",
+											"MADI 34",
+											"MADI 35",
+											"MADI 36",
+											"MADI 37",
+											"MADI 38",
+											"MADI 39"
+										]
+									}
+								},
+								{
+									"_index (informative)": 20,
+									"static": {
+										"strings": [
+											"MADI 40",
+											"MADI 41",
+											"MADI 42",
+											"MADI 43",
+											"MADI 44",
+											"MADI 45",
+											"MADI 46"
+										]
+									}
+								},
+								{
+									"_index (informative)": 21,
+									"static": {
+										"strings": [
+											"MADI 47",
+											"MADI 48",
+											"MADI 49",
+											"MADI 50",
+											"MADI 51",
+											"MADI 52",
+											"MADI 53"
+										]
+									}
+								},
+								{
+									"_index (informative)": 22,
+									"static": {
+										"strings": [
+											"MADI 54",
+											"MADI 55",
+											"MADI 56",
+											"MADI 57",
+											"MADI 58",
+											"MADI 59",
+											"MADI 60"
+										]
+									}
+								},
+								{
+									"_index (informative)": 23,
+									"static": {
+										"strings": [
+											"MADI 61",
+											"MADI 62",
+											"MADI 63",
+											"MADI 64",
+											"Audio Input Stream 1",
+											"Audio Input Stream 2",
+											"Audio Input Stream 3"
+										]
+									}
+								},
+								{
+									"_index (informative)": 24,
+									"static": {
+										"strings": [
+											"Audio Input Stream 4",
+											"Audio Input Stream 5",
+											"Audio Input Stream 6",
+											"Audio Input Stream 7",
+											"Audio Input Stream 8",
+											"Audio Input Stream 9",
+											"Audio Input Stream 10"
+										]
+									}
+								},
+								{
+									"_index (informative)": 25,
+									"static": {
+										"strings": [
+											"Audio Input Stream 11",
+											"Audio Input Stream 12",
+											"Audio Input Stream 13",
+											"Audio Input Stream 14",
+											"Audio Input Stream 15",
+											"Audio Input Stream 16",
+											"Media Clock Input Stream"
+										]
+									}
+								},
+								{
+									"_index (informative)": 26,
+									"static": {
+										"strings": [
+											"Audio Output Stream 1",
+											"Audio Output Stream 2",
+											"Audio Output Stream 3",
+											"Audio Output Stream 4",
+											"Audio Output Stream 5",
+											"Audio Output Stream 6",
+											"Audio Output Stream 7"
+										]
+									}
+								},
+								{
+									"_index (informative)": 27,
+									"static": {
+										"strings": [
+											"Audio Output Stream 8",
+											"Audio Output Stream 9",
+											"Audio Output Stream 10",
+											"Audio Output Stream 11",
+											"Audio Output Stream 12",
+											"Audio Output Stream 13",
+											"Audio Output Stream 14"
+										]
+									}
+								},
+								{
+									"_index (informative)": 28,
+									"static": {
+										"strings": [
+											"Audio Output Stream 15",
+											"Audio Output Stream 16",
+											"Media Clock Output Stream",
+											"AVB Interface",
+											"Identification",
+											"Manufacturer logo",
+											"Entity logo"
+										]
+									}
+								},
+								{
+									"_index (informative)": 29,
+									"static": {
+										"strings": [
+											"Internal",
+											"MADI",
+											"AES/EBU 1",
+											"Word Clock",
+											"AVB Audio Input Stream 1",
+											"AVB Audio Input Stream 2",
+											"AVB Audio Input Stream 3"
+										]
+									}
+								},
+								{
+									"_index (informative)": 30,
+									"static": {
+										"strings": [
+											"AVB Audio Input Stream 4",
+											"AVB Audio Input Stream 5",
+											"AVB Audio Input Stream 6",
+											"AVB Audio Input Stream 7",
+											"AVB Audio Input Stream 8",
+											"AVB Audio Input Stream 9",
+											"AVB Audio Input Stream 10"
+										]
+									}
+								},
+								{
+									"_index (informative)": 31,
+									"static": {
+										"strings": [
+											"AVB Audio Input Stream 11",
+											"AVB Audio Input Stream 12",
+											"AVB Audio Input Stream 13",
+											"AVB Audio Input Stream 14",
+											"AVB Audio Input Stream 15",
+											"AVB Audio Input Stream 16",
+											"AVB Media Clock Input Stream"
+										]
+									}
+								},
+								{
+									"_index (informative)": 32,
+									"static": {
+										"strings": [
+											"Clock Domain",
+											"",
+											"",
+											"",
+											"",
+											"",
+											""
+										]
+									}
+								}
+							]
+						},
+						{
+							"_index (informative)": 1,
+							"static": {
+								"_base_string_descriptor (informative)": 33,
+								"locale_id": "fr-FR"
+							},
+							"strings_descriptors": null
+						}
+					],
+					"memory_object_descriptors": [
+						{
+							"_index (informative)": 0,
+							"dynamic": {
+								"length": 26700,
+								"object_name": ""
+							},
+							"static": {
+								"localized_description": {
+									"index": 5,
+									"offset": 28
+								},
+								"maximum_length": 26700,
+								"memory_object_type": "PNG_MANUFACTURER",
+								"start_address": "0x0000000000000000",
+								"target_descriptor_index": 0,
+								"target_descriptor_type": "ENTITY"
+							}
+						},
+						{
+							"_index (informative)": 1,
+							"dynamic": {
+								"length": 14344,
+								"object_name": ""
+							},
+							"static": {
+								"localized_description": {
+									"index": 6,
+									"offset": 28
+								},
+								"maximum_length": 14344,
+								"memory_object_type": "PNG_ENTITY",
+								"start_address": "0x000000000000684C",
+								"target_descriptor_index": 0,
+								"target_descriptor_type": "ENTITY"
+							}
+						}
+					],
+					"ptp_instance_descriptors": null,
+					"static": {
+						"descriptor_counts": [
+							[
+								"LOCALE",
+								2
+							],
+							[
+								"CLOCK_DOMAIN",
+								1
+							],
+							[
+								"CONTROL",
+								1
+							],
+							[
+								"MEMORY_OBJECT",
+								2
+							],
+							[
+								"CLOCK_SOURCE",
+								21
+							],
+							[
+								"AVB_INTERFACE",
+								1
+							],
+							[
+								"STREAM_OUTPUT",
+								17
+							],
+							[
+								"STREAM_INPUT",
+								17
+							],
+							[
+								"JACK_INPUT",
+								3
+							],
+							[
+								"AUDIO_UNIT",
+								1
+							]
+						],
+						"localized_description": {
+							"index": 3,
+							"offset": 0
+						}
+					},
+					"stream_input_descriptors": [
+						{
+							"_index (informative)": 0,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 4,
+									"offset": 23
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 1,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 5,
+									"offset": 23
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 2,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 6,
+									"offset": 23
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 3,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 0,
+									"offset": 24
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 4,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 1,
+									"offset": 24
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 5,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 2,
+									"offset": 24
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 6,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 3,
+									"offset": 24
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 7,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 4,
+									"offset": 24
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 8,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 5,
+									"offset": 24
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 9,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 6,
+									"offset": 24
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 10,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 0,
+									"offset": 25
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 11,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 1,
+									"offset": 25
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 12,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 2,
+									"offset": 25
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 13,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 3,
+									"offset": 25
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 14,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 4,
+									"offset": 25
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 15,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2166000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 5,
+									"offset": 25
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 16,
+							"dynamic": {
+								"connected_talker": {
+									"entity_id": "0xFFFFFFFFFFFFFFFF",
+									"stream_index": 65535
+								},
+								"connection_state": "NOT_CONNECTED",
+								"counters": {
+									"EARLY_TIMESTAMP": 0,
+									"FRAMES_RX": 0,
+									"LATE_TIMESTAMP": 0,
+									"MEDIA_LOCKED": 0,
+									"MEDIA_RESET": 0,
+									"MEDIA_UNLOCKED": 0,
+									"SEQ_NUM_MISMATCH": 0,
+									"STREAM_INTERRUPTED": 0,
+									"TIMESTAMP_NOT_VALID": 0,
+									"TIMESTAMP_UNCERTAIN": 0,
+									"TIMESTAMP_VALID": 0,
+									"UNSUPPORTED_FORMAT": 0
+								},
+								"object_name": "",
+								"stream_dynamic_info": {
+									"acmp_status": "SUCCESS",
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": 0,
+									"stream_id": null,
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x041060010000BB80",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 2126000,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x041060010000BB80"
+								],
+								"localized_description": {
+									"index": 6,
+									"offset": 25
+								},
+								"stream_flags": [
+									"CLOCK_SYNC_SOURCE",
+									"CLASS_A"
+								]
+							}
+						}
+					],
+					"stream_output_descriptors": [
+						{
+							"_index (informative)": 0,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B920508980000",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 0,
+									"offset": 26
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 1,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B920508980001",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 1,
+									"offset": 26
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 2,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B920508980002",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 2,
+									"offset": 26
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 3,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B920508980003",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 3,
+									"offset": 26
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 4,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B920508980004",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 4,
+									"offset": 26
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 5,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B920508980005",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 5,
+									"offset": 26
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 6,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B920508980006",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 6,
+									"offset": 26
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 7,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B920508980007",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 0,
+									"offset": 27
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 8,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B920508980008",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 1,
+									"offset": 27
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 9,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B920508980009",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 2,
+									"offset": 27
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 10,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B92050898000A",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 3,
+									"offset": 27
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 11,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B92050898000B",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 4,
+									"offset": 27
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 12,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B92050898000C",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 5,
+									"offset": 27
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 13,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B92050898000D",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 6,
+									"offset": 27
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 14,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B92050898000E",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 0,
+									"offset": 28
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 15,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B92050898000F",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x0205022002006000",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x0205022000406000",
+									"0x0205022000806000",
+									"0x0205022001006000",
+									"0x0205022001806000",
+									"0x0205022002006000",
+									"0x0215022002006000"
+								],
+								"localized_description": {
+									"index": 1,
+									"offset": 28
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						},
+						{
+							"_index (informative)": 16,
+							"dynamic": {
+								"counters": {
+									"counter_type": 2,
+									"counters": {
+										"FRAMES_TX": 0,
+										"MEDIA_RESET": 0,
+										"STREAM_START": 0,
+										"STREAM_STOP": 0,
+										"TIMESTAMP_UNCERTAIN": 0
+									}
+								},
+								"object_name": "",
+								"presentation_time_offset": 2000000,
+								"stream_dynamic_info": {
+									"acmp_status": null,
+									"are_pdus_encrypted": false,
+									"does_support_encrypted": false,
+									"flags_ex": null,
+									"has_saved_state": false,
+									"has_srp_registration_failed": false,
+									"is_class_b": false,
+									"last_received_flags": [
+										"NOT_REGISTERING_SRP",
+										"STREAM_ID_VALID",
+										"STREAM_FORMAT_VALID"
+									],
+									"msrp_accumulated_latency": null,
+									"msrp_failure_code": null,
+									"probing_status": null,
+									"stream_id": "0x001B920508980010",
+									"stream_vlan_id": null
+								},
+								"stream_format": "0x041060010000BB80",
+								"stream_running": true
+							},
+							"static": {
+								"avb_interface_index": 0,
+								"backedup_talker_entity_id": "0x0000000000000000",
+								"backedup_talker_unique": 0,
+								"backup_talker_entity_id_0": "0x0000000000000000",
+								"backup_talker_entity_id_1": "0x0000000000000000",
+								"backup_talker_entity_id_2": "0x0000000000000000",
+								"backup_talker_unique_id_0": 0,
+								"backup_talker_unique_id_1": 0,
+								"backup_talker_unique_id_2": 0,
+								"buffer_length": 0,
+								"clock_domain_index": 0,
+								"formats": [
+									"0x041060010000BB80"
+								],
+								"localized_description": {
+									"index": 2,
+									"offset": 28
+								},
+								"stream_flags": [
+									"CLASS_A"
+								]
+							}
+						}
+					],
+					"timing_descriptors": null
+				}
+			],
+			"dynamic": {
+				"counters": {},
+				"current_configuration": 0,
+				"entity_name": "LC16D",
+				"firmware_version": "2.17.0.4",
+				"group_name": "",
+				"serial_number": ""
+			},
+			"static": {
+				"model_name_string": {
+					"index": 1,
+					"offset": 0
+				},
+				"vendor_name_string": {
+					"index": 0,
+					"offset": 0
+				}
+			}
+		}
+	},
+	"entity_model_id": "0x001B9200080A0000",
+	"milan_compatibility_version": "1.3.0.0",
+	"milan_dynamic_state": {
+		"system_name": "",
+		"system_unique_id": "0x0000000000000000"
+	},
+	"milan_information": {
+		"certification_version": "1.1.0.0",
+		"flags": [
+			"TALKER_DYNAMIC_MAPPINGS_WHILE_RUNNING",
+			"MVU_BINDING"
+		],
+		"protocol_version": 1,
+		"specification_version": "1.3.0.0"
+	},
+	"state": {
+		"acquire_state": "NOT_SUPPORTED",
+		"active_configuration": 0,
+		"lock_state": "NOT_LOCKED",
+		"locking_controller_id": "0xFFFFFFFFFFFFFFFF",
+		"owning_controller_id": "0xFFFFFFFFFFFFFFFF",
+		"subscribed_unsol": true,
+		"unsol_supported": true
+	},
+	"statistics": {
+		"aecp_response_average_time": 37,
+		"aecp_retry_counter": 0,
+		"aecp_timeout_counter": 0,
+		"aecp_unexpected_response_counter": 0,
+		"aem_aecp_unsolicited_counter": 2,
+		"aem_aecp_unsolicited_loss_counter": 0,
+		"enumeration_time": 4139,
+		"mvu_aecp_unsolicited_counter": 0,
+		"mvu_aecp_unsolicited_loss_counter": 0
+	}
+}

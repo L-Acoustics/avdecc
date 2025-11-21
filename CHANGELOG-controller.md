@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Extended GET_SYSTEM_UNIQUE_ID and SET_SYSTEM_UNIQUE_ID commands
   - Signal Presence support in StreamOutputCounters
   - GET_STREAM_INPUT_INFO_EX command
+- Computation of Channel Based Routing connections for each controlled entity (compile feature)
+  - _channelConnections_ field in _ConfigurationNode_
+  - _getChannelConnections_ API in ControlledEntity
+  - _onChannelInputConnectionChanged_ event in Controller::Observer
 
 ### Changed
 - [StreamOutputNode has a new field: `presentationTimeOffset` to replace the `msrpAccumulatedLatency` field (which was in StreamDynamicInfo struct)](https://github.com/L-Acoustics/avdecc/issues/147)

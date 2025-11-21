@@ -40,6 +40,7 @@
 #include <functional>
 #include <set>
 #include <deque>
+#include <unordered_map>
 
 namespace la
 {
@@ -75,6 +76,7 @@ enum class LockState : std::uint8_t
 	UnlockInProgress, /**< Currently trying to unlock the entity (still *possibly locked by us) */
 };
 
+/** Media Clock Chain */
 struct MediaClockChainNode
 {
 	enum class Type : std::uint8_t
@@ -111,6 +113,171 @@ struct MediaClockChainNode
 };
 using MediaClockChain = std::deque<MediaClockChainNode>;
 
+/** StreamChannel Identification (StreamIndex/StreamChannel pair) */
+struct StreamChannelIdentification
+{
+	entity::model::StreamIndex streamIndex{ entity::model::getInvalidDescriptorIndex() }; // Stream index
+	std::uint16_t streamChannel{ 0u }; // Channel number within the stream
+
+	/** Returns true if the StreamChannelIdentification is valid (streamIndex is not InvalidDescriptorIndex). */
+	constexpr bool isValid() const noexcept
+	{
+		return streamIndex != entity::model::getInvalidDescriptorIndex();
+	}
+
+	/** Explicit bool operator to check validity (equivalent to isValid()). */
+	explicit constexpr operator bool() const noexcept
+	{
+		return isValid();
+	}
+
+	/** Hash functor to be used for std::hash */
+	struct Hash
+	{
+		std::size_t operator()(StreamChannelIdentification const& sci) const noexcept
+		{
+			return std::size_t{ sci.streamIndex } << sizeof(decltype(sci.streamChannel)) * 8 | std::size_t{ sci.streamChannel };
+		}
+	};
+};
+
+constexpr bool operator==(StreamChannelIdentification const& lhs, StreamChannelIdentification const& rhs) noexcept
+{
+	return (lhs.streamIndex == rhs.streamIndex) && (lhs.streamChannel == rhs.streamChannel);
+}
+
+constexpr bool operator!=(StreamChannelIdentification const& lhs, StreamChannelIdentification const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
+/** Cluster Identification (ClusterIndex/ClusterChannel pair) */
+struct ClusterIdentification
+{
+	entity::model::ClusterIndex clusterIndex{ entity::model::getInvalidDescriptorIndex() }; // Global Cluster index
+	std::uint16_t clusterChannel{ 0u }; // Channel number within the cluster
+
+	/** Returns true if the ClusterIdentification is valid (clusterIndex is not InvalidDescriptorIndex). */
+	constexpr bool isValid() const noexcept
+	{
+		return clusterIndex != entity::model::getInvalidDescriptorIndex();
+	}
+
+	/** Explicit bool operator to check validity (equivalent to isValid()). */
+	explicit constexpr operator bool() const noexcept
+	{
+		return isValid();
+	}
+
+	/** Hash functor to be used for std::hash */
+	struct Hash
+	{
+		std::size_t operator()(ClusterIdentification const& ci) const noexcept
+		{
+			return std::size_t{ ci.clusterIndex } << sizeof(decltype(ci.clusterChannel)) * 8 | std::size_t{ ci.clusterChannel };
+		}
+	};
+};
+
+constexpr bool operator==(ClusterIdentification const& lhs, ClusterIdentification const& rhs) noexcept
+{
+	return (lhs.clusterIndex == rhs.clusterIndex) && (lhs.clusterChannel == rhs.clusterChannel);
+}
+
+constexpr bool operator!=(ClusterIdentification const& lhs, ClusterIdentification const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
+/** Channel Connection Identification (Listener mapping, Talker connection, Talker mapping) */
+struct ChannelConnectionIdentification
+{
+	StreamChannelIdentification streamChannelIdentification{}; // Stream channel identification of the listener channel or !isValid() if no listener mapping
+	entity::model::StreamIdentification streamIdentification{}; // Stream identification of the talker channel or invalid entityID if no talker connected
+	ClusterIdentification talkerClusterIdentification{}; // Cluster identification of the talker channel or !isValid() if no talker connected or no talker mapping
+
+	/** Returns true if the ChannelConnectionIdentification is valid. */
+	constexpr bool isValid() const noexcept
+	{
+		return streamChannelIdentification.isValid() && streamIdentification.entityID.isValid() && talkerClusterIdentification.isValid();
+	}
+
+	/** Explicit bool operator to check validity (equivalent to isValid()). */
+	explicit constexpr operator bool() const noexcept
+	{
+		return isValid();
+	}
+
+	/** Returns true if the channel is fully connected (has a listener mapping, a talker connected, and a talker mapping). */
+	constexpr bool isConnected() const noexcept
+	{
+		return streamChannelIdentification.isValid() && streamIdentification.entityID.isValid() && talkerClusterIdentification.isValid();
+	}
+};
+
+constexpr bool operator==(ChannelConnectionIdentification const& lhs, ChannelConnectionIdentification const& rhs) noexcept
+{
+	return (lhs.streamChannelIdentification == rhs.streamChannelIdentification) && (lhs.streamIdentification == rhs.streamIdentification) && (lhs.talkerClusterIdentification == rhs.talkerClusterIdentification);
+}
+
+constexpr bool operator!=(ChannelConnectionIdentification const& lhs, ChannelConnectionIdentification const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
+/** Channel Identification */
+struct ChannelIdentification
+{
+	ChannelConnectionIdentification channelConnectionIdentification{}; // Channel connection identification (listener mappings, stream connection, talker mappings)
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	std::optional<ChannelConnectionIdentification> secondaryChannelConnectionIdentification{}; // Secondary channel connection identification - std::nullopt if there is no active mapping to a secondary stream input or if channelConnectionIdentification.streamChannelIdentification is not mapped to a primary stream input
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
+	/** Returns true if the channel is fully connected (has a listener mapping, a talker connected, and a talker mapping). */
+	constexpr bool isConnected() const noexcept
+	{
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+		return channelConnectionIdentification.isConnected() && (!secondaryChannelConnectionIdentification.has_value() || secondaryChannelConnectionIdentification->isConnected());
+#else // !ENABLE_AVDECC_FEATURE_REDUNDANCY
+		return channelConnectionIdentification.isConnected();
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+	}
+
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	/** Returns true if only one of the redundant pair is fully connected (false if both are connected, both are disconnected, or no redundancy). */
+	constexpr bool isPartiallyConnected() const noexcept
+	{
+		// No redundancy
+		if (!secondaryChannelConnectionIdentification.has_value())
+		{
+			return false;
+		}
+
+		auto const primaryConnected = channelConnectionIdentification.isConnected();
+		auto const secondaryConnected = secondaryChannelConnectionIdentification->isConnected();
+		return (primaryConnected != secondaryConnected);
+	}
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+};
+
+constexpr bool operator==(ChannelIdentification const& lhs, ChannelIdentification const& rhs) noexcept
+{
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	return (lhs.channelConnectionIdentification == rhs.channelConnectionIdentification) && (lhs.secondaryChannelConnectionIdentification == rhs.secondaryChannelConnectionIdentification);
+#else // !ENABLE_AVDECC_FEATURE_REDUNDANCY
+	return (lhs.channelConnectionIdentification == rhs.channelConnectionIdentification);
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+}
+
+constexpr bool operator!=(ChannelIdentification const& lhs, ChannelIdentification const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
+/** Channel Connections map (from ClusterIdentification to ChannelIdentification) */
+using ChannelConnections = std::unordered_map<ClusterIdentification, ChannelIdentification, ClusterIdentification::Hash>;
+
+/** Base Node structure */
 struct Node
 {
 	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
@@ -295,7 +462,7 @@ struct RedundantStreamNode : public VirtualNode
 	entity::model::AvdeccFixedString virtualName{};
 
 	// Children
-	std::set<entity::model::StreamIndex> redundantStreams{}; // Either StreamInputNode or StreamOutputNode, based on Node::descriptorType
+	std::set<entity::model::StreamIndex> redundantStreams{}; // Either StreamInputIndex or StreamOutputIndex, based on Node::descriptorType
 
 	// Quick access to the primary stream (which is also contained in this->redundantStreams)
 	entity::model::StreamIndex primaryStreamIndex{ entity::model::getInvalidDescriptorIndex() };
@@ -535,6 +702,8 @@ struct ConfigurationNode : public EntityModelNode
 
 	// AEM Dynamic info
 	entity::model::ConfigurationNodeDynamicModel dynamicModel{};
+
+	ChannelConnections channelConnections{}; // Cached Channel Connections for this configuration
 
 	// Constructor
 	explicit ConfigurationNode(entity::model::DescriptorIndex const descriptorIndex) noexcept

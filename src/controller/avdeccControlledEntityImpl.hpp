@@ -227,6 +227,7 @@ public:
 	virtual bool isIdentifying() const noexcept override;
 	virtual bool hasAnyConfiguration() const noexcept override;
 	virtual entity::model::ConfigurationIndex getCurrentConfigurationIndex() const override;
+	virtual model::ChannelConnections const& getChannelConnections() const override;
 
 	// Const Node getters
 	virtual model::EntityNode const& getEntityNode() const override;

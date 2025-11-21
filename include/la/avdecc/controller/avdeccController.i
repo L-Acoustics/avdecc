@@ -90,6 +90,34 @@
 	%rename("%s") la::avdecc::controller::model::name##Node; // Unignore class
 	// DO NOT extend the struct with copy-constructor (we don't want to copy the full hierarchy, and also there is no default constructor)
 %enddef
+%define DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(name)
+	%nspace la::avdecc::controller::model::name;
+	%rename("%s") la::avdecc::controller::model::name; // Unignore struct
+	%ignore la::avdecc::controller::model::name::operator bool() const noexcept; // Ignore, don't need it (already have isValid() method)
+	%rename("isEqual") operator==(name const& lhs, name const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
+	%rename("isDifferent") operator!=(name const& lhs, name const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
+	// Extend the class
+	%extend la::avdecc::controller::model::name
+	{
+		// Add default constructor
+		name()
+		{
+			return new la::avdecc::controller::model::name();
+		}
+		// Add a copy-constructor
+		name(la::avdecc::controller::model::name const& other)
+		{
+			return new la::avdecc::controller::model::name(other);
+		}
+#if defined(SWIGCSHARP)
+		// Provide a more native Equals() method
+		bool Equals(la::avdecc::controller::model::name const& other) const noexcept
+		{
+			return *$self == other;
+		}
+#endif
+	}
+%enddef
 
 // Bind enums
 DEFINE_ENUM_CLASS(la::avdecc::controller::model::AcquireState, "byte")
@@ -100,6 +128,7 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::model::MediaClockChainNode::Status, "b
 // Define optionals
 %optional(la::avdecc::entity::model::MilanInfo)
 %optional(la::avdecc::entity::model::MilanDynamicState)
+%optional(la::avdecc::controller::model::ChannelConnectionIdentification)
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -113,6 +142,10 @@ DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::DefaultedEntityModelVisitor
 %ignore la::avdecc::controller::model::DefaultedEntityModelVisitor::operator=; // Ignore assignment operator
 
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(MediaClockChain)
+DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(StreamChannelIdentification)
+DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(ClusterIdentification)
+DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(ChannelConnectionIdentification)
+DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(ChannelIdentification)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE()
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(EntityModel)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Virtual)
@@ -126,9 +159,11 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(AudioUnit)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Stream)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(StreamInput)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(StreamOutput)
+#if defined(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(RedundantStream)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(RedundantStreamInput)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(RedundantStreamOutput)
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Jack)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(JackInput)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(JackOutput)
@@ -168,10 +203,13 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Entity)
 %template(TimingNodeMap) std::map<la::avdecc::entity::model::TimingIndex, la::avdecc::controller::model::TimingNode>;
 %template(PtpInstanceNodeMap) std::map<la::avdecc::entity::model::PtpInstanceIndex, la::avdecc::controller::model::PtpInstanceNode>;
 %template(PtpPortNodeMap) std::map<la::avdecc::entity::model::PtpPortIndex, la::avdecc::controller::model::PtpPortNode>;
+#if defined(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 %template(RedundantStreamInputNodeMap) std::map<la::avdecc::controller::model::VirtualIndex, la::avdecc::controller::model::RedundantStreamInputNode>;
 %template(RedundantStreamOutputNodeMap) std::map<la::avdecc::controller::model::VirtualIndex, la::avdecc::controller::model::RedundantStreamOutputNode>;
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 %template(ConfigurationNodeMap) std::map<la::avdecc::entity::model::ConfigurationIndex, la::avdecc::controller::model::ConfigurationNode>;
 %template(MediaClockChainDeque) std::deque<la::avdecc::controller::model::MediaClockChainNode>;
+%template(ChannelConnectionMap) std::unordered_map<la::avdecc::controller::model::ClusterIdentification, la::avdecc::controller::model::ChannelIdentification, la::avdecc::controller::model::ClusterIdentification::Hash>;
 
 
 ////////////////////////////////////////
@@ -251,8 +289,10 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity::CompatibilityFlag, "
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getAudioUnitNode;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamInputNode;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamOutputNode;
+#if defined(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getRedundantStreamInputNode;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getRedundantStreamOutputNode;
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getJackInputNode;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getJackOutputNode;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getAvbInterfaceNode;
