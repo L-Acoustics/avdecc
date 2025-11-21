@@ -5497,7 +5497,7 @@ void ControllerImpl::computeAndUpdateMediaClockChain(ControlledEntityImpl& contr
 
 #ifdef ENABLE_AVDECC_FEATURE_CBR
 // _lock should be taken when calling this method
-bool ControllerImpl::computeAndUpdateChannelConnectionFromStreamIdentification(ControlledEntityImpl& controlledEntity, model::ClusterIdentification const& clusterIdentification, entity::model::StreamIdentification const& streamIdentification, model::ChannelConnectionIdentification& channelConnectionIdentification) const noexcept
+bool ControllerImpl::computeAndUpdateChannelConnectionFromStreamIdentification(entity::model::StreamIdentification const& streamIdentification, model::ChannelConnectionIdentification& channelConnectionIdentification) const noexcept
 {
 	auto changed = false;
 
@@ -5546,7 +5546,7 @@ bool ControllerImpl::computeAndUpdateChannelConnectionFromStreamIdentification(C
 // _lock should be taken when calling this method
 void ControllerImpl::computeAndUpdateChannelConnectionFromListenerMapping(ControlledEntityImpl& controlledEntity, model::ConfigurationNode const& configurationNode, model::ClusterIdentification const& clusterIdentification, std::tuple<bool, std::optional<entity::model::AudioMapping>, std::optional<entity::model::AudioMapping>> const& audioMappingsInfo, model::ChannelIdentification& channelIdentification) const noexcept
 {
-	auto const updateChannelConnectionIdentification = [this, &controlledEntity, &configurationNode, &clusterIdentification](auto& channelConnectionIdentification, auto const& audioMapping)
+	auto const updateChannelConnectionIdentification = [this, &configurationNode](auto& channelConnectionIdentification, auto const& audioMapping)
 	{
 		auto streamChannelIdentification = model::StreamChannelIdentification{};
 		if (audioMapping)
@@ -5573,7 +5573,7 @@ void ControllerImpl::computeAndUpdateChannelConnectionFromListenerMapping(Contro
 				{
 					auto const& streamInputNode = streamInputNodeIt->second;
 					auto const& connectionInfo = streamInputNode.dynamicModel.connectionInfo;
-					computeAndUpdateChannelConnectionFromStreamIdentification(controlledEntity, clusterIdentification, connectionInfo.talkerStream, channelConnectionIdentification);
+					computeAndUpdateChannelConnectionFromStreamIdentification(connectionInfo.talkerStream, channelConnectionIdentification);
 				}
 			}
 			return true;
@@ -7328,18 +7328,18 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 						auto* const configurationNode = listener.getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 						if (configurationNode != nullptr)
 						{
-							auto const updateChannelConnectionIdentification = [this, &listener, &talkerStream, isConnecting, isDisconnecting, isConnectingToDifferentTalker](auto const& clusterIdentification, auto& channelConnectionIdentification)
+							auto const updateChannelConnectionIdentification = [this, &talkerStream, isConnecting, isDisconnecting, isConnectingToDifferentTalker](auto& channelConnectionIdentification)
 							{
 								auto changed = false;
 								// If we are disconnecting or changing talker, disconnect previous talker stream
 								if (isDisconnecting || isConnectingToDifferentTalker)
 								{
-									changed |= computeAndUpdateChannelConnectionFromStreamIdentification(listener, clusterIdentification, entity::model::StreamIdentification{}, channelConnectionIdentification);
+									changed |= computeAndUpdateChannelConnectionFromStreamIdentification(entity::model::StreamIdentification{}, channelConnectionIdentification);
 								}
 								// If we are connecting or changing talker, connect new talker stream
 								if (isConnecting || isConnectingToDifferentTalker)
 								{
-									changed |= computeAndUpdateChannelConnectionFromStreamIdentification(listener, clusterIdentification, talkerStream, channelConnectionIdentification);
+									changed |= computeAndUpdateChannelConnectionFromStreamIdentification(talkerStream, channelConnectionIdentification);
 								}
 								return changed;
 							};
@@ -7352,13 +7352,13 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 								// Check if this channel connection is linked to that listener stream
 								if (channelIdentification.channelConnectionIdentification.streamChannelIdentification.streamIndex == listenerStream.streamIndex)
 								{
-									changed |= updateChannelConnectionIdentification(clusterIdentification, channelIdentification.channelConnectionIdentification);
+									changed |= updateChannelConnectionIdentification(channelIdentification.channelConnectionIdentification);
 								}
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 								// Check if this secondary channel connection is linked to that listener stream
 								if (channelIdentification.secondaryChannelConnectionIdentification && channelIdentification.secondaryChannelConnectionIdentification->streamChannelIdentification.streamIndex == listenerStream.streamIndex)
 								{
-									changed |= updateChannelConnectionIdentification(clusterIdentification, *channelIdentification.secondaryChannelConnectionIdentification);
+									changed |= updateChannelConnectionIdentification(*channelIdentification.secondaryChannelConnectionIdentification);
 								}
 #	endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 								if (changed)
