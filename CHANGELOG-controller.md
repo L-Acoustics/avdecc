@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Dynamic StreamFormat provided by VirtualEntityModelVisitor was not properly checked against the static formats
 - Automatic v1 to v2 conversion not working for multi-configuration entities
 - Incorrect detection and saving of Milan DefaultMediaClockReferencePriority value change if not set to 'Default'
+- Incorrect invalid mappings detection when validating audio mappings
 
 ## [4.1.0] - 2025-04-16
 ### Added

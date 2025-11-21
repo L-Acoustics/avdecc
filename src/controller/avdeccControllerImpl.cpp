@@ -4493,7 +4493,7 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const controlle
 	}
 }
 
-entity::model::AudioMappings ControllerImpl::validateMappings(ControlledEntityImpl& controlledEntity, std::uint16_t const maxStreams, std::uint16_t const maxClusters, entity::model::AudioMappings const& mappings) const noexcept
+entity::model::AudioMappings ControllerImpl::validateMappings(ControlledEntityImpl& controlledEntity, std::uint16_t const maxStreams, model::StreamPortNode const& streamPortNode, entity::model::AudioMappings const& mappings) const noexcept
 {
 	auto fixedMappings = std::decay_t<decltype(mappings)>{};
 
@@ -4502,14 +4502,23 @@ entity::model::AudioMappings ControllerImpl::validateMappings(ControlledEntityIm
 		if (mapping.streamIndex >= maxStreams)
 		{
 			// Flag the entity as "Misbehaving"
-			setMisbehavingCompatibilityFlag(this, controlledEntity, "IEEE1722.1-2021 - 6.2.2.10/6.2.2.12", "Invalid Mapping received: StreamIndex is greater than maximum declared streams in ADP");
+			setMisbehavingCompatibilityFlag(this, controlledEntity, "IEEE1722.1-2021 - 7.4.44.2.1/7.2.2", "Invalid Mapping received: StreamIndex is greater than maximum number of Streams");
 			continue;
 		}
-		if (mapping.clusterOffset >= maxClusters)
+		if (mapping.clusterOffset >= streamPortNode.staticModel.numberOfClusters)
 		{
 			// Flag the entity as "Misbehaving"
-			setMisbehavingCompatibilityFlag(this, controlledEntity, "IEEE1722.1-2021 - 7.2.13", "Invalid Mapping received: ClusterOffset is greater than cluster in the StreamPort");
+			setMisbehavingCompatibilityFlag(this, controlledEntity, "IEEE1722.1-2021 - 7.4.44.2.1/7.2.13", "Invalid Mapping received: ClusterOffset is greater than cluster in the StreamPort");
 			continue;
+		}
+		if (auto const clusterIt = streamPortNode.audioClusters.find(streamPortNode.staticModel.baseCluster + mapping.clusterOffset); clusterIt != streamPortNode.audioClusters.end())
+		{
+			if (mapping.clusterChannel >= clusterIt->second.staticModel.channelCount)
+			{
+				// Flag the entity as "Misbehaving"
+				setMisbehavingCompatibilityFlag(this, controlledEntity, "IEEE1722.1-2021 - 7.4.44.2.1/7.2.16", "Invalid Mapping received: ClusterChannel is greater than channels in the AudioCluster");
+				continue;
+			}
 		}
 
 		fixedMappings.push_back(mapping);

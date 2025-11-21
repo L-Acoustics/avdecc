@@ -7789,3 +7789,283 @@ TEST(ChannelConnectionIdentification, EqualityOperator_BothInvalid)
 	EXPECT_EQ(channelConnection1, channelConnection2);
 	EXPECT_FALSE(channelConnection1 != channelConnection2);
 }
+
+namespace
+{
+class ValidateMappings_F : public Controller_F
+{
+public:
+	virtual void SetUp() override
+	{
+		Controller_F::SetUp();
+		auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+		auto& controller = getController();
+		auto const [error, message] = controller.loadVirtualEntityFromJson("data/TalkerListener.json", flags);
+		ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	}
+
+	la::avdecc::controller::ControllerImpl& getControllerImpl() noexcept
+	{
+		return static_cast<la::avdecc::controller::ControllerImpl&>(getController());
+	}
+
+	la::avdecc::controller::ControllerImpl::ControlledEntityImplGuard getControlledEntityImplGuard() noexcept
+	{
+		auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000003 };
+		auto& controller = getControllerImpl();
+		return controller.getControlledEntityImplGuard(EntityID, true, false);
+	}
+};
+} // namespace
+
+TEST_F(ValidateMappings_F, InvalidInputMappingsNotAdded)
+{
+	auto entity = getControlledEntityImplGuard();
+	auto& controllerImpl = getControllerImpl();
+	auto const streamPortIndex = la::avdecc::entity::model::StreamPortIndex{ 0u };
+
+	// Get initial size
+	auto const& streamPortNode = entity->getStreamPortInputNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, streamPortIndex);
+	auto initialSize = streamPortNode.dynamicModel.dynamicAudioMap.size();
+
+	// Create invalid mappings (streamIndex out of bounds)
+	auto mappings = la::avdecc::entity::model::AudioMappings{};
+	auto mapping = la::avdecc::entity::model::AudioMapping{};
+	mapping.streamIndex = 100u; // Invalid
+	mapping.streamChannel = 0u;
+	mapping.clusterOffset = 0u;
+	mapping.clusterChannel = 0u;
+	mappings.push_back(mapping);
+
+	// Call update with Ignore behavior
+	controllerImpl.updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+
+	// Check that no mappings are added
+	auto const& dynamicMap = streamPortNode.dynamicModel.dynamicAudioMap;
+	EXPECT_EQ(initialSize, dynamicMap.size());
+}
+
+TEST_F(ValidateMappings_F, ValidInputMappingsAdded)
+{
+	auto entity = getControlledEntityImplGuard();
+	auto& controllerImpl = getControllerImpl();
+	auto const streamPortIndex = la::avdecc::entity::model::StreamPortIndex{ 0u };
+
+	// Create potentially valid mappings (based on existing mappings)
+	auto mappings = la::avdecc::entity::model::AudioMappings{};
+	auto mapping = la::avdecc::entity::model::AudioMapping{};
+	mapping.streamIndex = 0u;
+	mapping.streamChannel = 4u;
+	mapping.clusterOffset = 3u; // Valid for input clusters (0-3)
+	mapping.clusterChannel = 0u;
+	mappings.push_back(mapping);
+
+	// Get initial size
+	auto const& streamPortNode = entity->getStreamPortInputNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, streamPortIndex);
+	auto initialSize = streamPortNode.dynamicModel.dynamicAudioMap.size();
+
+	// Call update with Ignore behavior
+	controllerImpl.updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	// Check that mappings are added if valid
+	auto const& dynamicMap = streamPortNode.dynamicModel.dynamicAudioMap;
+	// Note: If the mapping is valid, size should increase; if not, it remains the same due to Ignore
+	EXPECT_EQ(initialSize + 1, dynamicMap.size());
+	if (dynamicMap.size() > initialSize)
+	{
+		EXPECT_EQ(mapping, dynamicMap.back());
+	}
+}
+
+TEST_F(ValidateMappings_F, ValidOutputMappingsAdded)
+{
+	auto entity = getControlledEntityImplGuard();
+	auto& controllerImpl = getControllerImpl();
+	auto const streamPortIndex = la::avdecc::entity::model::StreamPortIndex{ 0u };
+
+	// Create valid mappings for output port
+	auto mappings = la::avdecc::entity::model::AudioMappings{};
+	auto mapping = la::avdecc::entity::model::AudioMapping{};
+	mapping.streamIndex = 2u; // Valid output stream index (0-5)
+	mapping.streamChannel = 3u;
+	mapping.clusterOffset = 2u; // Valid cluster offset for output port (0-7 relative to port)
+	mapping.clusterChannel = 0u;
+	mappings.push_back(mapping);
+
+	// Get initial size
+	auto const& streamPortNode = entity->getStreamPortOutputNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, streamPortIndex);
+	auto initialSize = streamPortNode.dynamicModel.dynamicAudioMap.size();
+
+	// Call update with Ignore behavior
+	controllerImpl.updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+
+	// Check that mappings are added if valid
+	auto const& dynamicMap = streamPortNode.dynamicModel.dynamicAudioMap;
+	// Note: If the mapping is valid, size should increase; if not, it remains the same due to Ignore
+	EXPECT_EQ(initialSize + 1, dynamicMap.size());
+	if (dynamicMap.size() > initialSize)
+	{
+		EXPECT_EQ(mapping, dynamicMap.back());
+	}
+}
+
+TEST_F(ValidateMappings_F, InputMappingStreamIndexOutOfBounds)
+{
+	auto entity = getControlledEntityImplGuard();
+	auto& controllerImpl = getControllerImpl();
+	auto const streamPortIndex = la::avdecc::entity::model::StreamPortIndex{ 0u };
+
+	// Get initial size
+	auto const& streamPortNode = entity->getStreamPortInputNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, streamPortIndex);
+	auto initialSize = streamPortNode.dynamicModel.dynamicAudioMap.size();
+
+	// Create mapping with streamIndex > number of stream inputs (entity has 9 stream inputs, so index 9 is invalid)
+	auto mappings = la::avdecc::entity::model::AudioMappings{};
+	auto mapping = la::avdecc::entity::model::AudioMapping{};
+	mapping.streamIndex = 9u; // Invalid: >= number of stream inputs
+	mapping.streamChannel = 0u;
+	mapping.clusterOffset = 0u;
+	mapping.clusterChannel = 0u;
+	mappings.push_back(mapping);
+
+	// Call update with Ignore behavior
+	controllerImpl.updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+
+	// Check that invalid mapping is NOT added
+	auto const& dynamicMap = streamPortNode.dynamicModel.dynamicAudioMap;
+	EXPECT_EQ(initialSize, dynamicMap.size());
+}
+
+TEST_F(ValidateMappings_F, OutputMappingStreamIndexOutOfBounds)
+{
+	auto entity = getControlledEntityImplGuard();
+	auto& controllerImpl = getControllerImpl();
+	auto const streamPortIndex = la::avdecc::entity::model::StreamPortIndex{ 0u };
+
+	// Get initial size
+	auto const& streamPortNode = entity->getStreamPortOutputNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, streamPortIndex);
+	auto initialSize = streamPortNode.dynamicModel.dynamicAudioMap.size();
+
+	// Create mapping with streamIndex > number of stream outputs (entity has 6 stream outputs, so index 6 is invalid)
+	auto mappings = la::avdecc::entity::model::AudioMappings{};
+	auto mapping = la::avdecc::entity::model::AudioMapping{};
+	mapping.streamIndex = 6u; // Invalid: >= number of stream outputs
+	mapping.streamChannel = 3u;
+	mapping.clusterOffset = 0u;
+	mapping.clusterChannel = 0u;
+	mappings.push_back(mapping);
+
+	// Call update with Ignore behavior
+	controllerImpl.updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+
+	// Check that invalid mapping is NOT added
+	auto const& dynamicMap = streamPortNode.dynamicModel.dynamicAudioMap;
+	EXPECT_EQ(initialSize, dynamicMap.size());
+}
+
+TEST_F(ValidateMappings_F, InputMappingClusterOffsetOutOfBounds)
+{
+	auto entity = getControlledEntityImplGuard();
+	auto& controllerImpl = getControllerImpl();
+	auto const streamPortIndex = la::avdecc::entity::model::StreamPortIndex{ 0u };
+
+	// Get initial size
+	auto const& streamPortNode = entity->getStreamPortInputNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, streamPortIndex);
+	auto initialSize = streamPortNode.dynamicModel.dynamicAudioMap.size();
+
+	// Create mapping with clusterOffset > number of clusters (entity has 4 input clusters, so offset 4 is invalid)
+	auto mappings = la::avdecc::entity::model::AudioMappings{};
+	auto mapping = la::avdecc::entity::model::AudioMapping{};
+	mapping.streamIndex = 0u;
+	mapping.streamChannel = 0u;
+	mapping.clusterOffset = 4u; // Invalid: >= number of input clusters
+	mapping.clusterChannel = 0u;
+	mappings.push_back(mapping);
+
+	// Call update with Ignore behavior
+	controllerImpl.updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+
+	// Check that invalid mapping is NOT added
+	auto const& dynamicMap = streamPortNode.dynamicModel.dynamicAudioMap;
+	EXPECT_EQ(initialSize, dynamicMap.size());
+}
+
+TEST_F(ValidateMappings_F, OutputMappingClusterOffsetOutOfBounds)
+{
+	auto entity = getControlledEntityImplGuard();
+	auto& controllerImpl = getControllerImpl();
+	auto const streamPortIndex = la::avdecc::entity::model::StreamPortIndex{ 0u };
+
+	// Get initial size
+	auto const& streamPortNode = entity->getStreamPortOutputNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, streamPortIndex);
+	auto initialSize = streamPortNode.dynamicModel.dynamicAudioMap.size();
+
+	// Create mapping with clusterOffset > number of clusters (entity has 8 output clusters, so offset 8 is invalid)
+	auto mappings = la::avdecc::entity::model::AudioMappings{};
+	auto mapping = la::avdecc::entity::model::AudioMapping{};
+	mapping.streamIndex = 0u;
+	mapping.streamChannel = 3u;
+	mapping.clusterOffset = 8u; // Invalid: >= number of output clusters
+	mapping.clusterChannel = 0u;
+	mappings.push_back(mapping);
+
+	// Call update with Ignore behavior
+	controllerImpl.updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+
+	// Check that invalid mapping is NOT added
+	auto const& dynamicMap = streamPortNode.dynamicModel.dynamicAudioMap;
+	EXPECT_EQ(initialSize, dynamicMap.size());
+}
+
+TEST_F(ValidateMappings_F, InputMappingClusterChannelOutOfBounds)
+{
+	auto entity = getControlledEntityImplGuard();
+	auto& controllerImpl = getControllerImpl();
+	auto const streamPortIndex = la::avdecc::entity::model::StreamPortIndex{ 0u };
+
+	// Get initial size
+	auto const& streamPortNode = entity->getStreamPortInputNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, streamPortIndex);
+	auto initialSize = streamPortNode.dynamicModel.dynamicAudioMap.size();
+
+	// Create mapping with clusterChannel > number of channels in cluster (each cluster has 1 channel, so channel 100 is invalid)
+	auto mappings = la::avdecc::entity::model::AudioMappings{};
+	auto mapping = la::avdecc::entity::model::AudioMapping{};
+	mapping.streamIndex = 0u;
+	mapping.streamChannel = 0u;
+	mapping.clusterOffset = 0u; // Valid cluster
+	mapping.clusterChannel = 100u; // Invalid: > number of channels in cluster
+	mappings.push_back(mapping);
+
+	// Call update with Ignore behavior
+	controllerImpl.updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+
+	// Check that invalid mapping is NOT added
+	auto const& dynamicMap = streamPortNode.dynamicModel.dynamicAudioMap;
+	EXPECT_EQ(initialSize, dynamicMap.size());
+}
+
+TEST_F(ValidateMappings_F, OutputMappingClusterChannelOutOfBounds)
+{
+	auto entity = getControlledEntityImplGuard();
+	auto& controllerImpl = getControllerImpl();
+	auto const streamPortIndex = la::avdecc::entity::model::StreamPortIndex{ 0u };
+
+	// Get initial size
+	auto const& streamPortNode = entity->getStreamPortOutputNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, streamPortIndex);
+	auto initialSize = streamPortNode.dynamicModel.dynamicAudioMap.size();
+
+	// Create mapping with clusterChannel > number of channels in cluster (each cluster has 1 channel, so channel 100 is invalid)
+	auto mappings = la::avdecc::entity::model::AudioMappings{};
+	auto mapping = la::avdecc::entity::model::AudioMapping{};
+	mapping.streamIndex = 0u;
+	mapping.streamChannel = 3u;
+	mapping.clusterOffset = 0u;
+	mapping.clusterChannel = 100u; // Invalid: > number of channels in cluster
+	mappings.push_back(mapping);
+
+	// Call update with Ignore behavior
+	controllerImpl.updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+
+	// Check that invalid mapping is NOT added
+	auto const& dynamicMap = streamPortNode.dynamicModel.dynamicAudioMap;
+	EXPECT_EQ(initialSize, dynamicMap.size());
+}

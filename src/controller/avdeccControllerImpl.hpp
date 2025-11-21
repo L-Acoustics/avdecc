@@ -704,18 +704,18 @@ private:
 
 		try
 		{
-			auto const& entity = controlledEntity.getEntity();
+			auto const& configurationNode = controlledEntity.getCurrentConfigurationNode();
 			if constexpr (StreamPortType == entity::model::DescriptorType::StreamPortInput)
 			{
-				auto const maxSinks = entity.getCommonInformation().listenerStreamSinks;
-				auto const& streamPortNode = controlledEntity.getStreamPortInputNode(controlledEntity.getCurrentConfigurationIndex(), streamPortIndex);
-				return validateMappings(controlledEntity, maxSinks, streamPortNode.staticModel.numberOfClusters, mappings);
+				auto const maxStreams = static_cast<std::uint16_t>(configurationNode.streamInputs.size());
+				auto const& streamPortNode = controlledEntity.getStreamPortInputNode(configurationNode.descriptorIndex, streamPortIndex);
+				return validateMappings(controlledEntity, maxStreams, streamPortNode, mappings);
 			}
 			else if constexpr (StreamPortType == entity::model::DescriptorType::StreamPortOutput)
 			{
-				auto const maxSources = entity.getCommonInformation().talkerStreamSources;
-				auto const& streamPortNode = controlledEntity.getStreamPortOutputNode(controlledEntity.getCurrentConfigurationIndex(), streamPortIndex);
-				return validateMappings(controlledEntity, maxSources, streamPortNode.staticModel.numberOfClusters, mappings);
+				auto const maxStreams = static_cast<std::uint16_t>(configurationNode.streamOutputs.size());
+				auto const& streamPortNode = controlledEntity.getStreamPortOutputNode(configurationNode.descriptorIndex, streamPortIndex);
+				return validateMappings(controlledEntity, maxStreams, streamPortNode, mappings);
 			}
 		}
 		catch (...)
@@ -723,7 +723,7 @@ private:
 			return {};
 		}
 	}
-	entity::model::AudioMappings validateMappings(ControlledEntityImpl& controlledEntity, std::uint16_t const maxStreams, std::uint16_t const maxClusters, entity::model::AudioMappings const& mappings) const noexcept;
+	entity::model::AudioMappings validateMappings(ControlledEntityImpl& controlledEntity, std::uint16_t const maxStreams, model::StreamPortNode const& streamPortNode, entity::model::AudioMappings const& mappings) const noexcept;
 	static bool validateIdentifyControl(ControlledEntityImpl& controlledEntity, model::ControlNode const& identifyControlNode) noexcept;
 	static DynamicControlValuesValidationResult validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, UniqueIdentifier const& controlType, entity::model::ControlValueType::Type const controlValueType, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept;
 	static void validateControlDescriptors(ControlledEntityImpl& controlledEntity) noexcept;
