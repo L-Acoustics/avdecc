@@ -8,9 +8,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - smartSetMaxTransitTime method to Controller, which automatically uses the correct method to set the presentation time offset based on the detected entity capabilities
 - New API to ControlledEntity to retrieve compatibility change events: `getCompatibilityChangedEvents()`
+- Additional Milan compatibility check: Verifying some reserved flags in StreamInfo.flags field
+- Support for Milan 1.3
+  - Extended GET_MILAN_INFO command
+  - Introduced checksum v5 to include `specification_version` field from `MilanInfo`
+  - connectStream and disconnectStream methods automatically choose MVU Bind mechanism if available
+  - Extended GET_SYSTEM_UNIQUE_ID and SET_SYSTEM_UNIQUE_ID commands
+  - Signal Presence support in StreamOutputCounters
+  - GET_STREAM_INPUT_INFO_EX command
 
 ### Changed
 - [StreamOutputNode has a new field: `presentationTimeOffset` to replace the `msrpAccumulatedLatency` field (which was in StreamDynamicInfo struct)](https://github.com/L-Acoustics/avdecc/issues/147)
+- StreamDynamicInfo.hasSrpRegistrationFailed replaces the deprecated hasTalkerFailed field
 
 ### Fixed
 - `computeEntityModelChecksum` not returning a deterministic value for all OSes

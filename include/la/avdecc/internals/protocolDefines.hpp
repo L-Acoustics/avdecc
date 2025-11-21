@@ -266,16 +266,22 @@ public:
 	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** Milan Vendor Unique AECP Status - Milan 1.2 Clause 5.4.3.3 */
+/** Milan Vendor Unique AECP Status - Milan 1.3 Clause 5.4.3.3 */
 class MvuAecpStatus : public AecpStatus
 {
 public:
 	using AecpStatus::AecpStatus;
 
+	static LA_AVDECC_API MvuAecpStatus const NoSuchDescriptor;
+	static LA_AVDECC_API MvuAecpStatus const EntityLocked;
+	static LA_AVDECC_API MvuAecpStatus const BadArguments;
+	static LA_AVDECC_API MvuAecpStatus const EntityMisbehaving;
+	static LA_AVDECC_API MvuAecpStatus const PayloadTooShort;
+
 	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** Milan Vendor Unique Command Type - Milan 1.2 Clause 5.4.3.2.3 */
+/** Milan Vendor Unique Command Type - Milan 1.3 Clause 5.4.3.2.3 */
 class MvuCommandType : public utils::TypedDefine<MvuCommandType, std::uint16_t>
 {
 public:
@@ -286,6 +292,9 @@ public:
 	static LA_AVDECC_API MvuCommandType const GetSystemUniqueID;
 	static LA_AVDECC_API MvuCommandType const SetMediaClockReferenceInfo;
 	static LA_AVDECC_API MvuCommandType const GetMediaClockReferenceInfo;
+	static LA_AVDECC_API MvuCommandType const BindStream;
+	static LA_AVDECC_API MvuCommandType const UnbindStream;
+	static LA_AVDECC_API MvuCommandType const GetStreamInputInfoEx;
 
 	static LA_AVDECC_API MvuCommandType const InvalidCommandType;
 

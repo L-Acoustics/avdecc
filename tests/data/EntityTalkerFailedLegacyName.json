@@ -575,7 +575,11 @@
 									"does_support_encrypted": false,
 									"flags_ex": null,
 									"has_saved_state": false,
-									"has_talker_failed": false,
+									"has_talker_failed": true,
+									"last_received_flags": [
+										"STREAM_FORMAT_VALID",
+										"TALKER_FAILED"
+									],
 									"is_class_b": false,
 									"msrp_accumulated_latency": 0,
 									"msrp_failure_bridge_id": "0x0000000000000000",

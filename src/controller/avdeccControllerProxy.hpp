@@ -169,10 +169,13 @@ public:
 	virtual void getMaxTransitTime(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, GetMaxTransitTimeHandler const& handler) const noexcept override;
 	virtual void addressAccess(UniqueIdentifier const targetEntityID, entity::addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept override;
 	virtual void getMilanInfo(UniqueIdentifier const targetEntityID, GetMilanInfoHandler const& handler) const noexcept override;
-	virtual void setSystemUniqueID(UniqueIdentifier const targetEntityID, entity::model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept override;
+	virtual void setSystemUniqueID(UniqueIdentifier const targetEntityID, UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName, SetSystemUniqueIDHandler const& handler) const noexcept override;
 	virtual void getSystemUniqueID(UniqueIdentifier const targetEntityID, GetSystemUniqueIDHandler const& handler) const noexcept override;
 	virtual void setMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, std::optional<entity::model::MediaClockReferencePriority> const userPriority, std::optional<entity::model::AvdeccFixedString> const& domainName, SetMediaClockReferenceInfoHandler const& handler) const noexcept override;
 	virtual void getMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, GetMediaClockReferenceInfoHandler const& handler) const noexcept override;
+	virtual void bindStream(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& talkerStream, entity::BindStreamFlags const flags, BindStreamHandler const& handler) const noexcept override;
+	virtual void unbindStream(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, UnbindStreamHandler const& handler) const noexcept override;
+	virtual void getStreamInputInfoEx(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, GetStreamInputInfoExHandler const& handler) const noexcept override;
 	virtual void connectStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept override;
 	virtual void disconnectStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, DisconnectStreamHandler const& handler) const noexcept override;
 	virtual void disconnectTalkerStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, DisconnectTalkerStreamHandler const& handler) const noexcept override;

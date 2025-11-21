@@ -417,12 +417,13 @@ struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
 			switch (counters.getCounterType())
 			{
 				case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12:
-				{
 					writeStreamOutputCounter<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>(counters, object);
 					break;
-				}
 				case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
 					writeStreamOutputCounter<la::avdecc::entity::StreamOutputCounterValidFlags17221>(counters, object);
+					break;
+				case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_SignalPresence:
+					writeStreamOutputCounter<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>(counters, object);
 					break;
 				default:
 					AVDECC_ASSERT(false, "Unsupported StreamOutputCounterValidFlags type");
@@ -457,6 +458,11 @@ struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
 			case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
 			{
 				readStreamOutputCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>(*objectToRead, counters);
+				break;
+			}
+			case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_SignalPresence:
+			{
+				readStreamOutputCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>(*objectToRead, counters);
 				break;
 			}
 			default:
@@ -632,7 +638,6 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ConnectionFlag, {
 																							 { ConnectionFlag::StreamingWait, "STREAMING_WAIT" },
 																							 { ConnectionFlag::SupportsEncrypted, "SUPPORTS_ENCRYPTED" },
 																							 { ConnectionFlag::EncryptedPdu, "ENCRYPTED_PDU" },
-																							 { ConnectionFlag::TalkerFailed, "TALKER_FAILED" },
 																							 { ConnectionFlag::SrpRegistrationFailed, "SRP_REGISTRATION_FAILED" },
 																							 { ConnectionFlag::ClEntriesValid, "CL_ENTRIES_VALID" },
 																							 { ConnectionFlag::NoSrp, "NO_SRP" },
@@ -739,8 +744,10 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamInfoFlag, {
 																							 { StreamInfoFlag::StreamingWait, "STREAMING_WAIT" },
 																							 { StreamInfoFlag::SupportsEncrypted, "SUPPORTS_ENCRYPTED" },
 																							 { StreamInfoFlag::EncryptedPdu, "ENCRYPTED_PDU" },
-																							 { StreamInfoFlag::TalkerFailed, "TALKER_FAILED" },
+																							 { StreamInfoFlag::SrpRegistrationFailed, "SRP_REGISTRATION_FAILED" },
+																							 { StreamInfoFlag::ClEntriesValid, "CL_ENTRIES_VALID" },
 																							 { StreamInfoFlag::NoSrp, "NO_SRP" },
+																							 { StreamInfoFlag::Udp, "UDP" },
 																							 { StreamInfoFlag::IpFlagsValid, "IP_FLAGS_VALID" },
 																							 { StreamInfoFlag::IpSrcPortValid, "IP_SRC_PORT_VALID" },
 																							 { StreamInfoFlag::IpDstPortValid, "IP_DST_PORT_VALID" },
@@ -849,6 +856,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(model::StreamOutputCounters::CounterType, {
 																																				 { model::StreamOutputCounters::CounterType::Unknown, "UNKNOWN" },
 																																				 { model::StreamOutputCounters::CounterType::Milan_12, "MILAN_12" },
 																																				 { model::StreamOutputCounters::CounterType::IEEE17221_2021, "IEEE17221_2021" },
+																																				 { model::StreamOutputCounters::CounterType::Milan_SignalPresence, "MILAN_SIGNAL_PRESENCE" },
 																																			 });
 /* StreamOutputCounterValidFlagMilan12 conversion */
 NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlagMilan12, {
@@ -881,11 +889,36 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlag17221, {
 																																	{ StreamOutputCounterValidFlag17221::EntitySpecific1, "ENTITY_SPECIFIC_1" },
 																																});
 
+/* StreamOutputCounterValidFlagMilanSignalPresence conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlagMilanSignalPresence, {
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::None, "UNKNOWN" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::StreamStart, "STREAM_START" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::StreamStop, "STREAM_STOP" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::StreamInterrupted, "STREAM_INTERRUPTED" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::MediaReset, "MEDIA_RESET" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::TimestampUncertain, "TIMESTAMP_UNCERTAIN" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::TimestampValid, "TIMESTAMP_VALID" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::TimestampNotValid, "TIMESTAMP_NOT_VALID" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::FramesTx, "FRAMES_TX" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::SignalPresence2, "SIGNAL_PRESENCE_2" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::SignalPresence1, "SIGNAL_PRESENCE_1" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific8, "ENTITY_SPECIFIC_8" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific7, "ENTITY_SPECIFIC_7" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific6, "ENTITY_SPECIFIC_6" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific5, "ENTITY_SPECIFIC_5" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific4, "ENTITY_SPECIFIC_4" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific3, "ENTITY_SPECIFIC_3" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific2, "ENTITY_SPECIFIC_2" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific1, "ENTITY_SPECIFIC_1" },
+																																							});
+
 /* MilanInfoFeaturesFlag conversion */
 NLOHMANN_JSON_SERIALIZE_ENUM(MilanInfoFeaturesFlag, {
 																											{ MilanInfoFeaturesFlag::None, "UNKNOWN" },
 																											{ MilanInfoFeaturesFlag::Redundancy, "REDUNDANCY" },
 																											{ MilanInfoFeaturesFlag::TalkerDynamicMappingsWhileRunning, "TALKER_DYNAMIC_MAPPINGS_WHILE_RUNNING" },
+																											{ MilanInfoFeaturesFlag::MvuBinding, "MVU_BINDING" },
+																											{ MilanInfoFeaturesFlag::TalkerSignalPresence, "TALKER_SIGNAL_PRESENCE" },
 																										});
 
 /* Entity::CommonInformation conversion */
@@ -1212,7 +1245,8 @@ constexpr auto StreamDynamicInfo_IsClassB = "is_class_b";
 constexpr auto StreamDynamicInfo_HasSavedState = "has_saved_state";
 constexpr auto StreamDynamicInfo_DoesSupportEncrypted = "does_support_encrypted";
 constexpr auto StreamDynamicInfo_ArePdusEncrypted = "are_pdus_encrypted";
-constexpr auto StreamDynamicInfo_HasTalkerFailed = "has_talker_failed";
+constexpr auto StreamDynamicInfo_HasTalkerFailed = "has_talker_failed"; // Legacy name
+constexpr auto StreamDynamicInfo_HasSrpRegistrationFailed = "has_srp_registration_failed"; // New name for has_talker_failed
 constexpr auto StreamDynamicInfo_Flags = "last_received_flags";
 constexpr auto StreamDynamicInfo_StreamID = "stream_id";
 constexpr auto StreamDynamicInfo_MsrpAccumulatedLatency = "msrp_accumulated_latency";
@@ -1237,6 +1271,7 @@ constexpr auto MilanInfo_SpecificationVersion = "specification_version";
 
 /* MilanDynamicState */
 constexpr auto MilanDynamicState_SystemUniqueID = "system_unique_id";
+constexpr auto MilanDynamicState_SystemName = "system_name";
 
 /* MediaClockReferenceInfo */
 constexpr auto MediaClockReferenceInfo_UserMediaClockPriority = "user_media_clock_priority";
@@ -1661,7 +1696,7 @@ inline void to_json(json& j, StreamDynamicInfo const& info)
 	j[keyName::StreamDynamicInfo_HasSavedState] = info.hasSavedState;
 	j[keyName::StreamDynamicInfo_DoesSupportEncrypted] = info.doesSupportEncrypted;
 	j[keyName::StreamDynamicInfo_ArePdusEncrypted] = info.arePdusEncrypted;
-	j[keyName::StreamDynamicInfo_HasTalkerFailed] = info.hasTalkerFailed;
+	j[keyName::StreamDynamicInfo_HasSrpRegistrationFailed] = info.hasSrpRegistrationFailed;
 	j[keyName::StreamDynamicInfo_Flags] = info._streamInfoFlags;
 	j[keyName::StreamDynamicInfo_StreamID] = info.streamID;
 	j[keyName::StreamDynamicInfo_MsrpAccumulatedLatency] = info.msrpAccumulatedLatency;
@@ -1686,8 +1721,43 @@ inline void from_json(json const& j, StreamDynamicInfo& info)
 	j.at(keyName::StreamDynamicInfo_HasSavedState).get_to(info.hasSavedState);
 	j.at(keyName::StreamDynamicInfo_DoesSupportEncrypted).get_to(info.doesSupportEncrypted);
 	j.at(keyName::StreamDynamicInfo_ArePdusEncrypted).get_to(info.arePdusEncrypted);
-	j.at(keyName::StreamDynamicInfo_HasTalkerFailed).get_to(info.hasTalkerFailed);
-	get_optional_value(j, keyName::StreamDynamicInfo_Flags, info._streamInfoFlags);
+	{
+		// Legacy support: Check for old field name (StreamDynamicInfo_HasTalkerFailed)
+		if (auto const it = j.find(keyName::StreamDynamicInfo_HasTalkerFailed); it != j.end())
+		{
+			info.hasSrpRegistrationFailed = *it;
+		}
+		else
+		{
+			j.at(keyName::StreamDynamicInfo_HasSrpRegistrationFailed).get_to(info.hasSrpRegistrationFailed);
+		}
+	}
+	{
+		if (auto const it = j.find(keyName::StreamDynamicInfo_Flags); it != j.end())
+		{
+			// Make a copy of the flags so we can modify it if needed
+			auto flags = *it;
+			// Loop over all flags looking for legacy flag names to replace
+			std::optional<std::size_t> talkerFailedIndex;
+			auto index = std::size_t{ 0u };
+			for (auto const& [name, value] : flags.items())
+			{
+				if (value.is_string() && value.get<std::string>() == "TALKER_FAILED")
+				{
+					talkerFailedIndex = index;
+					break;
+				}
+				++index;
+			}
+			// Legacy support: Check if 'TALKER_FAILED' is present, if so replace with the new flag (SRP_REGISTRATION_FAILED)
+			if (talkerFailedIndex)
+			{
+				flags.erase(*talkerFailedIndex);
+				flags.push_back("SRP_REGISTRATION_FAILED");
+			}
+			flags.get_to(info._streamInfoFlags);
+		}
+	}
 	get_optional_value(j, keyName::StreamDynamicInfo_StreamID, info.streamID);
 	get_optional_value(j, keyName::StreamDynamicInfo_MsrpAccumulatedLatency, info.msrpAccumulatedLatency);
 	{
@@ -2863,10 +2933,12 @@ inline void from_json(json const& j, MilanInfo& info)
 inline void to_json(json& j, MilanDynamicState const& state)
 {
 	j[keyName::MilanDynamicState_SystemUniqueID] = state.systemUniqueID;
+	j[keyName::MilanDynamicState_SystemName] = state.systemName;
 }
 inline void from_json(json const& j, MilanDynamicState& state)
 {
 	get_optional_value(j, keyName::MilanDynamicState_SystemUniqueID, state.systemUniqueID);
+	get_optional_value(j, keyName::MilanDynamicState_SystemName, state.systemName);
 }
 
 } // namespace model

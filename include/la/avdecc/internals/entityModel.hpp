@@ -399,6 +399,24 @@ constexpr bool operator!=(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
 	return !(lhs == rhs);
 }
 
+/** GET_STREAM_INPUT_INFO_EX Dynamic Information - Milan 1.3 Clause 5.4.4.8 */
+struct StreamInputInfoEx
+{
+	StreamIdentification talkerStream{};
+	ProbingStatus probingStatus{ ProbingStatus::Disabled };
+	protocol::AcmpStatus acmpStatus{ protocol::AcmpStatus::Success };
+};
+
+constexpr bool operator==(StreamInputInfoEx const& lhs, StreamInputInfoEx const& rhs) noexcept
+{
+	return (lhs.talkerStream == rhs.talkerStream) && (lhs.probingStatus == rhs.probingStatus) && (lhs.acmpStatus == rhs.acmpStatus);
+}
+
+constexpr bool operator!=(StreamInputInfoEx const& lhs, StreamInputInfoEx const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
 /** GET_AVB_INFO Dynamic Information - IEEE1722.1-2013 Clause 7.4.40.2 */
 struct AvbInfo
 {
@@ -435,7 +453,7 @@ inline bool operator!=(AsPath const& lhs, AsPath const& rhs) noexcept
 	return !(lhs == rhs);
 }
 
-/** GET_MILAN_INFO - Milan 1.2 Clause 5.4.4.1 */
+/** GET_MILAN_INFO - Milan 1.3 Clause 5.4.4.1 */
 struct MilanInfo
 {
 	std::uint32_t protocolVersion{ 0u };
@@ -457,8 +475,9 @@ inline bool operator!=(MilanInfo const& lhs, MilanInfo const& rhs) noexcept
 /** Milan Dynamic State - All Milan specific dynamic info */
 struct MilanDynamicState
 {
-	// Milan 1.2 additions
-	std::optional<SystemUniqueIdentifier> systemUniqueID{};
+	// Milan 1.3 additions
+	std::optional<UniqueIdentifier> systemUniqueID{};
+	std::optional<la::avdecc::entity::model::AvdeccFixedString> systemName{};
 };
 
 inline bool operator==(MilanDynamicState const& lhs, MilanDynamicState const& rhs) noexcept
@@ -471,7 +490,7 @@ inline bool operator!=(MilanDynamicState const& lhs, MilanDynamicState const& rh
 	return !(lhs == rhs);
 }
 
-/** GET_MEDIA_CLOCK_REFERENCE_INFO - Milan 1.2 Clause 5.4.4.5 */
+/** GET_MEDIA_CLOCK_REFERENCE_INFO - Milan 1.3 Clause 5.4.4.5 */
 struct MediaClockReferenceInfo
 {
 	std::optional<MediaClockReferencePriority> userMediaClockPriority{ std::nullopt };

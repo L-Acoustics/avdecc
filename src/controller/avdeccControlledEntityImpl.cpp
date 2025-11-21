@@ -1603,13 +1603,14 @@ void ControlledEntityImpl::setMilanDynamicState(entity::model::MilanDynamicState
 	_milanDynamicState = state;
 }
 
-void ControlledEntityImpl::setSystemUniqueID(entity::model::SystemUniqueIdentifier const uniqueID) noexcept
+void ControlledEntityImpl::setSystemUniqueID(UniqueIdentifier const uniqueID, entity::model::AvdeccFixedString const& systemName) noexcept
 {
 	if (!_milanDynamicState)
 	{
 		_milanDynamicState = entity::model::MilanDynamicState{};
 	}
 	_milanDynamicState->systemUniqueID = uniqueID;
+	_milanDynamicState->systemName = systemName;
 }
 
 // Setters of the Statistics
@@ -2941,6 +2942,8 @@ std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const 
 			return protocol::MvuCommandType::GetSystemUniqueID;
 		case DynamicInfoType::GetMediaClockReferenceInfo:
 			return protocol::MvuCommandType::GetMediaClockReferenceInfo;
+		case DynamicInfoType::InputStreamInfoEx:
+			return protocol::MvuCommandType::GetStreamInputInfoEx;
 		default:
 			return "Unknown DynamicInfoType";
 	}
@@ -3257,13 +3260,17 @@ void ControlledEntityImpl::setDefaultPresentationTimes(model::ConfigurationNode&
 			}
 
 			// Check for Milan devices that use the msrpAccumulatedLatency field
+			// This changed since Milan 1.3 to use the same mechanism as IEEE 1722.1 devices
 			auto const milanInfo = getMilanInfo();
-			if (milanInfo && (*milanInfo).specificationVersion >= entity::model::MilanVersion{ 1, 0 })
+			if (milanInfo)
 			{
-				if (dynamicModel.streamDynamicInfo && (*dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
+				if (milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 } && milanInfo->specificationVersion < entity::model::MilanVersion{ 1, 3 })
 				{
-					auto const msrpValueAsNs = std::chrono::nanoseconds{ *(*dynamicModel.streamDynamicInfo).msrpAccumulatedLatency };
-					defaultValue = std::chrono::duration_cast<decltype(defaultValue)>(msrpValueAsNs);
+					if (dynamicModel.streamDynamicInfo && (*dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
+					{
+						auto const msrpValueAsNs = std::chrono::nanoseconds{ *(*dynamicModel.streamDynamicInfo).msrpAccumulatedLatency };
+						defaultValue = std::chrono::duration_cast<decltype(defaultValue)>(msrpValueAsNs);
+					}
 				}
 			}
 

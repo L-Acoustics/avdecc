@@ -154,6 +154,7 @@ public:
 		GetMaxTransitTime, // getMaxTransitTime (GET_MAX_TRANSIT_TIME)
 		GetSystemUniqueID, // getSystemUniqueID (MVU GET_SYSTEM_UNIQUE_ID)
 		GetMediaClockReferenceInfo, // getMediaClockReferenceInfo (MVU GET_MEDIA_CLOCK_REFERENCE_INFO)
+		InputStreamInfoEx, // getStreamInputInfoEx (MVU GET_STREAM_INPUT_INFO_EX)
 	};
 
 	/** Dynamic information stored in descriptors. Only required to retrieve from entities when the static model is known (because it was in EntityModelID cache).  */
@@ -340,7 +341,7 @@ public:
 	void setLockingController(UniqueIdentifier const controllerID) noexcept;
 	void setMilanInfo(entity::model::MilanInfo const& info) noexcept;
 	void setMilanDynamicState(entity::model::MilanDynamicState const& state) noexcept;
-	void setSystemUniqueID(entity::model::SystemUniqueIdentifier const uniqueID) noexcept;
+	void setSystemUniqueID(UniqueIdentifier const uniqueID, entity::model::AvdeccFixedString const& systemName) noexcept;
 
 	// Setters of the Statistics
 	void setAecpRetryCounter(std::uint64_t const value) noexcept;

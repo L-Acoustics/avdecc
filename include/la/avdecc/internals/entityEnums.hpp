@@ -41,11 +41,14 @@ namespace entity
 enum class LA_AVDECC_API StreamOutputCounterValidFlagMilan12 : model::DescriptorCounterValidFlag;
 /* STREAM_OUTPUT Counters - IEEE1722.1-2021 Clause 7.4.42.2.5 */
 enum class LA_AVDECC_API StreamOutputCounterValidFlag17221 : model::DescriptorCounterValidFlag;
+/* STREAM_OUTPUT Counters - Milan 1.3 Clause 5.3.7.7 */
+enum class LA_AVDECC_API StreamOutputCounterValidFlagMilanSignalPresence : model::DescriptorCounterValidFlag;
 } // namespace entity
 namespace utils
 {
 template class LA_AVDECC_TYPE_INFO_EXPORT EnumBitfield<entity::StreamOutputCounterValidFlagMilan12>;
 template class LA_AVDECC_TYPE_INFO_EXPORT EnumBitfield<entity::StreamOutputCounterValidFlag17221>;
+template class LA_AVDECC_TYPE_INFO_EXPORT EnumBitfield<entity::StreamOutputCounterValidFlagMilanSignalPresence>;
 } // namespace utils
 } // namespace la::avdecc
 
@@ -132,8 +135,7 @@ enum class LA_AVDECC_API ConnectionFlag : std::uint16_t
 	StreamingWait = 1u << 3, /**< The AVDECC Talker does not start streaming until explicitly being told to by the control protocol. */
 	SupportsEncrypted = 1u << 4, /**< Indicates that the Stream supports streaming with encrypted PDUs. */
 	EncryptedPdu = 1u << 5, /**< Indicates that the Stream is using encrypted PDUs. */
-	TalkerFailed = 1u << 6, /**< IEEE1722.1-2013 - Indicates that the listener has registered an SRP Talker Failed attribute for the Stream. */
-	SrpRegistrationFailed = 1u << 6, /**< IEEE1722.1-2021 - Indicates that the listener has registered an SRP Talker Failed attribute for the stream or that the talker has registered an SRP Listener Asking Failed attribute for the stream (used in Get State only). */
+	SrpRegistrationFailed = 1u << 6, /**< Indicates that the listener has registered an SRP Talker Failed attribute for the stream or that the talker has registered an SRP Listener Asking Failed attribute for the stream (used in Get State only). */
 	ClEntriesValid = 1u << 7, /**< Indicates that the connected_listeners_entries field in the ACM-PDU is valid. */
 	NoSrp = 1u << 8, /**< Indicates that SRP is not being used for the stream. The Talker will not register a Talker Advertise nor wait for a Listener registration before streaming. */
 	Udp = 1u << 9, /**< Indicates that the stream is using UDP based transport and not Layer 2 AVTPDUs. */
@@ -262,10 +264,11 @@ enum class LA_AVDECC_API StreamInfoFlag : std::uint32_t
 	StreamingWait = 1u << 3, /**< The Stream is presently in STREAMING_WAIT, either it was connected with STREAMING_WAIT flag set or it was stopped with STOP_STREAMING command. */
 	SupportsEncrypted = 1u << 4, /**< Indicates that the Stream supports streaming with encrypted PDUs. */
 	EncryptedPdu = 1u << 5, /**< Indicates that the Stream is using encrypted PDUs. */
-	TalkerFailed = 1u << 6, /**< Indicates that the Listener has registered an SRP Talker Failed attribute for the Stream. */
-	/* Bit 24 reserved for future use */
+	SrpRegistrationFailed = 1u << 6, /**< Indicates that the listener has registered an SRP Talker Failed attribute for the stream or that the talker has registered an SRP Listener Asking Failed attribute for the stream (used in Get State only). */
+	ClEntriesValid = 1u << 7, /**< Indicates that the connected_listeners_entries field in the ACM-PDU is valid. */
 	NoSrp = 1u << 8, /**< Indicates that SRP is not being used for the stream. The Talker will not register a Talker Advertise nor wait for a Listener registration before streaming. */
-	/* Bits 13 to 22 reserved for future use */
+	Udp = 1u << 9, /**< Indicates that the stream is using UDP based transport and not Layer 2 AVTPDUs. */
+	/* Bits 13 to 21 reserved for future use */
 	IpFlagsValid = 1u << 19, /**< The value in the ip_flags field is valid. */
 	IpSrcPortValid = 1u << 20, /**< The value in the source_port field is valid. */
 	IpDstPortValid = 1u << 21, /**< The value in the destination_port field is valid. */
@@ -357,7 +360,7 @@ enum class LA_AVDECC_API ClockDomainCounterValidFlag : model::DescriptorCounterV
 };
 using ClockDomainCounterValidFlags = utils::EnumBitfield<ClockDomainCounterValidFlag>;
 
-/* STREAM_INPUT Counters - IEEE1722.1-2021 Clause 7.4.42.2.4 / Milan 1.2 Clause 5.3.8.10 */
+/* STREAM_INPUT Counters - IEEE1722.1-2021 Clause 7.4.42.2.4 / Milan 1.3 Clause 5.3.8.10 */
 enum class LA_AVDECC_API StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
 {
 	None = 0u,
@@ -421,6 +424,31 @@ enum class StreamOutputCounterValidFlag17221 : model::DescriptorCounterValidFlag
 };
 using StreamOutputCounterValidFlags17221 = utils::EnumBitfield<StreamOutputCounterValidFlag17221>;
 
+/* STREAM_OUTPUT Counters - Milan 1.3 Clause 5.3.7.7 */
+enum class StreamOutputCounterValidFlagMilanSignalPresence : model::DescriptorCounterValidFlag /* Do not use LA_AVDECC_API here, it is forward declared */
+{
+	None = 0u,
+	StreamStart = 1u << 0, /**< Incremented when a stream is started. */
+	StreamStop = 1u << 1, /**< Incremented when a stream is stopped. */
+	StreamInterrupted = 1u << 2, /**< Incremented when Stream playback is interrupted. */
+	MediaReset = 1u << 3, /**< Increments on a toggle of the mr bit in the Stream data AVTPDU. */
+	TimestampUncertain = 1u << 4, /**< Increments on a toggle of the tu bit in the Stream data AVTPDU. */
+	TimestampValid = 1u << 5, /**< Increments on receipt of a Stream data AVTPDU with the tv bit set. */
+	TimestampNotValid = 1u << 6, /**< Increments on receipt of a Stream data AVTPDU with tv bit cleared. */
+	FramesTx = 1u << 7, /**< Increments on each Stream data AVTPDU transmitted. */
+	SignalPresence2 = 1u << 22, /**< Signal Presence 2. */
+	SignalPresence1 = 1u << 23, /**< Signal Presence 1. */
+	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */
+	EntitySpecific7 = 1u << 25, /**< Entity Specific counter 7. */
+	EntitySpecific6 = 1u << 26, /**< Entity Specific counter 6. */
+	EntitySpecific5 = 1u << 27, /**< Entity Specific counter 5. */
+	EntitySpecific4 = 1u << 28, /**< Entity Specific counter 4. */
+	EntitySpecific3 = 1u << 29, /**< Entity Specific counter 3. */
+	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
+	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
+};
+using StreamOutputCounterValidFlagsMilanSignalPresence = utils::EnumBitfield<StreamOutputCounterValidFlagMilanSignalPresence>;
+
 /** Proxy class for StreamOutputCounterValidFlags */
 class LA_AVDECC_API StreamOutputCounterValidFlags final
 {
@@ -432,8 +460,8 @@ public:
 	{
 	}
 
-	/** Either get Milan 1.2 or IEEE1722.1-2021 StreamOutputCounterValidFlags */
-	template<typename ValidFlagsType, typename = std::enable_if_t<std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221>>>
+	/** Either get Milan 1.2, IEEE1722.1-2021 or MilanSignalPresence StreamOutputCounterValidFlags */
+	template<typename ValidFlagsType, typename = std::enable_if_t<std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilanSignalPresence>>>
 	constexpr ValidFlagsType get() const noexcept
 	{
 		auto flags = ValidFlagsType{};
@@ -451,16 +479,18 @@ private:
 	value_type _flags{ 0u };
 };
 
-/** Milan Info Features Flags - Milan 1.2 Clause 5.4.4.1 */
+/** Milan Info Features Flags - Milan 1.3 Clause 5.4.4.1 */
 enum class LA_AVDECC_API MilanInfoFeaturesFlag : std::uint32_t
 {
 	None = 0u,
 	Redundancy = 1u << 0, /**< The entity supports the milan redundancy scheme. */
 	TalkerDynamicMappingsWhileRunning = 1u << 1, /**< The entity supports changing dynamic mappings of talker streams while streaming. */
+	MvuBinding = 1u << 2, /**< The entity supports streams binding through MVU commands. */
+	TalkerSignalPresence = 1u << 3, /**< The entity supports signaling the presence of its audio channels. */
 };
 using MilanInfoFeaturesFlags = utils::EnumBitfield<MilanInfoFeaturesFlag>;
 
-/** Media Clock Reference Info Flags - Milan 1.2 Clause 5.4.4.4 */
+/** Media Clock Reference Info Flags - Milan 1.3 Clause 5.4.4.4 */
 enum class LA_AVDECC_API MediaClockReferenceInfoFlag : std::uint8_t
 {
 	None = 0u,
@@ -469,6 +499,15 @@ enum class LA_AVDECC_API MediaClockReferenceInfoFlag : std::uint8_t
 	/* Bits 0 to 5 reserved for future use */
 };
 using MediaClockReferenceInfoFlags = utils::EnumBitfield<MediaClockReferenceInfoFlag>;
+
+/** BindStreamFlags - Milan 1.3 Clause 5.4.4.6 */
+enum class LA_AVDECC_API BindStreamFlag : std::uint16_t
+{
+	None = 0u,
+	StreamingWait = 1u << 0, /**< The AVDECC Talker does not start streaming until explicitly being told to by the control protocol. */
+	/* Bits 0 to 14 reserved for future use */
+};
+using BindStreamFlags = utils::EnumBitfield<BindStreamFlag>;
 
 } // namespace entity
 } // namespace avdecc

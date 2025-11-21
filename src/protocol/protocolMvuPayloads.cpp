@@ -51,7 +51,7 @@ static inline void checkResponsePayload(MvuAecpdu::Payload const& payload, entit
 	}
 }
 
-/** GET_MILAN_INFO Command - Milan 1.2 Clause 5.4.4.1 */
+/** GET_MILAN_INFO Command - Milan 1.3 Clause 5.4.4.1 */
 Serializer<AecpMvuGetMilanInfoCommandPayloadSize> serializeGetMilanInfoCommand()
 {
 	auto ser = Serializer<AecpMvuGetMilanInfoCommandPayloadSize>{};
@@ -85,16 +85,20 @@ void deserializeGetMilanInfoCommand(MvuAecpdu::Payload const& payload)
 	return;
 }
 
-/** GET_MILAN_INFO Response - Milan 1.2 Clause 5.4.4.1 */
-Serializer<AecpMvuGetMilanInfoResponsePayloadSize> serializeGetMilanInfoResponse(entity::model::MilanInfo const& info)
+/** GET_MILAN_INFO Response - Milan 1.3 Clause 5.4.4.1 */
+Serializer<AecpMvuGetMilanInfoResponsePayloadMaxSize> serializeGetMilanInfoResponse(entity::model::MilanInfo const& info)
 {
-	auto ser = Serializer<AecpMvuGetMilanInfoResponsePayloadSize>{};
+	auto ser = Serializer<AecpMvuGetMilanInfoResponsePayloadMaxSize>{};
 	auto const reserved16 = std::uint16_t{ 0u };
 
 	ser << reserved16;
 	ser << info.protocolVersion << info.featuresFlags << info.certificationVersion;
 
-	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+	AVDECC_ASSERT(ser.usedBytes() == AecpMvuGetMilanInfo12ResponsePayloadSize, "Used bytes do not match the protocol constant");
+
+	// Pack Milan 1.3 fields
+	ser << info.specificationVersion;
+	AVDECC_ASSERT(ser.usedBytes() == AecpMvuGetMilanInfo13ResponsePayloadSize, "Used bytes do not match the protocol constant");
 
 	return ser;
 }
@@ -104,7 +108,7 @@ std::tuple<entity::model::MilanInfo> deserializeGetMilanInfoResponse(entity::Loc
 	auto* const commandPayload = payload.first;
 	auto const commandPayloadLength = payload.second;
 
-	checkResponsePayload(payload, status, AecpMvuGetMilanInfoCommandPayloadSize, AecpMvuGetMilanInfoResponsePayloadSize);
+	checkResponsePayload(payload, status, AecpMvuGetMilanInfoCommandPayloadSize, AecpMvuGetMilanInfoResponsePayloadMinSize);
 
 	// Check payload
 	auto des = Deserializer{ commandPayload, commandPayloadLength };
@@ -114,10 +118,16 @@ std::tuple<entity::model::MilanInfo> deserializeGetMilanInfoResponse(entity::Loc
 	des >> reserved16;
 	des >> info.protocolVersion >> info.featuresFlags >> info.certificationVersion;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetMilanInfoResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
+	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetMilanInfo12ResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 
+	// Unpack Milan 1.3 fields if present
+	if (commandPayloadLength >= AecpMvuGetMilanInfo13ResponsePayloadSize)
+	{
+		des >> info.specificationVersion;
+		AVDECC_ASSERT(des.usedBytes() == AecpMvuGetMilanInfo13ResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
+	}
 	// Fallback to Milan 1.2 specification if protocol version is 1
-	if (info.protocolVersion == 1u)
+	else if (info.protocolVersion == 1u)
 	{
 		info.specificationVersion = entity::model::MilanVersion{ 1, 2 };
 	}
@@ -125,26 +135,27 @@ std::tuple<entity::model::MilanInfo> deserializeGetMilanInfoResponse(entity::Loc
 	return std::make_tuple(info);
 }
 
-/** SET_SYSTEM_UNIQUE_ID Command - Milan 1.2 Clause 5.4.4.2 */
-Serializer<AecpMvuSetSystemUniqueIDCommandPayloadSize> serializeSetSystemUniqueIDCommand(entity::model::SystemUniqueIdentifier const systemUniqueID)
+/** SET_SYSTEM_UNIQUE_ID Command - Milan 1.3 Clause 5.4.4.2 */
+Serializer<AecpMvuSetSystemUniqueIDCommandPayloadMaxSize> serializeSetSystemUniqueIDCommand(UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName)
 {
-	auto ser = Serializer<AecpMvuSetSystemUniqueIDCommandPayloadSize>{};
+	auto ser = Serializer<AecpMvuSetSystemUniqueIDCommandPayloadMaxSize>{};
 	auto const reserved16 = std::uint16_t{ 0u };
 
 	ser << reserved16;
 	ser << systemUniqueID;
+	ser << systemName;
 
 	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
 
 	return ser;
 }
 
-std::tuple<entity::model::SystemUniqueIdentifier> deserializeSetSystemUniqueIDCommand(MvuAecpdu::Payload const& payload)
+std::tuple<UniqueIdentifier, entity::model::AvdeccFixedString> deserializeSetSystemUniqueIDCommand(MvuAecpdu::Payload const& payload)
 {
 	auto* const commandPayload = payload.first;
 	auto const commandPayloadLength = payload.second;
 
-	if (commandPayload == nullptr || commandPayloadLength < AecpMvuSetSystemUniqueIDCommandPayloadSize) // Malformed packet
+	if (commandPayload == nullptr || commandPayloadLength < AecpMvuSetSystemUniqueIDCommandPayloadMinSize) // Malformed packet
 	{
 		throw IncorrectPayloadSizeException();
 	}
@@ -152,29 +163,45 @@ std::tuple<entity::model::SystemUniqueIdentifier> deserializeSetSystemUniqueIDCo
 	// Check payload
 	auto des = Deserializer{ commandPayload, commandPayloadLength };
 	auto reserved16 = std::uint16_t{ 0u };
-	auto systemUniqueID = entity::model::SystemUniqueIdentifier{};
+	auto systemUniqueID = UniqueIdentifier{};
+	auto systemName = entity::model::AvdeccFixedString{};
 
 	des >> reserved16;
-	des >> systemUniqueID;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpMvuSetSystemUniqueIDCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
+	// If payload size is Milan 1.2 size, unpack the lower part of the SystemUniqueID (that went from 32 bits to 64 bits)
+	if (commandPayloadLength == AecpMvuSetSystemUniqueID12CommandPayloadSize)
+	{
+		auto systemUniqueID_milan12 = std::uint32_t{ 0u };
+		des >> systemUniqueID_milan12;
+		systemUniqueID = UniqueIdentifier{ systemUniqueID_milan12 };
 
-	return std::make_tuple(systemUniqueID);
+		AVDECC_ASSERT(des.usedBytes() == AecpMvuSetSystemUniqueID12CommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
+	}
+	// Otherwise if the payload is at least Milan 1.3
+	else if (commandPayloadLength >= AecpMvuSetSystemUniqueID13CommandPayloadSize)
+	{
+		des >> systemUniqueID;
+		des >> systemName;
+
+		AVDECC_ASSERT(des.usedBytes() == AecpMvuSetSystemUniqueID13CommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
+	}
+
+	return std::make_tuple(systemUniqueID, systemName);
 }
 
 /** SET_SYSTEM_UNIQUE_ID Response - Milan 1.2 Clause 5.4.4.2 */
-Serializer<AecpMvuSetSystemUniqueIDResponsePayloadSize> serializeSetSystemUniqueIDResponse(entity::model::SystemUniqueIdentifier const systemUniqueID)
+Serializer<AecpMvuSetSystemUniqueIDResponsePayloadMaxSize> serializeSetSystemUniqueIDResponse(UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName)
 {
 	// Same as SET_SYSTEM_UNIQUE_ID Command
-	static_assert(AecpMvuSetSystemUniqueIDResponsePayloadSize == AecpMvuSetSystemUniqueIDCommandPayloadSize, "SET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
-	return serializeSetSystemUniqueIDCommand(systemUniqueID);
+	static_assert(AecpMvuSetSystemUniqueIDResponsePayloadMaxSize == AecpMvuSetSystemUniqueIDCommandPayloadMaxSize, "SET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
+	return serializeSetSystemUniqueIDCommand(systemUniqueID, systemName);
 }
 
-std::tuple<entity::model::SystemUniqueIdentifier> deserializeSetSystemUniqueIDResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload)
+std::tuple<UniqueIdentifier, entity::model::AvdeccFixedString> deserializeSetSystemUniqueIDResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload)
 {
 	// Same as SET_SYSTEM_UNIQUE_ID Command
-	static_assert(AecpMvuSetSystemUniqueIDResponsePayloadSize == AecpMvuSetSystemUniqueIDCommandPayloadSize, "SET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
-	checkResponsePayload(payload, status, AecpMvuSetSystemUniqueIDCommandPayloadSize, AecpMvuSetSystemUniqueIDResponsePayloadSize);
+	static_assert(AecpMvuSetSystemUniqueIDResponsePayloadMaxSize == AecpMvuSetSystemUniqueIDCommandPayloadMaxSize, "SET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
+	checkResponsePayload(payload, status, AecpMvuSetSystemUniqueIDCommandPayloadMinSize, AecpMvuSetSystemUniqueIDResponsePayloadMinSize);
 	return deserializeSetSystemUniqueIDCommand(payload);
 }
 
@@ -194,22 +221,22 @@ Serializer<AecpMvuGetSystemUniqueIDCommandPayloadSize> serializeGetSystemUniqueI
 // No payload to deserialize
 
 /** GET_SYSTEM_UNIQUE_ID Response - Milan 1.2 Clause 5.4.4.3 */
-Serializer<AecpMvuGetSystemUniqueIDResponsePayloadSize> serializeGetSystemUniqueIDResponse(entity::model::SystemUniqueIdentifier const systemUniqueID)
+Serializer<AecpMvuGetSystemUniqueIDResponsePayloadMaxSize> serializeGetSystemUniqueIDResponse(UniqueIdentifier const systemUniqueID, la::avdecc::entity::model::AvdeccFixedString const& systemName)
 {
 	// Same as SET_SYSTEM_UNIQUE_ID Command
-	static_assert(AecpMvuGetSystemUniqueIDResponsePayloadSize == AecpMvuSetSystemUniqueIDCommandPayloadSize, "GET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
-	return serializeSetSystemUniqueIDCommand(systemUniqueID);
+	static_assert(AecpMvuGetSystemUniqueIDResponsePayloadMaxSize == AecpMvuSetSystemUniqueIDCommandPayloadMaxSize, "GET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
+	return serializeSetSystemUniqueIDCommand(systemUniqueID, systemName);
 }
 
-std::tuple<entity::model::SystemUniqueIdentifier> deserializeGetSystemUniqueIDResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload)
+std::tuple<UniqueIdentifier, entity::model::AvdeccFixedString> deserializeGetSystemUniqueIDResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload)
 {
 	// Same as SET_SYSTEM_UNIQUE_ID Command
-	static_assert(AecpMvuGetSystemUniqueIDResponsePayloadSize == AecpMvuSetSystemUniqueIDCommandPayloadSize, "GET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
-	checkResponsePayload(payload, status, AecpMvuGetSystemUniqueIDCommandPayloadSize, AecpMvuGetSystemUniqueIDResponsePayloadSize);
+	static_assert(AecpMvuGetSystemUniqueIDResponsePayloadMaxSize == AecpMvuSetSystemUniqueIDCommandPayloadMaxSize, "GET_SYSTEM_UNIQUE_ID Response no longer the same as SET_SYSTEM_UNIQUE_ID Command");
+	checkResponsePayload(payload, status, AecpMvuGetSystemUniqueIDCommandPayloadSize, AecpMvuGetSystemUniqueIDResponsePayloadMinSize);
 	return deserializeSetSystemUniqueIDCommand(payload);
 }
 
-/** SET_MEDIA_CLOCK_REFERENCE_INFO Command - Milan 1.2 Clause 5.4.4.4 */
+/** SET_MEDIA_CLOCK_REFERENCE_INFO Command - Milan 1.3 Clause 5.4.4.4 */
 Serializer<AecpMvuSetMediaClockReferenceInfoCommandPayloadSize> serializeSetMediaClockReferenceInfoCommand(entity::model::ClockDomainIndex const clockDomainIndex, entity::MediaClockReferenceInfoFlags const flags, entity::model::DefaultMediaClockReferencePriority const defaultMcrPrio, entity::model::MediaClockReferencePriority const userMcrPrio, entity::model::AvdeccFixedString const& domainName)
 {
 	auto ser = Serializer<AecpMvuSetMediaClockReferenceInfoCommandPayloadSize>{};
@@ -256,7 +283,7 @@ std::tuple<entity::model::ClockDomainIndex, entity::MediaClockReferenceInfoFlags
 	return std::make_tuple(clockDomainIndex, flags, defaultMcrPrio, userMcrPrio, domainName);
 }
 
-/** SET_MEDIA_CLOCK_REFERENCE_INFO Response - Milan 1.2 Clause 5.4.4.4 */
+/** SET_MEDIA_CLOCK_REFERENCE_INFO Response - Milan 1.3 Clause 5.4.4.4 */
 Serializer<AecpMvuSetMediaClockReferenceInfoResponsePayloadSize> serializeSetMediaClockReferenceInfoResponse(entity::model::ClockDomainIndex const clockDomainIndex, entity::MediaClockReferenceInfoFlags const flags, entity::model::DefaultMediaClockReferencePriority const defaultMcrPrio, entity::model::MediaClockReferencePriority const userMcrPrio, entity::model::AvdeccFixedString const& domainName)
 {
 	// Same as SET_MEDIA_CLOCK_REFERENCE_INFO Command
@@ -272,7 +299,7 @@ std::tuple<entity::model::ClockDomainIndex, entity::MediaClockReferenceInfoFlags
 	return deserializeSetMediaClockReferenceInfoCommand(payload);
 }
 
-/** GET_MEDIA_CLOCK_REFERENCE_INFO Command - Milan 1.2 Clause 5.4.4.5 */
+/** GET_MEDIA_CLOCK_REFERENCE_INFO Command - Milan 1.3 Clause 5.4.4.5 */
 Serializer<AecpMvuGetMediaClockReferenceInfoCommandPayloadSize> serializeGetMediaClockReferenceInfoCommand(entity::model::ClockDomainIndex const clockDomainIndex)
 {
 	auto ser = Serializer<AecpMvuGetMediaClockReferenceInfoCommandPayloadSize>{};
@@ -305,7 +332,7 @@ std::tuple<entity::model::ClockDomainIndex> deserializeGetMediaClockReferenceInf
 	return std::make_tuple(clockDomainIndex);
 }
 
-/** GET_MEDIA_CLOCK_REFERENCE_INFO Response - Milan 1.2 Clause 5.4.4.5 */
+/** GET_MEDIA_CLOCK_REFERENCE_INFO Response - Milan 1.3 Clause 5.4.4.5 */
 Serializer<AecpMvuGetMediaClockReferenceInfoResponsePayloadSize> serializeGetMediaClockReferenceInfoResponse(entity::model::ClockDomainIndex const clockDomainIndex, entity::MediaClockReferenceInfoFlags const flags, entity::model::DefaultMediaClockReferencePriority const defaultMcrPrio, entity::model::MediaClockReferencePriority const userMcrPrio, entity::model::AvdeccFixedString const& domainName)
 {
 	// Same as SET_MEDIA_CLOCK_REFERENCE_INFO Command
@@ -319,6 +346,202 @@ std::tuple<entity::model::ClockDomainIndex, entity::MediaClockReferenceInfoFlags
 	static_assert(AecpMvuGetMediaClockReferenceInfoResponsePayloadSize == AecpMvuSetMediaClockReferenceInfoCommandPayloadSize, "GET_MEDIA_CLOCK_REFERENCE_INFO Response no longer the same as SET_MEDIA_CLOCK_REFERENCE_INFO Command");
 	checkResponsePayload(payload, status, AecpMvuGetMediaClockReferenceInfoCommandPayloadSize, AecpMvuGetMediaClockReferenceInfoResponsePayloadSize);
 	return deserializeSetMediaClockReferenceInfoCommand(payload);
+}
+
+/** BIND_STREAM Command - Milan 1.3 Clause 5.4.4.6 */
+Serializer<AecpMvuBindStreamCommandPayloadSize> serializeBindStreamCommand(entity::BindStreamFlags const flags, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, UniqueIdentifier const talkerEntityID, entity::model::DescriptorIndex talkerStreamIndex)
+{
+	auto ser = Serializer<AecpMvuBindStreamCommandPayloadSize>{};
+	auto const reserved16 = std::uint16_t{ 0u };
+
+	ser << flags << descriptorType << descriptorIndex;
+	ser << talkerEntityID << talkerStreamIndex;
+	ser << reserved16;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::BindStreamFlags, entity::model::DescriptorType, entity::model::DescriptorIndex, UniqueIdentifier, entity::model::DescriptorIndex> deserializeBindStreamCommand(MvuAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpMvuBindStreamCommandPayloadSize) // Malformed packet
+	{
+		throw IncorrectPayloadSizeException();
+	}
+
+	// Check payload
+	auto des = Deserializer{ commandPayload, commandPayloadLength };
+	auto reserved16 = std::uint16_t{ 0u };
+	auto flags = entity::BindStreamFlags{};
+	auto descriptorType = entity::model::DescriptorType{};
+	auto descriptorIndex = entity::model::DescriptorIndex{};
+	auto talkerEntityID = UniqueIdentifier{};
+	auto talkerStreamIndex = entity::model::DescriptorIndex{};
+
+	des >> flags >> descriptorType >> descriptorIndex;
+	des >> talkerEntityID >> talkerStreamIndex;
+	des >> reserved16;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpMvuBindStreamCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
+
+	return std::make_tuple(flags, descriptorType, descriptorIndex, talkerEntityID, talkerStreamIndex);
+}
+
+/** BIND_STREAM Response - Milan 1.3 Clause 5.4.4.6 */
+Serializer<AecpMvuBindStreamResponsePayloadSize> serializeBindStreamResponse(entity::BindStreamFlags const flags, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, UniqueIdentifier const talkerEntityID, entity::model::DescriptorIndex talkerStreamIndex)
+{
+	// Same as BIND_STREAM Command
+	static_assert(AecpMvuBindStreamResponsePayloadSize == AecpMvuBindStreamCommandPayloadSize, "BIND_STREAM Response no longer the same as BIND_STREAM Command");
+	return serializeBindStreamCommand(flags, descriptorType, descriptorIndex, talkerEntityID, talkerStreamIndex);
+}
+
+std::tuple<entity::BindStreamFlags, entity::model::DescriptorType, entity::model::DescriptorIndex, UniqueIdentifier, entity::model::DescriptorIndex> deserializeBindStreamResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload)
+{
+	// Same as BIND_STREAM Command
+	static_assert(AecpMvuBindStreamResponsePayloadSize == AecpMvuBindStreamCommandPayloadSize, "BIND_STREAM Response no longer the same as BIND_STREAM Command");
+	checkResponsePayload(payload, status, AecpMvuBindStreamCommandPayloadSize, AecpMvuBindStreamResponsePayloadSize);
+	return deserializeBindStreamCommand(payload);
+}
+
+/** UNBIND_STREAM Command - Milan 1.3 Clause 5.4.4.7 */
+Serializer<AecpMvuUnbindStreamCommandPayloadSize> serializeUnbindStreamCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	auto ser = Serializer<AecpMvuUnbindStreamCommandPayloadSize>{};
+	auto const reserved16 = std::uint16_t{ 0u };
+
+	ser << reserved16;
+	ser << descriptorType << descriptorIndex;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeUnbindStreamCommand(MvuAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpMvuUnbindStreamCommandPayloadSize) // Malformed packet
+	{
+		throw IncorrectPayloadSizeException();
+	}
+
+	// Check payload
+	auto des = Deserializer{ commandPayload, commandPayloadLength };
+	auto reserved16 = std::uint16_t{ 0u };
+	auto descriptorType = entity::model::DescriptorType{};
+	auto descriptorIndex = entity::model::DescriptorIndex{};
+
+	des >> reserved16;
+	des >> descriptorType >> descriptorIndex;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpMvuUnbindStreamCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex);
+}
+
+/** UNBIND_STREAM Response - Milan 1.3 Clause 5.4.4.7 */
+Serializer<AecpMvuUnbindStreamResponsePayloadSize> serializeUnbindStreamResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	// Same as UNBIND_STREAM Command
+	static_assert(AecpMvuUnbindStreamResponsePayloadSize == AecpMvuUnbindStreamCommandPayloadSize, "UNBIND_STREAM Response no longer the same as UNBIND_STREAM Command");
+	return serializeUnbindStreamCommand(descriptorType, descriptorIndex);
+}
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeUnbindStreamResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload)
+{
+	// Same as UNBIND_STREAM Command
+	static_assert(AecpMvuUnbindStreamResponsePayloadSize == AecpMvuUnbindStreamCommandPayloadSize, "UNBIND_STREAM Response no longer the same as UNBIND_STREAM Command");
+	checkResponsePayload(payload, status, AecpMvuUnbindStreamCommandPayloadSize, AecpMvuUnbindStreamResponsePayloadSize);
+	return deserializeUnbindStreamCommand(payload);
+}
+
+/** GET_STREAM_INPUT_INFO_EX Command - Milan 1.3 Clause 5.4.4.8 */
+Serializer<AecpMvuGetStreamInputInfoExCommandPayloadSize> serializeGetStreamInputInfoExCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	auto ser = Serializer<AecpMvuGetStreamInputInfoExCommandPayloadSize>{};
+	auto const reserved16 = std::uint16_t{ 0u };
+
+	ser << reserved16;
+	ser << descriptorType << descriptorIndex;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeGetStreamInputInfoExCommand(MvuAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpMvuGetStreamInputInfoExCommandPayloadSize) // Malformed packet
+	{
+		throw IncorrectPayloadSizeException();
+	}
+
+	// Check payload
+	auto des = Deserializer{ commandPayload, commandPayloadLength };
+	auto reserved16 = std::uint16_t{ 0u };
+	auto descriptorType = entity::model::DescriptorType{};
+	auto descriptorIndex = entity::model::DescriptorIndex{};
+
+	des >> reserved16;
+	des >> descriptorType >> descriptorIndex;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetStreamInputInfoExCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex);
+}
+
+/** GET_STREAM_INPUT_INFO_EX Response - Milan 1.3 Clause 5.4.4.8 */
+Serializer<AecpMvuGetStreamInputInfoExResponsePayloadSize> serializeGetStreamInputInfoExResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInputInfoEx const& streamInputInfoEx)
+{
+	auto ser = Serializer<AecpMvuGetStreamInputInfoExResponsePayloadSize>{};
+	auto const reserved8 = std::uint8_t{ 0u };
+	auto const reserved16 = std::uint16_t{ 0u };
+
+	ser << reserved16;
+	ser << descriptorType << descriptorIndex;
+	ser << streamInputInfoEx.talkerStream.entityID << streamInputInfoEx.talkerStream.streamIndex;
+	ser << static_cast<std::uint8_t>(((utils::to_integral(streamInputInfoEx.probingStatus) << 5) & 0xe0) | ((streamInputInfoEx.acmpStatus).getValue() & 0x1f)) << reserved8;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamInputInfoEx> deserializeGetStreamInputInfoExResponse(entity::LocalEntity::MvuCommandStatus const status, MvuAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	checkResponsePayload(payload, status, AecpMvuGetStreamInputInfoExCommandPayloadSize, AecpMvuGetStreamInputInfoExResponsePayloadSize);
+
+	// Check payload
+	auto des = Deserializer{ commandPayload, commandPayloadLength };
+	auto reserved8 = std::uint8_t{ 0u };
+	auto reserved16 = std::uint16_t{ 0u };
+	auto descriptorType = entity::model::DescriptorType{};
+	auto descriptorIndex = entity::model::DescriptorIndex{};
+	auto streamInputInfoEx = entity::model::StreamInputInfoEx{};
+	auto probing_acmp_status = std::uint8_t{ 0u };
+
+	des >> reserved16;
+	des >> descriptorType >> descriptorIndex;
+	des >> streamInputInfoEx.talkerStream.entityID >> streamInputInfoEx.talkerStream.streamIndex;
+	des >> probing_acmp_status >> reserved8;
+
+	streamInputInfoEx.probingStatus = static_cast<entity::model::ProbingStatus>((probing_acmp_status & 0xe0) >> 5);
+	streamInputInfoEx.acmpStatus = static_cast<AcmpStatus>(probing_acmp_status & 0x1f);
+
+	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetStreamInputInfoExResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex, streamInputInfoEx);
 }
 
 } // namespace la::avdecc::protocol::mvuPayload

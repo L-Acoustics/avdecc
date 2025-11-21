@@ -530,6 +530,38 @@ TEST_F(Controller_F, VirtualEntityLoad)
 	//ASSERT_NE(std::future_status::timeout, status);
 }
 
+TEST_F(Controller_F, VirtualEntityLoadTalkerFailedLegacyName)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+
+	auto& controller = getController();
+	auto const [error, message] = controller.loadVirtualEntityFromJson("data/EntityTalkerFailedLegacyName.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	// Get the entity
+	auto const entity = controller.getControlledEntityGuard(la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 });
+	ASSERT_TRUE(!!entity);
+
+	// Check if device is Milan compatible
+	EXPECT_TRUE(entity->getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan));
+
+	// Get StreamInputNode
+	auto const& streamNode = entity->getStreamInputNode(entity->getCurrentConfigurationIndex(), la::avdecc::entity::model::StreamIndex{ 0u });
+	ASSERT_TRUE(!!streamNode.dynamicModel.streamDynamicInfo);
+
+	auto const& streamDynamicInfo = *streamNode.dynamicModel.streamDynamicInfo;
+
+	// Check SRP registration failed flag is set (legacy conversion from hasTalkerFailed)
+	EXPECT_TRUE(streamDynamicInfo.hasSrpRegistrationFailed);
+
+	// Check the StreamFormatValid flag is set (to make sure the flags are not all zero)
+	EXPECT_TRUE(streamDynamicInfo._streamInfoFlags.test(la::avdecc::entity::StreamInfoFlag::StreamFormatValid));
+
+	// Check the flag is also set in the bitfield (also a legacy conversion)
+	EXPECT_TRUE(streamDynamicInfo._streamInfoFlags.test(la::avdecc::entity::StreamInfoFlag::SrpRegistrationFailed));
+}
+
 TEST_F(Controller_F, VirtualEntityLoadUTF8)
 {
 	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
@@ -3166,7 +3198,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchClockSource)
 		EXPECT_CALL(*this, onMediaClockChainChanged(::testing::_, c.getControlledEntityGuard(Entity01).get(), la::avdecc::entity::model::ClockDomainIndex{ 0u }, ::testing::_));
 
 		// Change the clock source
-		c.updateClockSource(*c.getControlledEntityImplGuard(Entity01, true, false), la::avdecc::entity::model::ClockDomainIndex{ 0u }, la::avdecc::entity::model::ClockSourceIndex{ 1u }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::Throw);
+		c.updateClockSource(*c.getControlledEntityImplGuard(Entity01, true, false), la::avdecc::entity::model::ClockDomainIndex{ 0u }, la::avdecc::entity::model::ClockSourceIndex{ 1u }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 
 		// Validate chain has been updated
 		{
@@ -3249,7 +3281,7 @@ TEST_F(MediaClockModel_F, NotCrashing_Issue125)
 
 TEST(Controller, HashEntityModelV1)
 {
-	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel };
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan };
 	auto const& [error, msg, controlledEntity] = la::avdecc::controller::Controller::deserializeControlledEntityFromJson("data/SimpleEntity.json", flags);
 	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
 	auto const checksum = la::avdecc::controller::Controller::computeEntityModelChecksum(*controlledEntity, std::uint32_t{ 1u });
@@ -3260,7 +3292,7 @@ TEST(Controller, HashEntityModelV1)
 
 TEST(Controller, HashEntityModelV2)
 {
-	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel };
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan };
 	auto const& [error, msg, controlledEntity] = la::avdecc::controller::Controller::deserializeControlledEntityFromJson("data/SimpleEntity.json", flags);
 	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
 	auto const checksum = la::avdecc::controller::Controller::computeEntityModelChecksum(*controlledEntity, std::uint32_t{ 2u });
@@ -3271,7 +3303,7 @@ TEST(Controller, HashEntityModelV2)
 
 TEST(Controller, HashEntityModelV3)
 {
-	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel };
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan };
 	auto const& [error, msg, controlledEntity] = la::avdecc::controller::Controller::deserializeControlledEntityFromJson("data/SimpleEntity.json", flags);
 	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
 	auto const checksum = la::avdecc::controller::Controller::computeEntityModelChecksum(*controlledEntity, std::uint32_t{ 3u });
@@ -3282,11 +3314,22 @@ TEST(Controller, HashEntityModelV3)
 
 TEST(Controller, HashEntityModelV4)
 {
-	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel };
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan };
 	auto const& [error, msg, controlledEntity] = la::avdecc::controller::Controller::deserializeControlledEntityFromJson("data/SimpleEntity.json", flags);
 	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
 	auto const checksum = la::avdecc::controller::Controller::computeEntityModelChecksum(*controlledEntity, std::uint32_t{ 4u });
 	EXPECT_TRUE(checksum.has_value());
 	EXPECT_EQ(64u, checksum.value().size());
-	EXPECT_STREQ("09F5D1CDF3C438404BC60B051708ECE9830D4ECD7B2738ED2CD2C28E35E57767", checksum.value().c_str());
+	EXPECT_STREQ("98343B6A0540080461F83F6EE99FA973C552E98C4FA9AFE4F047F733C858B7F5", checksum.value().c_str());
+}
+
+TEST(Controller, HashEntityModelV5)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan };
+	auto const& [error, msg, controlledEntity] = la::avdecc::controller::Controller::deserializeControlledEntityFromJson("data/SimpleEntity.json", flags);
+	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	auto const checksum = la::avdecc::controller::Controller::computeEntityModelChecksum(*controlledEntity, std::uint32_t{ 5u });
+	EXPECT_TRUE(checksum.has_value());
+	EXPECT_EQ(64u, checksum.value().size());
+	EXPECT_STREQ("068D4565E93A67323C3D83A23ABC407FBCF7ED2FE7CFF6D29766938A3264F30D", checksum.value().c_str());
 }

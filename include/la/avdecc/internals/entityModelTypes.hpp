@@ -40,6 +40,7 @@
 #include <optional>
 #include <cstring> // std::memcpy
 #include <tuple>
+#include <bitset>
 
 namespace la
 {
@@ -82,8 +83,9 @@ using DescriptorCounterValidFlag = std::uint32_t; /** Counters valid flag - IEEE
 using DescriptorCounter = std::uint32_t; /** Counter - IEEE1722.1-2013 Clause 7.4.42 */
 using OperationID = std::uint16_t; /** OperationID for OPERATIONS returned by an entity to a controller - IEEE1722.1-2013 Clause 7.4.53 */
 using BridgeIdentifier = std::uint64_t;
-using SystemUniqueIdentifier = std::uint32_t; /** System Unique Identifier - Milan 1.2 Clause 5.4.4.2 */
-using MediaClockReferencePriority = std::uint8_t; /** Media Clock Reference Priority - Milan 1.2 Clause 5.4.4.4 */
+using MediaClockReferencePriority = std::uint8_t; /** Media Clock Reference Priority - Milan 1.3 Clause 5.4.4.4 */
+using SignalPresenceChannelsUnderlyingType = std::uint64_t; /** Signal Presence Channels - Milan 1.3 Clause 5.3.7.7.1 */
+using SignalPresenceChannels = std::bitset<sizeof(SignalPresenceChannelsUnderlyingType) * 8>; /** Signal Presence - Milan 1.3 Clause 5.3.7.7.1 */
 
 constexpr DescriptorIndex getInvalidDescriptorIndex() noexcept
 {
@@ -1679,7 +1681,7 @@ private:
 	value_type _version{ 0u };
 };
 
-/** Probing Status - Milan 1.2 Clause 5.3.8.6 */
+/** Probing Status - Milan 1.3 Clause 5.3.8.6 */
 enum class LA_AVDECC_API ProbingStatus : std::uint8_t
 {
 	Disabled = 0x00, /** The sink is not probing because it is not bound. */
@@ -1734,7 +1736,7 @@ constexpr bool operator==(MsrpFailureCode const lhs, std::underlying_type_t<Msrp
 
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION msrpFailureCodeToString(MsrpFailureCode const msrpFailureCode) noexcept;
 
-/** Default Media Clock Reference Priority - Milan 1.2 Clause 7.6.1.1 */
+/** Default Media Clock Reference Priority - Milan 1.3 Clause 7.6.1.1 */
 enum class LA_AVDECC_API DefaultMediaClockReferencePriority : MediaClockReferencePriority
 {
 	Highest = 255, /**< Highest priority */

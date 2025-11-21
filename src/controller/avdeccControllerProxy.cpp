@@ -2407,23 +2407,23 @@ void ControllerVirtualProxy::getMilanInfo(UniqueIdentifier const targetEntityID,
 	}
 }
 
-void ControllerVirtualProxy::setSystemUniqueID(UniqueIdentifier const targetEntityID, entity::model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept
+void ControllerVirtualProxy::setSystemUniqueID(UniqueIdentifier const targetEntityID, UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName, SetSystemUniqueIDHandler const& handler) const noexcept
 {
 	auto const isVirtual = isVirtualEntity(targetEntityID);
 	if (isVirtual && _virtualInterface)
 	{
 		// Forward call to the virtual interface
 		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
-			[this, targetEntityID, systemUniqueID, handler]()
+			[this, targetEntityID, systemUniqueID, systemName, handler]()
 			{
 				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
-				_virtualInterface->setSystemUniqueID(targetEntityID, systemUniqueID, handler);
+				_virtualInterface->setSystemUniqueID(targetEntityID, systemUniqueID, systemName, handler);
 			});
 	}
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setSystemUniqueID(targetEntityID, systemUniqueID, handler);
+		_realInterface->setSystemUniqueID(targetEntityID, systemUniqueID, systemName, handler);
 	}
 }
 
@@ -2484,6 +2484,66 @@ void ControllerVirtualProxy::getMediaClockReferenceInfo(UniqueIdentifier const t
 	{
 		// Forward call to real interface
 		_realInterface->getMediaClockReferenceInfo(targetEntityID, clockDomainIndex, handler);
+	}
+}
+
+void ControllerVirtualProxy::bindStream(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& talkerStream, entity::BindStreamFlags const flags, BindStreamHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, streamIndex, talkerStream, flags, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->bindStream(targetEntityID, streamIndex, talkerStream, flags, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->bindStream(targetEntityID, streamIndex, talkerStream, flags, handler);
+	}
+}
+
+void ControllerVirtualProxy::unbindStream(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, UnbindStreamHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, streamIndex, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->unbindStream(targetEntityID, streamIndex, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->unbindStream(targetEntityID, streamIndex, handler);
+	}
+}
+
+void ControllerVirtualProxy::getStreamInputInfoEx(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, GetStreamInputInfoExHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, streamIndex, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->getStreamInputInfoEx(targetEntityID, streamIndex, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->getStreamInputInfoEx(targetEntityID, streamIndex, handler);
 	}
 }
 

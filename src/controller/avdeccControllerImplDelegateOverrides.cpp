@@ -886,7 +886,7 @@ void ControllerImpl::onMaxTransitTimeChanged(entity::controller::Interface const
 	}
 }
 
-void ControllerImpl::onSystemUniqueIDChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept
+void ControllerImpl::onSystemUniqueIDChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -894,7 +894,7 @@ void ControllerImpl::onSystemUniqueIDChanged(entity::controller::Interface const
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateSystemUniqueID(entity, systemUniqueID);
+		updateSystemUniqueID(entity, systemUniqueID, systemName);
 	}
 }
 
@@ -907,6 +907,35 @@ void ControllerImpl::onMediaClockReferenceInfoChanged(entity::controller::Interf
 	{
 		auto& entity = *controlledEntity;
 		updateMediaClockReferenceInfo(entity, clockDomainIndex, defaultPriority, mcrInfo, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	}
+}
+
+void ControllerImpl::onBindStream(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& talkerStream, entity::BindStreamFlags const flags) noexcept
+{
+	auto connectionFlags = entity::ConnectionFlags{};
+	if (flags.test(entity::BindStreamFlag::StreamingWait))
+	{
+		connectionFlags.set(entity::ConnectionFlag::StreamingWait);
+	}
+	// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
+	handleListenerStreamStateNotification(talkerStream, entity::model::StreamIdentification{ entityID, streamIndex }, true, connectionFlags, true);
+}
+
+void ControllerImpl::onUnbindStream(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept
+{
+	// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
+	handleListenerStreamStateNotification({}, entity::model::StreamIdentification{ entityID, streamIndex }, false, entity::ConnectionFlags{}, true);
+}
+
+void ControllerImpl::onStreamInputInfoExChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInputInfoEx const& streamInputInfoEx) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updateStreamInputInfoEx(entity, streamIndex, streamInputInfoEx, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 

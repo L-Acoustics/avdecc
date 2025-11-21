@@ -136,6 +136,8 @@ AemAecpStatus const AemAecpStatus::StreamIsRunning{ 12 };
 AemAecpStatus::operator std::string() const noexcept
 {
 	static std::unordered_map<AemAecpStatus::value_type, std::string> s_AemAecpStatusMapping = {
+		{ AemAecpStatus::Success.getValue(), "SUCCESS" },
+		{ AemAecpStatus::NotImplemented.getValue(), "NOT_IMPLEMENTED" },
 		{ AemAecpStatus::NoSuchDescriptor.getValue(), "NO_SUCH_DESCRIPTOR" },
 		{ AemAecpStatus::EntityLocked.getValue(), "ENTITY_LOCKED" },
 		{ AemAecpStatus::EntityAcquired.getValue(), "ENTITY_ACQUIRED" },
@@ -400,6 +402,8 @@ AaAecpStatus const AaAecpStatus::Unsupported{ 7 };
 AaAecpStatus::operator std::string() const noexcept
 {
 	static std::unordered_map<AaAecpStatus::value_type, std::string> s_AaAecpStatusMapping = {
+		{ AaAecpStatus::Success.getValue(), "SUCCESS" },
+		{ AaAecpStatus::NotImplemented.getValue(), "NOT_IMPLEMENTED" },
 		{ AaAecpStatus::AddressTooLow.getValue(), "ADDRESS_TOO_LOW" },
 		{ AaAecpStatus::AddressTooHigh.getValue(), "ADDRESS_TOO_HIGH" },
 		{ AaAecpStatus::AddressInvalid.getValue(), "ADDRESS_INVALID" },
@@ -416,12 +420,27 @@ AaAecpStatus::operator std::string() const noexcept
 	return it->second;
 }
 
-/** Milan Vendor Unique AECP Status - Milan 1.2 Clause 5.4.3.3 */
+/** Milan Vendor Unique AECP Status - Milan 1.3 Clause 5.4.3.3 */
+MvuAecpStatus const MvuAecpStatus::NoSuchDescriptor{ 2 };
+MvuAecpStatus const MvuAecpStatus::EntityLocked{ 3 };
+/* 4 to 6 reserved for future use */
+MvuAecpStatus const MvuAecpStatus::BadArguments{ 7 };
+/* 8 to 9 reserved for future use */
+MvuAecpStatus const MvuAecpStatus::EntityMisbehaving{ 10 };
+/* 11 to 12 reserved for future use */
+MvuAecpStatus const MvuAecpStatus::PayloadTooShort{ 13 };
+
+
 MvuAecpStatus::operator std::string() const noexcept
 {
 	static std::unordered_map<MvuAecpStatus::value_type, std::string> s_MvuAecpStatusMapping = {
 		{ MvuAecpStatus::Success.getValue(), "SUCCESS" },
 		{ MvuAecpStatus::NotImplemented.getValue(), "NOT_IMPLEMENTED" },
+		{ MvuAecpStatus::NoSuchDescriptor.getValue(), "NO_SUCH_DESCRIPTOR" },
+		{ MvuAecpStatus::EntityLocked.getValue(), "ENTITY_LOCKED" },
+		{ MvuAecpStatus::BadArguments.getValue(), "BAD_ARGUMENTS" },
+		{ MvuAecpStatus::EntityMisbehaving.getValue(), "ENTITY_MISBEHAVING" },
+		{ MvuAecpStatus::PayloadTooShort.getValue(), "PAYLOAD_TOO_SHORT" },
 	};
 
 	auto const& it = s_MvuAecpStatusMapping.find(getValue());
@@ -432,12 +451,15 @@ MvuAecpStatus::operator std::string() const noexcept
 	return it->second;
 }
 
-/** Milan Vendor Unique Command Type - Milan 1.2 Clause 5.4.3.2.3 */
-MvuCommandType const MvuCommandType::GetMilanInfo{ 0 };
-MvuCommandType const MvuCommandType::SetSystemUniqueID{ 1 };
-MvuCommandType const MvuCommandType::GetSystemUniqueID{ 2 };
-MvuCommandType const MvuCommandType::SetMediaClockReferenceInfo{ 3 };
-MvuCommandType const MvuCommandType::GetMediaClockReferenceInfo{ 4 };
+/** Milan Vendor Unique Command Type - Milan 1.3 Clause 5.4.3.2.3 */
+MvuCommandType const MvuCommandType::GetMilanInfo{ 0x0000 };
+MvuCommandType const MvuCommandType::SetSystemUniqueID{ 0x0001 };
+MvuCommandType const MvuCommandType::GetSystemUniqueID{ 0x0002 };
+MvuCommandType const MvuCommandType::SetMediaClockReferenceInfo{ 0x0003 };
+MvuCommandType const MvuCommandType::GetMediaClockReferenceInfo{ 0x0004 };
+MvuCommandType const MvuCommandType::BindStream{ 0x0005 };
+MvuCommandType const MvuCommandType::UnbindStream{ 0x0006 };
+MvuCommandType const MvuCommandType::GetStreamInputInfoEx{ 0x0007 };
 
 MvuCommandType const MvuCommandType::InvalidCommandType{ 0xffff };
 
@@ -449,6 +471,9 @@ MvuCommandType::operator std::string() const noexcept
 		{ MvuCommandType::GetSystemUniqueID.getValue(), "GET_SYSTEM_UNIQUE_ID" },
 		{ MvuCommandType::SetMediaClockReferenceInfo.getValue(), "SET_MEDIA_CLOCK_REFERENCE_INFO" },
 		{ MvuCommandType::GetMediaClockReferenceInfo.getValue(), "GET_MEDIA_CLOCK_REFERENCE_INFO" },
+		{ MvuCommandType::BindStream.getValue(), "BIND_STREAM" },
+		{ MvuCommandType::UnbindStream.getValue(), "UNBIND_STREAM" },
+		{ MvuCommandType::GetStreamInputInfoEx.getValue(), "GET_STREAM_INPUT_INFO_EX" },
 		{ MvuCommandType::InvalidCommandType.getValue(), "INVALID_COMMAND_TYPE" },
 	};
 
