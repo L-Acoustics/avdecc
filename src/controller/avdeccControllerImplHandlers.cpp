@@ -691,7 +691,7 @@ void ControllerImpl::onUnregisterUnsolicitedNotificationsResult(entity::controll
 
 		if (!!status)
 		{
-			entity.setSubscribedToUnsolicitedNotifications(false);
+			updateUnsolicitedNotificationsSubscription(entity, false, false);
 		}
 	}
 }

@@ -236,7 +236,7 @@ void ControllerImpl::onDeregisteredFromUnsolicitedNotifications(entity::controll
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateUnsolicitedNotificationsSubscription(entity, false);
+		updateUnsolicitedNotificationsSubscription(entity, false, true);
 	}
 }
 
@@ -1081,7 +1081,7 @@ void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entit
 			// As part of #50 (for now), just unsubscribe from unsolicited notifications
 			{
 				// Immediately set as unsubscribed, we are already loosing packets we don't want to miss the response to our unsubscribe
-				updateUnsolicitedNotificationsSubscription(entity, false);
+				updateUnsolicitedNotificationsSubscription(entity, false, false);
 
 				// Properly (try to) unregister from unsol
 				unregisterUnsol(&entity);

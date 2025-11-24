@@ -381,7 +381,7 @@ void ControllerImpl::decreaseMilanCompatibilityVersion(ControllerImpl const* con
 	}
 }
 
-void ControllerImpl::updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed) const noexcept
+void ControllerImpl::updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed, bool const triggeredByEntity) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
@@ -394,7 +394,7 @@ void ControllerImpl::updateUnsolicitedNotificationsSubscription(ControlledEntity
 		// Entity was advertised to the user, notify observers
 		if (controlledEntity.wasAdvertised())
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onUnsolicitedRegistrationChanged, this, &controlledEntity, isSubscribed);
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onUnsolicitedRegistrationChanged, this, &controlledEntity, isSubscribed, triggeredByEntity);
 		}
 	}
 }
