@@ -1399,6 +1399,7 @@ Serializer<AecpAemSetStreamInfoCommandPayloadSize> serializeSetStreamInfoCommand
 	ser << streamInfo.streamVlanID;
 	ser << reserved2;
 
+#pragma message("TODO: Pack the new fields added in IEEE1722.1-2021 (and use the correct size)")
 	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
 
 	return ser;
@@ -1432,6 +1433,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	des >> streamInfo.streamVlanID;
 	des >> reserved2;
 
+#pragma message("TODO: Unpack the new fields added in IEEE1722.1-2021")
 	AVDECC_ASSERT(des.usedBytes() == AecpAemSetStreamInfoCommandPayloadSize, "Unpacked bytes doesn't match protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex, streamInfo);
@@ -1489,9 +1491,8 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 /** GET_STREAM_INFO Response - IEEE1722.1-2013 Clause 7.4.16.2 */
 Serializer<AecpAemMilanGetStreamInfoResponsePayloadSize> serializeGetStreamInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo)
 {
-	Serializer<AecpAemMilanGetStreamInfoResponsePayloadSize> ser;
-	std::uint8_t const reserved{ 0u };
-	std::uint16_t const reserved2{ 0u };
+	auto ser = Serializer<AecpAemMilanGetStreamInfoResponsePayloadSize>{};
+	auto const reserved = std::uint8_t{ 0u };
 
 	ser << descriptorType << descriptorIndex;
 	ser << streamInfo.streamInfoFlags;
@@ -1503,20 +1504,24 @@ Serializer<AecpAemMilanGetStreamInfoResponsePayloadSize> serializeGetStreamInfoR
 	ser << reserved;
 	ser << streamInfo.msrpFailureBridgeID;
 	ser << streamInfo.streamVlanID;
-	ser << reserved2;
 
 	if (streamInfo.streamInfoFlagsEx && streamInfo.probingStatus && streamInfo.acmpStatus)
 	{
-		auto reserved3 = std::uint8_t{ 0u };
-		auto reserved4 = std::uint16_t{ 0u };
+		auto const reserved2 = std::uint16_t{ 0u };
+		auto const reserved3 = std::uint8_t{ 0u };
+		auto const reserved4 = std::uint16_t{ 0u };
 
+		ser << reserved2;
 		ser << *streamInfo.streamInfoFlagsEx << static_cast<std::uint8_t>(((utils::to_integral(*streamInfo.probingStatus) << 5) & 0xe0) | ((*streamInfo.acmpStatus).getValue() & 0x1f)) << reserved3 << reserved4;
 
 		AVDECC_ASSERT(ser.usedBytes() == AecpAemMilanGetStreamInfoResponsePayloadSize, "Used bytes do not match the protocol constant");
 	}
 	else
 	{
-		AVDECC_ASSERT(ser.usedBytes() == AecpAemGetStreamInfoResponsePayloadSize, "Used bytes do not match the protocol constant");
+		auto const reserved2 = std::uint16_t{ 0u };
+		ser << reserved2;
+#pragma message("TODO: Pack the new fields added in IEEE1722.1-2021 (and use the correct size)")
+		AVDECC_ASSERT(ser.usedBytes() == AecpAemIEEE2013GetStreamInfoResponsePayloadSize, "Used bytes do not match the protocol constant");
 	}
 
 	return ser;
@@ -1527,7 +1532,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	auto* const commandPayload = payload.first;
 	auto const commandPayloadLength = payload.second;
 
-	checkResponsePayload(payload, status, AecpAemGetStreamInfoCommandPayloadSize, AecpAemGetStreamInfoResponsePayloadSize);
+	checkResponsePayload(payload, status, AecpAemGetStreamInfoCommandPayloadSize, AecpAemIEEE2013GetStreamInfoResponsePayloadSize); // TODO: Find a way to use the correct size (could be IEEE1722.1-2021, IEEE1722.1-2013 or Milan 1.2)
 
 	// Check payload
 	auto des = Deserializer{ commandPayload, commandPayloadLength };
@@ -1535,10 +1540,10 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	auto descriptorIndex = entity::model::DescriptorIndex{ 0u };
 	auto streamInfo = entity::model::StreamInfo{};
 	auto reserved = std::uint8_t{ 0u };
-	auto reserved2 = std::uint16_t{ 0u };
 
 	try
 	{
+		// IEEE1722.1-2013
 		des >> descriptorType >> descriptorIndex;
 		des >> streamInfo.streamInfoFlags;
 		des >> streamInfo.streamFormat;
@@ -1549,15 +1554,27 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 		des >> reserved;
 		des >> streamInfo.msrpFailureBridgeID;
 		des >> streamInfo.streamVlanID;
-		des >> reserved2;
 
-		if (commandPayloadLength >= AecpAemMilanGetStreamInfoResponsePayloadSize)
+		// IEEE1722.1-2021
+		if (commandPayloadLength >= AecpAemIEEE2021GetStreamInfoResponsePayloadSize)
+		{
+#pragma message("TODO: Unpack the new fields added in IEEE1722.1-2021")
+			des.setPosition(des.usedBytes() + 2); // ip_flags
+			des.setPosition(des.usedBytes() + 2 + 2); // source_port, destination_port
+			des.setPosition(des.usedBytes() + 16); // source_ip_address
+			des.setPosition(des.usedBytes() + 16); // destination_ip_address
+			AVDECC_ASSERT(des.usedBytes() == AecpAemIEEE2021GetStreamInfoResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
+		}
+		// Milan 1.2
+		else if (commandPayloadLength >= AecpAemMilanGetStreamInfoResponsePayloadSize)
 		{
 			auto streamInfoFlagsEx = entity::StreamInfoFlagsEx{};
 			auto probing_acmp_status = std::uint8_t{ 0u };
+			auto reserved2 = std::uint16_t{ 0u };
 			auto reserved3 = std::uint8_t{ 0u };
 			auto reserved4 = std::uint16_t{ 0u };
 
+			des >> reserved2;
 			des >> streamInfoFlagsEx >> probing_acmp_status >> reserved3 >> reserved4;
 
 			streamInfo.streamInfoFlagsEx = streamInfoFlagsEx;
@@ -1568,7 +1585,9 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 		}
 		else
 		{
-			AVDECC_ASSERT(des.usedBytes() == AecpAemGetStreamInfoResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
+			auto reserved2 = std::uint16_t{ 0u };
+			des >> reserved2;
+			AVDECC_ASSERT(des.usedBytes() == AecpAemIEEE2013GetStreamInfoResponsePayloadSize, "Unpacked bytes doesn't match protocol constant");
 		}
 	}
 	catch (std::invalid_argument const&)

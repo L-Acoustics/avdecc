@@ -236,7 +236,7 @@ void ControllerImpl::onDeregisteredFromUnsolicitedNotifications(entity::controll
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateUnsolicitedNotificationsSubscription(entity, false);
+		updateUnsolicitedNotificationsSubscription(entity, false, true);
 	}
 }
 
@@ -796,7 +796,9 @@ void ControllerImpl::onStreamOutputCountersChanged(entity::controller::Interface
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateStreamOutputCounters(entity, streamIndex, validCounters, counters, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+		auto const counterType = ControllerImpl::getStreamOutputCounterType(entity);
+		auto const streamOutputCounters = entity::model::StreamOutputCounters{ counterType, validCounters.value(), counters };
+		updateStreamOutputCounters(entity, streamIndex, streamOutputCounters, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -884,7 +886,7 @@ void ControllerImpl::onMaxTransitTimeChanged(entity::controller::Interface const
 	}
 }
 
-void ControllerImpl::onSystemUniqueIDChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept
+void ControllerImpl::onSystemUniqueIDChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -892,11 +894,11 @@ void ControllerImpl::onSystemUniqueIDChanged(entity::controller::Interface const
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateSystemUniqueID(entity, systemUniqueID);
+		updateSystemUniqueID(entity, systemUniqueID, systemName);
 	}
 }
 
-void ControllerImpl::onMediaClockReferenceInfoChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::MediaClockReferenceInfo const& mcrInfo) noexcept
+void ControllerImpl::onMediaClockReferenceInfoChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& mcrInfo) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -904,7 +906,36 @@ void ControllerImpl::onMediaClockReferenceInfoChanged(entity::controller::Interf
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateMediaClockReferenceInfo(entity, clockDomainIndex, mcrInfo, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+		updateMediaClockReferenceInfo(entity, clockDomainIndex, defaultPriority, mcrInfo, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	}
+}
+
+void ControllerImpl::onBindStream(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& talkerStream, entity::BindStreamFlags const flags) noexcept
+{
+	auto connectionFlags = entity::ConnectionFlags{};
+	if (flags.test(entity::BindStreamFlag::StreamingWait))
+	{
+		connectionFlags.set(entity::ConnectionFlag::StreamingWait);
+	}
+	// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
+	handleListenerStreamStateNotification(talkerStream, entity::model::StreamIdentification{ entityID, streamIndex }, true, connectionFlags, true);
+}
+
+void ControllerImpl::onUnbindStream(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept
+{
+	// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
+	handleListenerStreamStateNotification({}, entity::model::StreamIdentification{ entityID, streamIndex }, false, entity::ConnectionFlags{}, true);
+}
+
+void ControllerImpl::onStreamInputInfoExChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInputInfoEx const& streamInputInfoEx) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updateStreamInputInfoEx(entity, streamIndex, streamInputInfoEx, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -1050,7 +1081,7 @@ void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entit
 			// As part of #50 (for now), just unsubscribe from unsolicited notifications
 			{
 				// Immediately set as unsubscribed, we are already loosing packets we don't want to miss the response to our unsubscribe
-				updateUnsolicitedNotificationsSubscription(entity, false);
+				updateUnsolicitedNotificationsSubscription(entity, false, false);
 
 				// Properly (try to) unregister from unsol
 				unregisterUnsol(&entity);

@@ -4,6 +4,37 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [4.3.0] - 2025-11-24
+### Added
+- smartSetMaxTransitTime method to Controller, which automatically uses the correct method to set the presentation time offset based on the detected entity capabilities
+- New API to ControlledEntity to retrieve compatibility change events: `getCompatibilityChangedEvents()`
+- Additional Milan compatibility check: Verifying some reserved flags in StreamInfo.flags field
+- Support for Milan 1.3
+  - Extended GET_MILAN_INFO command
+  - Introduced checksum v5 to include `specification_version` field from `MilanInfo`
+  - connectStream and disconnectStream methods automatically choose MVU Bind mechanism if available
+  - Extended GET_SYSTEM_UNIQUE_ID and SET_SYSTEM_UNIQUE_ID commands
+  - Signal Presence support in StreamOutputCounters
+  - GET_STREAM_INPUT_INFO_EX command
+- Computation of Channel Based Routing connections for each controlled entity (compile feature)
+  - _channelConnections_ field in _ConfigurationNode_
+  - _getChannelConnections_ API in ControlledEntity
+  - _onChannelInputConnectionChanged_ event in Controller::Observer
+
+### Changed
+- [StreamOutputNode has a new field: `presentationTimeOffset` to replace the `msrpAccumulatedLatency` field (which was in StreamDynamicInfo struct)](https://github.com/L-Acoustics/avdecc/issues/147)
+- StreamDynamicInfo.hasSrpRegistrationFailed replaces the deprecated hasTalkerFailed field
+- New boolean parameter _triggeredByEntity_ in onUnsolicitedRegistrationChanged event to know if the change was triggered by the entity itself or by the controller
+
+### Fixed
+- `computeEntityModelChecksum` not returning a deterministic value for all OSes
+- [setMaxTransitTime and getMaxTransitTime not sending any message](https://github.com/L-Acoustics/avdecc/issues/183)
+- [CRF requirement for Milan devices](https://github.com/L-Acoustics/avdecc/issues/182)
+- Dynamic StreamFormat provided by VirtualEntityModelVisitor was not properly checked against the static formats
+- Automatic v1 to v2 conversion not working for multi-configuration entities
+- Incorrect detection and saving of Milan DefaultMediaClockReferencePriority value change if not set to 'Default'
+- Incorrect invalid mappings detection when validating audio mappings
+
 ## [4.1.0] - 2025-04-16
 ### Added
 - [Automatically converting AEM/AVE/ANS dumps from format v1 to format v2](https://github.com/L-Acoustics/avdecc/issues/172)

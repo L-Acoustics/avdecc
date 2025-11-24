@@ -126,7 +126,7 @@ TEST(ProtocolInterfacePCap, TransportError)
 
 namespace
 {
-class ProtocolInterfacePCap_F : public ::testing::Test
+class INTEGRATION_ProtocolInterfacePCap_F : public ::testing::Test
 {
 public:
 	virtual void SetUp() override
@@ -167,7 +167,7 @@ private:
 };
 } // namespace
 
-TEST_F(ProtocolInterfacePCap_F, VuDelegate)
+TEST_F(INTEGRATION_ProtocolInterfacePCap_F, VuDelegate)
 {
 	// Using MvuAecpdu as class for the tests, so we don't have to design a new VendorUnique class
 

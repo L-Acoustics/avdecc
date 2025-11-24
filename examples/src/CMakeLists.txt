@@ -112,6 +112,8 @@ if(BUILD_AVDECC_CONTROLLER)
 		else()
 			# Network interfaces enumerator using C# bindings
 			add_subdirectory(discoveryCSharp)
+			# StreamFormatInfo using C# bindings
+			add_subdirectory(streamFormatInfoCSharp)
 		endif()
 	endif()
 endif()

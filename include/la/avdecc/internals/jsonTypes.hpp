@@ -164,6 +164,20 @@ struct adl_serializer<std::chrono::milliseconds>
 	}
 };
 
+/** std::chrono::nanoseconds converter */
+template<>
+struct adl_serializer<std::chrono::nanoseconds>
+{
+	static void to_json(json& j, std::chrono::nanoseconds const& value)
+	{
+		j = value.count();
+	}
+	static void from_json(json const& j, std::chrono::nanoseconds& value)
+	{
+		value = std::chrono::nanoseconds{ j.get<std::chrono::nanoseconds::rep>() };
+	}
+};
+
 /** converter for an optionnaly defined value */
 template<typename KeyT, typename ValueType>
 inline void get_optional_value(json const& j, KeyT&& key, ValueType& v)
@@ -344,45 +358,116 @@ struct adl_serializer<la::avdecc::entity::model::StreamInputCounters>
 };
 
 /** la::avdecc::entity::model::StreamOutputCounters converter */
+template<typename ValidFlagsType>
+static void writeStreamOutputCounter(la::avdecc::entity::model::StreamOutputCounters const& counters, json& object)
+{
+	auto const c = counters.getCounters<ValidFlagsType>();
+	for (auto const& [name, value] : c)
+	{
+		json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
+		auto const key = n.get<std::string>();
+		if (key == "UNKNOWN")
+		{
+			object[la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(name), true, true)] = value;
+		}
+		else
+		{
+			object[key] = value;
+		}
+	}
+}
+template<typename ValidFlagsType, typename ValidFlagType = typename ValidFlagsType::value_type, typename CountersType = std::map<ValidFlagType, la::avdecc::entity::model::DescriptorCounter>>
+static void readStreamOutputCounters(json const& object, la::avdecc::entity::model::StreamOutputCounters& counters)
+{
+	auto c = CountersType{};
+
+	for (auto const& [name, value] : object.items())
+	{
+		json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
+		auto const key = n.get<ValidFlagType>();
+		// Check if key is a valid CounterValidFlag enum
+		if (key == ValidFlagType::None)
+		{
+			logJsonSerializer(la::avdecc::logger::Level::Warn, std::string("Unknown StreamOutputCounterValidFlag name: ") + name);
+			c.insert(std::make_pair(static_cast<ValidFlagType>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::DescriptorCounterValidFlag>(name.c_str())), value.template get<typename CountersType::mapped_type>()));
+		}
+		else
+		{
+			c.insert(std::make_pair(key, value.template get<typename CountersType::mapped_type>()));
+		}
+	}
+
+	counters.setCounters(c);
+}
 template<>
 struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
 {
 	static void to_json(json& j, la::avdecc::entity::model::StreamOutputCounters const& counters)
 	{
+		auto enclosing_object = json::object();
+
+		// Write the type of counters
+		enclosing_object["counter_type"] = counters.getCounterType();
+
+		// Write the counters depending on the type
 		auto object = json::object();
 
-		for (auto const& [name, value] : counters)
+		try
 		{
-			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
-			auto const key = n.get<std::string>();
-			if (key == "UNKNOWN")
+			switch (counters.getCounterType())
 			{
-				object[la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(name), true, true)] = value;
-			}
-			else
-			{
-				object[key] = value;
+				case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12:
+					writeStreamOutputCounter<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>(counters, object);
+					break;
+				case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
+					writeStreamOutputCounter<la::avdecc::entity::StreamOutputCounterValidFlags17221>(counters, object);
+					break;
+				case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_SignalPresence:
+					writeStreamOutputCounter<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>(counters, object);
+					break;
+				default:
+					AVDECC_ASSERT(false, "Unsupported StreamOutputCounterValidFlags type");
+					break;
 			}
 		}
+		catch (std::invalid_argument const&)
+		{
+			throw la::avdecc::jsonSerializer::SerializationException{ la::avdecc::jsonSerializer::SerializationError::InternalError, "Unsupported StreamOutputCounters Type" };
+		}
 
-		j = std::move(object);
+		enclosing_object["counters"] = std::move(object);
+		j = std::move(enclosing_object);
 	}
 	static void from_json(json const& j, la::avdecc::entity::model::StreamOutputCounters& counters)
 	{
-		for (auto const& [name, value] : j.items())
+		// First check for the presence of the counter_type field (indicating the new format), if not present assume the format is Milan 1.2
+		auto counterType = la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12;
+		auto const* objectToRead = &j;
+		if (auto const it = j.find("counter_type"); it != j.end())
 		{
-			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
-			auto const key = n.get<la::avdecc::entity::model::StreamOutputCounters::key_type>();
-			// Check if key is a valid CounterValidFlag enum
-			if (key == la::avdecc::entity::model::StreamOutputCounters::key_type::None)
+			counterType = it->get<la::avdecc::entity::model::StreamOutputCounters::CounterType>();
+			objectToRead = &j["counters"];
+		}
+		switch (counterType)
+		{
+			case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12:
 			{
-				logJsonSerializer(la::avdecc::logger::Level::Warn, std::string("Unknown StreamOutputCounterValidFlag name: ") + name);
-				counters.insert(std::make_pair(static_cast<la::avdecc::entity::model::StreamOutputCounters::key_type>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::DescriptorCounterValidFlag>(name.c_str())), value.get<la::avdecc::entity::model::StreamOutputCounters::mapped_type>()));
+				readStreamOutputCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>(*objectToRead, counters);
+				break;
 			}
-			else
+			case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
 			{
-				counters.insert(std::make_pair(key, value.get<la::avdecc::entity::model::StreamOutputCounters::mapped_type>()));
+				readStreamOutputCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>(*objectToRead, counters);
+				break;
 			}
+			case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_SignalPresence:
+			{
+				readStreamOutputCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>(*objectToRead, counters);
+				break;
+			}
+			default:
+				AVDECC_ASSERT(false, "Unsupported StreamOutputCounterValidFlags type");
+				break;
 		}
 	}
 };
@@ -553,7 +638,6 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ConnectionFlag, {
 																							 { ConnectionFlag::StreamingWait, "STREAMING_WAIT" },
 																							 { ConnectionFlag::SupportsEncrypted, "SUPPORTS_ENCRYPTED" },
 																							 { ConnectionFlag::EncryptedPdu, "ENCRYPTED_PDU" },
-																							 { ConnectionFlag::TalkerFailed, "TALKER_FAILED" },
 																							 { ConnectionFlag::SrpRegistrationFailed, "SRP_REGISTRATION_FAILED" },
 																							 { ConnectionFlag::ClEntriesValid, "CL_ENTRIES_VALID" },
 																							 { ConnectionFlag::NoSrp, "NO_SRP" },
@@ -660,8 +744,10 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamInfoFlag, {
 																							 { StreamInfoFlag::StreamingWait, "STREAMING_WAIT" },
 																							 { StreamInfoFlag::SupportsEncrypted, "SUPPORTS_ENCRYPTED" },
 																							 { StreamInfoFlag::EncryptedPdu, "ENCRYPTED_PDU" },
-																							 { StreamInfoFlag::TalkerFailed, "TALKER_FAILED" },
+																							 { StreamInfoFlag::SrpRegistrationFailed, "SRP_REGISTRATION_FAILED" },
+																							 { StreamInfoFlag::ClEntriesValid, "CL_ENTRIES_VALID" },
 																							 { StreamInfoFlag::NoSrp, "NO_SRP" },
+																							 { StreamInfoFlag::Udp, "UDP" },
 																							 { StreamInfoFlag::IpFlagsValid, "IP_FLAGS_VALID" },
 																							 { StreamInfoFlag::IpSrcPortValid, "IP_SRC_PORT_VALID" },
 																							 { StreamInfoFlag::IpDstPortValid, "IP_DST_PORT_VALID" },
@@ -765,22 +851,74 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamInputCounterValidFlag, {
 																														{ StreamInputCounterValidFlag::EntitySpecific2, "ENTITY_SPECIFIC_2" },
 																														{ StreamInputCounterValidFlag::EntitySpecific1, "ENTITY_SPECIFIC_1" },
 																													});
+/* StreamOutputCounters::CounterType */
+NLOHMANN_JSON_SERIALIZE_ENUM(model::StreamOutputCounters::CounterType, {
+																																				 { model::StreamOutputCounters::CounterType::Unknown, "UNKNOWN" },
+																																				 { model::StreamOutputCounters::CounterType::Milan_12, "MILAN_12" },
+																																				 { model::StreamOutputCounters::CounterType::IEEE17221_2021, "IEEE17221_2021" },
+																																				 { model::StreamOutputCounters::CounterType::Milan_SignalPresence, "MILAN_SIGNAL_PRESENCE" },
+																																			 });
+/* StreamOutputCounterValidFlagMilan12 conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlagMilan12, {
+																																		{ StreamOutputCounterValidFlagMilan12::None, "UNKNOWN" },
+																																		{ StreamOutputCounterValidFlagMilan12::StreamStart, "STREAM_START" },
+																																		{ StreamOutputCounterValidFlagMilan12::StreamStop, "STREAM_STOP" },
+																																		{ StreamOutputCounterValidFlagMilan12::MediaReset, "MEDIA_RESET" },
+																																		{ StreamOutputCounterValidFlagMilan12::TimestampUncertain, "TIMESTAMP_UNCERTAIN" },
+																																		{ StreamOutputCounterValidFlagMilan12::FramesTx, "FRAMES_TX" },
+																																	});
 
-/* StreamOutputCounterValidFlag conversion */
-NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlag, {
-																														 { StreamOutputCounterValidFlag::None, "UNKNOWN" },
-																														 { StreamOutputCounterValidFlag::StreamStart, "STREAM_START" },
-																														 { StreamOutputCounterValidFlag::StreamStop, "STREAM_STOP" },
-																														 { StreamOutputCounterValidFlag::MediaReset, "MEDIA_RESET" },
-																														 { StreamOutputCounterValidFlag::TimestampUncertain, "TIMESTAMP_UNCERTAIN" },
-																														 { StreamOutputCounterValidFlag::FramesTx, "FRAMES_TX" },
-																													 });
+/* StreamOutputCounterValidFlag17221 conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlag17221, {
+																																	{ StreamOutputCounterValidFlag17221::None, "UNKNOWN" },
+																																	{ StreamOutputCounterValidFlag17221::StreamStart, "STREAM_START" },
+																																	{ StreamOutputCounterValidFlag17221::StreamStop, "STREAM_STOP" },
+																																	{ StreamOutputCounterValidFlag17221::StreamInterrupted, "STREAM_INTERRUPTED" },
+																																	{ StreamOutputCounterValidFlag17221::MediaReset, "MEDIA_RESET" },
+																																	{ StreamOutputCounterValidFlag17221::TimestampUncertain, "TIMESTAMP_UNCERTAIN" },
+																																	{ StreamOutputCounterValidFlag17221::TimestampValid, "TIMESTAMP_VALID" },
+																																	{ StreamOutputCounterValidFlag17221::TimestampNotValid, "TIMESTAMP_NOT_VALID" },
+																																	{ StreamOutputCounterValidFlag17221::FramesTx, "FRAMES_TX" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific8, "ENTITY_SPECIFIC_8" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific7, "ENTITY_SPECIFIC_7" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific6, "ENTITY_SPECIFIC_6" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific5, "ENTITY_SPECIFIC_5" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific4, "ENTITY_SPECIFIC_4" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific3, "ENTITY_SPECIFIC_3" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific2, "ENTITY_SPECIFIC_2" },
+																																	{ StreamOutputCounterValidFlag17221::EntitySpecific1, "ENTITY_SPECIFIC_1" },
+																																});
+
+/* StreamOutputCounterValidFlagMilanSignalPresence conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlagMilanSignalPresence, {
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::None, "UNKNOWN" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::StreamStart, "STREAM_START" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::StreamStop, "STREAM_STOP" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::StreamInterrupted, "STREAM_INTERRUPTED" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::MediaReset, "MEDIA_RESET" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::TimestampUncertain, "TIMESTAMP_UNCERTAIN" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::TimestampValid, "TIMESTAMP_VALID" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::TimestampNotValid, "TIMESTAMP_NOT_VALID" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::FramesTx, "FRAMES_TX" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::SignalPresence2, "SIGNAL_PRESENCE_2" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::SignalPresence1, "SIGNAL_PRESENCE_1" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific8, "ENTITY_SPECIFIC_8" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific7, "ENTITY_SPECIFIC_7" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific6, "ENTITY_SPECIFIC_6" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific5, "ENTITY_SPECIFIC_5" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific4, "ENTITY_SPECIFIC_4" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific3, "ENTITY_SPECIFIC_3" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific2, "ENTITY_SPECIFIC_2" },
+																																								{ StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific1, "ENTITY_SPECIFIC_1" },
+																																							});
 
 /* MilanInfoFeaturesFlag conversion */
 NLOHMANN_JSON_SERIALIZE_ENUM(MilanInfoFeaturesFlag, {
 																											{ MilanInfoFeaturesFlag::None, "UNKNOWN" },
 																											{ MilanInfoFeaturesFlag::Redundancy, "REDUNDANCY" },
 																											{ MilanInfoFeaturesFlag::TalkerDynamicMappingsWhileRunning, "TALKER_DYNAMIC_MAPPINGS_WHILE_RUNNING" },
+																											{ MilanInfoFeaturesFlag::MvuBinding, "MVU_BINDING" },
+																											{ MilanInfoFeaturesFlag::TalkerSignalPresence, "TALKER_SIGNAL_PRESENCE" },
 																										});
 
 /* Entity::CommonInformation conversion */
@@ -923,6 +1061,7 @@ constexpr auto StreamOutputNode_Dynamic_ObjectName = "object_name";
 constexpr auto StreamOutputNode_Dynamic_StreamFormat = "stream_format";
 constexpr auto StreamOutputNode_Dynamic_StreamRunning = "stream_running";
 constexpr auto StreamOutputNode_Dynamic_StreamDynamicInfo = "stream_dynamic_info";
+constexpr auto StreamOutputNode_Dynamic_PresentationTimeOffset = "presentation_time_offset";
 constexpr auto StreamOutputNode_Dynamic_Counters = "counters";
 
 /* JackNode */
@@ -1106,7 +1245,8 @@ constexpr auto StreamDynamicInfo_IsClassB = "is_class_b";
 constexpr auto StreamDynamicInfo_HasSavedState = "has_saved_state";
 constexpr auto StreamDynamicInfo_DoesSupportEncrypted = "does_support_encrypted";
 constexpr auto StreamDynamicInfo_ArePdusEncrypted = "are_pdus_encrypted";
-constexpr auto StreamDynamicInfo_HasTalkerFailed = "has_talker_failed";
+constexpr auto StreamDynamicInfo_HasTalkerFailed = "has_talker_failed"; // Legacy name
+constexpr auto StreamDynamicInfo_HasSrpRegistrationFailed = "has_srp_registration_failed"; // New name for has_talker_failed
 constexpr auto StreamDynamicInfo_Flags = "last_received_flags";
 constexpr auto StreamDynamicInfo_StreamID = "stream_id";
 constexpr auto StreamDynamicInfo_MsrpAccumulatedLatency = "msrp_accumulated_latency";
@@ -1127,9 +1267,11 @@ constexpr auto AvbInterfaceInfo_MsrpMappings = "msrp_mappings";
 constexpr auto MilanInfo_ProtocolVersion = "protocol_version";
 constexpr auto MilanInfo_Flags = "flags";
 constexpr auto MilanInfo_CertificationVersion = "certification_version";
+constexpr auto MilanInfo_SpecificationVersion = "specification_version";
 
 /* MilanDynamicState */
 constexpr auto MilanDynamicState_SystemUniqueID = "system_unique_id";
+constexpr auto MilanDynamicState_SystemName = "system_name";
 
 /* MediaClockReferenceInfo */
 constexpr auto MediaClockReferenceInfo_UserMediaClockPriority = "user_media_clock_priority";
@@ -1554,7 +1696,7 @@ inline void to_json(json& j, StreamDynamicInfo const& info)
 	j[keyName::StreamDynamicInfo_HasSavedState] = info.hasSavedState;
 	j[keyName::StreamDynamicInfo_DoesSupportEncrypted] = info.doesSupportEncrypted;
 	j[keyName::StreamDynamicInfo_ArePdusEncrypted] = info.arePdusEncrypted;
-	j[keyName::StreamDynamicInfo_HasTalkerFailed] = info.hasTalkerFailed;
+	j[keyName::StreamDynamicInfo_HasSrpRegistrationFailed] = info.hasSrpRegistrationFailed;
 	j[keyName::StreamDynamicInfo_Flags] = info._streamInfoFlags;
 	j[keyName::StreamDynamicInfo_StreamID] = info.streamID;
 	j[keyName::StreamDynamicInfo_MsrpAccumulatedLatency] = info.msrpAccumulatedLatency;
@@ -1579,8 +1721,43 @@ inline void from_json(json const& j, StreamDynamicInfo& info)
 	j.at(keyName::StreamDynamicInfo_HasSavedState).get_to(info.hasSavedState);
 	j.at(keyName::StreamDynamicInfo_DoesSupportEncrypted).get_to(info.doesSupportEncrypted);
 	j.at(keyName::StreamDynamicInfo_ArePdusEncrypted).get_to(info.arePdusEncrypted);
-	j.at(keyName::StreamDynamicInfo_HasTalkerFailed).get_to(info.hasTalkerFailed);
-	get_optional_value(j, keyName::StreamDynamicInfo_Flags, info._streamInfoFlags);
+	{
+		// Legacy support: Check for old field name (StreamDynamicInfo_HasTalkerFailed)
+		if (auto const it = j.find(keyName::StreamDynamicInfo_HasTalkerFailed); it != j.end())
+		{
+			info.hasSrpRegistrationFailed = *it;
+		}
+		else
+		{
+			j.at(keyName::StreamDynamicInfo_HasSrpRegistrationFailed).get_to(info.hasSrpRegistrationFailed);
+		}
+	}
+	{
+		if (auto const it = j.find(keyName::StreamDynamicInfo_Flags); it != j.end())
+		{
+			// Make a copy of the flags so we can modify it if needed
+			auto flags = *it;
+			// Loop over all flags looking for legacy flag names to replace
+			std::optional<std::size_t> talkerFailedIndex;
+			auto index = std::size_t{ 0u };
+			for (auto const& [name, value] : flags.items())
+			{
+				if (value.is_string() && value.get<std::string>() == "TALKER_FAILED")
+				{
+					talkerFailedIndex = index;
+					break;
+				}
+				++index;
+			}
+			// Legacy support: Check if 'TALKER_FAILED' is present, if so replace with the new flag (SRP_REGISTRATION_FAILED)
+			if (talkerFailedIndex)
+			{
+				flags.erase(*talkerFailedIndex);
+				flags.push_back("SRP_REGISTRATION_FAILED");
+			}
+			flags.get_to(info._streamInfoFlags);
+		}
+	}
 	get_optional_value(j, keyName::StreamDynamicInfo_StreamID, info.streamID);
 	get_optional_value(j, keyName::StreamDynamicInfo_MsrpAccumulatedLatency, info.msrpAccumulatedLatency);
 	{
@@ -1824,6 +2001,7 @@ inline void to_json(json& j, StreamOutputNodeDynamicModel const& d)
 	j[keyName::StreamOutputNode_Dynamic_StreamFormat] = d.streamFormat;
 	j[keyName::StreamOutputNode_Dynamic_StreamRunning] = d.isStreamRunning;
 	j[keyName::StreamOutputNode_Dynamic_StreamDynamicInfo] = d.streamDynamicInfo;
+	j[keyName::StreamOutputNode_Dynamic_PresentationTimeOffset] = d.presentationTimeOffset;
 	j[keyName::StreamOutputNode_Dynamic_Counters] = d.counters;
 }
 inline void from_json(json const& j, StreamOutputNodeDynamicModel& d)
@@ -1832,6 +2010,7 @@ inline void from_json(json const& j, StreamOutputNodeDynamicModel& d)
 	j.at(keyName::StreamOutputNode_Dynamic_StreamFormat).get_to(d.streamFormat);
 	get_optional_value(j, keyName::StreamOutputNode_Dynamic_StreamRunning, d.isStreamRunning);
 	get_optional_value(j, keyName::StreamOutputNode_Dynamic_StreamDynamicInfo, d.streamDynamicInfo);
+	get_optional_value(j, keyName::StreamOutputNode_Dynamic_PresentationTimeOffset, d.presentationTimeOffset);
 	get_optional_value(j, keyName::StreamOutputNode_Dynamic_Counters, d.counters);
 }
 
@@ -2724,9 +2903,8 @@ inline void to_json(json& j, MilanInfo const& info)
 {
 	j[keyName::MilanInfo_ProtocolVersion] = info.protocolVersion;
 	j[keyName::MilanInfo_Flags] = info.featuresFlags;
-	{
-		j[keyName::MilanInfo_CertificationVersion] = static_cast<std::string>(info.certificationVersion);
-	}
+	j[keyName::MilanInfo_CertificationVersion] = static_cast<std::string>(info.certificationVersion);
+	j[keyName::MilanInfo_SpecificationVersion] = static_cast<std::string>(info.specificationVersion);
 }
 inline void from_json(json const& j, MilanInfo& info)
 {
@@ -2736,16 +2914,31 @@ inline void from_json(json const& j, MilanInfo& info)
 		auto const str = j.at(keyName::MilanInfo_CertificationVersion).get<std::string>();
 		info.certificationVersion = MilanVersion{ str };
 	}
+	if (auto const it = j.find(keyName::MilanInfo_SpecificationVersion); it != j.end())
+	{
+		auto const str = it->get<std::string>();
+		info.specificationVersion = MilanVersion{ str };
+	}
+	else
+	{
+		// Fallback to Milan 1.2 specification if protocol version is 1
+		if (info.protocolVersion == 1u)
+		{
+			info.specificationVersion = MilanVersion{ 1, 2 };
+		}
+	}
 }
 
 /* MilanDynamicState conversion */
 inline void to_json(json& j, MilanDynamicState const& state)
 {
 	j[keyName::MilanDynamicState_SystemUniqueID] = state.systemUniqueID;
+	j[keyName::MilanDynamicState_SystemName] = state.systemName;
 }
 inline void from_json(json const& j, MilanDynamicState& state)
 {
 	get_optional_value(j, keyName::MilanDynamicState_SystemUniqueID, state.systemUniqueID);
+	get_optional_value(j, keyName::MilanDynamicState_SystemName, state.systemName);
 }
 
 } // namespace model

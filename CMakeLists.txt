@@ -10,9 +10,9 @@ cmake_minimum_required(VERSION 3.29)
 # It should have 3 digits (x.y.z) on main branch, and 4 digits (x.y.z.w) on dev and task branches. The last digit being used as beta label.
 # As soon as an API change occurs in dev or task branch, update the version number by following SemVer rules (so the API breaking changes are not lost/forgotten).
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task) which will be labelled 1.5.0-beta3
-set(LA_AVDECC_VERSION 4.1.0)
-set(LA_AVDECC_CONTROLLER_VERSION 4.1.0)
-set(LA_AVDECC_C_VERSION 4.1.0)
+set(LA_AVDECC_VERSION 4.3.0)
+set(LA_AVDECC_CONTROLLER_VERSION 4.3.0)
+set(LA_AVDECC_C_VERSION 4.3.0)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -46,6 +46,7 @@ option(ENABLE_CODE_SIGNING "Enable binaries signing." FALSE)
 # Enable features
 option(ENABLE_AVDECC_FEATURE_REDUNDANCY "Enable 'Network Redundancy' feature as defined by AVnu Alliance." TRUE)
 option(ENABLE_AVDECC_FEATURE_JSON "Enable read/write files in JSON format." TRUE)
+option(ENABLE_AVDECC_FEATURE_CBR "Enable ChannelBasedRouting monitoring." TRUE)
 # Compatibility options
 option(ENABLE_AVDECC_USE_FMTLIB "Use fmtlib" TRUE)
 option(ENABLE_AVDECC_STRICT_2018_REDUNDANCY "Be strict about 'Network Redundancy' feature, using AVnu 2018 specifications." TRUE)
@@ -145,8 +146,8 @@ if(BUILD_AVDECC_BINDINGS_CSHARP AND NOT BUILD_AVDECC_LIB_SHARED_CXX)
 	set(BUILD_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Build C++ shared library." FORCE)
 endif()
 
-# Install bindings requires the installation of the libraries
-if(INSTALL_AVDECC_BINDINGS AND NOT INSTALL_AVDECC_LIB_SHARED_CXX)
+# Build and Install bindings requires the installation of the libraries
+if(BUILD_AVDECC_BINDINGS_CSHARP AND INSTALL_AVDECC_BINDINGS AND NOT INSTALL_AVDECC_LIB_SHARED_CXX)
 	set(INSTALL_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Install C++ shared library." FORCE)
 endif()
 

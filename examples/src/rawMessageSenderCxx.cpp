@@ -43,6 +43,7 @@
 #include <chrono>
 #include <future>
 #include <cstdint>
+#include <cassert>
 
 static auto constexpr s_ProgID = std::uint16_t{ 5 };
 static auto const s_TargetEntityID = la::avdecc::UniqueIdentifier{ 0x001b92ffff050870 };
@@ -458,6 +459,16 @@ inline void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterf
 			if (entity.getControllerCapabilities().test(la::avdecc::entity::ControllerCapability::Implemented))
 			{
 				outputText("Ignoring discovered controller entity\n");
+				return;
+			}
+			if (!entity.getEntityCapabilities().test(la::avdecc::entity::EntityCapability::VendorUniqueSupported))
+			{
+				outputText("Ignoring entity not supporting Vendor Unique\n");
+				return;
+			}
+			if (entity.getListenerCapabilities().test(la::avdecc::entity::ListenerCapability::OtherSink))
+			{
+				outputText("Ignoring entity with Other Sink capability\n");
 				return;
 			}
 			outputText("Found an entity (either local or remote)\n");

@@ -1,0 +1,26 @@
+name: Release stage
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+.[0-9]+'
+
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Release build'
+        type: boolean
+        default: true
+
+jobs:
+  release-stage:
+    uses: L-Acoustics/la-mw-gh-action/.github/workflows/commit_stage.yml@v3
+    with:
+      release: ${{inputs.release}}
+    secrets:
+      GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      KEYCHAIN_PASSWORD: ${{secrets.KEYCHAIN_PASSWORD}}
+      APPLE_CERTIFICATES_P12_BASE64_PASSWORD: ${{secrets.APPLE_CERTIFICATES_P12_BASE64_PASSWORD}}
+      APPLE_CERTIFICATES_P12_BASE64: ${{secrets.APPLE_CERTIFICATES_P12_BASE64}}
+

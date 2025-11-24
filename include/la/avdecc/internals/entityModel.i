@@ -12,10 +12,6 @@
 	$result = new $1_ltype($1);
 %}
 #pragma SWIG nowarn=474
-// Marshal all std::string as UTF8Str
-%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
-// Better debug display
-%typemap(csattributes) la::avdecc::entity::model::AvdeccFixedString "[System.Diagnostics.DebuggerDisplay(\"{toString()}\")]"
 // Expose internal constructor and methods publicly, some dependant modules may need it
 #	if !defined(SWIGIMPORTED)
 #	define PUBLIC_BUT_HIDDEN [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)] public
@@ -35,7 +31,7 @@
 %apply const unsigned long long & { const size_t & };
 #endif
 
-
+// Include some SWIG typemaps
 %include <stdint.i>
 %include <std_string.i>
 %include <std_pair.i>
@@ -52,11 +48,13 @@
 
 // Force define AVDECC C/C++ API Macros to nothing
 #define LA_AVDECC_API
+#define LA_AVDECC_TYPE_INFO_EXPORT
 #define LA_AVDECC_CALL_CONVENTION
 
-// Other defines
-#define ENABLE_AVDECC_FEATURE_REDUNDANCY 1
-
+#if defined(SWIGCSHARP)
+// Marshal all std::string as UTF8Str
+%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
+#endif
 
 ////////////////////////////////////////
 // Utils
@@ -75,7 +73,7 @@
 %rename("isLess") operator<(UniqueIdentifier const& lhs, UniqueIdentifier const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
 %ignore la::avdecc::UniqueIdentifier::hash::operator(); // Ignore hash functor
 %ignore la::avdecc::UniqueIdentifier::UniqueIdentifier(UniqueIdentifier&&); // Ignore move constructor
-%ignore la::avdecc::UniqueIdentifier::operator=; // Ignore copy operator
+%ignore la::avdecc::UniqueIdentifier::operator=; // Ignore assignment operator
 // Extend the class
 %extend la::avdecc::UniqueIdentifier
 {
@@ -123,7 +121,7 @@
 	%nspace la::avdecc::entity::model::name;
 	%rename("%s") la::avdecc::entity::model::name; // Unignore class
 	%ignore la::avdecc::entity::model::name::name(name&&); // Ignore move constructor
-	%ignore la::avdecc::entity::model::name::operator=; // Ignore copy operator
+	%ignore la::avdecc::entity::model::name::operator=; // Ignore assignment operator
 %enddef
 %define DEFINE_AEM_TYPES_CLASS(name)
 	DEFINE_AEM_TYPES_CLASS_BASE(name)
@@ -182,6 +180,7 @@ DEFINE_AEM_TYPES_CLASS_BASE(AvdeccFixedString);
 %rename("isEqual") la::avdecc::entity::model::AvdeccFixedString::operator==;
 %rename("isDifferent") la::avdecc::entity::model::AvdeccFixedString::operator!=;
 %rename("toString") la::avdecc::entity::model::AvdeccFixedString::operator std::string;
+%typemap(csattributes) la::avdecc::entity::model::AvdeccFixedString "[System.Diagnostics.DebuggerDisplay(\"{toString()}\")]" // Better debug display
 %ignore la::avdecc::entity::model::AvdeccFixedString::operator[](size_t const pos);
 %ignore la::avdecc::entity::model::AvdeccFixedString::operator[](size_t const pos) const;
 %ignore operator<<(std::ostream&, la::avdecc::entity::model::AvdeccFixedString const&);
@@ -190,6 +189,7 @@ DEFINE_AEM_TYPES_CLASS_BASE(AvdeccFixedString);
 {
 #if defined(SWIGCSHARP)
 	// Provide a more native ToString() method
+%csmethodmodifiers ToString "public override"; // Force override of object.ToString()
 	std::string ToString() const noexcept
 	{
 		return static_cast<std::string>(*$self);
@@ -210,6 +210,26 @@ DEFINE_AEM_TYPES_CLASS(ControlValueType);
 // %typemap(csbase) la::avdecc::entity::model::ControlValueType::Type "ushort" // Not required anymore
 DEFINE_AEM_TYPES_CLASS_BASE(ControlValues);
 %ignore la::avdecc::entity::model::ControlValues::operator bool() const noexcept;
+
+// Map SignalPresenceChannels (std:bitset) to underlying type (until std::bitset is supported by SWIG)
+%apply unsigned long long { la::avdecc::entity::model::SignalPresenceChannels, la::avdecc::entity::model::SignalPresenceChannels const&, la::avdecc::entity::model::SignalPresenceChannels& };
+%typemap(out) la::avdecc::entity::model::SignalPresenceChannels {
+	$result = (unsigned long long)$1.to_ullong();
+}
+%typemap(out) la::avdecc::entity::model::SignalPresenceChannels const&, la::avdecc::entity::model::SignalPresenceChannels& {
+	$result = (unsigned long long)$1->to_ullong();
+}
+%typemap(in) la::avdecc::entity::model::SignalPresenceChannels {
+	$1 = la::avdecc::entity::model::SignalPresenceChannels((unsigned long long)$input);
+}
+%typemap(in) la::avdecc::entity::model::SignalPresenceChannels const&, la::avdecc::entity::model::SignalPresenceChannels& {
+	static la::avdecc::entity::model::SignalPresenceChannels tmp((unsigned long long)$input);
+	$1 = &tmp;
+}
+%typemap(directorin) la::avdecc::entity::model::SignalPresenceChannels const&, la::avdecc::entity::model::SignalPresenceChannels& {
+	$input = (unsigned long long)$1.to_ullong();
+}
+%optional_arithmetic(la::avdecc::entity::model::SignalPresenceChannels, OptSignalPresenceChannels)
 
 // Include c++ declaration file
 %include "la/avdecc/internals/entityModelTypes.hpp"
@@ -248,13 +268,19 @@ DEFINE_ENUM_CLASS(la::avdecc::entity::EntityCounterValidFlag, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity::AvbInterfaceCounterValidFlag, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity::ClockDomainCounterValidFlag, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity::StreamInputCounterValidFlag, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::entity::StreamOutputCounterValidFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::StreamOutputCounterValidFlagMilan12, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity::StreamOutputCounterValidFlag17221, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity::MilanInfoFeaturesFlag, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::entity::MediaClockReferenceInfoFlag, "byte")
+DEFINE_ENUM_CLASS(la::avdecc::entity::BindStreamFlag, "ushort")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
+
+// StreamOutputCounterValidFlags
+%nspace la::avdecc::entity::StreamOutputCounterValidFlags;
+%rename("%s") la::avdecc::entity::StreamOutputCounterValidFlags; // Unignore class
 
 // Include c++ declaration file
 %include "la/avdecc/internals/entityEnums.hpp"
@@ -280,10 +306,12 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, EntityCounterValidFlags, EntityCo
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, AvbInterfaceCounterValidFlags, AvbInterfaceCounterValidFlag, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ClockDomainCounterValidFlags, ClockDomainCounterValidFlag, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamInputCounterValidFlags, StreamInputCounterValidFlag, std::uint32_t)
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlags, StreamOutputCounterValidFlag, std::uint32_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlagsMilan12, StreamOutputCounterValidFlagMilan12, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlags17221, StreamOutputCounterValidFlag17221, std::uint32_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlagsMilanSignalPresence, StreamOutputCounterValidFlagMilanSignalPresence, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MilanInfoFeaturesFlags, MilanInfoFeaturesFlag, std::uint32_t)
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MediaClockReferenceInfoFlags, MediaClockReferenceInfoFlag, std::uint8_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, BindStreamFlags, BindStreamFlag, std::uint16_t)
 
 
 ////////////////////////////////////////
@@ -294,15 +322,13 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MediaClockReferenceInfoFlags, Med
 	%rename("%s") la::avdecc::protocol::name; // Unignore class
 	%ignore la::avdecc::protocol::name::name(); // Ignore default constructor
 	%rename("toString") la::avdecc::protocol::name::operator std::string() const noexcept;
-#if defined(SWIGCSHARP)
-	// Better debug display
-	%typemap(csattributes) la::avdecc::protocol::name "[System.Diagnostics.DebuggerDisplay(\"{toString()}\")]"
-#endif
+	%typemap(csattributes) la::avdecc::protocol::name "[System.Diagnostics.DebuggerDisplay(\"{toString()}\")]" // Better debug display
 	// Extend the class
 	%extend la::avdecc::protocol::name
 	{
 #if defined(SWIGCSHARP)
 		// Provide a more native ToString() method
+%csmethodmodifiers ToString "public override"; // Force override of object.ToString()
 		std::string ToString() const noexcept
 		{
 			return static_cast<std::string>(*$self);
@@ -385,6 +411,7 @@ DEFINE_TYPED_PROTOCOL_CLASS(AcmpStatus, AcmpStatusTypedDefine, std::uint8_t)
 %optional_arithmetic(std::uint8_t, OptUInt8)
 %optional_arithmetic(std::uint32_t, OptUInt32)
 %optional_arithmetic(la::avdecc::entity::model::ProbingStatus, OptProbingStatus)
+%optional(la::avdecc::UniqueIdentifier)
 %optional(la::avdecc::entity::model::MilanVersion)
 %optional(la::avdecc::entity::model::AvdeccFixedString)
 %optional(la::avdecc::entity::StreamInfoFlagsEx)
@@ -419,6 +446,7 @@ DEFINE_AEM_STRUCT(AsPath);
 DEFINE_AEM_STRUCT(MilanInfo);
 DEFINE_AEM_STRUCT(MilanDynamicState);
 DEFINE_AEM_STRUCT(MediaClockReferenceInfo);
+DEFINE_AEM_STRUCT(StreamInputInfoEx);
 
 // Some ignores
 %ignore la::avdecc::entity::model::makeEntityModelID; // Ignore, not needed

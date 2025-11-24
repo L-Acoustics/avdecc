@@ -142,7 +142,17 @@ std::string LA_AVDECC_CALL_CONVENTION LocalEntity::statusToString(MvuCommandStat
 		case MvuCommandStatus::Success:
 			return "Success.";
 		case MvuCommandStatus::NotImplemented:
-			return "The AVDECC Entity does not support the command type.";
+			return "The PAAD-AE does not support the command type.";
+		case MvuCommandStatus::NoSuchDescriptor:
+			return "A descriptor with the descriptor_type and descriptor_index specified does not exist.";
+		case MvuCommandStatus::EntityLocked:
+			return "The AVDECC Entity has been locked by another AVDECC Controller.";
+		case MvuCommandStatus::BadArguments:
+			return "One or more of the values in the fields of the frame were deemed to be bad by the AVDECC Entity (unsupported, incorrect combination, etc.).";
+		case MvuCommandStatus::EntityMisbehaving:
+			return "The AVDECC Entity generated an internal error while trying to process the command.";
+		case MvuCommandStatus::PayloadTooShort:
+			return "The received command doesn't provide enough bytes to be correctly processed.";
 		// Library Error Codes
 		case MvuCommandStatus::BaseProtocolViolation:
 			return "The entity sent a message that violates the base protocol.";

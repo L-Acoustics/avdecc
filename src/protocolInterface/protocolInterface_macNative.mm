@@ -1714,12 +1714,12 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 														 auto aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress() withProtocolInterface:*_protocolInterface];
 														 if (aecpdu)
 														 {
-															la::avdecc::utils::invokeProtectedHandler(resultHandler, aecpdu.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
+															 la::avdecc::utils::invokeProtectedHandler(resultHandler, aecpdu.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
 														 }
 														 else
 														 {
-															LOG_PROTOCOL_INTERFACE_DEBUG(la::networkInterface::MacAddress{}, la::networkInterface::MacAddress{}, "Failed to convert AECP message to Aecpdu");
-															la::avdecc::utils::invokeProtectedHandler(resultHandler, nullptr, la::avdecc::protocol::ProtocolInterface::Error::InternalError);
+															 LOG_PROTOCOL_INTERFACE_DEBUG(la::networkInterface::MacAddress{}, la::networkInterface::MacAddress{}, "Failed to convert AECP message to Aecpdu");
+															 la::avdecc::utils::invokeProtectedHandler(resultHandler, nullptr, la::avdecc::protocol::ProtocolInterface::Error::InternalError);
 														 }
 													 }
 												 }
@@ -2145,7 +2145,7 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 			[[fallthrough]];
 		case AVB17221AECPMessageTypeVendorUniqueResponse:
 			// Log it and return
-			LOG_PROTOCOL_INTERFACE_WARN([FromNative makeMacAddress:message.sourceMAC], _protocolInterface->getMacAddress(), std::string("macOS Native framework error: AECPDidReceiveCommand passed an AECP response message instead of a command"));
+			LOG_PROTOCOL_INTERFACE_WARN([FromNative makeMacAddress:message.sourceMAC], _protocolInterface -> getMacAddress(), std::string("macOS Native framework error: AECPDidReceiveCommand passed an AECP response message instead of a command"));
 			return NO;
 		default:
 			break;
@@ -2162,7 +2162,7 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 
 	if (!aecpdu)
 	{
-		LOG_PROTOCOL_INTERFACE_DEBUG([FromNative makeMacAddress:message.sourceMAC], _protocolInterface->getMacAddress(), std::string("Failed to create Aecpdu from AECP command message"));
+		LOG_PROTOCOL_INTERFACE_DEBUG([FromNative makeMacAddress:message.sourceMAC], _protocolInterface -> getMacAddress(), std::string("Failed to create Aecpdu from AECP command message"));
 		return NO;
 	}
 
@@ -2181,11 +2181,11 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 		case AVB17221AECPMessageTypeVendorUniqueCommand:
 		{
 			// This one is specifically known to happen when the status is not SUCCESS and we need to handle it
-			if (message.status != AVB17221AECPStatusSuccess)
+			//if (message.status != AVB17221AECPStatusSuccess) // Actually it looks like it also happen for SUCCESS messages
 			{
 				// Convert it back to response and log it
 				message.messageType = AVB17221AECPMessageTypeVendorUniqueResponse;
-				LOG_PROTOCOL_INTERFACE_WARN([FromNative makeMacAddress:message.sourceMAC], _protocolInterface->getMacAddress(), std::string("macOS Native framework error: AECPDidReceiveResponse passed an AECP VendorUnique command message instead of a response (changing it back to response)"));
+				LOG_PROTOCOL_INTERFACE_WARN([FromNative makeMacAddress:message.sourceMAC], _protocolInterface -> getMacAddress(), std::string("macOS Native framework error: AECPDidReceiveResponse passed an AECP VendorUnique command message instead of a response (changing it back to response)"));
 				break;
 			}
 			[[fallthrough]];
@@ -2196,7 +2196,7 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 			[[fallthrough]];
 		case AVB17221AECPMessageTypeLegacyAVCCommand:
 			// Log it and return
-			LOG_PROTOCOL_INTERFACE_WARN([FromNative makeMacAddress:message.sourceMAC], _protocolInterface->getMacAddress(), std::string("macOS Native framework error: AECPDidReceiveResponse passed an AECP command message instead of a response"));
+			LOG_PROTOCOL_INTERFACE_WARN([FromNative makeMacAddress:message.sourceMAC], _protocolInterface -> getMacAddress(), std::string("macOS Native framework error: AECPDidReceiveResponse passed an AECP command message instead of a response"));
 			return NO;
 		default:
 			break;
@@ -2209,7 +2209,7 @@ static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityProper
 
 	if (!aecpdu)
 	{
-		LOG_PROTOCOL_INTERFACE_DEBUG([FromNative makeMacAddress:message.sourceMAC], _protocolInterface->getMacAddress(), std::string("Failed to create Aecpdu from AECP response message"));
+		LOG_PROTOCOL_INTERFACE_DEBUG([FromNative makeMacAddress:message.sourceMAC], _protocolInterface -> getMacAddress(), std::string("Failed to create Aecpdu from AECP response message"));
 		return NO;
 	}
 

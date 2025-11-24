@@ -2272,8 +2272,8 @@ void ControllerImpl::identifyEntity(UniqueIdentifier const targetEntityID, std::
 
 void ControllerImpl::setMaxTransitTime(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, SetMaxTransitTimeHandler const& handler) const noexcept
 {
-	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -2305,6 +2305,41 @@ void ControllerImpl::setMaxTransitTime(UniqueIdentifier const targetEntityID, en
 					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::smartSetMaxTransitTime(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, SetMaxTransitTimeHandler const& handler) const noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		// Check for Milan devices that use the msrpAccumulatedLatency field from SET_STREAM_INFO
+		// This changed since Milan 1.3 to use the same mechanism as IEEE 1722.1 devices
+		auto const milanInfo = controlledEntity->getMilanInfo();
+		if (milanInfo)
+		{
+			if (milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 } && milanInfo->specificationVersion < entity::model::MilanVersion{ 1, 3 })
+			{
+				// If entity is virtual, don't try to use SET_STREAM_INFO as it probably won't be supported by the VirtualProxy (it needs to respond with a full StreamInfo which might be very difficult to provide)
+				if (!controlledEntity->isVirtual())
+				{
+					auto streamInfo = entity::model::StreamInfo{};
+					streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::MsrpAccLatValid);
+					streamInfo.msrpAccumulatedLatency = static_cast<decltype(streamInfo.msrpAccumulatedLatency)>(maxTransitTime.count());
+					setStreamOutputInfo(targetEntityID, streamIndex, streamInfo, handler);
+					return;
+				}
+			}
+		}
+
+		// Otherwise, use the setMaxTransitTime method
+		setMaxTransitTime(targetEntityID, streamIndex, maxTransitTime, handler);
 	}
 	else
 	{
@@ -2490,7 +2525,7 @@ void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entit
 
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controllerProxy->startOperation(targetEntityID, descriptorType, descriptorIndex, operationType, memoryBuffer,
-			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, la::avdecc::entity::model::OperationID const operationID, la::avdecc::entity::model::MemoryObjectOperationType const /*operationType*/, la::avdecc::MemoryBuffer const& memoryBuffer)
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/, entity::model::OperationID const operationID, entity::model::MemoryObjectOperationType const /*operationType*/, MemoryBuffer const& memoryBuffer)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User startOperation (OperationID={}): {}", operationID, entity::ControllerEntity::statusToString(status));
 
@@ -2665,8 +2700,8 @@ void ControllerImpl::startUploadMemoryObjectOperation(UniqueIdentifier const tar
 
 void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryProgressHandler const& progressHandler, WriteDeviceMemoryCompletionHandler const& completionHandler) const noexcept
 {
-	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -2696,18 +2731,18 @@ void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, st
 	}
 }
 
-void ControllerImpl::setSystemUniqueID(UniqueIdentifier const targetEntityID, entity::model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept
+void ControllerImpl::setSystemUniqueID(UniqueIdentifier const targetEntityID, UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName, SetSystemUniqueIDHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
 	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User setSystemUniqueID (SystemUniqueID={})", systemUniqueID);
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setSystemUniqueID (SystemUniqueID={} SystemName={})", utils::toHexString(systemUniqueID, true), systemName.str());
 
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controllerProxy->setSystemUniqueID(targetEntityID, systemUniqueID,
-			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::SystemUniqueIdentifier const systemUniqueID)
+		_controllerProxy->setSystemUniqueID(targetEntityID, systemUniqueID, systemName,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, UniqueIdentifier const systemUniqueID, entity::model::AvdeccFixedString const& systemName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setSystemUniqueID (): {}", entity::ControllerEntity::statusToString(status));
 
@@ -2721,7 +2756,7 @@ void ControllerImpl::setSystemUniqueID(UniqueIdentifier const targetEntityID, en
 					// Update system unique ID
 					if (!!status)
 					{
-						updateSystemUniqueID(*entity, systemUniqueID);
+						updateSystemUniqueID(*entity, systemUniqueID, systemName);
 					}
 
 					// Invoke result handler
@@ -2764,8 +2799,7 @@ void ControllerImpl::setMediaClockReferenceInfo(UniqueIdentifier const targetEnt
 					// Update media clock reference info
 					if (!!status)
 					{
-						validateDefaultMediaClockReferencePriority(*entity, clockDomainIndex, defaultPriority, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-						updateMediaClockReferenceInfo(*entity, clockDomainIndex, mcrInfo, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+						updateMediaClockReferenceInfo(*entity, clockDomainIndex, defaultPriority, mcrInfo, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -2783,33 +2817,141 @@ void ControllerImpl::setMediaClockReferenceInfo(UniqueIdentifier const targetEnt
 	}
 }
 
+static bool doesSupportMvuBind(ControlledEntityImpl const& controlledEntity) noexcept
+{
+	// Checking for MilanInfoFeaturesFlag::MvuBinding is not enough (it's a static flag), we need to check the MilanCompatibilityVersion the controller may downgrade in case of a failure
+
+	// First make sure the entity is at least Milan 1.3 compatible
+	if (controlledEntity.getMilanCompatibilityVersion() >= entity::model::MilanVersion{ 1, 3 })
+	{
+		// Then we need to retrive MilanInfo
+		if (auto const milanInfoOpt = controlledEntity.getMilanInfo(); !!milanInfoOpt)
+		{
+			auto const& milanInfo = *milanInfoOpt;
+			// Check if the entity supports MVU Binding mechanism
+			return milanInfo.featuresFlags.test(entity::MilanInfoFeaturesFlag::MvuBinding);
+		}
+	}
+	return false;
+}
+
+static entity::ControllerEntity::ControlStatus convertMvuStatusToControlStatus(entity::LocalEntity::MvuCommandStatus const status) noexcept
+{
+	switch (status)
+	{
+		case entity::LocalEntity::MvuCommandStatus::Success:
+			return entity::ControllerEntity::ControlStatus::Success;
+		case entity::LocalEntity::MvuCommandStatus::NotImplemented:
+			return entity::ControllerEntity::ControlStatus::NotSupported;
+		case entity::LocalEntity::MvuCommandStatus::NoSuchDescriptor:
+			return entity::ControllerEntity::ControlStatus::ListenerUnknownID;
+		case entity::LocalEntity::MvuCommandStatus::EntityLocked:
+			return entity::ControllerEntity::ControlStatus::ControllerNotAuthorized;
+		case entity::LocalEntity::MvuCommandStatus::BadArguments:
+			return entity::ControllerEntity::ControlStatus::NotSupported;
+		case entity::LocalEntity::MvuCommandStatus::EntityMisbehaving:
+			return entity::ControllerEntity::ControlStatus::ListenerMisbehaving;
+		case entity::LocalEntity::MvuCommandStatus::PayloadTooShort:
+			return entity::ControllerEntity::ControlStatus::NotSupported;
+		case entity::LocalEntity::MvuCommandStatus::BaseProtocolViolation:
+			return entity::ControllerEntity::ControlStatus::BaseProtocolViolation;
+		case entity::LocalEntity::MvuCommandStatus::PartialImplementation:
+			return entity::ControllerEntity::ControlStatus::InternalError;
+		case entity::LocalEntity::MvuCommandStatus::Busy:
+			return entity::ControllerEntity::ControlStatus::InternalError;
+		case entity::LocalEntity::MvuCommandStatus::NetworkError:
+			return entity::ControllerEntity::ControlStatus::NetworkError;
+		case entity::LocalEntity::MvuCommandStatus::ProtocolError:
+			return entity::ControllerEntity::ControlStatus::ProtocolError;
+		case entity::LocalEntity::MvuCommandStatus::TimedOut:
+			return entity::ControllerEntity::ControlStatus::TimedOut;
+		case entity::LocalEntity::MvuCommandStatus::UnknownEntity:
+			return entity::ControllerEntity::ControlStatus::UnknownEntity;
+		case entity::LocalEntity::MvuCommandStatus::InternalError:
+			return entity::ControllerEntity::ControlStatus::InternalError;
+		default:
+			return entity::ControllerEntity::ControlStatus::InternalError;
+	}
+}
+
 void ControllerImpl::connectStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(listenerStream.entityID, true);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(listenerStream.entityID);
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
+		auto const supportsMvuBind = doesSupportMvuBind(*controlledEntity);
+		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controllerProxy->connectStream(talkerStream, listenerStream,
-			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
-			{
-				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a "scoped locked" shared copy of the ControlledEntities
-				auto listener = getControlledEntityImplGuard(listenerStream.entityID);
-				auto talker = getControlledEntityImplGuard(talkerStream.entityID);
-
-				if (!!status)
+		// Check if entity supports MVU Binding mechanism
+		if (supportsMvuBind)
+		{
+			LOG_CONTROLLER_TRACE(listenerStream.entityID, "User bindStream (TalkerID={} TalkerIndex={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, listenerStream.streamIndex);
+			_controllerProxy->bindStream(listenerStream.entityID, listenerStream.streamIndex, talkerStream, entity::BindStreamFlags{},
+				[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::LocalEntity::MvuCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& talkerStream, entity::BindStreamFlags const flags)
 				{
-					// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
-					handleListenerStreamStateNotification(talkerStream, listenerStream, true, flags, false);
-				}
+					LOG_CONTROLLER_TRACE(entityID, "User bindStream (TalkerID={} TalkerIndex={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
-				// Invoke result handler
-				utils::invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, status);
-			});
+					// Take a "scoped locked" shared copy of the ControlledEntities
+					auto listener = getControlledEntityImplGuard(entityID);
+					auto talker = getControlledEntityImplGuard(talkerStream.entityID);
+
+					if (!!status)
+					{
+						auto connectionFlags = entity::ConnectionFlags{};
+						if (flags.test(entity::BindStreamFlag::StreamingWait))
+						{
+							connectionFlags.set(entity::ConnectionFlag::StreamingWait);
+						}
+						// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
+						handleListenerStreamStateNotification(talkerStream, entity::model::StreamIdentification{ entityID, streamIndex }, true, connectionFlags, false);
+					}
+					else
+					{
+						auto const action = getFailureActionForMvuCommandStatus(status);
+						switch (action)
+						{
+							case FailureAction::ErrorContinue:
+								[[fallthrough]];
+							case FailureAction::BadArguments:
+								[[fallthrough]];
+							case FailureAction::NotSupported:
+								// We checked for the MilanInfoFeaturesFlag::MvuBinding flag, but the entity is not compatible with Milan 1.3, force a downgrade
+								checkMilanRequirements(listener.get(), MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 3 }, std::nullopt, entity::model::MilanVersion{ 1, 2 } } }, "Milan 1.3 - 5.4.4.1", "Milan feature flags MVU_BINDING set but BIND_STREAM command not properly supported");
+								break;
+							default:
+								break;
+						}
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, streamIndex, convertMvuStatusToControlStatus(status));
+				});
+		}
+		else
+		{
+			LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
+			_controllerProxy->connectStream(talkerStream, listenerStream,
+				[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
+				{
+					LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
+
+					// Take a "scoped locked" shared copy of the ControlledEntities
+					auto listener = getControlledEntityImplGuard(listenerStream.entityID);
+					auto talker = getControlledEntityImplGuard(talkerStream.entityID);
+
+					if (!!status)
+					{
+						// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
+						handleListenerStreamStateNotification(talkerStream, listenerStream, true, flags, false);
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, status);
+				});
+		}
 	}
 	else
 	{
@@ -2819,60 +2961,105 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 
 void ControllerImpl::disconnectStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, DisconnectStreamHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(listenerStream.entityID, true);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(listenerStream.entityID);
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
+		auto const supportsMvuBind = doesSupportMvuBind(*controlledEntity);
+		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
-		_controllerProxy->disconnectStream(talkerStream, listenerStream,
-			[this, handler](entity::controller::Interface const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
-			{
-				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
-				if (!!status || status == entity::ControllerEntity::ControlStatus::NotConnected) // No error, update the connection state
+		// Check if entity supports MVU Binding mechanism
+		if (supportsMvuBind)
+		{
+			LOG_CONTROLLER_TRACE(listenerStream.entityID, "User unbindStream (ListenerIndex={})", listenerStream.streamIndex);
+			_controllerProxy->unbindStream(listenerStream.entityID, listenerStream.streamIndex,
+				[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::LocalEntity::MvuCommandStatus const status, entity::model::StreamIndex const streamIndex)
 				{
-					// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the fact there was no error (NOT_CONNECTED is actually not an error) in the command
-					handleListenerStreamStateNotification({}, listenerStream, false, flags, false);
+					LOG_CONTROLLER_TRACE(entityID, "User unbindStream (ListenerIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
 					// Take a "scoped locked" shared copy of the ControlledEntity
-					auto listener = getControlledEntityImplGuard(listenerStream.entityID);
+					auto listener = getControlledEntityImplGuard(entityID);
+
+					if (!!status)
+					{
+						// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
+						handleListenerStreamStateNotification({}, entity::model::StreamIdentification{ entityID, streamIndex }, false, entity::ConnectionFlags{}, false);
+					}
+					else
+					{
+						auto const action = getFailureActionForMvuCommandStatus(status);
+						switch (action)
+						{
+							case FailureAction::ErrorContinue:
+								[[fallthrough]];
+							case FailureAction::BadArguments:
+								[[fallthrough]];
+							case FailureAction::NotSupported:
+								// We checked for the MilanInfoFeaturesFlag::MvuBinding flag, but the entity is not compatible with Milan 1.3, force a downgrade
+								checkMilanRequirements(listener.get(), MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 3 }, std::nullopt, entity::model::MilanVersion{ 1, 2 } } }, "Milan 1.3 - 5.4.4.1", "Milan feature flags MVU_BINDING set but UNBIND_STREAM command not properly supported");
+								break;
+							default:
+								break;
+						}
+					}
 
 					// Invoke result handler
-					utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, entity::ControllerEntity::ControlStatus::Success); // Force SUCCESS as status
-				}
-				else
+					utils::invokeProtectedHandler(handler, listener.get(), streamIndex, convertMvuStatusToControlStatus(status));
+				});
+		}
+		else
+		{
+			LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
+			_controllerProxy->disconnectStream(talkerStream, listenerStream,
+				[this, handler](entity::controller::Interface const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 				{
-					// In case of a disconnect we might get an error (forwarded from the talker) but the stream is actually disconnected.
-					// In that case, we have to query the listener stream state in order to know the actual connection state
-					// Also don't notify the result handler right now, wait for getListenerStreamState answer
-					_controllerProxy->getListenerStreamState(listenerStream,
-						[this, handler, disconnectStatus = status](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
-						{
-							entity::ControllerEntity::ControlStatus controlStatus{ disconnectStatus };
-							// In a GET_RX_STATE_RESPONSE message, the connectionCount is set to 1 if the stream is connected and 0 if not connected (See Marc Illouz clarification document, and hopefully someday as a corrigendum)
-							auto const isStillConnected = connectionCount != 0;
+					LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
-							if (!!status)
+					if (!!status || status == entity::ControllerEntity::ControlStatus::NotConnected) // No error, update the connection state
+					{
+						// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the fact there was no error (NOT_CONNECTED is actually not an error) in the command
+						handleListenerStreamStateNotification({}, listenerStream, false, flags, false);
+
+						// Take a "scoped locked" shared copy of the ControlledEntity
+						auto listener = getControlledEntityImplGuard(listenerStream.entityID);
+
+						// Invoke result handler
+						utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, entity::ControllerEntity::ControlStatus::Success); // Force SUCCESS as status
+					}
+					else
+					{
+						// In case of a disconnect we might get an error (forwarded from the talker) but the stream is actually disconnected.
+						// In that case, we have to query the listener stream state in order to know the actual connection state
+						// Also don't notify the result handler right now, wait for getListenerStreamState answer
+						_controllerProxy->getListenerStreamState(listenerStream,
+							[this, handler, disconnectStatus = status](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 							{
-								// Status to return depends if we actually got disconnected (success in that case)
-								controlStatus = isStillConnected ? disconnectStatus : entity::ControllerEntity::ControlStatus::Success;
-							}
+								entity::ControllerEntity::ControlStatus controlStatus{ disconnectStatus };
+								// In a GET_RX_STATE_RESPONSE message, the connectionCount is set to 1 if the stream is connected and 0 if not connected (See Marc Illouz clarification document, and hopefully someday as a corrigendum)
+								auto const isStillConnected = connectionCount != 0;
 
-							// Take a "scoped locked" shared copy of the ControlledEntity
-							auto listener = getControlledEntityImplGuard(listenerStream.entityID);
+								if (!!status)
+								{
+									// Status to return depends if we actually got disconnected (success in that case)
+									controlStatus = isStillConnected ? disconnectStatus : entity::ControllerEntity::ControlStatus::Success;
+								}
 
-							if (!!status)
-							{
-								handleListenerStreamStateNotification(talkerStream, listenerStream, isStillConnected, flags, false);
-							}
+								// Take a "scoped locked" shared copy of the ControlledEntity
+								auto listener = getControlledEntityImplGuard(listenerStream.entityID);
 
-							// Invoke result handler
-							utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, controlStatus);
-						});
-				}
-			});
+								if (!!status)
+								{
+									handleListenerStreamStateNotification(talkerStream, listenerStream, isStillConnected, flags, false);
+								}
+
+								// Invoke result handler
+								utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, controlStatus);
+							});
+					}
+				});
+		}
 	}
 	else
 	{
@@ -2982,7 +3169,7 @@ void ControllerImpl::requestExclusiveAccess(UniqueIdentifier const entityID, Exc
 		}
 
 		// Notify handler
-		la::avdecc::utils::invokeProtectedHandler(handler, entity, status, std::move(token));
+		utils::invokeProtectedHandler(handler, entity, status, std::move(token));
 	};
 
 	// Request exclusive access based on specified type
@@ -3009,7 +3196,7 @@ void ControllerImpl::requestExclusiveAccess(UniqueIdentifier const entityID, Exc
 		}
 		default:
 			AVDECC_ASSERT(false, "Unknown AccessType");
-			onResult(nullptr, la::avdecc::entity::ControllerEntity::AemCommandStatus::InternalError);
+			onResult(nullptr, entity::ControllerEntity::AemCommandStatus::InternalError);
 			break;
 	}
 }
@@ -3271,7 +3458,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 		auto [error, errorText, entityTree, entityModelID] = deserializeJsonEntityModel(filePath, isBinaryFormat);
 		if (!error)
 		{
-			auto commonInfo = entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), entityModelID };
+			auto commonInfo = entity::Entity::CommonInformation{ UniqueIdentifier::getNullUniqueIdentifier(), entityModelID };
 			auto intfcsInfo = entity::Entity::InterfacesInformation{};
 
 			// Build common and interfaces information
@@ -3344,12 +3531,14 @@ bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 	}
 
 	// Ready to remove using the network executor
+	auto& executor = ExecutorManager::getInstance();
 	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
-	ExecutorManager::getInstance().pushJob(exName,
+	runJobOnExecutorAndWait(executor, exName,
 		[this, entityID, isVirtual]()
 		{
 			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
 
+#ifdef ENABLE_AVDECC_FEATURE_JSON
 			if (isVirtual)
 			{
 				// Deregister the ControlledEntity
@@ -3358,26 +3547,52 @@ bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 				registerVirtualControlledEntity(std::move(sharedControlledEntity));
 			}
 			else
+#else // !ENABLE_AVDECC_FEATURE_JSON
+			(void)isVirtual; // Avoid unused variable warning
+#endif // ENABLE_AVDECC_FEATURE_JSON
 			{
 				forgetRemoteEntity(entityID);
 				discoverRemoteEntity(entityID);
 			}
 		});
 
-	// Flush executor to be sure everything is loaded before returning
-	ExecutorManager::getInstance().flush(exName);
-
 	return true;
 }
 
 bool ControllerImpl::unloadVirtualEntity(UniqueIdentifier const entityID) noexcept
 {
+#ifndef ENABLE_AVDECC_FEATURE_JSON
+	return false;
+#else // ENABLE_AVDECC_FEATURE_JSON
 	return !!deregisterVirtualControlledEntity(entityID);
+#endif // !ENABLE_AVDECC_FEATURE_JSON
 }
 
 /* ************************************************************ */
 /* VirtualControlledEntityInterface overrides                   */
 /* ************************************************************ */
+void ControllerImpl::setAcquiredState(UniqueIdentifier const targetEntityID, model::AcquireState const acquireState, UniqueIdentifier const owningEntity) noexcept
+{
+	// Check if targetEntityID is a virtual entity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	if (controlledEntity && controlledEntity->isVirtual())
+	{
+		// Use the "update**" method, there are many things to do
+		updateAcquiredState(*controlledEntity, acquireState, owningEntity);
+	}
+}
+
+void ControllerImpl::setEntityLockedState(UniqueIdentifier const targetEntityID, model::LockState const lockState, UniqueIdentifier const lockingEntity) noexcept
+{
+	// Check if targetEntityID is a virtual entity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	if (controlledEntity && controlledEntity->isVirtual())
+	{
+		// Use the "update**" method, there are many things to do
+		updateLockedState(*controlledEntity, lockState, lockingEntity);
+	}
+}
+
 void ControllerImpl::setEntityCounters(UniqueIdentifier const targetEntityID, entity::model::EntityCounters const& counters) noexcept
 {
 	// Check if targetEntityID is a virtual entity
@@ -3468,21 +3683,10 @@ void ControllerImpl::setStreamOutputCounters(UniqueIdentifier const targetEntity
 	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
 	if (controlledEntity && controlledEntity->isVirtual())
 	{
-		// Convert descriptor specific counters to generic descriptor counters
-		auto validCounters = entity::StreamOutputCounterValidFlags{};
-		auto descriptorCounters = entity::model::DescriptorCounters{};
-
-		for (auto const [flag, counter] : counters)
-		{
-			validCounters.set(flag);
-			descriptorCounters[validCounters.getPosition(flag)] = counter;
-		}
-
 		// Use the "update**" method, there are many things to do
-		updateStreamOutputCounters(*controlledEntity, streamIndex, validCounters, descriptorCounters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+		updateStreamOutputCounters(*controlledEntity, streamIndex, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 	}
 }
-
 
 } // namespace controller
 } // namespace avdecc

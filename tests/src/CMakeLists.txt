@@ -21,6 +21,7 @@ set(TESTS_SOURCE
 	endStation_tests.cpp
 	enum_tests.cpp
 	entity_tests.cpp
+	entityModel_tests.cpp
 	instrumentationObserver.hpp
 	logger_tests.cpp
 	memoryBuffer_tests.cpp
@@ -30,6 +31,7 @@ set(TESTS_SOURCE
 	protocolVuAecpduProtocolIdentifier_tests.cpp
 	streamFormat_tests.cpp
 	uniqueIdentifier_tests.cpp
+	utils_tests.cpp
 )
 list(APPEND ADD_LINK_LIBRARIES la_avdecc_static)
 
@@ -64,9 +66,8 @@ add_custom_command(
 	TARGET Tests
 	POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/../data" "${CMAKE_BINARY_DIR}/tests/src/data"
-	COMMENT "Copying Tests data to output folder"
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/../data/SimpleEntity.json" "${CMAKE_BINARY_DIR}/tests/src/data/テスト.json"
-	COMMENT "Creating UTF-8 file"
+	COMMENT "Copying Tests data to output folder"
 	VERBATIM
 )
 

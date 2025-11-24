@@ -555,7 +555,7 @@ TEST(AemPayloads, RecvPayloadMaximumSize)
 			ser << mapping.streamIndex << mapping.streamChannel << mapping.clusterOffset << mapping.clusterChannel;
 		}
 
-		return la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
+		return ser;
 	};
 
 	la::avdecc::entity::model::AudioMappings mappings{};
@@ -566,7 +566,8 @@ TEST(AemPayloads, RecvPayloadMaximumSize)
 		mappings.push_back({});
 	}
 
-	auto const payload = serializeMappings(la::avdecc::entity::model::DescriptorType::AudioCluster, 5u, 8u, 1u, mappings);
+	auto const ser = serializeMappings(la::avdecc::entity::model::DescriptorType::AudioCluster, 5u, 8u, 1u, mappings);
+	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
 
 #	if defined(ALLOW_RECV_BIG_AECP_PAYLOADS)
 	try
@@ -587,6 +588,7 @@ TEST(AemPayloads, RecvPayloadMaximumSize)
 #	endif // ALLOW_SEND_BIG_AECP_PAYLOADS
 }
 
+#	ifdef ENABLE_AVDECC_FEATURE_JSON
 static inline std::tuple<la::avdecc::entity::model::ControlNodeStaticModel, la::avdecc::entity::model::ControlNodeDynamicModel> buildControlNodes(la::avdecc::entity::model::ControlDescriptor const& descriptor)
 {
 	// Copy static model
@@ -616,7 +618,6 @@ static inline std::tuple<la::avdecc::entity::model::ControlNodeStaticModel, la::
 	return { s, d };
 }
 
-#	ifdef ENABLE_AVDECC_FEATURE_JSON
 TEST(AemPayloads, DeserializeReadControlDescriptorResponse_LinearUInt8)
 {
 	auto ser = la::avdecc::Serializer<la::avdecc::protocol::AemAecpdu::MaximumPayloadBufferLength>{};

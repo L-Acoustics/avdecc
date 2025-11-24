@@ -28,6 +28,10 @@
 
 #include <la/avdecc/controller/avdeccController.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
+#include <la/avdecc/internals/streamFormatInfo.hpp>
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+#	include <la/avdecc/internals/jsonTypes.hpp>
+#endif // ENABLE_AVDECC_FEATURE_JSON
 #include <la/avdecc/utils.hpp>
 #include <la/avdecc/logger.hpp>
 #include "utils.hpp"
@@ -83,10 +87,16 @@ public:
 		dynamicModel.entityName = la::avdecc::entity::model::AvdeccFixedString{ "Test entity" };
 		dynamicModel.currentConfiguration = ActiveConfigurationIndex;
 	}
-	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& compatibilityFlags) noexcept override
+	virtual void build(la::avdecc::controller::ControlledEntity::CompatibilityFlags& compatibilityFlags, la::avdecc::entity::model::MilanVersion& milanCompatibilityVersion) noexcept override
 	{
 		compatibilityFlags.set(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221);
 		compatibilityFlags.set(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan);
+		milanCompatibilityVersion = la::avdecc::entity::model::MilanVersion{ 1, 2 };
+	}
+	virtual void build(la::avdecc::entity::model::MilanInfo& milanInfo, la::avdecc::entity::model::MilanDynamicState& /*milanDynamicState*/) noexcept override
+	{
+		milanInfo.protocolVersion = 1;
+		milanInfo.specificationVersion = la::avdecc::entity::model::MilanVersion{ 1, 2 };
 	}
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ConfigurationIndex const descriptorIndex, la::avdecc::entity::model::ConfigurationNodeStaticModel const& /*staticModel*/, la::avdecc::entity::model::ConfigurationNodeDynamicModel& dynamicModel) noexcept override
 	{
@@ -112,7 +122,17 @@ public:
 		if (_isConfigurationActive)
 		{
 			// Choose the first stream format
-			dynamicModel.streamFormat = staticModel.formats.empty() ? la::avdecc::entity::model::StreamFormat{} : *staticModel.formats.begin();
+			if (staticModel.formats.empty())
+			{
+				dynamicModel.streamFormat = la::avdecc::entity::model::StreamFormat{};
+			}
+			else
+			{
+				auto const firstFormat = *staticModel.formats.begin();
+				auto const sfi = la::avdecc::entity::model::StreamFormatInfo::create(firstFormat);
+				auto const adaptedFormat = sfi->getAdaptedStreamFormat(sfi->getChannelsCount());
+				dynamicModel.streamFormat = adaptedFormat;
+			}
 		}
 	}
 	virtual void build(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*descriptorIndex*/, la::avdecc::entity::model::StreamNodeStaticModel const& staticModel, la::avdecc::entity::model::StreamOutputNodeDynamicModel& dynamicModel) noexcept override
@@ -199,6 +219,7 @@ private:
 	virtual void onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override;
 	virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override;
 	virtual void onMaxTransitTimeChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime) noexcept override;
+	virtual void onStreamOutputCountersChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamOutputCounters const& counters) noexcept override;
 
 private:
 	la::avdecc::controller::Controller::UniquePointer _controller{ nullptr, nullptr }; // Read/Write from the UI thread (and read only from la::avdecc::controller::Controller::Observer callbacks)
@@ -275,7 +296,7 @@ void Discovery::onEntityQueryError(la::avdecc::controller::Controller const* con
 void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	if (entity->getEntity().getEntityCapabilities().test(la::avdecc::entity::EntityCapability::AemSupported))
+	if (entity->getEntity().getEntityCapabilities().test(la::avdecc::entity::EntityCapability::AemSupported) && entity->getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221))
 	{
 		std::uint32_t const vendorID = std::get<0>(la::avdecc::entity::model::splitEntityModelID(entity->getEntity().getEntityModelID()));
 		// Filter entities from the same vendor as this controller
@@ -290,7 +311,7 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 						outputText("Unit acquired: " + la::avdecc::utils::toHexString(entity->getEntity().getEntityID(), true) + "\n");
 					}
 				});
-			_controller->setSystemUniqueID(entity->getEntity().getEntityID(), la::avdecc::entity::model::SystemUniqueIdentifier{ 1 },
+			_controller->setSystemUniqueID(entity->getEntity().getEntityID(), la::avdecc::UniqueIdentifier{ 1 }, la::avdecc::entity::model::AvdeccFixedString{ "New Name" },
 				[](la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::ControllerEntity::MvuCommandStatus const status)
 				{
 					outputText("setSystemUniqueID response: " + la::avdecc::entity::ControllerEntity::statusToString(status) + "\n");
@@ -400,6 +421,74 @@ void Discovery::onMaxTransitTimeChanged(la::avdecc::controller::Controller const
 {
 	auto const entityID = entity->getEntity().getEntityID();
 	outputText("Max Transit Time for " + la::avdecc::utils::toHexString(entityID, true) + " Stream " + std::to_string(streamIndex) + ": " + std::to_string(maxTransitTime.count()) + " nsec\n");
+}
+
+void Discovery::onStreamOutputCountersChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamOutputCounters const& counters) noexcept
+{
+	auto const entityID = entity->getEntity().getEntityID();
+	outputText("Stream Output Counters for " + la::avdecc::utils::toHexString(entityID, true) + " Stream " + std::to_string(streamIndex) + " changed:\n");
+
+	try
+	{
+		switch (counters.getCounterType())
+		{
+			case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12:
+			{
+				auto const milan12Counters = counters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
+				for (auto const& [flag, value] : milan12Counters)
+				{
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+					nlohmann::json const n = flag; // Must use operator= instead of constructor to force usage of the to_json overload
+					if (n == "UNKNOWN")
+					{
+						outputText(" - " + la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(flag), true, true) + ": " + std::to_string(value) + "\n");
+					}
+					else
+					{
+						outputText(" - " + n.get<std::string>() + ": " + std::to_string(value) + "\n");
+					}
+#else // !ENABLE_AVDECC_FEATURE_JSON
+					outputText(" - " + la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(flag), true, true) + ": " + std::to_string(value) + "\n");
+#endif // ENABLE_AVDECC_FEATURE_JSON
+				}
+				break;
+			}
+			case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
+			{
+				auto const ieeeCounters = counters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>();
+				for (auto const& [flag, value] : ieeeCounters)
+				{
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+					nlohmann::json const n = flag; // Must use operator= instead of constructor to force usage of the to_json overload
+					if (n == "UNKNOWN")
+					{
+						outputText(" - " + la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(flag), true, true) + ": " + std::to_string(value) + "\n");
+					}
+					else
+					{
+						outputText(" - " + n.get<std::string>() + ": " + std::to_string(value) + "\n");
+					}
+#else // !ENABLE_AVDECC_FEATURE_JSON
+					outputText(" - " + la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(flag), true, true) + ": " + std::to_string(value) + "\n");
+#endif // ENABLE_AVDECC_FEATURE_JSON
+				}
+				break;
+			}
+			default:
+			{
+				outputText("Unknown stream output counter type\n");
+				break;
+			}
+		}
+	}
+	catch (std::invalid_argument const& e)
+	{
+		outputText("Exception: " + std::string(e.what()) + "\n");
+	}
+	catch (...)
+	{
+		outputText("Unknown exception\n");
+	}
 }
 
 

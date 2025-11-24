@@ -12,8 +12,6 @@
 	$result = new $1_ltype($1);
 %}
 #pragma SWIG nowarn=474
-// Marshal all std::string as UTF8Str
-%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
 // Expose internal constructor and methods publicly, some dependant modules may need it
 #	if !defined(SWIGIMPORTED)
 #	define PUBLIC_BUT_HIDDEN [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)] public
@@ -35,7 +33,7 @@
 // Ignore warning %extend defined for an undeclared class 'name'.
 #pragma SWIG nowarn=303
 
-
+// Include some SWIG typemaps
 %include <stl.i>
 %include <std_string.i>
 %include <std_set.i>
@@ -49,6 +47,7 @@
 #ifdef SWIGCSHARP
 %include <arrays_csharp.i>
 #endif
+// %include "la/avdecc/internals/chrono.i" // Do not include chrono.i here (although it is used in the code), it has been included in avdecc.i already and will cause duplicate definitions
 
 // Generated wrapper file needs to include our header file (include as soon as possible using 'insert(runtime)' as target language exceptions are defined early in the generated wrapper file)
 %insert(runtime) %{
@@ -58,6 +57,11 @@
 // Force define AVDECC C/C++ API Macros to nothing
 #define LA_AVDECC_CONTROLLER_API
 #define LA_AVDECC_CONTROLLER_CALL_CONVENTION
+
+#if defined(SWIGCSHARP)
+// Marshal all std::string as UTF8Str
+%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
+#endif
 
 ////////////////////////////////////////
 // Utils
@@ -86,6 +90,34 @@
 	%rename("%s") la::avdecc::controller::model::name##Node; // Unignore class
 	// DO NOT extend the struct with copy-constructor (we don't want to copy the full hierarchy, and also there is no default constructor)
 %enddef
+%define DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(name)
+	%nspace la::avdecc::controller::model::name;
+	%rename("%s") la::avdecc::controller::model::name; // Unignore struct
+	%ignore la::avdecc::controller::model::name::operator bool() const noexcept; // Ignore, don't need it (already have isValid() method)
+	%rename("isEqual") operator==(name const& lhs, name const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
+	%rename("isDifferent") operator!=(name const& lhs, name const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
+	// Extend the class
+	%extend la::avdecc::controller::model::name
+	{
+		// Add default constructor
+		name()
+		{
+			return new la::avdecc::controller::model::name();
+		}
+		// Add a copy-constructor
+		name(la::avdecc::controller::model::name const& other)
+		{
+			return new la::avdecc::controller::model::name(other);
+		}
+#if defined(SWIGCSHARP)
+		// Provide a more native Equals() method
+		bool Equals(la::avdecc::controller::model::name const& other) const noexcept
+		{
+			return *$self == other;
+		}
+#endif
+	}
+%enddef
 
 // Bind enums
 DEFINE_ENUM_CLASS(la::avdecc::controller::model::AcquireState, "byte")
@@ -96,19 +128,24 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::model::MediaClockChainNode::Status, "b
 // Define optionals
 %optional(la::avdecc::entity::model::MilanInfo)
 %optional(la::avdecc::entity::model::MilanDynamicState)
+%optional(la::avdecc::controller::model::ChannelConnectionIdentification)
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::EntityModelVisitor)
-%ignore la::avdecc::entity::controller::EntityModelVisitor::EntityModelVisitor(EntityModelVisitor&&); // Ignore move constructor
-%ignore la::avdecc::entity::controller::EntityModelVisitor::operator=; // Ignore copy operator
+%ignore la::avdecc::controller::model::EntityModelVisitor::EntityModelVisitor(EntityModelVisitor&&); // Ignore move constructor
+%ignore la::avdecc::controller::model::EntityModelVisitor::operator=; // Ignore assignment operator
 
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::DefaultedEntityModelVisitor)
-%ignore la::avdecc::entity::controller::DefaultedEntityModelVisitor::DefaultedEntityModelVisitor(DefaultedEntityModelVisitor&&); // Ignore move constructor
-%ignore la::avdecc::entity::controller::DefaultedEntityModelVisitor::operator=; // Ignore copy operator
+%ignore la::avdecc::controller::model::DefaultedEntityModelVisitor::DefaultedEntityModelVisitor(DefaultedEntityModelVisitor&&); // Ignore move constructor
+%ignore la::avdecc::controller::model::DefaultedEntityModelVisitor::operator=; // Ignore assignment operator
 
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(MediaClockChain)
+DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(StreamChannelIdentification)
+DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(ClusterIdentification)
+DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(ChannelConnectionIdentification)
+DEFINE_CONTROLLED_ENTITY_MODEL_STRUCT(ChannelIdentification)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE()
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(EntityModel)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Virtual)
@@ -122,9 +159,11 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(AudioUnit)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Stream)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(StreamInput)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(StreamOutput)
+#if defined(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(RedundantStream)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(RedundantStreamInput)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(RedundantStreamOutput)
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Jack)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(JackInput)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(JackOutput)
@@ -164,10 +203,13 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Entity)
 %template(TimingNodeMap) std::map<la::avdecc::entity::model::TimingIndex, la::avdecc::controller::model::TimingNode>;
 %template(PtpInstanceNodeMap) std::map<la::avdecc::entity::model::PtpInstanceIndex, la::avdecc::controller::model::PtpInstanceNode>;
 %template(PtpPortNodeMap) std::map<la::avdecc::entity::model::PtpPortIndex, la::avdecc::controller::model::PtpPortNode>;
+#if defined(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 %template(RedundantStreamInputNodeMap) std::map<la::avdecc::controller::model::VirtualIndex, la::avdecc::controller::model::RedundantStreamInputNode>;
 %template(RedundantStreamOutputNodeMap) std::map<la::avdecc::controller::model::VirtualIndex, la::avdecc::controller::model::RedundantStreamOutputNode>;
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 %template(ConfigurationNodeMap) std::map<la::avdecc::entity::model::ConfigurationIndex, la::avdecc::controller::model::ConfigurationNode>;
 %template(MediaClockChainDeque) std::deque<la::avdecc::controller::model::MediaClockChainNode>;
+%template(ChannelConnectionMap) std::unordered_map<la::avdecc::controller::model::ClusterIdentification, la::avdecc::controller::model::ChannelIdentification, la::avdecc::controller::model::ClusterIdentification::Hash>;
 
 
 ////////////////////////////////////////
@@ -186,6 +228,8 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity::CompatibilityFlag, "
 
 %nspace la::avdecc::controller::ControlledEntity::Diagnostics;
 %rename("%s") la::avdecc::controller::ControlledEntity::Diagnostics; // Unignore class
+%ignore operator==(Diagnostics const& lhs, Diagnostics const& rhs) noexcept; // Ignore operator==
+%ignore operator!=(Diagnostics const& lhs, Diagnostics const& rhs) noexcept; // Ignore operator!=
 // Extend the struct
 %extend la::avdecc::controller::ControlledEntity::Diagnostics
 {
@@ -203,13 +247,30 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity::CompatibilityFlag, "
   // Provide a more native Equals() method
   bool Equals(la::avdecc::controller::ControlledEntity::Diagnostics const& other) const noexcept
   {
-    return $self->redundancyWarning == other.redundancyWarning && $self->streamInputOverLatency == other.streamInputOverLatency;
+    return *$self == other;
   }
+#endif
+};
+
+%nspace la::avdecc::controller::ControlledEntity::CompatibilityChangedEvent;
+%rename("%s") la::avdecc::controller::ControlledEntity::CompatibilityChangedEvent; // Unignore class
+%ignore operator==(CompatibilityChangedEvent const& lhs, CompatibilityChangedEvent const& rhs) noexcept; // Ignore operator==
+%ignore operator!=(CompatibilityChangedEvent const& lhs, CompatibilityChangedEvent const& rhs) noexcept; // Ignore operator!=
+// Extend the struct
+%extend la::avdecc::controller::ControlledEntity::CompatibilityChangedEvent
+{
+#if defined(SWIGCSHARP)
+	// Provide a more native Equals() method
+	bool Equals(la::avdecc::controller::ControlledEntity::CompatibilityChangedEvent const& other) const noexcept
+	{
+		return *$self == other;
+	}
 #endif
 };
 
 %nspace la::avdecc::controller::ControlledEntityGuard;
 %rename("%s") la::avdecc::controller::ControlledEntityGuard; // Unignore class
+%ignore la::avdecc::controller::ControlledEntityGuard::operator=; // Ignore assignment operator
 %ignore la::avdecc::controller::ControlledEntityGuard::operator bool; // Ignore operator bool, isValid() is already defined
 
 // Throw typemap
@@ -228,8 +289,10 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity::CompatibilityFlag, "
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getAudioUnitNode;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamInputNode;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamOutputNode;
+#if defined(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getRedundantStreamInputNode;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getRedundantStreamOutputNode;
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getJackInputNode;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getJackOutputNode;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getAvbInterfaceNode;
@@ -260,6 +323,7 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity::CompatibilityFlag, "
 // Define templates
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller::ControlledEntity, CompatibilityFlags, CompatibilityFlag, std::uint8_t)
 %template("StreamPortInvalidAudioMappings") std::map<la::avdecc::entity::model::StreamPortIndex, la::avdecc::entity::model::AudioMappings>;
+%template("CompatibilityChangedEvents") std::vector<la::avdecc::controller::ControlledEntity::CompatibilityChangedEvent>;
 
 
 ////////////////////////////////////////
@@ -269,12 +333,12 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller::ControlledEntity, Compatibili
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::VirtualEntityBuilder)
-%ignore la::avdecc::entity::controller::VirtualEntityBuilder::VirtualEntityBuilder(VirtualEntityBuilder&&); // Ignore move constructor
-%ignore la::avdecc::entity::controller::VirtualEntityBuilder::operator=; // Ignore copy operator
+%ignore la::avdecc::controller::model::VirtualEntityBuilder::VirtualEntityBuilder(VirtualEntityBuilder&&); // Ignore move constructor
+%ignore la::avdecc::controller::model::VirtualEntityBuilder::operator=; // Ignore assignment operator
 
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::DefaultedVirtualEntityBuilder)
-%ignore la::avdecc::entity::controller::DefaultedVirtualEntityBuilder::DefaultedVirtualEntityBuilder(DefaultedVirtualEntityBuilder&&); // Ignore move constructor
-%ignore la::avdecc::entity::controller::DefaultedVirtualEntityBuilder::operator=; // Ignore copy operator
+%ignore la::avdecc::controller::model::DefaultedVirtualEntityBuilder::DefaultedVirtualEntityBuilder(DefaultedVirtualEntityBuilder&&); // Ignore move constructor
+%ignore la::avdecc::controller::model::DefaultedVirtualEntityBuilder::operator=; // Ignore assignment operator
 
 // Include c++ declaration file
 %include "la/avdecc/controller/internals/virtualEntityBuilder.hpp"
@@ -295,6 +359,8 @@ class VirtualControlledEntityInterface
 {
 public:
 	virtual ~VirtualControlledEntityInterface() noexcept = default;
+	virtual void setAcquiredState(UniqueIdentifier const targetEntityID, model::AcquireState const acquireState, UniqueIdentifier const owningEntity) noexcept {}
+	virtual void setEntityLockedState(UniqueIdentifier const targetEntityID, la::avdecc::controller::model::LockState const lockState, UniqueIdentifier const lockingEntity) noexcept {}
 	virtual void setEntityCounters(UniqueIdentifier const targetEntityID, entity::model::EntityCounters const& counters) noexcept {}
 	virtual void setAvbInterfaceCounters(UniqueIdentifier const targetEntityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceCounters const& counters) noexcept {}
 	virtual void setClockDomainCounters(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockDomainCounters const& counters) noexcept {}
@@ -433,6 +499,8 @@ DEFINE_OBSERVER_CLASS(la::avdecc::controller::Controller::DefaultedObserver)
 #endif
 %std_function(Handler_bool_bool, bool, bool const isDesiredClockSync, bool const isAvailableClockSync);
 
+// Additional ignore methods
+%ignore la::avdecc::controller::operator!(Controller::Error const error); // Ignore operator!
 
 // Include c++ declaration file
 %include "la/avdecc/controller/avdeccController.hpp"

@@ -58,7 +58,7 @@ static constexpr std::uint16_t QueryRetryMillisecondDelay = 500;
 static entity::model::AvdeccFixedString s_noLocalizationString{};
 
 /** Returns the common part of the two strings, with excess spaces removed. */
-static std::string getCommonString(std::string const& lhs, std::string const& rhs) noexcept
+inline std::string getCommonString(std::string const& lhs, std::string const& rhs) noexcept
 {
 	auto const tokensL = avdecc::utils::tokenizeString(lhs, ' ', false);
 	auto const tokensR = avdecc::utils::tokenizeString(rhs, ' ', false);
@@ -112,6 +112,11 @@ ControlledEntity::CompatibilityFlags ControlledEntityImpl::getCompatibilityFlags
 entity::model::MilanVersion ControlledEntityImpl::getMilanCompatibilityVersion() const noexcept
 {
 	return _milanCompatibilityVersion;
+}
+
+ControlledEntity::CompatibilityChangedEvents const& ControlledEntityImpl::getCompatibilityChangedEvents() const noexcept
+{
+	return _compatibilityChangedEvents;
 }
 
 bool ControlledEntityImpl::isMilanRedundant() const noexcept
@@ -317,6 +322,16 @@ entity::model::ConfigurationIndex ControlledEntityImpl::getCurrentConfigurationI
 {
 	auto const& entityNode = getEntityNode();
 	return entityNode.dynamicModel.currentConfiguration;
+}
+
+model::ChannelConnections const& ControlledEntityImpl::getChannelConnections() const
+{
+#ifndef ENABLE_AVDECC_FEATURE_CBR
+	throw Exception(Exception::Type::NotSupported, "Channel Base Routing feature not enabled in this build");
+#else // ENABLE_AVDECC_FEATURE_CBR
+	auto const& configNode = getCurrentConfigurationNode();
+	return configNode.channelConnections;
+#endif // ENABLE_AVDECC_FEATURE_CBR
 }
 
 model::EntityNode const& ControlledEntityImpl::getEntityNode() const
@@ -1598,13 +1613,14 @@ void ControlledEntityImpl::setMilanDynamicState(entity::model::MilanDynamicState
 	_milanDynamicState = state;
 }
 
-void ControlledEntityImpl::setSystemUniqueID(entity::model::SystemUniqueIdentifier const uniqueID) noexcept
+void ControlledEntityImpl::setSystemUniqueID(UniqueIdentifier const uniqueID, entity::model::AvdeccFixedString const& systemName) noexcept
 {
 	if (!_milanDynamicState)
 	{
 		_milanDynamicState = entity::model::MilanDynamicState{};
 	}
 	_milanDynamicState->systemUniqueID = uniqueID;
+	_milanDynamicState->systemName = systemName;
 }
 
 // Setters of the Statistics
@@ -2755,6 +2771,11 @@ void ControlledEntityImpl::setMilanCompatibilityVersion(entity::model::MilanVers
 	_milanCompatibilityVersion = version;
 }
 
+void ControlledEntityImpl::addCompatibilityChangedEvent(CompatibilityChangedEvent const& event) noexcept
+{
+	_compatibilityChangedEvents.push_back(event);
+}
+
 void ControlledEntityImpl::setMilanRedundant(bool const isMilanRedundant) noexcept
 {
 	_isMilanRedundant = isMilanRedundant;
@@ -2925,10 +2946,14 @@ std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const 
 			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (STREAM_INPUT)";
 		case DynamicInfoType::GetStreamOutputCounters:
 			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (STREAM_OUTPUT)";
+		case DynamicInfoType::GetMaxTransitTime:
+			return protocol::AemCommandType::GetMaxTransitTime;
 		case DynamicInfoType::GetSystemUniqueID:
 			return protocol::MvuCommandType::GetSystemUniqueID;
 		case DynamicInfoType::GetMediaClockReferenceInfo:
 			return protocol::MvuCommandType::GetMediaClockReferenceInfo;
+		case DynamicInfoType::InputStreamInfoEx:
+			return protocol::MvuCommandType::GetStreamInputInfoEx;
 		default:
 			return "Unknown DynamicInfoType";
 	}
@@ -2994,7 +3019,6 @@ void ControlledEntityImpl::onEntityModelEnumerated() noexcept
 void ControlledEntityImpl::onEntityFullyLoaded() noexcept
 {
 	auto const& e = getEntity();
-	//auto const entityID = e.getEntityID();
 	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
 
 	// Save the enumeration time
@@ -3013,7 +3037,94 @@ void ControlledEntityImpl::onEntityFullyLoaded() noexcept
 				buildVirtualNodes(configKV.second);
 				// Fix dynamic mappings
 				fixStreamPortMappings(configKV.second);
+				// Set default Presentation Time
+				setDefaultPresentationTimes(configKV.second);
 			}
+		}
+	}
+}
+
+void ControlledEntityImpl::buildVirtualNodes(model::ConfigurationNode& configNode) noexcept
+{
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	// Build RedundantStreamNodes
+	buildRedundancyNodes(configNode);
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+}
+
+void ControlledEntityImpl::fixStreamPortInputMappings(std::map<entity::model::StreamPortIndex, model::StreamPortInputNode>& streamPorts) noexcept
+{
+	// Process all StreamPort nodes
+	for (auto& [streamPortIndex, streamPortNode] : streamPorts)
+	{
+		auto const& dynamicMap = streamPortNode.dynamicModel.dynamicAudioMap;
+		auto newDynamicMap = std::remove_reference_t<decltype(dynamicMap)>{};
+
+		// We need to (re)build the dynamic mappings for this StreamPort in case we received some AddAudioMapping before the entity was advertised (in which case it was not possible to check for redundancy)
+		// Process audio mappings
+		for (auto const& map : dynamicMap)
+		{
+			addOrFixStreamPortInputMapping(newDynamicMap, map);
+		}
+
+// Replace the dynamic mappings
+#ifdef DEBUG
+		if (streamPortNode.dynamicModel.dynamicAudioMap != newDynamicMap)
+		{
+			LOG_CONTROLLER_DEBUG(_entity.getEntityID(), "Fixing dynamic mappings for STREAM_PORT_INPUT descriptor (Index {})", streamPortIndex);
+		}
+#endif // DEBUG
+		streamPortNode.dynamicModel.dynamicAudioMap = std::move(newDynamicMap);
+	}
+}
+
+void ControlledEntityImpl::fixStreamPortMappings(model::ConfigurationNode& configNode) noexcept
+{
+	// Process all AudioUnits
+	for (auto& [audioUnitIndex, audioUnitNode] : configNode.audioUnits)
+	{
+		// If the entity has at least one redundant stream, fix the mappings
+		if (!_redundantPrimaryStreamInputs.empty())
+		{
+			fixStreamPortInputMappings(audioUnitNode.streamPortInputs);
+		}
+	}
+}
+
+void ControlledEntityImpl::setDefaultPresentationTimes(model::ConfigurationNode& configNode) noexcept
+{
+	// Process all StreamOutputs
+	for (auto& [streamOutputIndex, streamOutputNode] : configNode.streamOutputs)
+	{
+		auto& dynamicModel = streamOutputNode.dynamicModel;
+
+		// If the presentationTimeOffset is 0, set it to the default value (which depends on the CLASS type)
+		if (dynamicModel.presentationTimeOffset.count() == 0)
+		{
+			auto defaultValue = std::chrono::milliseconds{ 2 }; // Default value for CLASS_A streams (CLASS A is the default)
+
+			// Check if this is a CLASS_B stream
+			if (dynamicModel.streamDynamicInfo && (*dynamicModel.streamDynamicInfo).isClassB)
+			{
+				defaultValue = std::chrono::milliseconds{ 50 }; // Default value for CLASS_B streams
+			}
+
+			// Check for Milan devices that use the msrpAccumulatedLatency field
+			// This changed since Milan 1.3 to use the same mechanism as IEEE 1722.1 devices
+			auto const milanInfo = getMilanInfo();
+			if (milanInfo)
+			{
+				if (milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 } && milanInfo->specificationVersion < entity::model::MilanVersion{ 1, 3 })
+				{
+					if (dynamicModel.streamDynamicInfo && (*dynamicModel.streamDynamicInfo).msrpAccumulatedLatency)
+					{
+						auto const msrpValueAsNs = std::chrono::nanoseconds{ *(*dynamicModel.streamDynamicInfo).msrpAccumulatedLatency };
+						defaultValue = std::chrono::duration_cast<decltype(defaultValue)>(msrpValueAsNs);
+					}
+				}
+			}
+
+			dynamicModel.presentationTimeOffset = defaultValue;
 		}
 	}
 }
@@ -3177,53 +3288,6 @@ private:
 		return entity.getLocalizedString(streamNode->staticModel.localizedDescription);
 	}
 };
-
-void ControlledEntityImpl::buildVirtualNodes(model::ConfigurationNode& configNode) noexcept
-{
-#	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-	// Build RedundantStreamNodes
-	buildRedundancyNodes(configNode);
-#	endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
-}
-
-void ControlledEntityImpl::fixStreamPortInputMappings(std::map<entity::model::StreamPortIndex, model::StreamPortInputNode>& streamPorts) noexcept
-{
-	// Process all StreamPort nodes
-	for (auto& [streamPortIndex, streamPortNode] : streamPorts)
-	{
-		auto const& dynamicMap = streamPortNode.dynamicModel.dynamicAudioMap;
-		auto newDynamicMap = std::remove_reference_t<decltype(dynamicMap)>{};
-
-		// We need to (re)build the dynamic mappings for this StreamPort in case we received some AddAudioMapping before the entity was advertised (in which case it was not possible to check for redundancy)
-		// Process audio mappings
-		for (auto const& map : dynamicMap)
-		{
-			addOrFixStreamPortInputMapping(newDynamicMap, map);
-		}
-
-// Replace the dynamic mappings
-#	ifdef DEBUG
-		if (streamPortNode.dynamicModel.dynamicAudioMap != newDynamicMap)
-		{
-			LOG_CONTROLLER_DEBUG(_entity.getEntityID(), "Fixing dynamic mappings for STREAM_PORT_INPUT descriptor (Index {})", streamPortIndex);
-		}
-#	endif // DEBUG
-		streamPortNode.dynamicModel.dynamicAudioMap = std::move(newDynamicMap);
-	}
-}
-
-void ControlledEntityImpl::fixStreamPortMappings(model::ConfigurationNode& configNode) noexcept
-{
-	// Process all AudioUnits
-	for (auto& [audioUnitIndex, audioUnitNode] : configNode.audioUnits)
-	{
-		// If the entity has at least one redundant stream, fix the mappings
-		if (!_redundantPrimaryStreamInputs.empty())
-		{
-			fixStreamPortInputMappings(audioUnitNode.streamPortInputs);
-		}
-	}
-}
 
 void ControlledEntityImpl::buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept
 {
@@ -4269,6 +4333,11 @@ entity::model::EntityTree const& ControlledEntityImpl::getEntityModelTree() cons
 		accept(&visitor, true);
 	}
 
+	if (!AVDECC_ASSERT_WITH_RET(!!_entityTree, "Entity Tree model is null"))
+	{
+		static auto s_emptyTree = entity::model::EntityTree{};
+		return s_emptyTree;
+	}
 	return *_entityTree;
 }
 

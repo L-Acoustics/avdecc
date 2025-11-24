@@ -4,6 +4,19 @@ All notable changes to the Avdecc Library will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [4.3.0] - 2025-11-24
+### Added
+- New logging level: `Compat` for compatibility changes
+- Support for Milan 1.3
+  - Extended GET_MILAN_INFO command
+  - BIND_STREAM and UNBIND_STREAM commands
+  - Extended GET_SYSTEM_UNIQUE_ID and SET_SYSTEM_UNIQUE_ID commands
+  - GET_STREAM_INPUT_INFO_EX command
+
+### Changed
+- Changed AvdeccFixedString::data() method to return a tuple of a pointer and a size (to help prevent misuse)
+- [la::avdecc::entity::model::StreamOutputCounters and la::avdecc::entity::StreamOutputCounterValidFlags modified to accommodate the different types of counters (IEEE and Milan)](https://github.com/L-Acoustics/avdecc/issues/171)
+
 ## [4.1.0] - 2025-04-16
 ### Added
 - [Support for SERIAL ProtocolInterface](https://github.com/L-Acoustics/avdecc/issues/150) (by Luke Howard)

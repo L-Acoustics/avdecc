@@ -22,6 +22,7 @@
 * @author Christophe Calmejane
 * @brief Dynamic part of the avdecc entity model tree.
 * @note This is the part of the AEM that can be changed dynamically, or that might be different from an Entity to another one with the same EntityModelID
+*       It is the responsibility of the controller to keep this part up-to-date.
 */
 
 #pragma once
@@ -32,6 +33,9 @@
 #include <cstdint>
 #include <map>
 #include <optional>
+#include <typeindex>
+#include <unordered_map>
+#include <chrono>
 
 namespace la
 {
@@ -45,7 +49,238 @@ using EntityCounters = std::map<entity::EntityCounterValidFlag, DescriptorCounte
 using AvbInterfaceCounters = std::map<entity::AvbInterfaceCounterValidFlag, DescriptorCounter>;
 using ClockDomainCounters = std::map<entity::ClockDomainCounterValidFlag, DescriptorCounter>;
 using StreamInputCounters = std::map<entity::StreamInputCounterValidFlag, DescriptorCounter>;
-using StreamOutputCounters = std::map<entity::StreamOutputCounterValidFlag, DescriptorCounter>;
+
+/** Class representing the StreamOutputCounters (which are not equivalent based on Milan/IEEE spec). */
+class LA_AVDECC_API StreamOutputCounters final
+{
+public:
+	enum class CounterType
+	{
+		Unknown = 0,
+		Milan_12 = 1,
+		IEEE17221_2021 = 2,
+		Milan_SignalPresence = 3,
+	};
+
+	/** Default constructor */
+	StreamOutputCounters() noexcept = default;
+
+	/** Constructor from base validFlags and base counters (explicit CounterType) */
+	StreamOutputCounters(CounterType const counterType, DescriptorCounterValidFlag const validFlags, DescriptorCounters const counters) noexcept
+		: _validFlags{ validFlags }
+		, _counters{ counters }
+	{
+		setCounterType(counterType);
+	}
+
+	/** Constructor from map association format (deduced CounterType) */
+	template<typename CountersType, typename ValidFlagType = typename CountersType::key_type, typename ValidFlagsType = utils::EnumBitfield<ValidFlagType>>
+	StreamOutputCounters(CountersType const& counters) noexcept
+	{
+		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilanSignalPresence>, "Invalid type for StreamOutputCounterValidFlags");
+
+		// Set the counters
+		setCounters(counters);
+	}
+
+	/** Get the CounterType */
+	CounterType getCounterType() const noexcept
+	{
+		return _counterType;
+	}
+
+	/** Set the CounterType */
+	void setCounterType(CounterType const counterType) noexcept
+	{
+		_counterType = counterType;
+		_counterTypeHash = counterTypeToHash(_counterType);
+	}
+
+	/** Get the ValidFlags corresponding to the specified StreamOutputCounterValidFlags type. */
+	template<typename ValidFlagsType>
+	ValidFlagsType getValidFlags() const
+	{
+		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilanSignalPresence>, "Invalid type for StreamOutputCounterValidFlags");
+
+		// Check if requested template parameter type matches the internal CounterType
+		if (typeid(ValidFlagsType).hash_code() != _counterTypeHash)
+		{
+			throw std::invalid_argument("Trying to getValidFlags() for a type different than current CounterType");
+		}
+
+		return _validFlags.get<ValidFlagsType>();
+	}
+
+	/** Get a copy of the counters corresponding to the specified StreamOutputCounterValidFlags type, in the map association format. Throws if the requested type is different from the current CounterType. */
+	template<typename ValidFlagsType, typename CountersType = std::map<typename ValidFlagsType::value_type, DescriptorCounter>>
+	CountersType getCounters() const
+	{
+		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilanSignalPresence>, "Invalid type for StreamOutputCounterValidFlags");
+
+		// Check if requested template parameter type matches the internal CounterType
+		if (typeid(ValidFlagsType).hash_code() != _counterTypeHash)
+		{
+			throw std::invalid_argument("Trying to getCounters() for a type different than current CounterType");
+		}
+
+		return convertCounters<ValidFlagsType>();
+	}
+
+	/** Get a copy of the counters corresponding to the specified StreamOutputCounterValidFlags type, in the map association format. */
+	template<typename ValidFlagsType, typename CountersType = std::map<typename ValidFlagsType::value_type, DescriptorCounter>>
+	CountersType convertCounters() const noexcept
+	{
+		auto convertedCounters = CountersType{};
+		auto validFlags = ValidFlagsType{};
+		validFlags.assign(_validFlags.value());
+
+		// Create a map of the valid flags to the corresponding counter
+		for (auto const counter : validFlags)
+		{
+			convertedCounters[counter] = _counters[validFlags.getPosition(counter)];
+		}
+
+		return convertedCounters;
+	}
+
+	/** Set the counters from the specified StreamOutputCounterValidFlags type. Invalid map key (not a bit value) silently ignored. */
+	template<typename CountersType, typename ValidFlagType = typename CountersType::key_type, typename ValidFlagsType = utils::EnumBitfield<ValidFlagType>>
+	void setCounters(CountersType const& counters) noexcept
+	{
+		static_assert(std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilan12> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlags17221> || std::is_same_v<ValidFlagsType, StreamOutputCounterValidFlagsMilanSignalPresence>, "Invalid type for StreamOutputCounterValidFlags");
+
+		// Convert template type to CounterType
+		auto const hash = typeid(ValidFlagsType).hash_code();
+		auto const counterType = hashToCounterType(hash);
+		setCounterType(counterType);
+
+		// Reset counters
+		_counters = DescriptorCounters{};
+
+		// Set the new data
+		auto validFlags = decltype(_validFlags)::value_type{};
+		for (auto const& [validFlag, counter] : counters)
+		{
+			auto const baseFlag = utils::to_integral(validFlag);
+			// Validate the flag
+			if (countBits(baseFlag) == 1)
+			{
+				validFlags += baseFlag;
+				_counters[getBitPosition(baseFlag)] = counter;
+			}
+		}
+
+		// Set the valid flags
+		_validFlags = StreamOutputCounterValidFlags{ validFlags };
+	}
+
+	/** Get the valid flags of the base type. */
+	DescriptorCounterValidFlag getBaseValidFlags() const noexcept
+	{
+		return _validFlags.value();
+	}
+
+	/** Get the counters of the base type. */
+	DescriptorCounters const& getBaseCounters() const noexcept
+	{
+		return _counters;
+	}
+
+	/** Get the counters of the base type. */
+	DescriptorCounters& getBaseCounters() noexcept
+	{
+		return _counters;
+	}
+
+	/** True if the StreamOutputCounters is empty (no valid flags set). */
+	bool empty() const noexcept
+	{
+		return getBaseValidFlags() == DescriptorCounterValidFlag{ 0u };
+	}
+
+	/** Operator|=. If same CounterType append the provided counters. If different type fully replace with the provided ones. */
+	StreamOutputCounters& operator|=(StreamOutputCounters const& other) noexcept
+	{
+		enum class BaseFlag : DescriptorCounterValidFlag
+		{
+		};
+		using BaseFlags = utils::EnumBitfield<BaseFlag>;
+
+		// Check if the CounterType is the same
+		if (_counterType == other._counterType)
+		{
+			auto otherValidFlags = BaseFlags{};
+			otherValidFlags.assign(other._validFlags.value());
+			auto validFlags = _validFlags.value();
+
+			// Append the counters
+			for (auto const validFlag : otherValidFlags)
+			{
+				auto const baseFlag = utils::to_integral(validFlag);
+				auto const bitPosition = getBitPosition(baseFlag);
+				validFlags |= baseFlag;
+				_counters[bitPosition] = other._counters[bitPosition];
+			}
+
+			// Set the valid flags
+			_validFlags = StreamOutputCounterValidFlags{ validFlags };
+		}
+		else
+		{
+			// Replace the counters
+			setCounterType(other._counterType);
+			_counters = other._counters;
+			_validFlags = other._validFlags;
+		}
+		return *this;
+	}
+
+private:
+	static constexpr size_t countBits(StreamOutputCounterValidFlags::value_type const value) noexcept
+	{
+		return (value == 0u) ? 0u : 1u + countBits(value & (value - 1u));
+	}
+	static constexpr size_t getBitPosition(StreamOutputCounterValidFlags::value_type const value, StreamOutputCounterValidFlags::value_type const setBitValue = static_cast<StreamOutputCounterValidFlags::value_type>(-1)) noexcept
+	{
+		return (value == 1u) ? 0u : (setBitValue & 0x1) + getBitPosition(value >> 1, setBitValue >> 1);
+	}
+	static inline size_t counterTypeToHash(CounterType const counterType)
+	{
+		switch (counterType)
+		{
+			case CounterType::Unknown:
+				return 0;
+			case CounterType::Milan_12:
+				return typeid(StreamOutputCounterValidFlagsMilan12).hash_code();
+			case CounterType::IEEE17221_2021:
+				return typeid(StreamOutputCounterValidFlags17221).hash_code();
+			case CounterType::Milan_SignalPresence:
+				return typeid(StreamOutputCounterValidFlagsMilanSignalPresence).hash_code();
+			default:
+				AVDECC_ASSERT(false, "Unhandled CounterType");
+				return 0;
+		}
+	}
+	static inline CounterType hashToCounterType(size_t const hash)
+	{
+		static std::unordered_map<size_t, CounterType> s_hashMap{
+			{ typeid(StreamOutputCounterValidFlagsMilan12).hash_code(), CounterType::Milan_12 },
+			{ typeid(StreamOutputCounterValidFlags17221).hash_code(), CounterType::IEEE17221_2021 },
+			{ typeid(StreamOutputCounterValidFlagsMilanSignalPresence).hash_code(), CounterType::Milan_SignalPresence },
+		};
+
+		if (auto const& it = s_hashMap.find(hash); it != s_hashMap.end())
+		{
+			return it->second;
+		}
+		return CounterType::Unknown;
+	}
+
+	CounterType _counterType{ CounterType::Unknown };
+	size_t _counterTypeHash{ 0 }; // Hash of the currently stored type, used for type checking in template methods
+	StreamOutputCounterValidFlags _validFlags{};
+	DescriptorCounters _counters{};
+};
 
 struct AudioUnitNodeDynamicModel
 {
@@ -70,7 +305,9 @@ struct StreamInputNodeDynamicModel : public StreamNodeDynamicModel
 struct StreamOutputNodeDynamicModel : public StreamNodeDynamicModel
 {
 	model::StreamConnections connections{};
+	std::chrono::nanoseconds presentationTimeOffset{ 0 };
 	std::optional<StreamOutputCounters> counters{ std::nullopt };
+	std::optional<SignalPresenceChannels> signalPresence{ std::nullopt };
 };
 
 struct JackNodeDynamicModel

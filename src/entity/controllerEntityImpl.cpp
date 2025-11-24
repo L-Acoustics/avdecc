@@ -664,9 +664,9 @@ void ControllerEntityImpl::getMilanInfo(UniqueIdentifier const targetEntityID, G
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMilanInfo(targetEntityID, handler);
 }
 
-void ControllerEntityImpl::setSystemUniqueID(UniqueIdentifier const targetEntityID, model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept
+void ControllerEntityImpl::setSystemUniqueID(UniqueIdentifier const targetEntityID, UniqueIdentifier const systemUniqueID, model::AvdeccFixedString const& systemName, SetSystemUniqueIDHandler const& handler) const noexcept
 {
-	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setSystemUniqueID(targetEntityID, systemUniqueID, handler);
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setSystemUniqueID(targetEntityID, systemUniqueID, systemName, handler);
 }
 
 void ControllerEntityImpl::getSystemUniqueID(UniqueIdentifier const targetEntityID, GetSystemUniqueIDHandler const& handler) const noexcept
@@ -682,6 +682,21 @@ void ControllerEntityImpl::setMediaClockReferenceInfo(UniqueIdentifier const tar
 void ControllerEntityImpl::getMediaClockReferenceInfo(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, GetMediaClockReferenceInfoHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMediaClockReferenceInfo(targetEntityID, clockDomainIndex, handler);
+}
+
+void ControllerEntityImpl::bindStream(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamIdentification const& talkerStream, BindStreamFlags const flags, BindStreamHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).bindStream(targetEntityID, streamIndex, talkerStream, flags, handler);
+}
+
+void ControllerEntityImpl::unbindStream(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, UnbindStreamHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).unbindStream(targetEntityID, streamIndex, handler);
+}
+
+void ControllerEntityImpl::getStreamInputInfoEx(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamInputInfoExHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getStreamInputInfoEx(targetEntityID, streamIndex, handler);
 }
 
 /* Connection Management Protocol (ACMP) */

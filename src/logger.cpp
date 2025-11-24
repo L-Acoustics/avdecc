@@ -135,6 +135,8 @@ public:
 				return "Warn";
 			case Level::Error:
 				return "Error";
+			case Level::Compat:
+				return "Compatibility";
 			case Level::None:
 				return "None";
 			default:

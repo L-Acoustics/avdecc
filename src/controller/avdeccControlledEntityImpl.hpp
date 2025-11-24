@@ -151,8 +151,10 @@ public:
 		GetClockDomainCounters, // getClockDomainCounters (GET_COUNTERS)
 		GetStreamInputCounters, // getStreamInputCounters (GET_COUNTERS)
 		GetStreamOutputCounters, // getStreamOutputCounters (GET_COUNTERS)
+		GetMaxTransitTime, // getMaxTransitTime (GET_MAX_TRANSIT_TIME)
 		GetSystemUniqueID, // getSystemUniqueID (MVU GET_SYSTEM_UNIQUE_ID)
 		GetMediaClockReferenceInfo, // getMediaClockReferenceInfo (MVU GET_MEDIA_CLOCK_REFERENCE_INFO)
+		InputStreamInfoEx, // getStreamInputInfoEx (MVU GET_STREAM_INPUT_INFO_EX)
 	};
 
 	/** Dynamic information stored in descriptors. Only required to retrieve from entities when the static model is known (because it was in EntityModelID cache).  */
@@ -197,6 +199,7 @@ public:
 	virtual bool isVirtual() const noexcept override;
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept override;
 	virtual entity::model::MilanVersion getMilanCompatibilityVersion() const noexcept override;
+	virtual CompatibilityChangedEvents const& getCompatibilityChangedEvents() const noexcept override;
 	virtual bool isMilanRedundant() const noexcept override;
 	virtual bool gotFatalEnumerationError() const noexcept override;
 	virtual bool isPackedDynamicInfoSupported() const noexcept override;
@@ -224,6 +227,7 @@ public:
 	virtual bool isIdentifying() const noexcept override;
 	virtual bool hasAnyConfiguration() const noexcept override;
 	virtual entity::model::ConfigurationIndex getCurrentConfigurationIndex() const override;
+	virtual model::ChannelConnections const& getChannelConnections() const override;
 
 	// Const Node getters
 	virtual model::EntityNode const& getEntityNode() const override;
@@ -338,7 +342,7 @@ public:
 	void setLockingController(UniqueIdentifier const controllerID) noexcept;
 	void setMilanInfo(entity::model::MilanInfo const& info) noexcept;
 	void setMilanDynamicState(entity::model::MilanDynamicState const& state) noexcept;
-	void setSystemUniqueID(entity::model::SystemUniqueIdentifier const uniqueID) noexcept;
+	void setSystemUniqueID(UniqueIdentifier const uniqueID, entity::model::AvdeccFixedString const& systemName) noexcept;
 
 	// Setters of the Statistics
 	void setAecpRetryCounter(std::uint64_t const value) noexcept;
@@ -447,6 +451,7 @@ public:
 	void clearEnumerationStep(EnumerationStep const step) noexcept;
 	void setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept;
 	void setMilanCompatibilityVersion(entity::model::MilanVersion const version) noexcept;
+	void addCompatibilityChangedEvent(CompatibilityChangedEvent const& event) noexcept;
 	void setMilanRedundant(bool const isMilanRedundant) noexcept;
 	void setGetFatalEnumerationError() noexcept;
 	void setPackedDynamicInfoSupported(bool const isSupported) noexcept;
@@ -493,6 +498,7 @@ private:
 	void addOrFixStreamPortInputMapping(entity::model::AudioMappings& mappings, entity::model::AudioMapping const& mapping) const noexcept;
 	void fixStreamPortInputMappings(std::map<entity::model::StreamPortIndex, model::StreamPortInputNode>& streamPorts) noexcept;
 	void fixStreamPortMappings(model::ConfigurationNode& configNode) noexcept;
+	void setDefaultPresentationTimes(model::ConfigurationNode& configNode) noexcept;
 	bool hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID) noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	void buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept;
@@ -513,6 +519,7 @@ private:
 	EnumerationSteps _enumerationSteps{};
 	CompatibilityFlags _compatibilityFlags{ CompatibilityFlag::IEEE17221 }; // Entity is IEEE1722.1 compatible by default
 	entity::model::MilanVersion _milanCompatibilityVersion{};
+	CompatibilityChangedEvents _compatibilityChangedEvents{};
 	bool _isMilanRedundant{ false }; // Current configuration has at least one redundant stream
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
 	bool _isPackedDynamicInfoSupported{ false }; // Is the GET_DYNAMIC_INFO command supported

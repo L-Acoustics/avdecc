@@ -25,6 +25,8 @@
 #include "la/avdecc/internals/jsonSerialization.hpp"
 #include "la/avdecc/internals/jsonTypes.hpp"
 
+#include <optional>
+
 using json = nlohmann::json;
 
 namespace la
@@ -1193,9 +1195,23 @@ inline bool convertModelToVersion2(json& entityDescriptor, Flags const flags)
 		- AVB_INTERFACE_DESCRIPTOR:
 		 - Moved some fields from 'static' to 'dynamic' model
 	*/
-	// Process all AVB_INTERFACE_DESCRIPTOR in all configurations
+	// Get the current configuration index from the dynamic model
+	auto activeConfigurationIndex = std::optional<DescriptorIndex>{};
+	if (flags.test(Flag::ProcessDynamicModel))
+	{
+		// Get the 'dynamic' model
+		auto const dynamicModelIt = entityDescriptor.find(keyName::Node_DynamicInformation);
+		// If must be present or we can't convert
+		if (dynamicModelIt == entityDescriptor.end())
+		{
+			return false;
+		}
+		activeConfigurationIndex = dynamicModelIt->at(keyName::EntityNode_Dynamic_CurrentConfiguration).get<DescriptorIndex>();
+	}
+	// Process all AVB_INTERFACE_DESCRIPTOR in all configurations, but only reject non-existing 'static' or 'dynamic' model for the non-active configuration
 	if (auto const configurations = entityDescriptor.find(keyName::NodeName_ConfigurationDescriptors); configurations != entityDescriptor.end())
 	{
+		auto configurationIndex = ConfigurationIndex{ 0u };
 		for (auto& configuration : *configurations)
 		{
 			if (auto const avbInterfaces = configuration.find(keyName::NodeName_AvbInterfaceDescriptors); avbInterfaces != configuration.end())
@@ -1208,10 +1224,21 @@ inline bool convertModelToVersion2(json& entityDescriptor, Flags const flags)
 					// If we are processing the 'dynamic' model, we need to move some fields from 'static' to 'dynamic' model
 					if (flags.test(Flag::ProcessDynamicModel))
 					{
+						auto doConvert = true;
+
 						// We need the 'static' model or we can't convert
 						if (staticModelIt == avbInterface.end())
 						{
-							return false;
+							if (activeConfigurationIndex && *activeConfigurationIndex != configurationIndex)
+							{
+								// If this is not the active configuration, we can ignore the missing 'static' model
+								doConvert = false;
+							}
+							else
+							{
+								// If this is the active configuration, we must have the 'static' model
+								return false;
+							}
 						}
 
 						// Get the 'dynamic' model
@@ -1219,54 +1246,81 @@ inline bool convertModelToVersion2(json& entityDescriptor, Flags const flags)
 						// If must be present or we can't convert
 						if (dynamicModelIt == avbInterface.end())
 						{
-							return false;
+							if (activeConfigurationIndex && *activeConfigurationIndex != configurationIndex)
+							{
+								// If this is not the active configuration, we can ignore the missing 'dynamic' model
+								doConvert = false;
+							}
+							else
+							{
+								// If this is the active configuration, we must have the 'dynamic' model
+								return false;
+							}
 						}
 
-						// Move fields from 'static' to 'dynamic' model
-						try
+						if (doConvert)
 						{
-							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_MacAddress, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_MacAddress));
-							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_ClockIdentity, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_ClockIdentity));
-							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_Priority1, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_Priority1));
-							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_ClockClass, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_ClockClass));
-							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_OffsetScaledLogVariance, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_OffsetScaledLogVariance));
-							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_ClockAccuracy, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_ClockAccuracy));
-							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_Priority2, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_Priority2));
-							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_DomainNumber, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_DomainNumber));
-							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_LogSyncInterval, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_LogSyncInterval));
-							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_LogAnnounceInterval, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_LogAnnounceInterval));
-							dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_LogPdelayInterval, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_LogPdelayInterval));
-						}
-						catch (json::exception const&)
-						{
-							return false;
+							// Move fields from 'static' to 'dynamic' model
+							try
+							{
+								dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_MacAddress, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_MacAddress));
+								dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_ClockIdentity, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_ClockIdentity));
+								dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_Priority1, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_Priority1));
+								dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_ClockClass, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_ClockClass));
+								dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_OffsetScaledLogVariance, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_OffsetScaledLogVariance));
+								dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_ClockAccuracy, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_ClockAccuracy));
+								dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_Priority2, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_Priority2));
+								dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_DomainNumber, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_DomainNumber));
+								dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_LogSyncInterval, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_LogSyncInterval));
+								dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_LogAnnounceInterval, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_LogAnnounceInterval));
+								dynamicModelIt->emplace(keyName::AvbInterfaceNode_Dynamic_LogPdelayInterval, staticModelIt->at(keyName::AvbInterfaceNode_Dynamic_LogPdelayInterval));
+							}
+							catch (json::exception const&)
+							{
+								return false;
+							}
 						}
 					}
 
 					// If we are processing the 'static' model, we need to remove the fields that were moved to 'dynamic' model
 					if (flags.test(Flag::ProcessStaticModel))
 					{
+						auto doConvert = true;
+
 						// We need the 'static' model or we can't convert
 						if (staticModelIt == avbInterface.end())
 						{
-							return false;
+							if (activeConfigurationIndex && *activeConfigurationIndex != configurationIndex)
+							{
+								// If this is not the active configuration, we can ignore the missing 'static' model
+								doConvert = false;
+							}
+							else
+							{
+								// If this is the active configuration, we must have the 'static' model
+								return false;
+							}
 						}
 
-						// Remove fields from 'static' model
-						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_MacAddress);
-						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_ClockIdentity);
-						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_Priority1);
-						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_ClockClass);
-						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_OffsetScaledLogVariance);
-						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_ClockAccuracy);
-						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_Priority2);
-						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_DomainNumber);
-						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_LogSyncInterval);
-						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_LogAnnounceInterval);
-						staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_LogPdelayInterval);
+						if (doConvert)
+						{
+							// Remove fields from 'static' model
+							staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_MacAddress);
+							staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_ClockIdentity);
+							staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_Priority1);
+							staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_ClockClass);
+							staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_OffsetScaledLogVariance);
+							staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_ClockAccuracy);
+							staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_Priority2);
+							staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_DomainNumber);
+							staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_LogSyncInterval);
+							staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_LogAnnounceInterval);
+							staticModelIt->erase(keyName::AvbInterfaceNode_Dynamic_LogPdelayInterval);
+						}
 					}
 				}
 			}
+			++configurationIndex;
 		}
 	}
 

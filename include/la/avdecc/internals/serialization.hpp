@@ -164,7 +164,8 @@ public:
 	/** Serializes an AvdeccFixedString (without changing endianess) */
 	Serializer& operator<<(entity::model::AvdeccFixedString const& v)
 	{
-		packBuffer(v.data(), v.size());
+		auto const [ptr, size] = v.data();
+		packBuffer(ptr, size);
 		return *this;
 	}
 
@@ -396,7 +397,8 @@ public:
 	/** Unpacks an AvdeccFixedString (without changing endianess) */
 	Deserializer& operator>>(entity::model::AvdeccFixedString& v)
 	{
-		unpackBuffer(v.data(), v.size());
+		auto [ptr, size] = v.data();
+		unpackBuffer(ptr, size);
 		return *this;
 	}
 

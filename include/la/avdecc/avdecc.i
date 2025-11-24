@@ -12,8 +12,6 @@
 	$result = new $1_ltype($1);
 %}
 #pragma SWIG nowarn=474
-// Marshal all std::string as UTF8Str
-%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
 // Expose internal constructor and methods publicly, some dependant modules may need it
 #	if !defined(SWIGIMPORTED)
 #	define PUBLIC_BUT_HIDDEN [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)] public
@@ -35,7 +33,7 @@
 // Ignore warning %extend defined for an undeclared class 'name'.
 #pragma SWIG nowarn=303
 
-
+// Include some SWIG typemaps
 %include <stl.i>
 %include <std_string.i>
 %include <std_set.i>
@@ -67,11 +65,17 @@
 	#include <la/avdecc/internals/endStation.hpp>
 	#include <la/avdecc/internals/protocolVuAecpdu.hpp>
 	#include <la/avdecc/internals/protocolInterface.hpp>
+	#include <la/avdecc/internals/streamFormatInfo.hpp>
 %}
 
 // Force define AVDECC C/C++ API Macros to nothing
 #define LA_AVDECC_API
 #define LA_AVDECC_CALL_CONVENTION
+
+#if defined(SWIGCSHARP)
+// Marshal all std::string as UTF8Str
+%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
+#endif
 
 ////////////////////////////////////////
 // Utils
@@ -140,6 +144,7 @@ public:
 %rename("%s") la::avdecc::ExecutorManager; // Unignore class
 %rename("%s") la::avdecc::ExecutorManager::ExecutorWrapper; // Unignore class
 %unique_ptr(la::avdecc::ExecutorManager::ExecutorWrapper) // Define unique_ptr for ExecutorManager::ExecutorWrapper
+%ignore la::avdecc::ExecutorManager::ExecutorWrapper::operator bool; // Ignore bool operator
 %ignore la::avdecc::ExecutorManager::getExecutorThread; // TODO: RIGHT NOW IGNORE THIS METHOD (need to typemap std::thread::id)
 // Extend the class
 %extend la::avdecc::ExecutorManager
@@ -181,6 +186,10 @@ public:
 // Ignore Exception, will be created as native exception
 %nspace la::avdecc::BaseException;
 %rename("BaseAtdeccException") la::avdecc::Exception; // Not put in a namespace https://github.com/swig/swig/issues/2459
+%ignore la::avdecc::Exception::Exception(char const* const) noexcept; // Ignore overloaded constructor
+%ignore la::avdecc::Exception::Exception(Exception const&); // Ignore copy constructor
+%ignore la::avdecc::Exception::Exception(Exception&&); // Ignore move constructor
+%ignore la::avdecc::Exception::operator=; // Ignore assignment operator
 
 // Throw typemap
 %typemap (throws, canthrow=1) la::avdecc::Exception %{
@@ -203,12 +212,44 @@ public:
 ////////////////////////////////////////
 // Define optionals before including entityModel.i (we need to declare the optionals before the underlying types are defined)
 %optional_arithmetic(la::avdecc::entity::model::MsrpFailureCode, OptMsrpFailureCode)
-%optional(la::avdecc::UniqueIdentifier)
 %optional(la::networkInterface::MacAddress)
 %optional(la::avdecc::entity::model::MediaClockReferenceInfo)
 
 // Import entity model
 %import "la/avdecc/internals/entityModel.i"
+
+
+////////////////////////////////////////
+// StreamFormatInfo
+////////////////////////////////////////
+// Bind enums
+DEFINE_ENUM_CLASS(la::avdecc::entity::model::StreamFormatInfo::Type, "int")
+DEFINE_ENUM_CLASS(la::avdecc::entity::model::StreamFormatInfo::SampleFormat, "int")
+
+// Bind structs and classes
+%rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
+
+%nspace la::avdecc::entity::model::StreamFormatInfo;
+%rename("%s") la::avdecc::entity::model::StreamFormatInfo; // Unignore class
+%unique_ptr(la::avdecc::entity::model::StreamFormatInfo) // Define unique_ptr for StreamFormatInfo
+%ignore la::avdecc::entity::model::StreamFormatInfo::operator=; // Ignore assignment operator
+// Extend the class
+%extend la::avdecc::entity::model::StreamFormatInfo
+{
+public:
+	static std::unique_ptr<la::avdecc::entity::model::StreamFormatInfo> create(la::avdecc::entity::model::StreamFormat const& streamFormat)
+	{
+		return std::unique_ptr<la::avdecc::entity::model::StreamFormatInfo>{ la::avdecc::entity::model::StreamFormatInfo::create(streamFormat).release() };
+	}
+};
+%ignore la::avdecc::entity::model::StreamFormatInfo::create; // Ignore it, will be wrapped (because std::unique_ptr doesn't support custom deleters - Ticket #2411)
+
+// Include c++ declaration file
+%include "la/avdecc/internals/streamFormatInfo.hpp"
+%rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
+
+// Define templates
+%template(StreamFormatPair) std::pair<la::avdecc::entity::model::StreamFormat, la::avdecc::entity::model::StreamFormat>;
 
 
 ////////////////////////////////////////
@@ -227,7 +268,7 @@ DEFINE_ENUM_CLASS(la::avdecc::entity::LocalEntity::AdvertiseFlag, "byte")
 %nspace la::avdecc::entity::Entity;
 %rename("%s") la::avdecc::entity::Entity; // Unignore class
 %ignore la::avdecc::entity::Entity::Entity(Entity&&); // Ignore move constructor
-%ignore la::avdecc::entity::Entity::operator=; // Ignore copy operator
+%ignore la::avdecc::entity::Entity::operator=; // Ignore assignment operator
 %ignore la::avdecc::entity::Entity::getCommonInformation() const; // Ignore const overload
 %ignore la::avdecc::entity::Entity::getInterfaceInformation(model::AvbInterfaceIndex const interfaceIndex) const; // Ignore const overload
 %ignore la::avdecc::entity::Entity::getInterfacesInformation() const; // Ignore const overload
@@ -278,15 +319,15 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity::LocalEntity, AdvertiseFlags, Adve
 
 DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Delegate)
 %ignore la::avdecc::entity::controller::Delegate::Delegate(Delegate&&); // Ignore move constructor
-%ignore la::avdecc::entity::controller::Delegate::operator=; // Ignore copy operator
+%ignore la::avdecc::entity::controller::Delegate::operator=; // Ignore assignment operator
 
 DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::DefaultedDelegate)
 %ignore la::avdecc::entity::controller::DefaultedDelegate::DefaultedDelegate(DefaultedDelegate&&); // Ignore move constructor
-%ignore la::avdecc::entity::controller::DefaultedDelegate::operator=; // Ignore copy operator
+%ignore la::avdecc::entity::controller::DefaultedDelegate::operator=; // Ignore assignment operator
 
 DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Interface)
 %ignore la::avdecc::entity::controller::Interface::Interface(Interface&&); // Ignore move constructor
-%ignore la::avdecc::entity::controller::Interface::operator=; // Ignore copy operator
+%ignore la::avdecc::entity::controller::Interface::operator=; // Ignore assignment operator
 // Unignore functions automatically generated by the following std_function calls (because we asked to ignore all methods earlier)
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_UniqueIdentifier_DescriptorType;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus;
@@ -356,8 +397,11 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Interface)
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_nanoseconds;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_Tlvs;
 %rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_MilanInfo;
-%rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_SystemUniqueIdentifier;
+%rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_UniqueIdentifier_AvdeccFixedString;
 %rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_ClockDomainIndex_DefaultMediaClockReferencePriority_MediaClockReferenceInfo;
+%rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_StreamIndex_StreamIdentification_BindStreamFlags;
+%rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_StreamIndex;
+%rename("%s") Handler_UniqueIdentifier_MvuCommandStatus_StreamIndex_StreamInputInfoEx;
 %rename("%s") Handler_StreamIdentification_StreamIdentification_uint16_t_ConnectionFlags_ControlStatus;
 
 // TODO: Would be nice to have the handler in the same namespace as the class (ie. be able to pass a namespace to std_function)
@@ -434,15 +478,18 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Interface)
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_Tlvs, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AaCommandStatus const status, la::avdecc::entity::addressAccess::Tlvs const& tlvs);
 #endif
 %std_function(Handler_UniqueIdentifier_MvuCommandStatus_MilanInfo, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::MilanInfo const& info);
-%std_function(Handler_UniqueIdentifier_MvuCommandStatus_SystemUniqueIdentifier, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::SystemUniqueIdentifier const systemUniqueID);
+%std_function(Handler_UniqueIdentifier_MvuCommandStatus_UniqueIdentifier_AvdeccFixedString, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::UniqueIdentifier const systemUniqueID, la::avdecc::entity::model::AvdeccFixedString const& systemName);
 %std_function(Handler_UniqueIdentifier_MvuCommandStatus_ClockDomainIndex_DefaultMediaClockReferencePriority_MediaClockReferenceInfo, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::DefaultMediaClockReferencePriority const defaultPriority, la::avdecc::entity::model::MediaClockReferenceInfo const& mcrInfo);
+%std_function(Handler_UniqueIdentifier_MvuCommandStatus_StreamIndex_StreamIdentification_BindStreamFlags, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::BindStreamFlags const flags);
+%std_function(Handler_UniqueIdentifier_MvuCommandStatus_StreamIndex, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex);
+%std_function(Handler_UniqueIdentifier_MvuCommandStatus_StreamIndex_StreamInputInfoEx, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamInputInfoEx const& streamInputInfoEx);
 %std_function(Handler_StreamIdentification_StreamIdentification_uint16_t_ConnectionFlags_ControlStatus, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status);
 
 %nspace la::avdecc::entity::ControllerEntity;
 %rename("%s") la::avdecc::entity::ControllerEntity; // Unignore class
 %ignore la::avdecc::entity::ControllerEntity::create; // Prevent direct creation of a ControllerEntity for now at it won't be usable because of double inheritance (controller::Interface methods not available)
 %ignore la::avdecc::entity::ControllerEntity::ControllerEntity(ControllerEntity&&); // Ignore move constructor
-%ignore la::avdecc::entity::ControllerEntity::operator=; // Ignore copy operator
+%ignore la::avdecc::entity::ControllerEntity::operator=; // Ignore assignment operator
 
 // Include c++ declaration file
 %include "la/avdecc/internals/controllerEntity.hpp"
@@ -471,7 +518,7 @@ DEFINE_ENUM_CLASS(la::avdecc::protocol::ProtocolInterface::Type, "uint")
 %rename("Lock") la::avdecc::protocol::ProtocolInterface::lock; // Reserved keyword
 %rename("Unlock") la::avdecc::protocol::ProtocolInterface::lock; // Rename as well to match "lock" renaming
 //%ignore la::avdecc::protocol::ProtocolInterface::ProtocolInterface(ProtocolInterface&&); // Ignore move constructor
-//%ignore la::avdecc::protocol::ProtocolInterface::operator=; // Ignore copy operator
+//%ignore la::avdecc::protocol::ProtocolInterface::operator=; // Ignore assignment operator
 %ignore la::avdecc::protocol::ProtocolInterface::registerVendorUniqueDelegate; // Ignore method (we don't want to handle VendorUniqueDelegate now)
 %ignore la::avdecc::protocol::ProtocolInterface::unregisterVendorUniqueDelegate; // Ignore method (we don't want to handle VendorUniqueDelegate now)
 %ignore la::avdecc::protocol::ProtocolInterface::unregisterAllVendorUniqueDelegates; // Ignore method (we don't want to handle VendorUniqueDelegate now)
@@ -486,6 +533,8 @@ DEFINE_ENUM_CLASS(la::avdecc::protocol::ProtocolInterface::Type, "uint")
 %ignore la::avdecc::protocol::ProtocolInterface::isVendorUniqueUnsolicitedResponse; // Ignore method (we don't want to handle VuAecpdu now)
 %ignore la::avdecc::protocol::ProtocolInterface::handleVendorUniqueUnsolicitedResponse; // Ignore method (we don't want to handle VuAecpdu now)
 %ignore la::avdecc::protocol::ProtocolInterface::getVendorUniqueDelegate; // Ignore method (we don't want to handle VuAecpdu now)
+%ignore la::avdecc::protocol::operator!(ProtocolInterface::Error const error); // Ignore operator!
+%ignore la::avdecc::protocol::operator|=(ProtocolInterface::Error& lhs, ProtocolInterface::Error const rhs); // Ignore operator|=
 %unique_ptr(la::avdecc::protocol::ProtocolInterface) // Define unique_ptr for ProtocolInterface
 // Extend the class
 %extend la::avdecc::protocol::ProtocolInterface
@@ -683,6 +732,16 @@ DEFINE_AEM_TREE_NODE(PtpInstance);
 DEFINE_AEM_TREE_NODE(Configuration);
 DEFINE_AEM_TREE_NODE(Entity);
 
+// StreamOutputCounters
+%nspace la::avdecc::entity::model::StreamOutputCounters;
+%rename("%s") la::avdecc::entity::model::StreamOutputCounters; // Unignore class
+%ignore la::avdecc::entity::model::StreamOutputCounters::getBaseCounters() const noexcept; // Ignore const overload
+%rename("concatenate") la::avdecc::entity::model::StreamOutputCounters::operator|=; // Rename operator|= to 'concatenate'
+
+// Define catches for methods that can throw
+%catches(std::invalid_argument) la::avdecc::entity::model::StreamOutputCounters::getValidFlags;
+%catches(std::invalid_argument) la::avdecc::entity::model::StreamOutputCounters::getCounters;
+
 // Include c++ declaration file
 %include "la/avdecc/internals/entityModelTreeCommon.hpp"
 %include "la/avdecc/internals/entityModelTreeDynamic.hpp"
@@ -712,17 +771,44 @@ DEFINE_AEM_TREE_NODE(Entity);
 %template(ConfigurationTreeMap) std::map<la::avdecc::entity::model::ConfigurationIndex, la::avdecc::entity::model::ConfigurationTree>;
 %template(EntityCounters) std::map<la::avdecc::entity::EntityCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(StreamInputCounters) std::map<la::avdecc::entity::StreamInputCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
-%template(StreamOutputCounters) std::map<la::avdecc::entity::StreamOutputCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
+%template(StreamOutputCountersMilan12) std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::model::DescriptorCounter>;
 %template(StreamOutputCounters17221) std::map<la::avdecc::entity::StreamOutputCounterValidFlag17221, la::avdecc::entity::model::DescriptorCounter>;
+%template(StreamOutputCountersMilanSignalPresence) std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence, la::avdecc::entity::model::DescriptorCounter>;
 %template(AvbInterfaceCounters) std::map<la::avdecc::entity::AvbInterfaceCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(ClockDomainCounters) std::map<la::avdecc::entity::ClockDomainCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(LocalizedStringMap) std::unordered_map<la::avdecc::entity::model::StringsIndex, la::avdecc::entity::model::AvdeccFixedString>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::getValidFlags for StreamOutputCounterValidFlagsMilan12 type
+%template(getValidFlags_Milan12) la::avdecc::entity::model::StreamOutputCounters::getValidFlags<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::getValidFlags for StreamOutputCounterValidFlags17221 type
+%template(getValidFlags_17221) la::avdecc::entity::model::StreamOutputCounters::getValidFlags<la::avdecc::entity::StreamOutputCounterValidFlags17221>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::getValidFlags for StreamOutputCounterValidFlagsMilanSignalPresence type
+%template(getValidFlags_MilanSignalPresence) la::avdecc::entity::model::StreamOutputCounters::getValidFlags<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::getCounters for StreamOutputCounterValidFlagsMilan12 type
+%template(getCounters_Milan12) la::avdecc::entity::model::StreamOutputCounters::getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12, std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::model::DescriptorCounter>>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::getCounters for StreamOutputCounterValidFlags17221 type
+%template(getCounters_17221) la::avdecc::entity::model::StreamOutputCounters::getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221, std::map<la::avdecc::entity::StreamOutputCounterValidFlag17221, la::avdecc::entity::model::DescriptorCounter>>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::getCounters for StreamOutputCounterValidFlagsMilanSignalPresence type
+%template(getCounters_MilanSignalPresence) la::avdecc::entity::model::StreamOutputCounters::getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence, std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence, la::avdecc::entity::model::DescriptorCounter>>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::convertCounters for StreamOutputCounterValidFlagsMilan12 type
+%template(convertCounters_Milan12) la::avdecc::entity::model::StreamOutputCounters::convertCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12, std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::model::DescriptorCounter>>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::convertCounters for StreamOutputCounterValidFlags17221 type
+%template(convertCounters_17221) la::avdecc::entity::model::StreamOutputCounters::convertCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221, std::map<la::avdecc::entity::StreamOutputCounterValidFlag17221, la::avdecc::entity::model::DescriptorCounter>>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::convertCounters for StreamOutputCounterValidFlagsMilanSignalPresence type
+%template(convertCounters_MilanSignalPresence) la::avdecc::entity::model::StreamOutputCounters::convertCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence, std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence, la::avdecc::entity::model::DescriptorCounter>>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::setCounters for StreamOutputCountersMilan12 type
+%template(setCounters_Milan12) la::avdecc::entity::model::StreamOutputCounters::setCounters<std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::model::DescriptorCounter>, la::avdecc::entity::StreamOutputCounterValidFlagMilan12, la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::setCounters for StreamOutputCounters17221 type
+%template(setCounters_17221) la::avdecc::entity::model::StreamOutputCounters::setCounters<std::map<la::avdecc::entity::StreamOutputCounterValidFlag17221, la::avdecc::entity::model::DescriptorCounter>, la::avdecc::entity::StreamOutputCounterValidFlag17221, la::avdecc::entity::StreamOutputCounterValidFlags17221>;
+// Enable templated la::avdecc::entity::model::StreamOutputCounters::setCounters for StreamOutputCountersMilanSignalPresence type
+%template(setCounters_MilanSignalPresence) la::avdecc::entity::model::StreamOutputCounters::setCounters<std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence, la::avdecc::entity::model::DescriptorCounter>, la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence, la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>;
 
 ////////////////////////////////////////
 // JSON SERIALIZATION
 ////////////////////////////////////////
 // Bind enums
 DEFINE_ENUM_CLASS(la::avdecc::entity::model::jsonSerializer::Flag, "ushort")
+%ignore la::avdecc::jsonSerializer::operator!(SerializationError const error); // Ignore operator!
+%ignore la::avdecc::jsonSerializer::operator!(DeserializationError const error); // Ignore operator!
 
 // Include c++ declaration file
 %include "la/avdecc/internals/jsonSerialization.hpp"
