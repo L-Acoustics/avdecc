@@ -178,6 +178,7 @@ private:
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> createVirtualEntityFromEntityModelFile(std::string const& filePath, model::VirtualEntityBuilder* const builder, bool const isBinaryFormat = true) noexcept override;
 
 	/* Other helpful methods */
+	virtual std::string getExecutorName() const noexcept override;
 	virtual bool refreshEntity(UniqueIdentifier const entityID) noexcept override;
 	virtual bool unloadVirtualEntity(UniqueIdentifier const entityID) noexcept override;
 

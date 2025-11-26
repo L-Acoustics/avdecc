@@ -682,6 +682,8 @@ public:
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> createVirtualEntityFromEntityModelFile(std::string const& filePath, model::VirtualEntityBuilder* const builder, bool const isBinaryFormat = true) noexcept = 0;
 
 	/* Other helpful methods */
+	/** Returns the name of the executor used by the controller */
+	virtual std::string getExecutorName() const noexcept = 0;
 	/** Re-enumerates the specified entity */
 	virtual bool refreshEntity(UniqueIdentifier const entityID) noexcept = 0;
 	/** Removes a Virtual Entity from the controller */
