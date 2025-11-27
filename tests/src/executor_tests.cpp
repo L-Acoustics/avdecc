@@ -215,7 +215,6 @@ TEST(ExecutorManager, WaitJobResponseHandlerThrowsWithReturn)
 								 []() -> std::uint32_t
 								 {
 									 throw std::runtime_error("Test exception");
-									 return 0u;
 								 }),
 		std::invalid_argument);
 }
