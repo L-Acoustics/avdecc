@@ -41,11 +41,13 @@
 #else
 #	include <dlfcn.h>
 #	include <signal.h>
-#	ifdef __APPLE__
-#		define PCAP_LIBRARY "/usr/lib/libpcap.dylib" /* Due to macOS hardened runtime, we have to specify the absolute path for the pcap library */
-#	else /* !__APPLE__ */
-#		define PCAP_LIBRARY "libpcap.so"
-#	endif /* __APPLE__ */
+#	ifndef PCAP_LIBRARY /* allow library name to be overridden to include soname */
+#		ifdef __APPLE__
+#			define PCAP_LIBRARY "/usr/lib/libpcap.dylib" /* Due to macOS hardened runtime, we have to specify the absolute path for the pcap library */
+#		else /* !__APPLE__ */
+#			define PCAP_LIBRARY "libpcap.so"
+#		endif /* __APPLE__ */
+#	endif /* !PCAP_LIBRARY */
 #	define DL_HANDLE void*
 #	define DL_OPEN(x) dlopen((x), RTLD_LAZY)
 #	define DL_CLOSE(x) dlclose(x)
