@@ -34,6 +34,9 @@
 #include <functional>
 #include <thread>
 #include <future>
+#include <chrono>
+#include <stdexcept>
+#include <exception>
 
 namespace la
 {
@@ -213,9 +216,30 @@ public:
 	/** Get the std::thread::id of the Executor with the given name. Returns empty id if the Executor does not exist. */
 	virtual std::thread::id getExecutorThread(std::string const& name) const noexcept = 0;
 
-	/** Waits until the Executor with the given name has ran the provided job. If the current thread is the Executor's thread, the job will skip the queue and be run immediately. */
-	template<typename CallableType, typename Traits = utils::closure_traits<std::remove_reference_t<CallableType>>>
-	std::enable_if_t<Traits::arg_count == 0, typename Traits::result_type> waitJobResponse(std::string const& name, CallableType&& handler) noexcept
+	/* See overload method below. */
+	template<typename CallableType, typename Traits = utils::closure_traits<std::remove_reference_t<CallableType>>, typename Rep = std::int64_t, typename Period = std::milli>
+	std::enable_if_t<Traits::arg_count == 0, typename Traits::result_type> waitJobResponse(std::string const& name, CallableType&& handler, std::chrono::duration<Rep, Period> timeout)
+	{
+		return waitJobResponse(name, std::forward<CallableType>(handler), std::optional<std::chrono::duration<Rep, Period>>(std::move(timeout)));
+	}
+
+	/**
+	 * @brief Waits until the Executor with the given name has run the provided job.
+	 * @details If the current thread is the Executor's thread, the job will skip the queue and be run immediately.
+	 *          Otherwise, the job is queued and the function waits for its completion.
+	 * @param[in] name The name of the Executor to run the job on.
+	 * @param[in] handler The callable to execute. Must take no arguments.
+	 * @param[in] timeout Optional timeout duration. If provided, the function will wait at most this long for the job to complete.
+	 *                    If the timeout expires, a std::runtime_error is thrown.
+	 *                    If not provided (default), the function waits indefinitely.
+	 * @return The result of the handler if it returns a value, void otherwise.
+	 * @throws std::invalid_argument If the executor with the given name does not exist, or if the handler throws an exception.
+	 * @throws std::runtime_error If the timeout expires before the job completes.
+	 * @note The timeout parameter can be any std::chrono::duration type (e.g., std::chrono::milliseconds, std::chrono::seconds).
+	 *       It will be automatically converted to the appropriate optional type.
+	 */
+	template<typename CallableType, typename Traits = utils::closure_traits<std::remove_reference_t<CallableType>>, typename Rep = std::int64_t, typename Period = std::milli>
+	std::enable_if_t<Traits::arg_count == 0, typename Traits::result_type> waitJobResponse(std::string const& name, CallableType&& handler, std::optional<std::chrono::duration<Rep, Period>> timeout = std::nullopt)
 	{
 		// If current thread is Executor thread, directly call handler
 		if (std::this_thread::get_id() == getExecutorThread(name))
@@ -233,49 +257,53 @@ public:
 			}
 			catch (...)
 			{
-				// TODO: Do something with exception
-				if constexpr (!std::is_same_v<typename Traits::result_type, void>)
-				{
-					return typename Traits::result_type{};
-				}
+				throw std::invalid_argument("Exception thrown in handler");
 			}
 		}
 		else
 		{
+			if (!isExecutorRegistered(name))
+			{
+				throw std::invalid_argument("Executor not found");
+			}
 			auto responsePromise = std::promise<typename Traits::result_type>{};
 			pushJob(name,
-				[&responsePromise, &handler]() mutable
+				[&responsePromise, h = std::forward<CallableType>(handler)]() mutable
 				{
 					try
 					{
 						if constexpr (std::is_same_v<typename Traits::result_type, void>)
 						{
-							handler();
+							h();
 							responsePromise.set_value();
 						}
 						else
 						{
-							responsePromise.set_value(handler());
+							responsePromise.set_value(h());
 						}
 					}
 					catch (...)
 					{
-						// TODO: Forward exception to future (with eptr?)
-						if constexpr (std::is_same_v<typename Traits::result_type, void>)
-						{
-							responsePromise.set_value();
-						}
-						else
-						{
-							responsePromise.set_value(typename Traits::result_type{});
-						}
+						responsePromise.set_exception(std::make_exception_ptr(std::invalid_argument("Exception thrown in handler")));
 					}
 				});
 			auto fut = responsePromise.get_future();
-			fut.wait();
+			if (timeout)
+			{
+				auto status = fut.wait_for(timeout.value());
+				if (status == std::future_status::timeout)
+				{
+					throw std::runtime_error("Timeout waiting for job response");
+				}
+			}
+			// fut.get() waits for the job to complete and propagates std::invalid_argument if the handler threw an exception
 			if constexpr (!std::is_same_v<typename Traits::result_type, void>)
 			{
 				return fut.get();
+			}
+			else
+			{
+				fut.get();
 			}
 		}
 	}
