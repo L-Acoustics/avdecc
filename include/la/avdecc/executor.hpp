@@ -37,6 +37,7 @@
 #include <chrono>
 #include <stdexcept>
 #include <exception>
+#include <atomic>
 
 namespace la
 {
@@ -267,19 +268,30 @@ public:
 				throw std::invalid_argument("Executor not found");
 			}
 			auto responsePromise = std::promise<typename Traits::result_type>{};
+			auto shouldIgnorePromise = std::make_shared<std::atomic<bool>>(false);
 			pushJob(name,
-				[&responsePromise, h = std::forward<CallableType>(handler)]() mutable
+				[&responsePromise, shouldIgnorePromise, h = std::forward<CallableType>(handler)]() mutable
 				{
 					try
 					{
+						// Always run the handler
 						if constexpr (std::is_same_v<typename Traits::result_type, void>)
 						{
 							h();
-							responsePromise.set_value();
+							// Only set value if not timed out
+							if (!shouldIgnorePromise->exchange(true))
+							{
+								responsePromise.set_value();
+							}
 						}
 						else
 						{
-							responsePromise.set_value(h());
+							auto const result = h();
+							// Only set value if not timed out
+							if (!shouldIgnorePromise->exchange(true))
+							{
+								responsePromise.set_value(result);
+							}
 						}
 					}
 					catch (...)
@@ -293,7 +305,13 @@ public:
 				auto status = fut.wait_for(timeout.value());
 				if (status == std::future_status::timeout)
 				{
-					throw std::runtime_error("Timeout waiting for job response");
+					// Job has timed out, mark the promise as to be ignored
+					auto const alreadyProcessed = shouldIgnorePromise->exchange(true);
+					// But in case the job just completed, we must not throw
+					if (!alreadyProcessed)
+					{
+						throw std::runtime_error("Timeout waiting for job response");
+					}
 				}
 			}
 			// fut.get() waits for the job to complete and propagates std::invalid_argument if the handler threw an exception

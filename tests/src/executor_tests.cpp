@@ -222,7 +222,7 @@ TEST(ExecutorManager, WaitJobResponseHandlerThrowsWithReturn)
 
 TEST(ExecutorManager, WaitJobResponseFromExecutorThread)
 {
-	auto constexpr ExecutorName = "WaitTestSameThread";
+	static auto constexpr ExecutorName = "WaitTestSameThread";
 	auto jobExecuted = false;
 
 	auto executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(ExecutorName, la::avdecc::ExecutorWithDispatchQueue::create());
