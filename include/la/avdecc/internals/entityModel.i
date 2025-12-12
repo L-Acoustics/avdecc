@@ -19,9 +19,8 @@
 #	endif
 // Use Nullable Reference Types for Optional (requires C# >= 8.0)
 #define SWIG_STD_OPTIONAL_USE_NULLABLE_REFERENCE_TYPES
-// Override default visibility for internal optional class (to make it accessible from other assemblies but not visible)
-#undef SWIG_STD_OPTIONAL_INTERNAL_CLASS_MODIFIER
-#define SWIG_STD_OPTIONAL_INTERNAL_CLASS_MODIFIER PUBLIC_BUT_HIDDEN
+// Define default types for optional primitives
+#define SWIG_STD_OPTIONAL_DEFAULT_TYPES
 #endif
 
 // Common for all languages
@@ -229,7 +228,7 @@ DEFINE_AEM_TYPES_CLASS_BASE(ControlValues);
 %typemap(directorin) la::avdecc::entity::model::SignalPresenceChannels const&, la::avdecc::entity::model::SignalPresenceChannels& {
 	$input = (unsigned long long)$1.to_ullong();
 }
-%optional_arithmetic(la::avdecc::entity::model::SignalPresenceChannels, OptSignalPresenceChannels)
+%optional_primitive(la::avdecc::entity::model::SignalPresenceChannels)
 
 // Include c++ declaration file
 %include "la/avdecc/internals/entityModelTypes.hpp"
@@ -407,10 +406,7 @@ DEFINE_TYPED_PROTOCOL_CLASS(AcmpStatus, AcmpStatusTypedDefine, std::uint8_t)
 %enddef
 
 // Define optionals
-//optional_arithmetic(la::avdecc::entity::model::DescriptorIndex, OptDescriptorIndex) // Currently we cannot define both OptUInt16 and OptDescriptorIndex (or they mix up). We'll define each Descriptor type once we use a TypedDefine
-%optional_arithmetic(std::uint8_t, OptUInt8)
-%optional_arithmetic(std::uint32_t, OptUInt32)
-%optional_arithmetic(la::avdecc::entity::model::ProbingStatus, OptProbingStatus)
+%optional_enum_uint8(la::avdecc::entity::model::ProbingStatus)
 %optional(la::avdecc::UniqueIdentifier)
 %optional(la::avdecc::entity::model::MilanVersion)
 %optional(la::avdecc::entity::model::AvdeccFixedString)
