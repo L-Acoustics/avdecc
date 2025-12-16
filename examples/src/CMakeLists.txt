@@ -105,7 +105,7 @@ if(BUILD_AVDECC_CONTROLLER)
 		cu_setup_deploy_runtime(EntityDumper ${INSTALL_EXAMPLE_FLAG} ${SIGN_FLAG})
 	endif()
 
-	if(BUILD_AVDECC_BINDINGS_CSHARP)
+	if(BUILD_AVDECC_SWIG AND AVDECC_SWIG_LANGUAGES MATCHES "csharp")
 		# Only include if the CMake generator is single-config
 		if(CMAKE_CONFIGURATION_TYPES)
 			message("CMake generator is multi-config, skipping C# example")

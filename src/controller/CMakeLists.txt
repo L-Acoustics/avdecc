@@ -173,7 +173,7 @@ if(INSTALL_AVDECC_HEADERS)
 	cu_setup_headers_install_rules("${PUBLIC_HEADER_FILES}" "${CU_ROOT_DIR}/include" CONFIGURATIONS Release Debug)
 endif()
 
-if(BUILD_AVDECC_BINDINGS_CSHARP)
+if(BUILD_AVDECC_SWIG)
 	include(${CU_BASE_DIR}/helpers/SetupSwig.cmake REQUIRED)
 
 	# avdecc controller library
