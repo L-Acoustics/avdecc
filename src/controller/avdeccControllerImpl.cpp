@@ -6349,7 +6349,6 @@ bool ControllerImpl::processEmptyGetDynamicInfoFailureStatus(entity::ControllerE
 		case FailureAction::ErrorContinue:
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -6422,7 +6421,6 @@ ControllerImpl::PackedDynamicInfoFailureAction ControllerImpl::processGetDynamic
 			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return PackedDynamicInfoFailureAction::Continue;
 		case FailureAction::WarningContinue:
 			return PackedDynamicInfoFailureAction::Continue;
@@ -6542,7 +6540,6 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4.37", "Error registering for unsolicited notifications: " + entity::LocalEntity::statusToString(status));
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -6615,7 +6612,6 @@ bool ControllerImpl::processGetMilanInfoFailureStatus(entity::ControllerEntity::
 			}
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -6670,7 +6666,6 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4", "Error getting IEEE1722.1 mandatory descriptor (" + entity::model::descriptorTypeToString(descriptorType) + "): " + entity::LocalEntity::statusToString(status));
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -6748,7 +6743,6 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4", "Error getting IEEE1722.1 dynamic info (" + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType) + "): " + entity::LocalEntity::statusToString(status));
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -6842,7 +6836,6 @@ bool ControllerImpl::processGetMvuDynamicInfoFailureStatus(entity::ControllerEnt
 			addCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Misbehaving);
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -6896,7 +6889,6 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 8.2", "Error getting IEEE1722.1 mandatory ACMP info (" + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType) + "): " + entity::LocalEntity::statusToString(status));
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -6962,7 +6954,6 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 8.2", "Error getting IEEE1722.1 mandatory ACMP info (" + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType) + "): " + entity::LocalEntity::statusToString(status));
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -7034,7 +7025,6 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
