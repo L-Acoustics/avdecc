@@ -78,6 +78,9 @@ std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CALL_CONVENTION getCompileOp
 #ifdef CONTINUE_MISBEHAVE_AEM_RESPONSES
 	options.emplace_back(CompileOptionInfo{ CompileOption::ContinueMisbehaveAemResponses, "CMAR", "Continue Misbehave AEM Responses" });
 #endif // CONTINUE_MISBEHAVE_AEM_RESPONSES
+#ifdef IGNORE_MISMATCHING_MVU_RESPONSES
+	options.emplace_back(CompileOptionInfo{ CompileOption::IgnoreMismatchingMvuResponses, "IMMR", "Ignore Mismatching MVU Responses" });
+#endif // IGNORE_MISMATCHING_MVU_RESPONSES
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	options.emplace_back(CompileOptionInfo{ CompileOption::EnableRedundancy, "RDNCY", "Redundancy" });

@@ -6349,7 +6349,6 @@ bool ControllerImpl::processEmptyGetDynamicInfoFailureStatus(entity::ControllerE
 		case FailureAction::ErrorContinue:
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -6422,7 +6421,6 @@ ControllerImpl::PackedDynamicInfoFailureAction ControllerImpl::processGetDynamic
 			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return PackedDynamicInfoFailureAction::Continue;
 		case FailureAction::WarningContinue:
 			return PackedDynamicInfoFailureAction::Continue;
@@ -6542,7 +6540,6 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4.37", "Error registering for unsolicited notifications: " + entity::LocalEntity::statusToString(status));
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -6615,7 +6612,6 @@ bool ControllerImpl::processGetMilanInfoFailureStatus(entity::ControllerEntity::
 			}
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -6670,7 +6666,6 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4", "Error getting IEEE1722.1 mandatory descriptor (" + entity::model::descriptorTypeToString(descriptorType) + "): " + entity::LocalEntity::statusToString(status));
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -6748,7 +6743,6 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 7.4", "Error getting IEEE1722.1 dynamic info (" + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType) + "): " + entity::LocalEntity::statusToString(status));
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -6806,7 +6800,35 @@ bool ControllerImpl::processGetMvuDynamicInfoFailureStatus(entity::ControllerEnt
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
+#if defined(IGNORE_MISMATCHING_MVU_RESPONSES)
+	auto updatedStatus = status;
+	// If this is a Milan 1.2 or earlier device, it might respond to any non-GET_MILAN_INFO MVU command with a GET_MILAN_INFO response (even if we sent a SET_SYSTEM_UNIQUE_ID for example) // This is a known bug in some Milan 1.2 devices (which was not tested against the spec at the time)
+	if (updatedStatus == entity::ControllerEntity::MvuCommandStatus::BaseProtocolViolation)
+	{
+		// Check if the device is Milan 1.2 or earlier (otherwise it really did a protocol violation)
+		auto const milanInfo = entity->getMilanInfo();
+		if (milanInfo && milanInfo->specificationVersion >= entity::model::MilanVersion{ 1, 0 } && milanInfo->specificationVersion < entity::model::MilanVersion{ 1, 3 })
+		{
+			switch (dynamicInfoType)
+			{
+				// Only these commands are defined in Milan 1.2 or earlier and are "allowed" to respond with GET_MILAN_INFO response if we consider the device a Milan 1.0 device
+				case ControlledEntityImpl::DynamicInfoType::GetSystemUniqueID:
+				case ControlledEntityImpl::DynamicInfoType::GetMediaClockReferenceInfo:
+				{
+					updatedStatus = entity::ControllerEntity::MvuCommandStatus::NotImplemented;
+					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Entity violated MVU protocol but is Milan 1.2 or earlier, treating BaseProtocolViolation as NotImplemented for {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+					ControllerImpl::decreaseMilanCompatibilityVersion(this, *entity, entity::model::MilanVersion{ 1, 0 }, "Milan 1.2 - 5.4.3", "Not responding with the correct command_type for MVU command: " + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+					break;
+				}
+				default:
+					break;
+			}
+		}
+	}
+	auto const action = getFailureActionForMvuCommandStatus(updatedStatus);
+#else // !defined(IGNORE_MISMATCHING_MVU_RESPONSES)
 	auto const action = getFailureActionForMvuCommandStatus(status);
+#endif // defined(IGNORE_MISMATCHING_MVU_RESPONSES)
 	switch (action)
 	{
 		case FailureAction::MisbehaveContinue:
@@ -6814,7 +6836,6 @@ bool ControllerImpl::processGetMvuDynamicInfoFailureStatus(entity::ControllerEnt
 			addCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Misbehaving);
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -6868,7 +6889,6 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 8.2", "Error getting IEEE1722.1 mandatory ACMP info (" + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType) + "): " + entity::LocalEntity::statusToString(status));
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -6934,7 +6954,6 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 			removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::IEEE17221, "IEEE1722.1-2021 - 8.2", "Error getting IEEE1722.1 mandatory ACMP info (" + ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType) + "): " + entity::LocalEntity::statusToString(status));
 			return true;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
@@ -7006,7 +7025,6 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 			fallbackEnumerationMode = true;
 			break;
 		case FailureAction::NotAuthenticated:
-			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
