@@ -54,6 +54,7 @@ option(IGNORE_INVALID_CONTROL_DATA_LENGTH "Allow messages with an invalid advert
 option(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES "Allow invalid AEM non-success responses messages." TRUE) # Required for Motu/Tesira devices sending invalid error response messages
 option(IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS "Allow Entities not supporting Dynamic Mapping and not adversiting AUDIO_MAP." TRUE) # Required for Tesira devices not implementing Dynamic Mappings and not advertising any static map
 option(CONTINUE_MISBEHAVE_AEM_RESPONSES "Continue entity enumeration when receiving an AEM ENTITY_MISBEHAVE response status." TRUE) # Required for macOS Sequoia Virtual Entity sending ENTITY_MISBEHAVE response status for some commands (instead of NOT_SUPPORTED)
+option(IGNORE_MISMATCHING_MVU_RESPONSES "Allow ignoring mismatching MVU responses." TRUE) # Required for some Milan devices responding with incorrect MVU command_type
 option(ALLOW_GET_AUDIO_MAP_UNSOL "Allow receiving GetAudioMap unsolicited notifications." TRUE) # Required for L-Acoustics older devices, when changing dynamic mappings from the front panel
 option(ALLOW_RECV_BIG_AECP_PAYLOADS "Allow receiving AECP payloads bigger than the allowed 524 bytes." TRUE) # Required for Q6 Core devices not splitting AudioMaps into smaller ones, and for Milan devices
 option(ALLOW_SEND_BIG_AECP_PAYLOADS "Allow sending AECP payloads bigger than the allowed 524 bytes." FALSE)
