@@ -58,6 +58,7 @@ option(IGNORE_MISMATCHING_MVU_RESPONSES "Allow ignoring mismatching MVU response
 option(ALLOW_GET_AUDIO_MAP_UNSOL "Allow receiving GetAudioMap unsolicited notifications." TRUE) # Required for L-Acoustics older devices, when changing dynamic mappings from the front panel
 option(ALLOW_RECV_BIG_AECP_PAYLOADS "Allow receiving AECP payloads bigger than the allowed 524 bytes." TRUE) # Required for Q6 Core devices not splitting AudioMaps into smaller ones, and for Milan devices
 option(ALLOW_SEND_BIG_AECP_PAYLOADS "Allow sending AECP payloads bigger than the allowed 524 bytes." FALSE)
+option(OVERRIDE_PCAP_LIB_PATH "Override the pcap library path used for dynamic linking in the pcap protocol interface (linux only)." "")
 
 ############ Override from command line "CMake -D<PARAM>=<VALUE>"
 

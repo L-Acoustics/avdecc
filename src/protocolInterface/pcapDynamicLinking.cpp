@@ -44,7 +44,11 @@
 #	ifdef __APPLE__
 #		define PCAP_LIBRARY "/usr/lib/libpcap.dylib" /* Due to macOS hardened runtime, we have to specify the absolute path for the pcap library */
 #	else /* !__APPLE__ */
-#		define PCAP_LIBRARY "libpcap.so"
+#		if defined(OVERRIDE_PCAP_LIB_PATH)
+#			define PCAP_LIBRARY OVERRIDE_PCAP_LIB_PATH
+#		else // !OVERRIDE_PCAP_LIB_PATH
+#			define PCAP_LIBRARY "libpcap.so"
+#		endif // OVERRIDE_PCAP_LIB_PATH
 #	endif /* __APPLE__ */
 #	define DL_HANDLE void*
 #	define DL_OPEN(x) dlopen((x), RTLD_LAZY)

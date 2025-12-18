@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - [Optional duration parameter for ExecutorManager::waitJobResponse method](https://github.com/L-Acoustics/avdecc/issues/193)
+- [Possibility to override pcap library name/path used for dynamic linking in the pcap protocol interface (linux only)](https://github.com/L-Acoustics/avdecc/issues/192)
 
 ## [4.3.0] - 2025-11-24
 ### Added
