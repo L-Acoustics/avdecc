@@ -23,7 +23,7 @@ option(BUILD_AVDECC_LIB_SHARED_CXX "Build C++ shared library." TRUE)
 option(BUILD_AVDECC_LIB_STATIC_RT_SHARED "Build static library (runtime shared)." TRUE)
 option(BUILD_AVDECC_DOC "Build documentation." FALSE)
 option(BUILD_AVDECC_BINDINGS_C "Build avdecc C bindings library." FALSE)
-option(BUILD_AVDECC_BINDINGS_CSHARP "Build avdecc C# bindings library." FALSE)
+option(BUILD_AVDECC_SWIG "Build SWIG Wrapper." FALSE)
 option(BUILD_AVDECC_CONTROLLER "Build avdecc controller library." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP "Build the pcap protocol interface." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING "Pcap protocol interface uses dynamic shared library linking (instead of static linking)." TRUE)
@@ -110,6 +110,11 @@ cu_setup_apple_minimum_versions(MACOS 10.13)
 
 ############ Check dependencies
 
+# Deprecated options
+if(BUILD_AVDECC_BINDINGS_CSHARP)
+	message(FATAL_ERROR "BUILD_AVDECC_BINDINGS_CSHARP is deprecated, please use BUILD_AVDECC_SWIG instead.")
+endif()
+
 # avdecc-tests needs avdecc.lib
 if(BUILD_AVDECC_TESTS)
 	set(BUILD_AVDECC_LIB_STATIC_RT_SHARED TRUE CACHE BOOL "Build avdecc static library (runtime shared)." FORCE)
@@ -144,12 +149,12 @@ if(NOT BUILD_AVDECC_INTERFACE_PCAP AND NOT BUILD_AVDECC_INTERFACE_MAC AND NOT BU
 endif()
 
 # Build bindings requires the building of the libraries
-if(BUILD_AVDECC_BINDINGS_CSHARP AND NOT BUILD_AVDECC_LIB_SHARED_CXX)
+if(BUILD_AVDECC_SWIG AND NOT BUILD_AVDECC_LIB_SHARED_CXX)
 	set(BUILD_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Build C++ shared library." FORCE)
 endif()
 
 # Build and Install bindings requires the installation of the libraries
-if(BUILD_AVDECC_BINDINGS_CSHARP AND INSTALL_AVDECC_BINDINGS AND NOT INSTALL_AVDECC_LIB_SHARED_CXX)
+if(BUILD_AVDECC_SWIG AND INSTALL_AVDECC_BINDINGS AND NOT INSTALL_AVDECC_LIB_SHARED_CXX)
 	set(INSTALL_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Install C++ shared library." FORCE)
 endif()
 
@@ -173,7 +178,7 @@ endif()
 set(BUILD_NIH_EXAMPLES OFF CACHE BOOL "Build examples." FORCE)
 set(BUILD_NIH_TESTS OFF CACHE BOOL "Build unit tests." FORCE)
 set(BUILD_C_BINDINGS OFF CACHE BOOL "Build C Bindings." FORCE)
-set(BUILD_NIH_SWIG ${BUILD_AVDECC_BINDINGS_CSHARP} CACHE BOOL "Build SWIG Wrapper." FORCE)
+set(BUILD_NIH_SWIG ${BUILD_AVDECC_SWIG} CACHE BOOL "Build SWIG Wrapper." FORCE)
 set(NIH_SWIG_LANGUAGES ${AVDECC_SWIG_LANGUAGES} CACHE STRING "Set the languages to compile as SWIG wrappers." FORCE)
 # Install options
 set(INSTALL_NIH_EXAMPLES OFF CACHE BOOL "Install examples." FORCE)

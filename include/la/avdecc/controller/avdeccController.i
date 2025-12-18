@@ -19,9 +19,8 @@
 #	endif
 // Use Nullable Reference Types for Optional (requires C# >= 8.0)
 #define SWIG_STD_OPTIONAL_USE_NULLABLE_REFERENCE_TYPES
-// Override default visibility for internal optional class (to make it accessible from other assemblies but not visible)
-#undef SWIG_STD_OPTIONAL_INTERNAL_CLASS_MODIFIER
-#define SWIG_STD_OPTIONAL_INTERNAL_CLASS_MODIFIER PUBLIC_BUT_HIDDEN
+// Define default types for optional primitives
+#define SWIG_STD_OPTIONAL_DEFAULT_TYPES
 #endif
 
 // Common for all languages
