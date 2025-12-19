@@ -3532,7 +3532,7 @@ bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 
 	// Ready to remove using the network executor
 	auto& executor = ExecutorManager::getInstance();
-	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
+	auto const exName = getExecutorName();
 	runJobOnExecutorAndWait(executor, exName,
 		[this, entityID, isVirtual]()
 		{
@@ -3557,6 +3557,11 @@ bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
 		});
 
 	return true;
+}
+
+std::string ControllerImpl::getExecutorName() const noexcept
+{
+	return _endStation->getProtocolInterface()->getExecutorName();
 }
 
 bool ControllerImpl::unloadVirtualEntity(UniqueIdentifier const entityID) noexcept

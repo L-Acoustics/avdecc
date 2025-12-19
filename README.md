@@ -112,6 +112,8 @@ C language bindings over la_avdecc library.
   * Run a proper CMake command to generate Unix Makefiles (or any other CMake generator matching your build toolchain)
   * Go into the folder where the Unix Makefiles have been generated
   * Run *make* to compile everything (or compile using your toolchain)
+- pcap library override:
+  * If you need to override the pcap library name or path used for dynamic linking in the pcap protocol interface (default is 'libpcap.so'), you can pass the CMake parameter `-DOVERRIDE_PCAP_LIB_PATH="<your_pcap_library>"` when generating the build system (e.g. `-DOVERRIDE_PCAP_LIB_PATH="libpcap_custom.so"`)
 
 ## Cross-compilation using Docker
 

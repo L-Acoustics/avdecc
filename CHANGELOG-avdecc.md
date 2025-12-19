@@ -4,6 +4,11 @@ All notable changes to the Avdecc Library will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [4.3.1] - 2025-12-19
+### Added
+- [Optional duration parameter for ExecutorManager::waitJobResponse method](https://github.com/L-Acoustics/avdecc/issues/193)
+- [Possibility to override pcap library name/path used for dynamic linking in the pcap protocol interface (linux only)](https://github.com/L-Acoustics/avdecc/issues/192)
+
 ## [4.3.0] - 2025-11-24
 ### Added
 - New logging level: `Compat` for compatibility changes

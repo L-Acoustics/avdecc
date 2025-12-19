@@ -90,6 +90,7 @@ enum class CompileOption : std::uint32_t
 	None = 0,
 	IgnoreNeitherStaticNorDynamicMappings = 1u << 0,
 	ContinueMisbehaveAemResponses = 1u << 1,
+	IgnoreMismatchingMvuResponses = 1u << 2,
 	EnableRedundancy = 1u << 15,
 	Strict2018Redundancy = 1u << 16,
 	EnableJsonSupport = 1u << 17,
@@ -682,6 +683,8 @@ public:
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> createVirtualEntityFromEntityModelFile(std::string const& filePath, model::VirtualEntityBuilder* const builder, bool const isBinaryFormat = true) noexcept = 0;
 
 	/* Other helpful methods */
+	/** Returns the name of the executor used by the controller */
+	virtual std::string getExecutorName() const noexcept = 0;
 	/** Re-enumerates the specified entity */
 	virtual bool refreshEntity(UniqueIdentifier const entityID) noexcept = 0;
 	/** Removes a Virtual Entity from the controller */

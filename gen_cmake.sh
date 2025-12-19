@@ -71,7 +71,7 @@ function extend_gc_fnc_precmake()
 		add_cmake_opt+=("-DINSTALL_AVDECC_BINDINGS=TRUE")
 	fi
 	if [ $gen_csharp -eq 1 ]; then
-		add_cmake_opt+=("-DBUILD_AVDECC_BINDINGS_CSHARP=TRUE")
+		add_cmake_opt+=("-DBUILD_AVDECC_SWIG=TRUE")
 		add_cmake_opt+=("-DINSTALL_AVDECC_BINDINGS=TRUE")
 		add_cmake_opt+=("-DAVDECC_SWIG_LANGUAGES=csharp")
 	fi

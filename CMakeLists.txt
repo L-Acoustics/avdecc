@@ -10,9 +10,9 @@ cmake_minimum_required(VERSION 3.29)
 # It should have 3 digits (x.y.z) on main branch, and 4 digits (x.y.z.w) on dev and task branches. The last digit being used as beta label.
 # As soon as an API change occurs in dev or task branch, update the version number by following SemVer rules (so the API breaking changes are not lost/forgotten).
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task) which will be labelled 1.5.0-beta3
-set(LA_AVDECC_VERSION 4.3.0)
-set(LA_AVDECC_CONTROLLER_VERSION 4.3.0)
-set(LA_AVDECC_C_VERSION 4.3.0)
+set(LA_AVDECC_VERSION 4.3.1)
+set(LA_AVDECC_CONTROLLER_VERSION 4.3.1)
+set(LA_AVDECC_C_VERSION 4.3.1)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -23,7 +23,7 @@ option(BUILD_AVDECC_LIB_SHARED_CXX "Build C++ shared library." TRUE)
 option(BUILD_AVDECC_LIB_STATIC_RT_SHARED "Build static library (runtime shared)." TRUE)
 option(BUILD_AVDECC_DOC "Build documentation." FALSE)
 option(BUILD_AVDECC_BINDINGS_C "Build avdecc C bindings library." FALSE)
-option(BUILD_AVDECC_BINDINGS_CSHARP "Build avdecc C# bindings library." FALSE)
+option(BUILD_AVDECC_SWIG "Build SWIG Wrapper." FALSE)
 option(BUILD_AVDECC_CONTROLLER "Build avdecc controller library." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP "Build the pcap protocol interface." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING "Pcap protocol interface uses dynamic shared library linking (instead of static linking)." TRUE)
@@ -54,9 +54,11 @@ option(IGNORE_INVALID_CONTROL_DATA_LENGTH "Allow messages with an invalid advert
 option(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES "Allow invalid AEM non-success responses messages." TRUE) # Required for Motu/Tesira devices sending invalid error response messages
 option(IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS "Allow Entities not supporting Dynamic Mapping and not adversiting AUDIO_MAP." TRUE) # Required for Tesira devices not implementing Dynamic Mappings and not advertising any static map
 option(CONTINUE_MISBEHAVE_AEM_RESPONSES "Continue entity enumeration when receiving an AEM ENTITY_MISBEHAVE response status." TRUE) # Required for macOS Sequoia Virtual Entity sending ENTITY_MISBEHAVE response status for some commands (instead of NOT_SUPPORTED)
+option(IGNORE_MISMATCHING_MVU_RESPONSES "Allow ignoring mismatching MVU responses." TRUE) # Required for some Milan devices responding with incorrect MVU command_type
 option(ALLOW_GET_AUDIO_MAP_UNSOL "Allow receiving GetAudioMap unsolicited notifications." TRUE) # Required for L-Acoustics older devices, when changing dynamic mappings from the front panel
 option(ALLOW_RECV_BIG_AECP_PAYLOADS "Allow receiving AECP payloads bigger than the allowed 524 bytes." TRUE) # Required for Q6 Core devices not splitting AudioMaps into smaller ones, and for Milan devices
 option(ALLOW_SEND_BIG_AECP_PAYLOADS "Allow sending AECP payloads bigger than the allowed 524 bytes." FALSE)
+option(OVERRIDE_PCAP_LIB_PATH "Override the pcap library path used for dynamic linking in the pcap protocol interface (linux only)." "")
 
 ############ Override from command line "CMake -D<PARAM>=<VALUE>"
 
@@ -108,6 +110,11 @@ cu_setup_apple_minimum_versions(MACOS 10.13)
 
 ############ Check dependencies
 
+# Deprecated options
+if(BUILD_AVDECC_BINDINGS_CSHARP)
+	message(FATAL_ERROR "BUILD_AVDECC_BINDINGS_CSHARP is deprecated, please use BUILD_AVDECC_SWIG instead.")
+endif()
+
 # avdecc-tests needs avdecc.lib
 if(BUILD_AVDECC_TESTS)
 	set(BUILD_AVDECC_LIB_STATIC_RT_SHARED TRUE CACHE BOOL "Build avdecc static library (runtime shared)." FORCE)
@@ -142,12 +149,12 @@ if(NOT BUILD_AVDECC_INTERFACE_PCAP AND NOT BUILD_AVDECC_INTERFACE_MAC AND NOT BU
 endif()
 
 # Build bindings requires the building of the libraries
-if(BUILD_AVDECC_BINDINGS_CSHARP AND NOT BUILD_AVDECC_LIB_SHARED_CXX)
+if(BUILD_AVDECC_SWIG AND NOT BUILD_AVDECC_LIB_SHARED_CXX)
 	set(BUILD_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Build C++ shared library." FORCE)
 endif()
 
 # Build and Install bindings requires the installation of the libraries
-if(BUILD_AVDECC_BINDINGS_CSHARP AND INSTALL_AVDECC_BINDINGS AND NOT INSTALL_AVDECC_LIB_SHARED_CXX)
+if(BUILD_AVDECC_SWIG AND INSTALL_AVDECC_BINDINGS AND NOT INSTALL_AVDECC_LIB_SHARED_CXX)
 	set(INSTALL_AVDECC_LIB_SHARED_CXX TRUE CACHE BOOL "Install C++ shared library." FORCE)
 endif()
 
@@ -171,7 +178,7 @@ endif()
 set(BUILD_NIH_EXAMPLES OFF CACHE BOOL "Build examples." FORCE)
 set(BUILD_NIH_TESTS OFF CACHE BOOL "Build unit tests." FORCE)
 set(BUILD_C_BINDINGS OFF CACHE BOOL "Build C Bindings." FORCE)
-set(BUILD_NIH_SWIG ${BUILD_AVDECC_BINDINGS_CSHARP} CACHE BOOL "Build SWIG Wrapper." FORCE)
+set(BUILD_NIH_SWIG ${BUILD_AVDECC_SWIG} CACHE BOOL "Build SWIG Wrapper." FORCE)
 set(NIH_SWIG_LANGUAGES ${AVDECC_SWIG_LANGUAGES} CACHE STRING "Set the languages to compile as SWIG wrappers." FORCE)
 # Install options
 set(INSTALL_NIH_EXAMPLES OFF CACHE BOOL "Install examples." FORCE)

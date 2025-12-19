@@ -19,9 +19,8 @@
 #	endif
 // Use Nullable Reference Types for Optional (requires C# >= 8.0)
 #define SWIG_STD_OPTIONAL_USE_NULLABLE_REFERENCE_TYPES
-// Override default visibility for internal optional class (to make it accessible from other assemblies but not visible)
-#undef SWIG_STD_OPTIONAL_INTERNAL_CLASS_MODIFIER
-#define SWIG_STD_OPTIONAL_INTERNAL_CLASS_MODIFIER PUBLIC_BUT_HIDDEN
+// Define default types for optional primitives
+#define SWIG_STD_OPTIONAL_DEFAULT_TYPES
 #endif
 
 // Common for all languages
@@ -125,7 +124,6 @@ enum class ThreadPriority
 %unique_ptr(la::avdecc::Executor) // Define unique_ptr for Executor
 // TODO: Would be nice to have the handler in the same namespace as the class (ie. be able to pass a namespace to std_function)
 %std_function(Handler_Empty, void);
-%optional_string()
 
 %nspace la::avdecc::ExecutorWithDispatchQueue;
 %rename("%s") la::avdecc::ExecutorWithDispatchQueue; // Unignore class
@@ -211,7 +209,7 @@ public:
 // Entity Model
 ////////////////////////////////////////
 // Define optionals before including entityModel.i (we need to declare the optionals before the underlying types are defined)
-%optional_arithmetic(la::avdecc::entity::model::MsrpFailureCode, OptMsrpFailureCode)
+%optional_enum_uint8(la::avdecc::entity::model::MsrpFailureCode)
 %optional(la::networkInterface::MacAddress)
 %optional(la::avdecc::entity::model::MediaClockReferenceInfo)
 
@@ -675,9 +673,6 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::protocol::ProtocolInterface, SupportedPro
 %enddef
 
 // Define optionals
-%optional_arithmetic(std::uint16_t, OptUInt16)
-%optional_arithmetic(std::uint64_t, OptUInt64)
-%optional_arithmetic(bool, OptBool)
 %optional(la::avdecc::entity::model::StreamDynamicInfo)
 %optional(la::avdecc::entity::model::AvbInterfaceInfo)
 %optional(la::avdecc::entity::model::AsPath)
