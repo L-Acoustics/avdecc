@@ -82,6 +82,7 @@ Example:
 - [Never pass to a function a dereferenced non local shared_pointer (sptr.get() or *sptr, where sptr is global or is class member that can be changed by another thread or sub-function). Take a reference count before dereferencing.](https://youtu.be/xnqTKD8uD64?t=1569)
 - Always handle all cases in a _switch-case statement_ (make use of the _default keyword_ if required)
 - Always scope statement blocs with curling braces when it's optional (_if_, _else_, ...)
+- Never capture all variables by reference or by value in a lambda expression, always specify each captured variable explicitly (to avoid dangling references and for clarity)
 
 ## clang-format
 Use the provided [clang-format file](.clang-format) to correctly format the code.
