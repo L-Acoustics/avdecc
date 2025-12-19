@@ -153,18 +153,29 @@ endif()
 
 ############ Setup dependencies
 
+include(FetchContent)
+
 # Include fmtlib
 if(ENABLE_AVDECC_USE_FMTLIB)
 	# Override fmt options
 	set(FMT_INSTALL (${INSTALL_AVDECC_LIB_SHARED_CXX} OR ${INSTALL_AVDECC_LIB_STATIC}) CACHE BOOL "Force install." FORCE)
-	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/fmtlib EXCLUDE_FROM_ALL)
+	FetchContent_Declare(
+	  fmt
+	  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+	  GIT_TAG        0c9fce2ffefecfdce794e1859584e25877b7b592 # release-11.0.2
+	  FIND_PACKAGE_ARGS NAMES fmt
+	)
+	FetchContent_MakeAvailable(fmt)
 endif()
 
 # Include json
 if(ENABLE_AVDECC_FEATURE_JSON)
 	set(JSON_BuildTests OFF CACHE INTERNAL "Disable JSON unit tests")
 	set(JSON_Install (${INSTALL_AVDECC_LIB_SHARED_CXX} OR ${INSTALL_AVDECC_LIB_STATIC} OR ${INSTALL_AVDECC_HEADERS}) CACHE INTERNAL "Install JSON library")
-	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/json EXCLUDE_FROM_ALL)
+	FetchContent_Declare(nlohmann_json URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+	  FIND_PACKAGE_ARGS NAMES nlohmann_json
+	)
+	FetchContent_MakeAvailable(nlohmann_json)
 endif()
 
 # Override nih options
@@ -225,6 +236,10 @@ if(BUILD_AVDECC_INTERFACE_PCAP)
 			link_directories(${LA_WINPCAP_LIB_DIR})
 		endif()
 	endif()
+	if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+		find_package(PkgConfig REQUIRED)
+		pkg_check_modules(PCAP REQUIRED IMPORTED_TARGET GLOBAL libpcap)
+	endif()
 endif()
 
 ############ Add projects
@@ -264,7 +279,13 @@ if(BUILD_AVDECC_TESTS AND NOT VS_USE_CLANG)
 	set(BUILD_GMOCK ON CACHE BOOL "Build the googlemock subproject" FORCE)
 	set(INSTALL_GTEST OFF CACHE BOOL "Disable installation of googletest. (Projects embedding googletest may want to turn this OFF.)" FORCE)
 	# Include gtest framework
-	add_subdirectory(externals/3rdparty/gtest)
+	FetchContent_Declare(
+	  googletest
+	  GIT_REPOSITORY https://github.com/google/googletest.git
+	  GIT_TAG        703bd9caab50b139428cea1aaff9974ebee5742e # release-1.10.0
+	  FIND_PACKAGE_ARGS NAMES GTest
+	)
+	FetchContent_MakeAvailable(googletest)
 	# Include our unit tests
 	add_subdirectory(tests)
 endif()
