@@ -1,7 +1,7 @@
 # LA AVDECC
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/14038.svg)](https://scan.coverity.com/projects/l-acoustics-avdecc)
 [![Format](https://github.com/L-Acoustics/avdecc/actions/workflows/format.yml/badge.svg)](https://github.com/L-Acoustics/avdecc/actions/workflows/format.yml)
-Copyright (C) 2016-2025, L-Acoustics and its contributors
+Copyright (C) 2016-2026, L-Acoustics and its contributors
 
 ## What is LA_avdecc
 LA_avdecc is a set of open source libraries for controlling and monitoring AVB entities using the AVDECC protocol (IEEE 1722.1) compliant to Avnu Milan.
