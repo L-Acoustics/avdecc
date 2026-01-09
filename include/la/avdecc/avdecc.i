@@ -673,6 +673,7 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::protocol::ProtocolInterface, SupportedPro
 %enddef
 
 // Define optionals
+%optional_primitive(la::avdecc::entity::model::BridgeIdentifier)
 %optional(la::avdecc::entity::model::StreamDynamicInfo)
 %optional(la::avdecc::entity::model::AvbInterfaceInfo)
 %optional(la::avdecc::entity::model::AsPath)
