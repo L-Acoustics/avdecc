@@ -15,7 +15,7 @@ on:
 
 jobs:
   release-stage:
-    uses: L-Acoustics/la-mw-gh-action/.github/workflows/commit_stage.yml@v3
+    uses: L-Acoustics/la-mw-gh-action/.github/workflows/commit_stage.yml@v4
     with:
       release: ${{inputs.release}}
     secrets:
