@@ -90,6 +90,36 @@ if(BUILD_AVDECC_CONTROLLER)
 	# Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
 	cu_setup_deploy_runtime(Discovery ${INSTALL_EXAMPLE_FLAG} ${SIGN_FLAG})
 
+	# SimpleDiscovery - minimal CLI discovery sample (primarily intended for MacOSNCap testing).
+	# On Apple platforms it is built as a MACOSX_BUNDLE so that a provisioning profile (required by
+	# com.apple.developer.networking.custom-protocol entitlement) can be embedded into the .app.
+	add_executable(SimpleDiscovery simpleDiscovery.cpp)
+	set_target_properties(SimpleDiscovery PROPERTIES FOLDER "Examples/Controller")
+	target_link_libraries(SimpleDiscovery PRIVATE la_avdecc_controller_cxx)
+	cu_setup_executable_options(SimpleDiscovery)
+	set(_SD_DEPLOY_OPTS "")
+	if(APPLE)
+		set_target_properties(SimpleDiscovery PROPERTIES
+			MACOSX_BUNDLE TRUE
+			MACOSX_BUNDLE_INFO_PLIST "${CU_ROOT_DIR}/examples/data/SimpleDiscovery-Info.plist"
+		)
+		if(BUILD_AVDECC_INTERFACE_MAC_NCAP)
+			# SIMPLEDISCOVERY_PROVISION_PROFILE required for com.apple.developer.networking.custom-protocol entitlement, which is required to use the MacOSNCap ProtocolInterface. Print a warning if not set.
+			if(NOT SIMPLEDISCOVERY_PROVISION_PROFILE)
+				message(WARNING "SIMPLEDISCOVERY_PROVISION_PROFILE is not set. The SimpleDiscovery example may not work correctly on macOS without a valid provisioning profile.")
+			endif()
+			# Entitlements, profile, and identity are passed to cu_setup_deploy_runtime which handles everything
+			list(APPEND _SD_DEPLOY_OPTS CODESIGN_ENTITLEMENTS "${CU_ROOT_DIR}/examples/data/SimpleDiscovery.entitlements")
+			if(SIMPLEDISCOVERY_PROVISION_PROFILE)
+				list(APPEND _SD_DEPLOY_OPTS PROVISION_PROFILE "${SIMPLEDISCOVERY_PROVISION_PROFILE}")
+			endif()
+			if(SIMPLEDISCOVERY_SIGN_IDENTITY)
+				list(APPEND _SD_DEPLOY_OPTS CODESIGN_IDENTITY "${SIMPLEDISCOVERY_SIGN_IDENTITY}")
+			endif()
+		endif()
+	endif()
+	cu_setup_deploy_runtime(SimpleDiscovery ${INSTALL_EXAMPLE_FLAG} ${SIGN_FLAG} ${_SD_DEPLOY_OPTS})
+
 	if(ENABLE_AVDECC_FEATURE_JSON)
 		# EntityDumper
 		add_executable(EntityDumper entityDumper.cpp utils.cpp utils.hpp)

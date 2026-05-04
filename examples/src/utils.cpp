@@ -186,6 +186,7 @@ avdecc_protocol_interface_type_t chooseProtocolInterfaceType()
 
 		checkAndDisplayInterfaceType(avdecc_protocol_interface_type_pcap);
 		checkAndDisplayInterfaceType(avdecc_protocol_interface_type_macos_native);
+		checkAndDisplayInterfaceType(avdecc_protocol_interface_type_macos_ncap);
 		checkAndDisplayInterfaceType(avdecc_protocol_interface_type_proxy);
 
 		outputText("\n> ");
