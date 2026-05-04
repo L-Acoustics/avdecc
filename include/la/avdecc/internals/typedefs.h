@@ -136,6 +136,7 @@ enum avdecc_protocol_interface_type_e
 	avdecc_protocol_interface_type_virtual = 1u << 3, /**< Virtual protocol interface. */
 	avdecc_protocol_interface_type_serial = 1u << 4, /**< Serial port protocol interface. */
 	avdecc_protocol_interface_type_local = 1u << 5, /**< Local domain socket protocol interface. */
+	avdecc_protocol_interface_type_macos_ncap = 1u << 6, /**< macOS native API protocol interface using Network.framework NWEthernetChannel - Only usable on macOS 10.15+. */
 };
 
 /** Valid values for avdecc_protocol_interface_error_t */

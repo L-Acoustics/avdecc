@@ -194,7 +194,7 @@ if(BUILD_AVDECC_INTERFACE_PCAP)
 	endif()
 endif()
 
-# Mac Protocol interface
+# Mac Protocol interface (AudioVideoBridging)
 if(BUILD_AVDECC_INTERFACE_MAC)
 	list(APPEND SOURCE_FILES_PROTOCOL_INTERFACE
 		protocolInterface/protocolInterface_macNative.mm
@@ -204,6 +204,20 @@ if(BUILD_AVDECC_INTERFACE_MAC)
 	)
 	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_MAC")
 	list(APPEND ADD_LINK_LIBS "-framework AudioVideoBridging")
+endif()
+
+# Mac Protocol interface (Network.framework NWEthernetChannel)
+if(BUILD_AVDECC_INTERFACE_MAC_NCAP)
+	list(APPEND SOURCE_FILES_PROTOCOL_INTERFACE
+		protocolInterface/protocolInterface_macNCap.mm
+	)
+	list(APPEND HEADER_FILES_PROTOCOL_INTERFACE
+		protocolInterface/protocolInterface_macNCap.hpp
+	)
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_MAC_NCAP")
+	list(APPEND ADD_LINK_LIBS "-framework Network")
+	# Enable Automatic Reference Counting (ARC) for the Objective-C++ Network.framework implementation
+	set_source_files_properties(protocolInterface/protocolInterface_macNCap.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 endif()
 
 # Proxy Protocol interface

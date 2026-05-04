@@ -27,7 +27,8 @@ option(BUILD_AVDECC_SWIG "Build SWIG Wrapper." FALSE)
 option(BUILD_AVDECC_CONTROLLER "Build avdecc controller library." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP "Build the pcap protocol interface." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING "Pcap protocol interface uses dynamic shared library linking (instead of static linking)." TRUE)
-option(BUILD_AVDECC_INTERFACE_MAC "Build the macOS native protocol interface (macOS only)." TRUE)
+option(BUILD_AVDECC_INTERFACE_MAC "Build the macOS native protocol interface (AudioVideoBridging framework, macOS only)." TRUE)
+option(BUILD_AVDECC_INTERFACE_MAC_NCAP "Build the macOS native protocol interface based on Network.framework (NWEthernetChannel, macOS 10.15+ only)." FALSE)
 option(BUILD_AVDECC_INTERFACE_PROXY "Build the proxy protocol interface." FALSE)
 option(BUILD_AVDECC_INTERFACE_VIRTUAL "Build the virtual protocol interface (for unit tests)." TRUE)
 option(BUILD_AVDECC_INTERFACE_SERIAL "Build the serial protocol interface (macOS and linux only)." TRUE)
@@ -106,7 +107,7 @@ include(${CU_BASE_DIR}/ProjectProperties.cmake)
 cu_setup_project_version_variables(${LA_AVDECC_VERSION})
 
 # Set minimum OSX/iOS version
-cu_setup_apple_minimum_versions(MACOS 10.13)
+cu_setup_apple_minimum_versions(MACOS 10.15)
 
 ############ Check dependencies
 
@@ -130,6 +131,11 @@ if(NOT CMAKE_HOST_APPLE AND BUILD_AVDECC_INTERFACE_MAC)
 	set(BUILD_AVDECC_INTERFACE_MAC FALSE)
 endif()
 
+# Cannot build 'macOS Network.framework protocol interface' from non-macOS host
+if(NOT CMAKE_HOST_APPLE AND BUILD_AVDECC_INTERFACE_MAC_NCAP)
+	set(BUILD_AVDECC_INTERFACE_MAC_NCAP FALSE)
+endif()
+
 # Cannot build 'serial protocol interface' for Windows target
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND BUILD_AVDECC_INTERFACE_SERIAL)
 	set(BUILD_AVDECC_INTERFACE_SERIAL FALSE)
@@ -144,7 +150,7 @@ if(BUILD_AVDECC_INTERFACE_PROXY)
 	message(FATAL_ERROR "Proxy interface not supported yet.")
 endif()
 
-if(NOT BUILD_AVDECC_INTERFACE_PCAP AND NOT BUILD_AVDECC_INTERFACE_MAC AND NOT BUILD_AVDECC_INTERFACE_PROXY AND NOT BUILD_AVDECC_INTERFACE_VIRTUAL AND NOT BUILD_AVDECC_INTERFACE_SERIAL AND NOT BUILD_AVDECC_INTERFACE_LOCAL)
+if(NOT BUILD_AVDECC_INTERFACE_PCAP AND NOT BUILD_AVDECC_INTERFACE_MAC AND NOT BUILD_AVDECC_INTERFACE_MAC_NCAP AND NOT BUILD_AVDECC_INTERFACE_PROXY AND NOT BUILD_AVDECC_INTERFACE_VIRTUAL AND NOT BUILD_AVDECC_INTERFACE_SERIAL AND NOT BUILD_AVDECC_INTERFACE_LOCAL)
 	message(FATAL_ERROR "At least one valid protocol interface must be built.")
 endif()
 

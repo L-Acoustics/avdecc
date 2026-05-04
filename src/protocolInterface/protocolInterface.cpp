@@ -32,6 +32,9 @@
 #ifdef HAVE_PROTOCOL_INTERFACE_MAC
 #	include "protocolInterface/protocolInterface_macNative.hpp"
 #endif // HAVE_PROTOCOL_INTERFACE_MAC
+#ifdef HAVE_PROTOCOL_INTERFACE_MAC_NCAP
+#	include "protocolInterface/protocolInterface_macNCap.hpp"
+#endif // HAVE_PROTOCOL_INTERFACE_MAC_NCAP
 #ifdef HAVE_PROTOCOL_INTERFACE_PROXY
 #	error "Not implemented yet"
 #	include "protocolInterface/protocolInterface_proxy.hpp"
@@ -225,6 +228,10 @@ ProtocolInterface* LA_AVDECC_CALL_CONVENTION ProtocolInterface::createRawProtoco
 		case Type::MacOSNative:
 			return ProtocolInterfaceMacNative::createRawProtocolInterfaceMacNative(networkInterfaceID, executorName);
 #endif // HAVE_PROTOCOL_INTERFACE_MAC
+#if defined(HAVE_PROTOCOL_INTERFACE_MAC_NCAP)
+		case Type::MacOSNCap:
+			return ProtocolInterfaceMacNCap::createRawProtocolInterfaceMacNCap(networkInterfaceID, executorName);
+#endif // HAVE_PROTOCOL_INTERFACE_MAC_NCAP
 #if defined(HAVE_PROTOCOL_INTERFACE_PROXY)
 		case Type::Proxy:
 			AVDECC_ASSERT(false, "TODO: Proxy protocol interface to create");
@@ -264,6 +271,8 @@ std::string LA_AVDECC_CALL_CONVENTION ProtocolInterface::typeToString(Type const
 			return "Packet capture (PCap)";
 		case Type::MacOSNative:
 			return "macOS native";
+		case Type::MacOSNCap:
+			return "macOS NCap (Network.framework)";
 		case Type::Proxy:
 			return "IEEE Std 1722.1 network proxy";
 		case Type::Virtual:
@@ -298,6 +307,14 @@ ProtocolInterface::SupportedProtocolInterfaceTypes LA_AVDECC_CALL_CONVENTION Pro
 			s_supportedProtocolInterfaceTypes.set(Type::MacOSNative);
 		}
 #endif // HAVE_PROTOCOL_INTERFACE_MAC
+
+		// MacOSNCap (only supported on macOS 10.15+)
+#if defined(HAVE_PROTOCOL_INTERFACE_MAC_NCAP)
+		if (protocol::ProtocolInterfaceMacNCap::isSupported())
+		{
+			s_supportedProtocolInterfaceTypes.set(Type::MacOSNCap);
+		}
+#endif // HAVE_PROTOCOL_INTERFACE_MAC_NCAP
 
 		// Proxy
 #if defined(HAVE_PROTOCOL_INTERFACE_PROXY)
