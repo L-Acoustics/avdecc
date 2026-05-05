@@ -250,7 +250,7 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 {
 	bool shouldBreak{ true };
 	bool shouldAbort{ true };
-	const bool debugger = isDebuggerPresent();
+	auto const debugger = isDebuggerPresent();
 	try
 	{
 		char buffer[2048];
@@ -265,6 +265,8 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 			std::cerr << buffer << std::endl;
 #if defined(_WIN32)
 			OutputDebugString(buffer);
+#elif defined(__APPLE__)
+#elif defined(__unix__)
 #endif
 
 			if (offset < BufferLastCharOffset)
@@ -288,6 +290,8 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 			auto const value = MessageBox(nullptr, buffer, "Assert", MB_ABORTRETRYIGNORE | MB_ICONERROR);
 			shouldBreak = (value == IDRETRY);
 			shouldAbort = (value == IDABORT);
+#elif defined(__APPLE__)
+#elif defined(__unix__)
 #endif // _WIN32
 		}
 	}
@@ -301,7 +305,7 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 		DebugBreak();
 #elif defined(__APPLE__)
 		__builtin_trap();
-#elif defined(__linux)
+#elif defined(__unix__)
 		raise(SIGTRAP);
 #endif
 	}
