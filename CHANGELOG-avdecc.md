@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - New ProtocolInterface based on Network.framework (NWEthernetChannel) for macOS 10.15 and later
 
+### Changed
+- Add better debugger support for MacOs and Linux builds
+
 ## [4.3.1] - 2025-12-19
 ### Added
 - [Optional duration parameter for ExecutorManager::waitJobResponse method](https://github.com/L-Acoustics/avdecc/issues/193)
