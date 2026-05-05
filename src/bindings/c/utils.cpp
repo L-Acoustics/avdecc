@@ -153,6 +153,8 @@ avdecc_protocol_aem_aecpdu_t make_aem_aecpdu(protocol::AemAecpdu const& source) 
 		aecpdu.controller_entity_id = frame.getControllerEntityID();
 		aecpdu.sequence_id = frame.getSequenceID();
 		// AEM fields
+		aecpdu.unsolicited = frame.getUnsolicited() ? 1 : 0;
+		aecpdu.command_type = static_cast<avdecc_protocol_aem_command_type_t>(frame.getCommandType());
 		auto const [payload, payloadLength] = frame.getPayload();
 		aecpdu.command_specific_length = static_cast<decltype(aecpdu.command_specific_length)>(std::min(payloadLength, sizeof(aecpdu.command_specific)));
 		std::memcpy(aecpdu.command_specific, payload, aecpdu.command_specific_length);
