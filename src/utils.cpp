@@ -250,7 +250,7 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 {
 	bool shouldBreak{ true };
 	bool shouldAbort{ true };
-	const bool debugger = isDebuggerAttached();
+	const bool debugger = isDebuggerPresent();
 	try
 	{
 		char buffer[2048];
