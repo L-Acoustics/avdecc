@@ -262,11 +262,12 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 			offset += std::vsnprintf(buffer + offset, sizeof(buffer) - offset, message, arg);
 			buffer[BufferLastCharOffset] = 0; // Contrary to std::snprintf, std::vsnprintf does not add \0 if there is not enough room
 
-			std::cerr << buffer << std::endl;
 #if defined(_WIN32)
 			OutputDebugString(buffer);
 #elif defined(__APPLE__)
+			std::cerr << buffer << std::endl;
 #elif defined(__unix__)
+			std::cerr << buffer << std::endl;
 #endif
 
 			if (offset < BufferLastCharOffset)
@@ -290,8 +291,6 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 			auto const value = MessageBox(nullptr, buffer, "Assert", MB_ABORTRETRYIGNORE | MB_ICONERROR);
 			shouldBreak = (value == IDRETRY);
 			shouldAbort = (value == IDABORT);
-#elif defined(__APPLE__)
-#elif defined(__unix__)
 #endif // _WIN32
 		}
 	}
