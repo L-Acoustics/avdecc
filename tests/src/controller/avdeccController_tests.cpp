@@ -8069,3 +8069,46 @@ TEST_F(ValidateMappings_F, OutputMappingClusterChannelOutOfBounds)
 	auto const& dynamicMap = streamPortNode.dynamicModel.dynamicAudioMap;
 	EXPECT_EQ(initialSize, dynamicMap.size());
 }
+
+#ifdef ENABLE_AVDECC_FEATURE_CBR
+TEST_F(Controller_F, OnPreAdvertiseEntity_NullConfigNode_NoCrash)
+{
+	auto& controllerImpl = static_cast<la::avdecc::controller::ControllerImpl&>(getController());
+
+	// Load a talker entity that will be advertised and present in _controlledEntities
+	{
+		auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+		auto const [error, message] = getController().loadVirtualEntityFromJson("data/SimpleEntity.json", flags);
+		ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	}
+
+	// Create a new entity with AemSupported and TalkerCapability, but with a broken configuration
+	// (currentConfiguration points to index 1, but only config 0 exists)
+	// This results in getCurrentConfigurationNode() returning nullptr while hasAnyConfiguration() returns true
+	auto const entityID = la::avdecc::UniqueIdentifier{ 0xAABBCCDDEEFF0011 };
+	auto sharedLock = std::make_shared<la::avdecc::controller::ControlledEntityImpl::LockInformation>();
+	auto const commonInformation = la::avdecc::entity::Entity::CommonInformation{ entityID, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0u, la::avdecc::entity::TalkerCapabilities{ la::avdecc::entity::TalkerCapability::Implemented }, 1u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{}, std::nullopt, std::nullopt };
+	auto const interfaceInfo = la::avdecc::entity::Entity::InterfaceInformation{ la::networkInterface::MacAddress{}, 31u, 0u, std::nullopt, std::nullopt };
+	auto const e = la::avdecc::entity::Entity{ commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } } };
+	auto entityPtr = std::make_shared<la::avdecc::controller::ControlledEntityImpl>(e, sharedLock, true);
+
+	// Set entity descriptor with currentConfiguration = 1 (which won't exist in the tree)
+	entityPtr->setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ entityID, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0, la::avdecc::entity::TalkerCapabilities{ la::avdecc::entity::TalkerCapability::Implemented }, 1, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{}, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), std::string("Broken entity"), la::avdecc::entity::model::LocalizedStringReference{}, la::avdecc::entity::model::LocalizedStringReference{}, std::string("FW"), std::string("Group"), std::string("Serial"), 1, 1 });
+
+	// Add a configuration at index 0 (but currentConfiguration is set to 1 above)
+	entityPtr->setConfigurationDescriptor(la::avdecc::entity::model::ConfigurationDescriptor{ std::string("Config 0"), la::avdecc::entity::model::LocalizedStringReference{}, { { la::avdecc::entity::model::DescriptorType::StreamOutput, std::uint16_t{ 1 } } } }, 0);
+
+	// Sanity checks: hasAnyConfiguration() should be true but getCurrentConfigurationNode should be nullptr
+	ASSERT_TRUE(entityPtr->hasAnyConfiguration());
+	ASSERT_EQ(nullptr, entityPtr->getCurrentConfigurationNode(la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull));
+
+	// Lock the controller entity (required by onPreAdvertiseEntity assertion)
+	controllerImpl._controller->lock();
+
+	// Call onPreAdvertiseEntity - this should NOT crash even though controlledEntityConfigurationNode is nullptr
+	// Before the fix, this would segfault when the CBR code dereferences *controlledEntityConfigurationNode
+	EXPECT_NO_THROW(controllerImpl.onPreAdvertiseEntity(*entityPtr));
+
+	controllerImpl._controller->unlock();
+}
+#endif // ENABLE_AVDECC_FEATURE_CBR

@@ -5903,7 +5903,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 
 #ifdef ENABLE_AVDECC_FEATURE_CBR
 			// Channel Connections - Update entity that have connections to our Stream Outputs
-			if (configNode != nullptr)
+			if (controlledEntityConfigurationNode != nullptr && configNode != nullptr)
 			{
 				computeAndUpdateChannelConnectionsFromConfigurationNode(*entity, entityID, *controlledEntityConfigurationNode, configNode->channelConnections);
 			}
