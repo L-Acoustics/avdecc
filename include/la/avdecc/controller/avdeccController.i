@@ -382,12 +382,16 @@ private:
 DEFINE_ENUM_CLASS(la::avdecc::controller::CompileOption, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::controller::Controller::Error, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::controller::Controller::QueryCommandError, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::controller::Controller::InterfaceType, "uint")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
 %nspace la::avdecc::controller::CompileOptionInfo;
 %rename("%s") la::avdecc::controller::CompileOptionInfo; // Unignore class
+
+%nspace la::avdecc::controller::Controller::InterfaceConfiguration;
+%rename("%s") la::avdecc::controller::Controller::InterfaceConfiguration; // Unignore inner struct used by the dual-interface (cable redundancy) create overload
 
 %nspace la::avdecc::controller::Controller;
 %rename("%s") la::avdecc::controller::Controller; // Unignore class
@@ -408,6 +412,18 @@ public:
 		try
 		{
 			return std::unique_ptr<la::avdecc::controller::Controller>{ la::avdecc::controller::Controller::create(protocolInterfaceType, networkInterfaceID, progID, entityModelID, preferedLocale, entityModelTree, executorName, virtualEntityInterface).release() };
+		}
+		catch (la::avdecc::controller::Controller::Exception const& e)
+		{
+			SWIG_CSharpSetPendingExceptionController(e.getError(), e.what());
+			return nullptr;
+		}
+	}
+	static std::unique_ptr<la::avdecc::controller::Controller> createRedundant(std::vector<la::avdecc::controller::Controller::InterfaceConfiguration> const& interfaceConfigurations, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, entity::controller::Interface const* const virtualEntityInterface)
+	{
+		try
+		{
+			return std::unique_ptr<la::avdecc::controller::Controller>{ la::avdecc::controller::Controller::create(interfaceConfigurations, progID, entityModelID, preferedLocale, entityModelTree, virtualEntityInterface).release() };
 		}
 		catch (la::avdecc::controller::Controller::Exception const& e)
 		{
@@ -507,6 +523,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::controller::Controller::DefaultedObserver)
 
 // Define templates
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller, CompileOptions, CompileOption, std::uint32_t)
+%template("VectorInterfaceConfiguration") std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>;
 
 
 // Define C# exception handling
@@ -624,6 +641,7 @@ namespace la.avdecc.controller
 			InvalidEntityModel = 6, /**< Provided EntityModel is invalid. */
 			DuplicateExecutorName = 7, /**< Provided executor name already exists. */
 			UnknownExecutorName = 8, /**< Provided executor name doesn't exist. */
+			InvalidInterfaceConfiguration = 9, /**< The provided InterfaceConfiguration list is invalid (empty, more than 2 elements, or contains duplicate networkInterfaceID values). */
 			InternalError = 99, /**< Internal error, please report the issue. */
 		}
 		public ControllerException(Error error, string message)
