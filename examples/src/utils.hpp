@@ -97,6 +97,11 @@ void deinitOutput();
 void outputText(std::string const& str) noexcept;
 int getUserChoice();
 la::networkInterface::Interface chooseNetworkInterface();
+/** Prompt the user for an optional secondary network interface, excluding the primary one already chosen.
+ * @param[in] primary The interface already selected as primary (will be filtered out of the list).
+ * @return A valid interface if the user picked one; an interface whose type is Type::None if the user declined / no other interface is available.
+ */
+la::networkInterface::Interface chooseSecondaryNetworkInterface(la::networkInterface::Interface const& primary);
 #ifdef USE_BINDINGS_C
 avdecc_protocol_interface_type_t chooseProtocolInterfaceType();
 #else // !USE_BINDINGS_C

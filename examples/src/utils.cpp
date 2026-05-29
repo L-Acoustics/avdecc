@@ -27,15 +27,21 @@
 #include <memory>
 #include <vector>
 #include <functional>
+#include <fstream>
+#include <cstdlib>
+#include <iostream>
 
 #if defined(USE_CURSES)
 #	include <stdlib.h>
 #	include <locale.h>
 static WINDOW* s_Window = nullptr;
 static SCREEN* s_Screen = nullptr;
-#else // !USE_CURSES
-#	include <iostream>
 #endif // USE_CURSES
+
+// Optional log file mirror for outputText. Enabled by setting the AVDECC_EXAMPLE_LOG environment variable
+// to a destination file path. This allows capturing the full log when the example runs under curses
+// (where stdout is hijacked and the terminal cannot be scrolled).
+static std::ofstream s_LogFile;
 
 int getUserChoice()
 {
@@ -52,6 +58,20 @@ int getUserChoice()
 
 void initOutput()
 {
+	// Open the optional log file (mirror of outputText) if AVDECC_EXAMPLE_LOG is set.
+	if (auto const* logPath = std::getenv("AVDECC_EXAMPLE_LOG"); logPath != nullptr && logPath[0] != '\0')
+	{
+		s_LogFile.open(logPath, std::ios::out | std::ios::trunc);
+		if (s_LogFile.is_open())
+		{
+			// Inform the user on stderr (not captured by curses) where the log goes.
+			std::cerr << "[avdecc-example] Mirroring outputText to: " << logPath << std::endl;
+		}
+		else
+		{
+			std::cerr << "[avdecc-example] Failed to open log file: " << logPath << std::endl;
+		}
+	}
 #if defined(USE_CURSES)
 	auto term = getenv("TERM");
 	if (term == nullptr)
@@ -79,6 +99,11 @@ void deinitOutput()
 	else
 		endwin();
 #endif // USE_CURSES
+	if (s_LogFile.is_open())
+	{
+		s_LogFile.flush();
+		s_LogFile.close();
+	}
 }
 
 void outputText(std::string const& str) noexcept
@@ -95,6 +120,13 @@ void outputText(std::string const& str) noexcept
 		std::cout << str;
 		std::flush(std::cout);
 #endif // !USE_CURSES
+
+		// Mirror to log file when enabled (perennial way to capture output under curses).
+		if (s_LogFile.is_open())
+		{
+			s_LogFile << str;
+			s_LogFile.flush();
+		}
 	}
 	catch (...)
 	{
@@ -145,6 +177,50 @@ la::networkInterface::Interface chooseNetworkInterface()
 	return interfaces[index];
 }
 
+la::networkInterface::Interface chooseSecondaryNetworkInterface(la::networkInterface::Interface const& primary)
+{
+	// Enumerate available interfaces, excluding the one already selected as primary.
+	auto interfaces = std::vector<la::networkInterface::Interface>{};
+	la::networkInterface::NetworkInterfaceHelper::getInstance().enumerateInterfaces(
+		[&interfaces, &primary](la::networkInterface::Interface const& intfc)
+		{
+			if (intfc.isConnected && !intfc.isVirtual && intfc.id != primary.id)
+			{
+				interfaces.push_back(intfc);
+			}
+		});
+
+	if (interfaces.empty())
+	{
+		outputText("No additional network interface available for redundancy.\n");
+		return {};
+	}
+
+	outputText("Enable redundancy by selecting a SECONDARY interface (or 0 to skip):\n");
+	outputText("0: Skip (single-interface mode)\n");
+	auto intNum = 1u;
+	for (auto const& intfc : interfaces)
+	{
+		outputText(std::to_string(intNum) + ": " + intfc.alias + " (" + intfc.description + ")\n");
+		++intNum;
+	}
+	outputText("\n> ");
+
+	auto index = -1;
+	while (index == -1)
+	{
+		auto const c = getUserChoice();
+		if (c == 0)
+		{
+			return {};
+		}
+		if (c >= 1 && c <= static_cast<int>(interfaces.size()))
+		{
+			index = c - 1;
+		}
+	}
+	return interfaces[index];
+}
 #ifdef USE_BINDINGS_C
 template<typename ValueType>
 constexpr size_t countBits(ValueType const value) noexcept

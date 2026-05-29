@@ -183,6 +183,8 @@ class Discovery : public la::avdecc::controller::Controller::DefaultedObserver, 
 public:
 	/** Constructor/destructor/destroy */
 	Discovery(la::avdecc::protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale);
+	/** Dual-interface (redundancy) constructor. */
+	Discovery(std::vector<la::avdecc::controller::Controller::InterfaceConfiguration> const& interfaceConfigurations, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale);
 	~Discovery() noexcept override
 	{
 		la::avdecc::logger::Logger::getInstance().unregisterObserver(this);
@@ -205,6 +207,7 @@ private:
 	// la::avdecc::controller::Controller::Observer overrides
 	// Global notifications
 	virtual void onTransportError(la::avdecc::controller::Controller const* const controller) noexcept override;
+	virtual void onRedundantInterfaceTransportError(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept override;
 	virtual void onEntityQueryError(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::Controller::QueryCommandError const error) noexcept override;
 	// Discovery notifications (ADP)
 	virtual void onEntityOnline(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity) noexcept override;
@@ -256,6 +259,21 @@ Discovery::Discovery(la::avdecc::protocol::ProtocolInterface::Type const protoco
 #endif // LOAD_TEST_VIRTUAL_ENTITY_FROM_AEM
 }
 
+Discovery::Discovery(std::vector<la::avdecc::controller::Controller::InterfaceConfiguration> const& interfaceConfigurations, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale)
+	: _controller(la::avdecc::controller::Controller::create(interfaceConfigurations, progID, entityModelID, preferedLocale, nullptr, nullptr))
+{
+	// Register observers
+	la::avdecc::logger::Logger::getInstance().registerObserver(this);
+	_controller->registerObserver(this);
+	// Start controller advertising
+	_controller->enableEntityAdvertising(10);
+	// Enable aem caching and fast enum
+	_controller->enableEntityModelCache();
+	_controller->enableFastEnumeration();
+	// Set default log level
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Trace);
+}
+
 std::string Discovery::flagsToString(la::avdecc::controller::ControlledEntity::CompatibilityFlags const compatibilityFlags) const noexcept
 {
 	auto str = std::string{};
@@ -287,6 +305,12 @@ void Discovery::onTransportError(la::avdecc::controller::Controller const* const
 	outputText("Fatal error on transport layer\n");
 }
 
+void Discovery::onRedundantInterfaceTransportError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept
+{
+	auto const piName = (interfaceType == la::avdecc::controller::Controller::InterfaceType::Primary) ? "Primary" : "Secondary";
+	outputText(std::string{ "Transport error on " } + piName + " interface (redundancy: other interface still operational)\n");
+}
+
 void Discovery::onEntityQueryError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* entity, la::avdecc::controller::Controller::QueryCommandError const error) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
@@ -303,6 +327,7 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 		if (vendorID == VENDOR_ID)
 		{
 			outputText("New LA unit online: " + la::avdecc::utils::toHexString(entityID, true) + " (Compatibility: " + flagsToString(entity->getCompatibilityFlags()) + ")\n");
+#if 0
 			_controller->acquireEntity(entity->getEntity().getEntityID(), false,
 				[](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const /*owningEntity*/) noexcept
 				{
@@ -316,6 +341,7 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 				{
 					outputText("setSystemUniqueID response: " + la::avdecc::entity::ControllerEntity::statusToString(status) + "\n");
 				});
+#endif
 		}
 		else if (entity->getEntity().getTalkerCapabilities().test(la::avdecc::entity::TalkerCapability::Implemented))
 		{
@@ -326,6 +352,7 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 			outputText("New unknown entity online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
 		}
 
+#if 0
 		// Get PNG Manufacturer image
 		auto const& configNode = entity->getCurrentConfigurationNode();
 		for (auto const& objIt : configNode.memoryObjects)
@@ -355,6 +382,7 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 					});
 			}
 		}
+#endif
 	}
 	else
 	{
@@ -510,19 +538,42 @@ int doJob()
 	{
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "', discovery active:\n");
 
-		// Create a discovery object
+		// Optionally enable redundancy by selecting a secondary network interface.
+		auto const secondaryIntfc = chooseSecondaryNetworkInterface(intfc);
+		auto const useDualInterface = (secondaryIntfc.type != la::networkInterface::Interface::Type::None);
+		if (useDualInterface)
 		{
-			auto discovery = Discovery{ protocolInterfaceType, intfc.id, 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en" };
-			std::this_thread::sleep_for(std::chrono::seconds(10));
-			outputText("Destroying discovery object\n");
+			outputText("Secondary interface '" + secondaryIntfc.alias + "' selected; redundancy enabled.\n");
 		}
 
-		// Create another one
+		auto const buildInterfaceConfigurations = [&]()
 		{
-			auto discovery = Discovery{ protocolInterfaceType, intfc.id, 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en" };
-			std::this_thread::sleep_for(std::chrono::seconds(1500));
+			auto configs = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
+			configs.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ protocolInterfaceType, intfc.id, std::nullopt });
+			configs.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ protocolInterfaceType, secondaryIntfc.id, std::nullopt });
+			return configs;
+		};
+
+		auto const runDiscoveryFor = [&](std::chrono::seconds const duration)
+		{
+			if (useDualInterface)
+			{
+				auto discovery = Discovery{ buildInterfaceConfigurations(), 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en" };
+				std::this_thread::sleep_for(duration);
+			}
+			else
+			{
+				auto discovery = Discovery{ protocolInterfaceType, intfc.id, 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en" };
+				std::this_thread::sleep_for(duration);
+			}
 			outputText("Destroying discovery object\n");
-		}
+		};
+
+		// Create a discovery object
+		//runDiscoveryFor(std::chrono::seconds(10));
+
+		// Create another one
+		runDiscoveryFor(std::chrono::seconds(1500));
 	}
 	catch (la::avdecc::controller::Controller::Exception const& e)
 	{
