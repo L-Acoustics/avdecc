@@ -842,6 +842,14 @@ private:
 	}
 
 	void runJobOnExecutorAndWait(la::avdecc::ExecutorManager& executor, std::string const& exName, Executor::Job&& job) const noexcept;
+	/** Returns true if the primary ControllerEntity is self-locked, or (in dual-PI mode) if the secondary one is.
+	 * This is used by network-thread assertions: in dual-PI mode, a callback may originate from the secondary PI's
+	 * network thread, in which case only the secondary's lock is held.
+	 */
+	bool isAnyControllerEntitySelfLocked() const noexcept
+	{
+		return (_controller != nullptr && _controller->isSelfLocked()) || (_secondaryController != nullptr && _secondaryController->isSelfLocked());
+	}
 
 	/* ************************************************************ */
 	/* Private members                                              */

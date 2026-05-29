@@ -1066,7 +1066,7 @@ void ControllerImpl::onAecpRetry(entity::controller::Interface const* const /*co
 	{
 		auto& entity = *controlledEntity;
 
-		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+		AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 		auto const value = entity.incrementAecpRetryCounter();
 
@@ -1087,7 +1087,7 @@ void ControllerImpl::onAecpTimeout(entity::controller::Interface const* const /*
 	{
 		auto& entity = *controlledEntity;
 
-		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+		AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 		auto const value = entity.incrementAecpTimeoutCounter();
 
@@ -1108,7 +1108,7 @@ void ControllerImpl::onAecpUnexpectedResponse(entity::controller::Interface cons
 	{
 		auto& entity = *controlledEntity;
 
-		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+		AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 		auto const value = entity.incrementAecpUnexpectedResponseCounter();
 
@@ -1129,7 +1129,7 @@ void ControllerImpl::onAecpResponseTime(entity::controller::Interface const* con
 	{
 		auto& entity = *controlledEntity;
 
-		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+		AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 		auto const& previous = entity.getAecpResponseAverageTime();
 		auto const& value = entity.updateAecpResponseTimeAverage(responseTime);
@@ -1151,7 +1151,7 @@ void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entit
 	{
 		auto& entity = *controlledEntity;
 
-		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+		AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 		// Check for loss of unsolicited notification
 		if (hasLostUnsolicitedNotification(entity, sequenceID))
