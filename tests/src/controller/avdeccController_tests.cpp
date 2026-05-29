@@ -33,6 +33,7 @@
 // Internal API
 #include "controller/avdeccControlledEntityImpl.hpp"
 #include "controller/avdeccControllerImpl.hpp"
+#include "controller/avdeccControllerProxy.hpp"
 #include "entity/controllerEntityImpl.hpp"
 #include "la/avdecc/internals/entityModelTreeCommon.hpp"
 #include "la/avdecc/internals/entityModelTypes.hpp"
@@ -47,6 +48,8 @@
 #include <vector>
 #include <cstdint>
 #include <functional>
+#include <atomic>
+#include <optional>
 
 static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
 
@@ -986,7 +989,7 @@ TEST_F(Controller_F, BadArgumentsIfTooManyMappingsPassed)
 
 /*
  * TESTING https://github.com/L-Acoustics/avdecc/issues/85
- * Controller should properly handle cable redundancy
+ * Controller should properly handle redundancy
  */
 TEST(Controller, AdpduFromSameDeviceDifferentInterfaces)
 {
@@ -1040,8 +1043,501 @@ TEST(Controller, AdpduFromSameDeviceDifferentInterfaces)
 }
 
 /*
+ * Redundancy: when a controller is created with two ProtocolInterfaces (Primary + Secondary),
+ * a single Entity sending ADP on both physical interfaces must be reported as a single ControlledEntity
+ * and onEntityOnline must fire exactly once upstream (no duplicate notification).
+ * Verifies that the ControllerImpl delegate de-duplication path correctly suppresses the second PI's
+ * onEntityOnline by routing it through the update path.
+ */
+TEST(Controller, DualInterfaceAdpDeduplicationAcrossPhysicalInterfaces)
+{
+	static auto constexpr PrimaryBusName = "DualPIBus_Primary";
+	static auto constexpr SecondaryBusName = "DualPIBus_Secondary";
+
+	auto onlineCount = std::atomic<std::uint32_t>{ 0u };
+	auto offlineCount = std::atomic<std::uint32_t>{ 0u };
+	constexpr auto EntityID = la::avdecc::UniqueIdentifier{ 0x00CAFEBABE000001 };
+
+	class Obs final : public la::avdecc::controller::Controller::DefaultedObserver
+	{
+	public:
+		Obs(std::atomic<std::uint32_t>& onlineCounter, std::atomic<std::uint32_t>& offlineCounter, la::avdecc::UniqueIdentifier const watchedEntityID) noexcept
+			: _onlineCounter{ onlineCounter }
+			, _offlineCounter{ offlineCounter }
+			, _watchedEntityID{ watchedEntityID }
+		{
+		}
+
+	private:
+		virtual void onEntityOnline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity) noexcept override
+		{
+			if (entity->getEntity().getEntityID() == _watchedEntityID)
+			{
+				++_onlineCounter;
+			}
+		}
+		virtual void onEntityOffline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity) noexcept override
+		{
+			if (entity->getEntity().getEntityID() == _watchedEntityID)
+			{
+				++_offlineCounter;
+			}
+		}
+
+		std::atomic<std::uint32_t>& _onlineCounter;
+		std::atomic<std::uint32_t>& _offlineCounter;
+		la::avdecc::UniqueIdentifier const _watchedEntityID;
+		DECLARE_AVDECC_OBSERVER_GUARD(Obs);
+	};
+
+	// Register two distinct executors so the dual-interface controller can use one per interface (each provided executor name must already exist).
+	auto const executorWrapperA = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPI_ExecutorA", la::avdecc::ExecutorWithDispatchQueue::create("DualPI_ExecutorA", la::avdecc::utils::ThreadPriority::Highest));
+	auto const executorWrapperB = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPI_ExecutorB", la::avdecc::ExecutorWithDispatchQueue::create("DualPI_ExecutorB", la::avdecc::utils::ThreadPriority::Highest));
+
+	// Create a dual-interface controller (2 virtual protocol interfaces on distinct virtual buses).
+	auto interfaceConfigurations = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ "DualPI_ExecutorA" } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ "DualPI_ExecutorB" } });
+	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0002, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
+
+	auto obs = Obs{ onlineCount, offlineCount, EntityID };
+	controller->registerObserver(&obs);
+
+	// Helper that sends an ADP::EntityAvailable on a specific virtual bus.
+	auto const sendAdpAvailableOnBus = [gPTP = controller->getControllerEID(), EntityID](char const* const busName, la::avdecc::entity::model::AvbInterfaceIndex const interfaceIndex)
+	{
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(busName, { { static_cast<la::networkInterface::MacAddress::value_type>(0xA0 + interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }, "DualPI_ExecutorA"));
+
+		auto adpdu = la::avdecc::protocol::Adpdu{};
+		adpdu.setSrcAddress(intfc->getMacAddress());
+		adpdu.setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
+		adpdu.setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
+		adpdu.setValidTime(2);
+		adpdu.setEntityID(EntityID);
+		adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+		adpdu.setEntityCapabilities(la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemInterfaceIndexValid, la::avdecc::entity::EntityCapability::GptpSupported });
+		adpdu.setTalkerStreamSources(0);
+		adpdu.setTalkerCapabilities({});
+		adpdu.setListenerStreamSinks(0);
+		adpdu.setListenerCapabilities({});
+		adpdu.setControllerCapabilities(la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented });
+		adpdu.setAvailableIndex(1);
+		adpdu.setGptpGrandmasterID(gPTP);
+		adpdu.setGptpDomainNumber(0);
+		adpdu.setIdentifyControlIndex(0);
+		adpdu.setInterfaceIndex(interfaceIndex);
+		adpdu.setAssociationID(la::avdecc::UniqueIdentifier{});
+
+		intfc->sendAdpMessage(adpdu);
+
+		// Give the controller time to consume the message before destroying the sending interface.
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	};
+
+	// Simulate the same entity being seen on the Primary bus first, then on the Secondary bus.
+	sendAdpAvailableOnBus(PrimaryBusName, la::avdecc::entity::model::AvbInterfaceIndex{ 0 });
+	sendAdpAvailableOnBus(SecondaryBusName, la::avdecc::entity::model::AvbInterfaceIndex{ 1 });
+
+	// A single ControlledEntity must exist (no duplicate insertion across PIs), with both interfaces merged.
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		// In dual-PI mode, ControllerImpl::onEntityUpdate merges the new PI's InterfacesInformation with the already-known one.
+		EXPECT_EQ(2u, entity->getEntity().getInterfacesInformation().size());
+	}
+
+	// onEntityOnline must be delivered exactly once upstream even though both PIs saw the entity.
+	EXPECT_EQ(1u, onlineCount.load());
+	// And no spurious offline notification while at least one PI still sees the entity.
+	EXPECT_EQ(0u, offlineCount.load());
+}
+
+/*
+ * Auto-retry policy contract: ControllerVirtualProxy::shouldRetry must return true exactly for the
+ * transport-class errors that justify falling back to the other physical interface in dual-PI mode,
+ * and false for any user/protocol-level failure (so genuine protocol errors are not silently masked).
+ */
+TEST(Controller, RetryPolicyMatchesSpecification)
+{
+	using Proxy = la::avdecc::controller::ControllerVirtualProxy;
+	using AemStatus = la::avdecc::entity::ControllerEntity::AemCommandStatus;
+	using AaStatus = la::avdecc::entity::ControllerEntity::AaCommandStatus;
+	using MvuStatus = la::avdecc::entity::ControllerEntity::MvuCommandStatus;
+	using AcmpStatus = la::avdecc::entity::ControllerEntity::ControlStatus;
+
+	// AEM: retry on TimedOut / UnknownEntity / NetworkError
+	EXPECT_TRUE(Proxy::shouldRetry(AemStatus::TimedOut));
+	EXPECT_TRUE(Proxy::shouldRetry(AemStatus::UnknownEntity));
+	EXPECT_TRUE(Proxy::shouldRetry(AemStatus::NetworkError));
+	EXPECT_FALSE(Proxy::shouldRetry(AemStatus::Success));
+	EXPECT_FALSE(Proxy::shouldRetry(AemStatus::NotImplemented));
+	EXPECT_FALSE(Proxy::shouldRetry(AemStatus::NotSupported));
+
+	// AA: same transport-class retry set
+	EXPECT_TRUE(Proxy::shouldRetry(AaStatus::TimedOut));
+	EXPECT_TRUE(Proxy::shouldRetry(AaStatus::UnknownEntity));
+	EXPECT_TRUE(Proxy::shouldRetry(AaStatus::NetworkError));
+	EXPECT_FALSE(Proxy::shouldRetry(AaStatus::Success));
+
+	// MVU: same transport-class retry set
+	EXPECT_TRUE(Proxy::shouldRetry(MvuStatus::TimedOut));
+	EXPECT_TRUE(Proxy::shouldRetry(MvuStatus::UnknownEntity));
+	EXPECT_TRUE(Proxy::shouldRetry(MvuStatus::NetworkError));
+	EXPECT_FALSE(Proxy::shouldRetry(MvuStatus::Success));
+
+	// ACMP: retry on TimedOut / ListenerUnknownID / TalkerUnknownID / NetworkError
+	EXPECT_TRUE(Proxy::shouldRetry(AcmpStatus::TimedOut));
+	EXPECT_TRUE(Proxy::shouldRetry(AcmpStatus::ListenerUnknownID));
+	EXPECT_TRUE(Proxy::shouldRetry(AcmpStatus::TalkerUnknownID));
+	EXPECT_TRUE(Proxy::shouldRetry(AcmpStatus::NetworkError));
+	EXPECT_FALSE(Proxy::shouldRetry(AcmpStatus::Success));
+	EXPECT_FALSE(Proxy::shouldRetry(AcmpStatus::TalkerNoBandwidth));
+}
+
+/*
+ * Redundancy transport-error handling: when one physical interface fires onTransportError while the other
+ * is still up, the controller must escalate it as the *redundant* notification (onRedundantInterfaceTransportError)
+ * and NOT as the global onTransportError (which would cause the controller to be treated as fully dead).
+ */
+TEST(Controller, DualInterfaceTransportErrorIsRedundantNotFatal)
+{
+	static auto constexpr PrimaryBusName = "DualPIError_Primary";
+	static auto constexpr SecondaryBusName = "DualPIError_Secondary";
+
+	auto redundantErrorCount = std::atomic<std::uint32_t>{ 0u };
+	auto fatalErrorCount = std::atomic<std::uint32_t>{ 0u };
+	auto failingInterface = std::atomic<int>{ -1 };
+
+	class Obs final : public la::avdecc::controller::Controller::DefaultedObserver
+	{
+	public:
+		Obs(std::atomic<std::uint32_t>& redundantCounter, std::atomic<std::uint32_t>& fatalCounter, std::atomic<int>& failingPi) noexcept
+			: _redundantCounter{ redundantCounter }
+			, _fatalCounter{ fatalCounter }
+			, _failingPi{ failingPi }
+		{
+		}
+
+	private:
+		virtual void onTransportError(la::avdecc::controller::Controller const* const /*controller*/) noexcept override
+		{
+			++_fatalCounter;
+		}
+		virtual void onRedundantInterfaceTransportError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept override
+		{
+			++_redundantCounter;
+			_failingPi.store(static_cast<int>(interfaceType));
+		}
+
+		std::atomic<std::uint32_t>& _redundantCounter;
+		std::atomic<std::uint32_t>& _fatalCounter;
+		std::atomic<int>& _failingPi;
+		DECLARE_AVDECC_OBSERVER_GUARD(Obs);
+	};
+
+	auto const executorWrapperA = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPIError_ExecutorA", la::avdecc::ExecutorWithDispatchQueue::create("DualPIError_ExecutorA", la::avdecc::utils::ThreadPriority::Highest));
+	auto const executorWrapperB = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPIError_ExecutorB", la::avdecc::ExecutorWithDispatchQueue::create("DualPIError_ExecutorB", la::avdecc::utils::ThreadPriority::Highest));
+
+	auto interfaceConfigurations = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ "DualPIError_ExecutorA" } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ "DualPIError_ExecutorB" } });
+	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0003, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
+
+	auto obs = Obs{ redundantErrorCount, fatalErrorCount, failingInterface };
+	controller->registerObserver(&obs);
+
+	// Inject a transport error on the Primary virtual bus by sending an empty packet through a side PI on the same bus.
+	// ProtocolInterfaceVirtual::forceTransportError() broadcasts to all observers on the bus (including the controller's primary PI).
+	{
+		auto sidePi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(PrimaryBusName, { { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF } }, "DualPIError_ExecutorA"));
+		sidePi->forceTransportError();
+		// Give the bus a moment to dispatch the notification.
+		std::this_thread::sleep_for(std::chrono::milliseconds(150));
+	}
+
+	// The Primary PI must be reported as a redundant (non-fatal) transport error; no global onTransportError yet.
+	EXPECT_EQ(1u, redundantErrorCount.load());
+	EXPECT_EQ(0u, fatalErrorCount.load());
+	EXPECT_EQ(static_cast<int>(la::avdecc::controller::Controller::InterfaceType::Primary), failingInterface.load());
+}
+
+/*
+ * Dual-PI creation with both executorName fields left as std::nullopt must succeed: the controller is expected to
+ * transparently allocate distinct per-PI executors instead of letting both EndStations collide on the default
+ * executor name (which previously raised "Executor already exists").
+ */
+TEST(Controller, DualInterfaceCreateWithDefaultExecutorsDoesNotCollide)
+{
+	static auto constexpr PrimaryBusName = "DualPINoExec_Primary";
+	static auto constexpr SecondaryBusName = "DualPINoExec_Secondary";
+
+	auto interfaceConfigurations = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::nullopt });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::nullopt });
+
+	// Must not throw "Executor already exists" / DuplicateExecutorName.
+	auto controller = la::avdecc::controller::Controller::UniquePointer{ nullptr, nullptr };
+	ASSERT_NO_THROW(controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0004, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr));
+	ASSERT_NE(nullptr, controller);
+	// Both PI EIDs must be valid (non-default). EID-distinctness is governed by the underlying NIC MACs and is
+	// therefore environment-dependent; here we only assert that the controller successfully spun up both PIs.
+	EXPECT_TRUE(controller->getControllerEID(la::avdecc::controller::Controller::InterfaceType::Primary));
+	EXPECT_TRUE(controller->getControllerEID(la::avdecc::controller::Controller::InterfaceType::Secondary));
+}
+
+/*
+ * Verifies that the retry layer does NOT fall back to the other PI when the target entity is not actually reachable
+ * on that other PI. Without this safeguard, a legitimate failure (e.g. TimedOut, BadArguments, NotImplemented coming
+ * back from the one PI that actually saw the entity) could be silently rewritten as "UnknownEntity" returned by the
+ * other PI (which never discovered the target). This test pokes directly at @ref ControllerVirtualProxy::otherReachableInterface,
+ * the helper used by the retry layer to decide whether to retry.
+ *
+ * Scenarios:
+ *  - Single-PI: never returns a fallback.
+ *  - Dual-PI, entity unknown on both PIs: no fallback.
+ *  - Dual-PI, entity reachable only on PI1 (sender=PI1): no fallback (PI2 doesn't know the entity).
+ *  - Dual-PI, entity reachable only on PI2 (sender=PI1): fallback to PI2.
+ *  - Dual-PI, entity reachable on both (sender=PI1): fallback to PI2.
+ */
+TEST(Controller, RetryFallbackOnlyIfEntityReachableOnOtherPi)
+{
+	static auto constexpr BusName = "OtherReachable_Bus";
+	auto const wrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor("OtherReachable_Executor", la::avdecc::ExecutorWithDispatchQueue::create("OtherReachable_Executor", la::avdecc::utils::ThreadPriority::Highest));
+
+	auto pi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(BusName, { { 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC } }, "OtherReachable_Executor"));
+
+	// Use synthetic Interface pointers: ControllerVirtualProxy::otherReachableInterface only compares pointer identities,
+	// it never dereferences them. This keeps the test focused purely on the routing decision.
+	auto* const primaryIfc = reinterpret_cast<la::avdecc::entity::controller::Interface const*>(static_cast<std::uintptr_t>(0x1));
+	auto* const secondaryIfc = reinterpret_cast<la::avdecc::entity::controller::Interface const*>(static_cast<std::uintptr_t>(0x2));
+	auto* const virtualIfc = reinterpret_cast<la::avdecc::entity::controller::Interface const*>(static_cast<std::uintptr_t>(0x3));
+	auto const eid = la::avdecc::UniqueIdentifier{ 0x0011223344556677ULL };
+
+	// Single-PI proxy: no fallback ever.
+	{
+		auto const single = la::avdecc::controller::ControllerVirtualProxy{ pi.get(), primaryIfc, virtualIfc };
+		EXPECT_EQ(nullptr, single.otherReachableInterface(eid, primaryIfc));
+	}
+
+	// Dual-PI proxy: fallback gated by reachability on the other PI.
+	auto dual = la::avdecc::controller::ControllerVirtualProxy{ pi.get(), primaryIfc, secondaryIfc, virtualIfc };
+
+	// Entity unknown on both PIs: no fallback.
+	EXPECT_EQ(nullptr, dual.otherReachableInterface(eid, primaryIfc));
+	EXPECT_EQ(nullptr, dual.otherReachableInterface(eid, secondaryIfc));
+
+	// Entity reachable only on Primary; sender=Primary → no fallback (Secondary doesn't know it).
+	dual.setEntityReachable(eid, la::avdecc::controller::Controller::InterfaceType::Primary, true);
+	EXPECT_EQ(nullptr, dual.otherReachableInterface(eid, primaryIfc));
+	// And sender=Secondary should fallback to Primary (which does have it).
+	EXPECT_EQ(primaryIfc, dual.otherReachableInterface(eid, secondaryIfc));
+
+	// Entity reachable only on Secondary; sender=Primary → fallback to Secondary.
+	dual.setEntityReachable(eid, la::avdecc::controller::Controller::InterfaceType::Primary, false);
+	dual.setEntityReachable(eid, la::avdecc::controller::Controller::InterfaceType::Secondary, true);
+	EXPECT_EQ(secondaryIfc, dual.otherReachableInterface(eid, primaryIfc));
+	EXPECT_EQ(nullptr, dual.otherReachableInterface(eid, secondaryIfc));
+
+	// Entity reachable on both; sender=Primary → fallback to Secondary, sender=Secondary → fallback to Primary.
+	dual.setEntityReachable(eid, la::avdecc::controller::Controller::InterfaceType::Primary, true);
+	EXPECT_EQ(secondaryIfc, dual.otherReachableInterface(eid, primaryIfc));
+	EXPECT_EQ(primaryIfc, dual.otherReachableInterface(eid, secondaryIfc));
+}
+
+TEST(Controller, UnsolPerInterfaceStateMachine)
+{
+	using IfcType = la::avdecc::controller::Controller::InterfaceType;
+	using UnsolState = la::avdecc::controller::ControllerVirtualProxy::UnsolState;
+
+	static auto constexpr BusName = "UnsolPI_Bus";
+	auto const wrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor("UnsolPI_Executor", la::avdecc::ExecutorWithDispatchQueue::create("UnsolPI_Executor", la::avdecc::utils::ThreadPriority::Highest));
+
+	auto pi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(BusName, { { 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBD } }, "UnsolPI_Executor"));
+
+	auto* const primaryIfc = reinterpret_cast<la::avdecc::entity::controller::Interface const*>(static_cast<std::uintptr_t>(0x1));
+	auto* const secondaryIfc = reinterpret_cast<la::avdecc::entity::controller::Interface const*>(static_cast<std::uintptr_t>(0x2));
+	auto* const virtualIfc = reinterpret_cast<la::avdecc::entity::controller::Interface const*>(static_cast<std::uintptr_t>(0x3));
+	auto const eid = la::avdecc::UniqueIdentifier{ 0x00aabbccddeeff00ULL };
+
+	auto dual = la::avdecc::controller::ControllerVirtualProxy{ pi.get(), primaryIfc, secondaryIfc, virtualIfc };
+
+	// Initially the entity is unknown: setEntityReachable returns true on the very first false→true on each PI.
+	EXPECT_TRUE(dual.setEntityReachable(eid, IfcType::Primary, true));
+	EXPECT_FALSE(dual.setEntityReachable(eid, IfcType::Primary, true)); // No transition.
+	EXPECT_TRUE(dual.setEntityReachable(eid, IfcType::Secondary, true));
+
+	// Unsol state defaults to NotRegistered for both PIs.
+	EXPECT_EQ(UnsolState::NotRegistered, dual.getUnsolState(eid, IfcType::Primary));
+	EXPECT_EQ(UnsolState::NotRegistered, dual.getUnsolState(eid, IfcType::Secondary));
+
+	// tryClaimUnsolPending: only the first caller wins the transition NotRegistered → Pending.
+	EXPECT_TRUE(dual.tryClaimUnsolPending(eid, IfcType::Primary));
+	EXPECT_EQ(UnsolState::Pending, dual.getUnsolState(eid, IfcType::Primary));
+	EXPECT_FALSE(dual.tryClaimUnsolPending(eid, IfcType::Primary)); // Already Pending.
+	EXPECT_FALSE(dual.tryClaimUnsolPending(eid, IfcType::Primary)); // Still Pending.
+
+	// Marking Registered: subsequent tryClaim must remain false (no duplicate register on a Registered PI).
+	dual.setUnsolState(eid, IfcType::Primary, UnsolState::Registered);
+	EXPECT_EQ(UnsolState::Registered, dual.getUnsolState(eid, IfcType::Primary));
+	EXPECT_FALSE(dual.tryClaimUnsolPending(eid, IfcType::Primary));
+
+	// Secondary PI state machine is independent of Primary.
+	EXPECT_EQ(UnsolState::NotRegistered, dual.getUnsolState(eid, IfcType::Secondary));
+	EXPECT_TRUE(dual.tryClaimUnsolPending(eid, IfcType::Secondary));
+	dual.setUnsolState(eid, IfcType::Secondary, UnsolState::Registered);
+
+	// Reachability loss on a PI resets that PI's unsol state to NotRegistered (so the next time the PI comes back, we re-register).
+	EXPECT_FALSE(dual.setEntityReachable(eid, IfcType::Primary, false)); // No false→true transition here.
+	EXPECT_EQ(UnsolState::NotRegistered, dual.getUnsolState(eid, IfcType::Primary));
+	EXPECT_EQ(UnsolState::Registered, dual.getUnsolState(eid, IfcType::Secondary)); // The other PI is unaffected.
+
+	// PI comes back: transition returns true, state allows a fresh registration claim.
+	EXPECT_TRUE(dual.setEntityReachable(eid, IfcType::Primary, true));
+	EXPECT_TRUE(dual.tryClaimUnsolPending(eid, IfcType::Primary));
+
+	// On unknown entity, tryClaimUnsolPending returns false (no per-(eid, PI) record exists yet).
+	auto const otherEid = la::avdecc::UniqueIdentifier{ 0x1111111111111111ULL };
+	EXPECT_FALSE(dual.tryClaimUnsolPending(otherEid, IfcType::Primary));
+	EXPECT_EQ(UnsolState::NotRegistered, dual.getUnsolState(otherEid, IfcType::Primary));
+}
+
+/*
+ * Regression test for the per-PI expected-sequenceID tracking and its reset on (re-)registration.
+ *
+ * Pre-fix bug: ControlledEntityImpl owned a single `_expectedAemSequenceID` shared between both PIs. In dual-PI mode the
+ * lib registers two independent subscribers on the entity (one per PI's controller-EID), so each PI carries its own
+ * sequence-number space. Mixing them caused a fresh seqID=0 from the second PI to be misinterpreted as a lost notification
+ * once the first PI had already advanced the shared counter.
+ *
+ * Second pre-fix bug: after a PI flap, the entity restarts its per-controller-EID sequence numbering at 0 on the
+ * re-subscription, but the controller still held the pre-flap expected value (e.g. 31). The first post-re-register
+ * unsol (seqID=0) was therefore mis-reported as a loss → spurious DEREGISTER_UNSOLICITED_NOTIFICATION. The fix:
+ * resetExpectedUnsolicitedSequenceID(interfaceIndex) called on successful (re-)registration.
+ */
+TEST(ControlledEntity, PerInterfaceUnsolicitedSequenceTracking)
+{
+	static auto constexpr PrimaryIdx = la::avdecc::controller::Controller::InterfaceType::Primary;
+	static auto constexpr SecondaryIdx = la::avdecc::controller::Controller::InterfaceType::Secondary;
+
+	auto sharedLock = std::make_shared<la::avdecc::controller::ControlledEntityImpl::LockInformation>();
+	auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
+	auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::networkInterface::MacAddress{}, 31u, 0u, std::nullopt, std::nullopt } };
+	auto const e{ la::avdecc::entity::Entity{ commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } } } };
+	auto entity = la::avdecc::controller::ControlledEntityImpl{ e, sharedLock, false };
+
+	// Loss detection only triggers for Milan v1+ subscribers. Set the necessary preconditions.
+	entity.setMilanInfo(la::avdecc::entity::model::MilanInfo{ /*protocolVersion*/ 1u, {}, la::avdecc::entity::model::MilanVersion{ 1, 0 }, la::avdecc::entity::model::MilanVersion{ 1, 0 } });
+	entity.setSubscribedToUnsolicitedNotifications(true);
+
+	// 1) Independence between Primary and Secondary sequence spaces: each PI starts uninitialized; the first message on each PI must be accepted as the baseline (no loss).
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 0u }, PrimaryIdx));
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 1u }, PrimaryIdx));
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 2u }, PrimaryIdx));
+	// Secondary still uninitialized: a fresh seqID=0 must NOT be misinterpreted as a loss just because Primary advanced.
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 0u }, SecondaryIdx));
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 1u }, SecondaryIdx));
+
+	// 2) A real gap on Primary is detected (expected 3, got 10) and Primary's slot resyncs to next-expected=11.
+	EXPECT_TRUE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 10u }, PrimaryIdx));
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 11u }, PrimaryIdx));
+	// Secondary's slot must NOT have been disturbed by the Primary gap.
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 2u }, SecondaryIdx));
+
+	// 3) Simulate a Primary PI flap followed by a successful re-registration: the entity restarts its per-subscriber numbering at 0.
+	// Without the reset, expected[Primary]=12 vs received=0 would be reported as a loss → spurious unregister.
+	entity.resetExpectedUnsolicitedSequenceID(PrimaryIdx);
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 0u }, PrimaryIdx));
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 1u }, PrimaryIdx));
+
+	// 4) Reset on Primary must NOT touch Secondary's slot: a fresh gap on Secondary is still detected.
+	EXPECT_TRUE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 100u }, SecondaryIdx));
+
+	// 5) Same checks for the MVU sequence space (independent from AEM).
+	EXPECT_FALSE(entity.hasLostMvuUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 0u }, PrimaryIdx));
+	EXPECT_FALSE(entity.hasLostMvuUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 0u }, SecondaryIdx));
+	EXPECT_TRUE(entity.hasLostMvuUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 50u }, PrimaryIdx));
+	entity.resetExpectedUnsolicitedSequenceID(PrimaryIdx);
+	EXPECT_FALSE(entity.hasLostMvuUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 0u }, PrimaryIdx));
+}
+
+/*
+ * Regression test for the per-PI subscription state.
+ *
+ * Pre-fix behavior (broken): setSubscribedToUnsolicitedNotifications(false) was global, so an entity-initiated
+ * DEREGISTER on a single PI (e.g. transient cable loss on Primary causing the entity to drop only the Primary
+ * subscriber) would (a) clear the global "subscribed" flag entirely, silencing further loss-tracking on the
+ * still-alive Secondary PI, and (b) wipe both PIs' expected sequence IDs, losing the Secondary's tracking state.
+ *
+ * Post-fix behavior (validated here):
+ * - setSubscribedToUnsolicitedNotifications(false, interfaceIndex) only mutates that PI.
+ * - isSubscribedToUnsolicitedNotifications() remains true as long as at least one PI is subscribed.
+ * - The other PI's expected sequence ID is preserved across the per-PI deregistration.
+ * - The deregistered PI stops tracking until it re-registers (its slot is reset).
+ */
+TEST(ControlledEntity, PerInterfaceSubscriptionStateIsIndependent)
+{
+	static auto constexpr PrimaryIdx = la::avdecc::controller::Controller::InterfaceType::Primary;
+	static auto constexpr SecondaryIdx = la::avdecc::controller::Controller::InterfaceType::Secondary;
+
+	auto sharedLock = std::make_shared<la::avdecc::controller::ControlledEntityImpl::LockInformation>();
+	auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
+	auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::networkInterface::MacAddress{}, 31u, 0u, std::nullopt, std::nullopt } };
+	auto const e{ la::avdecc::entity::Entity{ commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } } } };
+	auto entity = la::avdecc::controller::ControlledEntityImpl{ e, sharedLock, false };
+
+	entity.setMilanInfo(la::avdecc::entity::model::MilanInfo{ /*protocolVersion*/ 1u, {}, la::avdecc::entity::model::MilanVersion{ 1, 0 }, la::avdecc::entity::model::MilanVersion{ 1, 0 } });
+
+	// Start unsubscribed on both PIs.
+	EXPECT_FALSE(entity.isSubscribedToUnsolicitedNotifications());
+
+	// Subscribe both PIs one by one and check the global aggregate flips on the first subscription only.
+	entity.setSubscribedToUnsolicitedNotifications(true, PrimaryIdx);
+	EXPECT_TRUE(entity.isSubscribedToUnsolicitedNotifications());
+	entity.setSubscribedToUnsolicitedNotifications(true, SecondaryIdx);
+	EXPECT_TRUE(entity.isSubscribedToUnsolicitedNotifications());
+
+	// Advance each PI's AEM sequence space independently.
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 10u }, PrimaryIdx)); // baseline (no prior expected) → no loss, next expected = 11
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 11u }, PrimaryIdx));
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 50u }, SecondaryIdx)); // baseline → next expected = 51
+
+	// Simulate an entity-initiated DEREGISTER targeted at Primary only (e.g. transient Primary cable loss).
+	entity.setSubscribedToUnsolicitedNotifications(false, PrimaryIdx);
+
+	// Global subscription must still be true: Secondary is still subscribed.
+	EXPECT_TRUE(entity.isSubscribedToUnsolicitedNotifications());
+
+	// Secondary's expected sequence ID must NOT have been touched: a continuing seqID=51 is accepted (no loss), and a real gap (seqID=99) is still detected.
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 51u }, SecondaryIdx));
+	EXPECT_TRUE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 99u }, SecondaryIdx));
+
+	// Primary is now unsubscribed: any incoming unsol on Primary must NOT be flagged as loss (subscriber gone) and must NOT update the slot.
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 200u }, PrimaryIdx));
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 201u }, PrimaryIdx));
+
+	// Re-subscribing Primary: its slot was reset on the previous unsubscribe, so seqID=0 is accepted as baseline.
+	entity.setSubscribedToUnsolicitedNotifications(true, PrimaryIdx);
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 0u }, PrimaryIdx));
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 1u }, PrimaryIdx));
+
+	// Unsubscribing the last remaining PI flips the global aggregate to false.
+	entity.setSubscribedToUnsolicitedNotifications(false, PrimaryIdx);
+	EXPECT_TRUE(entity.isSubscribedToUnsolicitedNotifications()); // Secondary still up
+	entity.setSubscribedToUnsolicitedNotifications(false, SecondaryIdx);
+	EXPECT_FALSE(entity.isSubscribedToUnsolicitedNotifications());
+
+	// Legacy global setter must still work and apply to every PI at once.
+	entity.setSubscribedToUnsolicitedNotifications(true);
+	EXPECT_TRUE(entity.isSubscribedToUnsolicitedNotifications());
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 5u }, PrimaryIdx));
+	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 5u }, SecondaryIdx));
+	entity.setSubscribedToUnsolicitedNotifications(false);
+	EXPECT_FALSE(entity.isSubscribedToUnsolicitedNotifications());
+}
+
+/*
  * TESTING https://github.com/L-Acoustics/avdecc/issues/86
- * Controller should properly handle cable redundancy
+ * Controller should properly handle redundancy
  */
 TEST(Controller, AdpRedundantInterfaceNotifications)
 {
