@@ -1653,6 +1653,279 @@ TEST(Controller, AdpRedundantInterfaceNotifications)
 	}
 }
 
+/*
+ * Dual-PI redundancy: when an entity disappears from one PI (ADP timeout) but is still reachable on the other,
+ * the controller must remove the dead PI's contributed interface from the entity's InterfacesInformation and emit
+ * onEntityRedundantInterfaceOffline. Tests all orderings: Primary first/Secondary first, and disappearance of each.
+ */
+TEST(Controller, DualPiEntityOfflineRemovesInterface)
+{
+	static auto constexpr PrimaryBusName = "DualPIOffline_Primary";
+	static auto constexpr SecondaryBusName = "DualPIOffline_Secondary";
+	constexpr auto EntityID = la::avdecc::UniqueIdentifier{ 0x00DEADBEEF000001 };
+
+	// Observer to track interface online/offline events
+	struct InterfaceEvent
+	{
+		la::avdecc::entity::model::AvbInterfaceIndex index{};
+		bool online{ false };
+	};
+	auto events = std::vector<InterfaceEvent>{};
+	auto eventsMutex = std::mutex{};
+
+	class Obs final : public la::avdecc::controller::Controller::DefaultedObserver
+	{
+	public:
+		Obs(std::vector<InterfaceEvent>& evts, std::mutex& mtx, la::avdecc::UniqueIdentifier const watchedEntityID) noexcept
+			: _events{ evts }
+			, _eventsMutex{ mtx }
+			, _watchedEntityID{ watchedEntityID }
+		{
+		}
+
+	private:
+		virtual void onEntityRedundantInterfaceOnline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, la::avdecc::entity::Entity::InterfaceInformation const& /*interfaceInfo*/) noexcept override
+		{
+			if (entity->getEntity().getEntityID() == _watchedEntityID)
+			{
+				auto const lg = std::lock_guard<std::mutex>{ _eventsMutex };
+				_events.push_back(InterfaceEvent{ avbInterfaceIndex, true });
+			}
+		}
+		virtual void onEntityRedundantInterfaceOffline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept override
+		{
+			if (entity->getEntity().getEntityID() == _watchedEntityID)
+			{
+				auto const lg = std::lock_guard<std::mutex>{ _eventsMutex };
+				_events.push_back(InterfaceEvent{ avbInterfaceIndex, false });
+			}
+		}
+
+		std::vector<InterfaceEvent>& _events;
+		std::mutex& _eventsMutex;
+		la::avdecc::UniqueIdentifier const _watchedEntityID;
+		DECLARE_AVDECC_OBSERVER_GUARD(Obs);
+	};
+
+	// Create executors for dual-PI
+	auto const executorWrapperA = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPIOffline_ExA", la::avdecc::ExecutorWithDispatchQueue::create("DualPIOffline_ExA", la::avdecc::utils::ThreadPriority::Highest));
+	auto const executorWrapperB = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPIOffline_ExB", la::avdecc::ExecutorWithDispatchQueue::create("DualPIOffline_ExB", la::avdecc::utils::ThreadPriority::Highest));
+
+	// Create dual-PI controller
+	auto interfaceConfigurations = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ "DualPIOffline_ExA" } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ "DualPIOffline_ExB" } });
+	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0005, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
+
+	auto obs = Obs{ events, eventsMutex, EntityID };
+	controller->registerObserver(&obs);
+
+	// Helper to send ADP on a specific bus with a specific validTime (in 2-second units)
+	auto const sendAdpOnBus = [&controller, EntityID](char const* const busName, la::avdecc::entity::model::AvbInterfaceIndex const interfaceIndex, std::uint8_t const validTime)
+	{
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(busName, { { static_cast<la::networkInterface::MacAddress::value_type>(0xB0 + interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }, "DualPIOffline_ExA"));
+
+		auto adpdu = la::avdecc::protocol::Adpdu{};
+		adpdu.setSrcAddress(intfc->getMacAddress());
+		adpdu.setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
+		adpdu.setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
+		adpdu.setValidTime(validTime);
+		adpdu.setEntityID(EntityID);
+		adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+		adpdu.setEntityCapabilities(la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemInterfaceIndexValid, la::avdecc::entity::EntityCapability::GptpSupported });
+		adpdu.setTalkerStreamSources(0);
+		adpdu.setTalkerCapabilities({});
+		adpdu.setListenerStreamSinks(0);
+		adpdu.setListenerCapabilities({});
+		adpdu.setControllerCapabilities(la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented });
+		adpdu.setAvailableIndex(1);
+		adpdu.setGptpGrandmasterID(controller->getControllerEID());
+		adpdu.setGptpDomainNumber(0);
+		adpdu.setIdentifyControlIndex(0);
+		adpdu.setInterfaceIndex(interfaceIndex);
+		adpdu.setAssociationID(la::avdecc::UniqueIdentifier{});
+
+		intfc->sendAdpMessage(adpdu);
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	};
+
+	// === Scenario: Primary first, then Secondary, then Secondary disappears ===
+
+	// 1. Entity discovered on Primary PI (interface 0) with long validTime
+	sendAdpOnBus(PrimaryBusName, la::avdecc::entity::model::AvbInterfaceIndex{ 0 }, std::uint8_t{ 62 });
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_EQ(1u, entity->getEntity().getInterfacesInformation().size());
+	}
+
+	// 2. Same entity discovered on Secondary PI (interface 1) with short validTime (will timeout quickly)
+	sendAdpOnBus(SecondaryBusName, la::avdecc::entity::model::AvbInterfaceIndex{ 1 }, std::uint8_t{ 2 });
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_EQ(2u, entity->getEntity().getInterfacesInformation().size());
+	}
+
+	// Verify onEntityRedundantInterfaceOnline was called for interface 1
+	{
+		auto const lg = std::lock_guard<std::mutex>{ eventsMutex };
+		ASSERT_GE(events.size(), 1u);
+		EXPECT_EQ(la::avdecc::entity::model::AvbInterfaceIndex{ 1 }, events.back().index);
+		EXPECT_TRUE(events.back().online);
+	}
+
+	// 3. Wait for the secondary ADP to timeout (validTime=2 means 4 seconds total timeout)
+	std::this_thread::sleep_for(std::chrono::seconds(5));
+
+	// Entity should still be known (reachable via Primary) but with only 1 interface
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_EQ(1u, entity->getEntity().getInterfacesInformation().size());
+		// The remaining interface should be interface 0 (from Primary)
+		EXPECT_NE(entity->getEntity().getInterfacesInformation().end(), entity->getEntity().getInterfacesInformation().find(la::avdecc::entity::model::AvbInterfaceIndex{ 0 }));
+	}
+
+	// Verify onEntityRedundantInterfaceOffline was called for interface 1
+	{
+		auto const lg = std::lock_guard<std::mutex>{ eventsMutex };
+		ASSERT_GE(events.size(), 2u);
+		EXPECT_EQ(la::avdecc::entity::model::AvbInterfaceIndex{ 1 }, events.back().index);
+		EXPECT_FALSE(events.back().online);
+	}
+
+	// === Now test re-appearance of Secondary ===
+
+	// 4. Secondary comes back online with short validTime
+	sendAdpOnBus(SecondaryBusName, la::avdecc::entity::model::AvbInterfaceIndex{ 1 }, std::uint8_t{ 2 });
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_EQ(2u, entity->getEntity().getInterfacesInformation().size());
+	}
+
+	// Verify onEntityRedundantInterfaceOnline fired again for interface 1
+	{
+		auto const lg = std::lock_guard<std::mutex>{ eventsMutex };
+		ASSERT_GE(events.size(), 3u);
+		EXPECT_EQ(la::avdecc::entity::model::AvbInterfaceIndex{ 1 }, events.back().index);
+		EXPECT_TRUE(events.back().online);
+	}
+
+	controller->unregisterObserver(&obs);
+}
+
+/*
+ * Dual-PI redundancy: same as above but with the entity discovered on Secondary PI first, then Primary.
+ * When the Primary PI's ADP times out, the entity should retain only the Secondary's interface.
+ */
+TEST(Controller, DualPiEntityOfflineRemovesInterfaceReversedOrder)
+{
+	static auto constexpr PrimaryBusName = "DualPIOfflineRev_Primary";
+	static auto constexpr SecondaryBusName = "DualPIOfflineRev_Secondary";
+	constexpr auto EntityID = la::avdecc::UniqueIdentifier{ 0x00DEADBEEF000002 };
+
+	auto interfaceOfflineIndex = std::atomic<int>{ -1 };
+
+	class Obs final : public la::avdecc::controller::Controller::DefaultedObserver
+	{
+	public:
+		Obs(std::atomic<int>& offlineIdx, la::avdecc::UniqueIdentifier const watchedEntityID) noexcept
+			: _offlineIdx{ offlineIdx }
+			, _watchedEntityID{ watchedEntityID }
+		{
+		}
+
+	private:
+		virtual void onEntityRedundantInterfaceOffline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept override
+		{
+			if (entity->getEntity().getEntityID() == _watchedEntityID)
+			{
+				_offlineIdx.store(static_cast<int>(avbInterfaceIndex));
+			}
+		}
+
+		std::atomic<int>& _offlineIdx;
+		la::avdecc::UniqueIdentifier const _watchedEntityID;
+		DECLARE_AVDECC_OBSERVER_GUARD(Obs);
+	};
+
+	// Create executors for dual-PI
+	auto const executorWrapperA = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPIOfflineRev_ExA", la::avdecc::ExecutorWithDispatchQueue::create("DualPIOfflineRev_ExA", la::avdecc::utils::ThreadPriority::Highest));
+	auto const executorWrapperB = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPIOfflineRev_ExB", la::avdecc::ExecutorWithDispatchQueue::create("DualPIOfflineRev_ExB", la::avdecc::utils::ThreadPriority::Highest));
+
+	// Create dual-PI controller
+	auto interfaceConfigurations = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ "DualPIOfflineRev_ExA" } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ "DualPIOfflineRev_ExB" } });
+	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0006, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
+
+	auto obs = Obs{ interfaceOfflineIndex, EntityID };
+	controller->registerObserver(&obs);
+
+	// Helper to send ADP on a specific bus
+	auto const sendAdpOnBus = [&controller, EntityID](char const* const busName, la::avdecc::entity::model::AvbInterfaceIndex const interfaceIndex, std::uint8_t const validTime)
+	{
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(busName, { { static_cast<la::networkInterface::MacAddress::value_type>(0xC0 + interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }, "DualPIOfflineRev_ExA"));
+
+		auto adpdu = la::avdecc::protocol::Adpdu{};
+		adpdu.setSrcAddress(intfc->getMacAddress());
+		adpdu.setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
+		adpdu.setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
+		adpdu.setValidTime(validTime);
+		adpdu.setEntityID(EntityID);
+		adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+		adpdu.setEntityCapabilities(la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemInterfaceIndexValid, la::avdecc::entity::EntityCapability::GptpSupported });
+		adpdu.setTalkerStreamSources(0);
+		adpdu.setTalkerCapabilities({});
+		adpdu.setListenerStreamSinks(0);
+		adpdu.setListenerCapabilities({});
+		adpdu.setControllerCapabilities(la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented });
+		adpdu.setAvailableIndex(1);
+		adpdu.setGptpGrandmasterID(controller->getControllerEID());
+		adpdu.setGptpDomainNumber(0);
+		adpdu.setIdentifyControlIndex(0);
+		adpdu.setInterfaceIndex(interfaceIndex);
+		adpdu.setAssociationID(la::avdecc::UniqueIdentifier{});
+
+		intfc->sendAdpMessage(adpdu);
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	};
+
+	// 1. Entity discovered on SECONDARY PI first (interface 1) with long validTime
+	sendAdpOnBus(SecondaryBusName, la::avdecc::entity::model::AvbInterfaceIndex{ 1 }, std::uint8_t{ 62 });
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_EQ(1u, entity->getEntity().getInterfacesInformation().size());
+	}
+
+	// 2. Same entity discovered on PRIMARY PI (interface 0) with short validTime
+	sendAdpOnBus(PrimaryBusName, la::avdecc::entity::model::AvbInterfaceIndex{ 0 }, std::uint8_t{ 2 });
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_EQ(2u, entity->getEntity().getInterfacesInformation().size());
+	}
+
+	// 3. Wait for Primary ADP timeout
+	std::this_thread::sleep_for(std::chrono::seconds(5));
+
+	// Entity should still exist with only interface 1 remaining
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_EQ(1u, entity->getEntity().getInterfacesInformation().size());
+		EXPECT_NE(entity->getEntity().getInterfacesInformation().end(), entity->getEntity().getInterfacesInformation().find(la::avdecc::entity::model::AvbInterfaceIndex{ 1 }));
+	}
+
+	// onEntityRedundantInterfaceOffline should have been called for interface 0
+	EXPECT_EQ(0, interfaceOfflineIndex.load());
+
+	controller->unregisterObserver(&obs);
+}
+
 TEST(Controller, ValidControlValues)
 {
 	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };

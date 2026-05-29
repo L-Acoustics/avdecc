@@ -256,6 +256,44 @@ ControllerVirtualProxy::InterfaceReachability ControllerVirtualProxy::getEntityR
 	return InterfaceReachability{ it->second.onPrimary, it->second.onSecondary };
 }
 
+void ControllerVirtualProxy::setEntityInterfaceIndices(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType, std::set<entity::model::AvbInterfaceIndex> indices) noexcept
+{
+	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+	auto& state = _reachability[entityID];
+	switch (interfaceType)
+	{
+		case Controller::InterfaceType::Primary:
+			state.interfacesFromPrimary = std::move(indices);
+			break;
+		case Controller::InterfaceType::Secondary:
+			state.interfacesFromSecondary = std::move(indices);
+			break;
+		default:
+			AVDECC_ASSERT(false, "Unknown InterfaceType");
+			break;
+	}
+}
+
+std::set<entity::model::AvbInterfaceIndex> ControllerVirtualProxy::getEntityInterfaceIndices(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType) const noexcept
+{
+	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+	auto const it = _reachability.find(entityID);
+	if (it == _reachability.end())
+	{
+		return {};
+	}
+	switch (interfaceType)
+	{
+		case Controller::InterfaceType::Primary:
+			return it->second.interfacesFromPrimary;
+		case Controller::InterfaceType::Secondary:
+			return it->second.interfacesFromSecondary;
+		default:
+			AVDECC_ASSERT(false, "Unknown InterfaceType");
+			return {};
+	}
+}
+
 bool ControllerVirtualProxy::isDualInterface() const noexcept
 {
 	return _secondaryRealInterface != nullptr;

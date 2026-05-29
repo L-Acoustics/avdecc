@@ -89,6 +89,12 @@ public:
 	/** Returns the current reachability for the specified entity (both PIs false if entity is unknown). */
 	InterfaceReachability getEntityReachability(UniqueIdentifier const& entityID) const noexcept;
 
+	/** Records the set of AvbInterfaceIndex values last observed via the specified PI's ADP for the given entity. */
+	void setEntityInterfaceIndices(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType, std::set<entity::model::AvbInterfaceIndex> indices) noexcept;
+
+	/** Returns the set of AvbInterfaceIndex values last observed via the specified PI's ADP for the given entity. */
+	std::set<entity::model::AvbInterfaceIndex> getEntityInterfaceIndices(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType) const noexcept;
+
 	/** Returns true if the controller is operating in dual-interface mode. */
 	bool isDualInterface() const noexcept;
 
@@ -316,6 +322,8 @@ private:
 		bool onSecondary{ false };
 		UnsolState unsolPrimary{ UnsolState::NotRegistered };
 		UnsolState unsolSecondary{ UnsolState::NotRegistered };
+		std::set<entity::model::AvbInterfaceIndex> interfacesFromPrimary{}; /**< Interface indices last observed via Primary PI's ADP. */
+		std::set<entity::model::AvbInterfaceIndex> interfacesFromSecondary{}; /**< Interface indices last observed via Secondary PI's ADP. */
 	};
 	std::unordered_map<UniqueIdentifier, EntityState, UniqueIdentifier::hash> _reachability{};
 	bool _primaryInterfaceUp{ true }; /**< Per-PI transport-up flag for the primary interface (dual-interface mode only). */
