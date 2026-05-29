@@ -5,6 +5,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Redundancy (dual physical interface) controller support
+  - New `Controller::create(std::vector<InterfaceConfiguration> const&, ...)` factory overload accepting a Primary and a Secondary physical-interface configuration
+  - New `Controller::InterfaceType` enum (`Primary`, `Secondary`) and `Controller::InterfaceConfiguration` struct
+  - New `Controller::Observer::onRedundantInterfaceTransportError` notification, fired when one physical interface fails while the other remains operational (the global `onTransportError` is now reserved for the truly fatal case where both interfaces are down)
+  - New `Controller::getControllerEID(InterfaceType)` accessor to retrieve the per-PI controller EID
+  - New `Error::InvalidInterfaceConfiguration` error code (value 9)
+  - Automatic ADP deduplication when the same entity is advertised on both physical interfaces (single `ControlledEntity`, merged `InterfacesInformation`, single `onEntityOnline`/`onEntityOffline` lifecycle)
+  - Automatic command auto-retry on the alternate physical interface for transient transport-class errors (AEM/AA/MVU: `TimedOut`, `UnknownEntity`, `NetworkError`; ACMP: `TimedOut`, `ListenerUnknownID`, `TalkerUnknownID`, `NetworkError`)
+  - C# bindings updated accordingly (new `InterfaceType` enum, `InterfaceConfiguration`, and `createRedundant` factory)
+
 ### Fixed
 - Possible crash (segfault) in onPreAdvertiseEntity when controlledEntityConfigurationNode is nullptr and CBR feature is enabled
 
