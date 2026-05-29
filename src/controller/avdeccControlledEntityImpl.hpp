@@ -29,6 +29,7 @@
 #include <la/avdecc/internals/entityModelTree.hpp>
 
 #include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"
+#include "la/avdecc/controller/avdeccController.hpp"
 
 #include <string>
 #include <unordered_map>
@@ -41,6 +42,7 @@
 #include <thread>
 #include <tuple>
 #include <optional>
+#include <array>
 
 namespace la
 {
@@ -456,7 +458,13 @@ public:
 	void setGetFatalEnumerationError() noexcept;
 	void setPackedDynamicInfoSupported(bool const isSupported) noexcept;
 	void setNotUsingCachedEntityModel() noexcept;
-	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
+	/**
+	 * @brief Set the unsolicited-notifications subscription state for one or all PIs.
+	 * @details In dual-PI mode each PI is a separate subscriber on the entity side (distinct controller-EID), so the subscription state is tracked per PI. When @a interfaceType is set, only that PI's subscription state is mutated (and its expected sequence IDs reset on unsubscribe). When @a interfaceType is std::nullopt, the same @a isSubscribed value is applied to every PI (used by JSON load, virtual entity visitor or any other caller that has no PI granularity).
+	 * @param[in] isSubscribed New subscription state to apply.
+	 * @param[in] interfaceType The targeted PI, or std::nullopt to apply to every PI at once.
+	 */
+	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed, std::optional<la::avdecc::controller::Controller::InterfaceType> const interfaceType = std::nullopt) noexcept;
 	void setUnsolicitedNotificationsSupported(bool const isSupported) noexcept;
 	bool wasAdvertised() const noexcept;
 	void setAdvertised(bool const wasAdvertised) noexcept;
@@ -467,8 +475,14 @@ public:
 	bool isRedundantSecondaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	bool isRedundantSecondaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	Diagnostics& getDiagnostics() noexcept;
-	bool hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
-	bool hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
+	bool hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept; /**< @a interfaceType selects which PI's sequence space to check. */
+	bool hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept; /**< @a interfaceType selects which PI's sequence space to check. */
+	/**
+	 * @brief Clears the per-PI expected AEM/MVU unsolicited sequenceID slots so the next unsolicited message received on that PI is accepted as the new baseline (no loss reported).
+	 * @details Must be called whenever the entity-side subscriber state for that PI may have been re-initialized, typically right after a successful (re-)registration on that PI. Failing to do so causes false-positive loss detection (and a spurious unregister) when the entity restarts its per-controller-EID sequence numbering at 0 on a fresh subscription.
+	 * @param[in] interfaceType The targeted PI.
+	 */
+	void resetExpectedUnsolicitedSequenceID(la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept;
 	entity::model::EntityTree const& getEntityModelTree() const noexcept;
 	void buildEntityModelGraph(entity::model::EntityTree const& entityTree) noexcept;
 
@@ -499,7 +513,7 @@ private:
 	void fixStreamPortInputMappings(std::map<entity::model::StreamPortIndex, model::StreamPortInputNode>& streamPorts) noexcept;
 	void fixStreamPortMappings(model::ConfigurationNode& configNode) noexcept;
 	void setDefaultPresentationTimes(model::ConfigurationNode& configNode) noexcept;
-	bool hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID) noexcept;
+	bool hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	void buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -524,7 +538,7 @@ private:
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
 	bool _isPackedDynamicInfoSupported{ false }; // Is the GET_DYNAMIC_INFO command supported
 	bool _isUsingCachedEntityModel{ false }; // Is the entity model loaded from the cache
-	bool _isSubscribedToUnsolicitedNotifications{ false }; // Are we subscribed to unsolicited notifications
+	std::array<bool, la::avdecc::controller::Controller::NumInterfaces> _isSubscribedToUnsolicitedNotificationsPerInterface{ false, false }; /**< Per-PI subscription state (indexed by #la::avdecc::controller::Controller::InterfaceType). The global #isSubscribedToUnsolicitedNotifications() returns true as soon as at least one PI is subscribed. In dual-PI mode, each PI is a separate subscriber on the entity side and can be (un)subscribed independently. */
 	bool _areUnsolicitedNotificationsSupported{ false }; // Are unsolicited notifications supported
 	bool _advertised{ false }; // Has the entity been advertised to the observers
 	bool _expectedCheckDynamicInfoSupported{ false };
@@ -539,8 +553,8 @@ private:
 	UniqueIdentifier _owningControllerID{}; // EID of the controller currently owning (who acquired) this entity
 	model::LockState _lockState{ model::LockState::Undefined };
 	UniqueIdentifier _lockingControllerID{}; // EID of the controller currently locking (who locked) this entity
-	std::optional<protocol::AecpSequenceID> _expectedAemSequenceID{ std::nullopt };
-	std::optional<protocol::AecpSequenceID> _expectedMvuSequenceID{ std::nullopt };
+	std::array<std::optional<protocol::AecpSequenceID>, la::avdecc::controller::Controller::NumInterfaces> _expectedAemSequenceID{ std::nullopt, std::nullopt }; /**< Expected next AEM unsolicited sequenceID, indexed by #la::avdecc::controller::Controller::InterfaceType. Each PI is a separate subscriber on the entity side and therefore maintains its own sequence numbering. */
+	std::array<std::optional<protocol::AecpSequenceID>, la::avdecc::controller::Controller::NumInterfaces> _expectedMvuSequenceID{ std::nullopt, std::nullopt }; /**< Expected next MVU unsolicited sequenceID, indexed by #la::avdecc::controller::Controller::InterfaceType. */
 	// Milan specific information
 	std::optional<entity::model::MilanInfo> _milanInfo{ std::nullopt };
 	std::optional<entity::model::MilanDynamicState> _milanDynamicState{ std::nullopt };

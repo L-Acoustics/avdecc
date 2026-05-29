@@ -47,6 +47,7 @@
 #include <fstream>
 #include <mutex>
 #include <memory>
+#include <sstream>
 
 namespace la
 {
@@ -57,6 +58,112 @@ namespace controller
 /* ************************************************************ */
 /* Controller overrides                                         */
 /* ************************************************************ */
+namespace
+{
+// Helper translating EndStation exceptions to Controller exceptions.
+[[noreturn]] void translateEndStationException(EndStation::Exception const& e)
+{
+	auto const err = e.getError();
+	switch (err)
+	{
+		case EndStation::Error::InvalidProtocolInterfaceType:
+			throw Controller::Exception(Controller::Error::InvalidProtocolInterfaceType, e.what());
+		case EndStation::Error::InterfaceOpenError:
+			throw Controller::Exception(Controller::Error::InterfaceOpenError, e.what());
+		case EndStation::Error::InterfaceNotFound:
+			throw Controller::Exception(Controller::Error::InterfaceNotFound, e.what());
+		case EndStation::Error::InterfaceInvalid:
+			throw Controller::Exception(Controller::Error::InterfaceInvalid, e.what());
+		case EndStation::Error::DuplicateEntityID:
+			throw Controller::Exception(Controller::Error::DuplicateProgID, e.what());
+		case EndStation::Error::InvalidEntityModel:
+			throw Controller::Exception(Controller::Error::InvalidEntityModel, e.what());
+		case EndStation::Error::DuplicateExecutorName:
+			throw Controller::Exception(Controller::Error::DuplicateExecutorName, e.what());
+		case EndStation::Error::UnknownExecutorName:
+			throw Controller::Exception(Controller::Error::UnknownExecutorName, e.what());
+		case EndStation::Error::InternalError:
+			throw Controller::Exception(Controller::Error::InternalError, e.what());
+		default:
+			AVDECC_ASSERT(false, "Unhandled exception");
+			throw Controller::Exception(Controller::Error::InternalError, e.what());
+	}
+}
+} // namespace
+
+ControllerImpl::ControllerImpl(std::vector<Controller::InterfaceConfiguration> const& interfaceConfigurations, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, entity::controller::Interface const* const virtualEntityInterface)
+	: _preferedLocale(preferedLocale)
+{
+	// Validate the configurations
+	if (interfaceConfigurations.empty() || interfaceConfigurations.size() > 2)
+	{
+		throw Exception(Error::InvalidInterfaceConfiguration, "Number of interface configurations must be 1 or 2");
+	}
+	if (interfaceConfigurations.size() == 2 && interfaceConfigurations[0].networkInterfaceID == interfaceConfigurations[1].networkInterfaceID)
+	{
+		throw Exception(Error::InvalidInterfaceConfiguration, "Primary and Secondary network interface IDs must differ");
+	}
+
+	try
+	{
+		// Helper to resolve the executor name for a given PI configuration.
+		// - If the caller provided an explicit executor name, use it as-is (caller-managed lifetime, EndStation will validate existence).
+		// - If the caller passed std::nullopt, the controller transparently generates a unique per-PI executor name and registers it,
+		//   storing the wrapper so the executor outlives the EndStation. This avoids the "Executor already exists" collision that occurs
+		//   when two EndStations both fall back to the default executor name in dual-PI mode.
+		auto resolveExecutorName = [](Controller::InterfaceConfiguration const& config, la::avdecc::ExecutorManager::ExecutorWrapper::UniquePointer& ownedWrapper, char const* const piTag) -> std::string
+		{
+			if (config.executorName.has_value())
+			{
+				return *config.executorName;
+			}
+			auto& manager = la::avdecc::ExecutorManager::getInstance();
+			// Derive a unique name. Use the controller instance address plus the PI tag to guarantee uniqueness across controllers.
+			auto uniqueSuffix = std::ostringstream{};
+			uniqueSuffix << "avdecc::controller::PI_" << piTag << "_" << static_cast<void const*>(&ownedWrapper);
+			auto name = uniqueSuffix.str();
+			// Extremely defensive: if a name with that exact pointer-derived suffix already exists (should not happen), keep adding a counter.
+			auto attempt = 0u;
+			while (manager.isExecutorRegistered(name))
+			{
+				++attempt;
+				name = uniqueSuffix.str() + "_" + std::to_string(attempt);
+			}
+			ownedWrapper = manager.registerExecutor(name, la::avdecc::ExecutorWithDispatchQueue::create(name, la::avdecc::utils::ThreadPriority::Highest));
+			return name;
+		};
+
+		// Create primary
+		auto const& primary = interfaceConfigurations[0];
+		auto const primaryExecName = resolveExecutorName(primary, _primaryExecutorWrapper, "Primary");
+		_endStation = EndStation::create(primary.protocolInterfaceType, primary.networkInterfaceID, std::optional<std::string>{ primaryExecName });
+		_controller = _endStation->addControllerEntity(progID, entityModelID, entityModelTree, this);
+
+		// Create secondary if requested
+		if (interfaceConfigurations.size() == 2)
+		{
+			auto const& secondary = interfaceConfigurations[1];
+			auto const secondaryExecName = resolveExecutorName(secondary, _secondaryExecutorWrapper, "Secondary");
+			_secondaryEndStation = EndStation::create(secondary.protocolInterfaceType, secondary.networkInterfaceID, std::optional<std::string>{ secondaryExecName });
+			_secondaryController = _secondaryEndStation->addControllerEntity(progID, entityModelID, entityModelTree, this);
+			_controllerProxy = std::make_unique<ControllerVirtualProxy>(_endStation->getProtocolInterface(), _controller, _secondaryController, virtualEntityInterface);
+		}
+		else
+		{
+			_controllerProxy = std::make_unique<ControllerVirtualProxy>(_endStation->getProtocolInterface(), _controller, virtualEntityInterface);
+		}
+	}
+	catch (EndStation::Exception const& e)
+	{
+		translateEndStationException(e);
+	}
+	catch (Exception const& e)
+	{
+		AVDECC_ASSERT(false, "Unhandled exception");
+		throw Exception(Error::InternalError, e.what());
+	}
+}
+
 ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceID, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName, entity::controller::Interface const* const virtualEntityInterface)
 	: _preferedLocale(preferedLocale)
 {
@@ -68,31 +175,7 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 	}
 	catch (EndStation::Exception const& e)
 	{
-		auto const err = e.getError();
-		switch (err)
-		{
-			case EndStation::Error::InvalidProtocolInterfaceType:
-				throw Exception(Error::InvalidProtocolInterfaceType, e.what());
-			case EndStation::Error::InterfaceOpenError:
-				throw Exception(Error::InterfaceOpenError, e.what());
-			case EndStation::Error::InterfaceNotFound:
-				throw Exception(Error::InterfaceNotFound, e.what());
-			case EndStation::Error::InterfaceInvalid:
-				throw Exception(Error::InterfaceInvalid, e.what());
-			case EndStation::Error::DuplicateEntityID:
-				throw Exception(Error::DuplicateProgID, e.what());
-			case EndStation::Error::InvalidEntityModel:
-				throw Exception(Error::InvalidEntityModel, e.what());
-			case EndStation::Error::DuplicateExecutorName:
-				throw Exception(Error::DuplicateExecutorName, e.what());
-			case EndStation::Error::UnknownExecutorName:
-				throw Exception(Error::UnknownExecutorName, e.what());
-			case EndStation::Error::InternalError:
-				throw Exception(Error::InternalError, e.what());
-			default:
-				AVDECC_ASSERT(false, "Unhandled exception");
-				throw Exception(Error::InternalError, e.what());
-		}
+		translateEndStationException(e);
 	}
 	catch (Exception const& e)
 	{
@@ -250,7 +333,7 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 						if (controlledEntity)
 						{
 							// Send the query
-							utils::invokeProtectedHandler(query.queryHandler, _controller);
+							utils::invokeProtectedHandler(query.queryHandler, _controllerProxy.get());
 						}
 
 						// Remove the query from the list
@@ -387,8 +470,16 @@ void ControllerImpl::destroy() noexcept
 	delete this;
 }
 
-UniqueIdentifier ControllerImpl::getControllerEID() const noexcept
+UniqueIdentifier ControllerImpl::getControllerEID(Controller::InterfaceType const interfaceType) const noexcept
 {
+	if (interfaceType == Controller::InterfaceType::Secondary)
+	{
+		if (_secondaryController != nullptr)
+		{
+			return _secondaryController->getEntityID();
+		}
+		return UniqueIdentifier{};
+	}
 	return _controller->getEntityID();
 }
 
@@ -397,31 +488,58 @@ void ControllerImpl::enableEntityAdvertising(std::uint32_t const availableDurati
 {
 	if (!_controller->enableEntityAdvertising(availableDuration, interfaceIndex))
 		throw Exception(Error::DuplicateProgID, "Specified ProgID already in use on the local computer");
+	if (_secondaryController != nullptr)
+	{
+		if (!_secondaryController->enableEntityAdvertising(availableDuration, interfaceIndex))
+			throw Exception(Error::DuplicateProgID, "Specified ProgID already in use on the local computer (Secondary interface)");
+	}
 	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Controller advertising enabled");
 }
 
 void ControllerImpl::disableEntityAdvertising(std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
 {
 	_controller->disableEntityAdvertising(interfaceIndex);
+	if (_secondaryController != nullptr)
+	{
+		_secondaryController->disableEntityAdvertising(interfaceIndex);
+	}
 	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Controller advertising disabled");
 }
 
 bool ControllerImpl::discoverRemoteEntities() const noexcept
 {
 	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Requesting remote entities discovery");
-	return _controller->discoverRemoteEntities();
+	auto const primaryResult = _controller->discoverRemoteEntities();
+	auto secondaryResult = true;
+	if (_secondaryController != nullptr)
+	{
+		secondaryResult = _secondaryController->discoverRemoteEntities();
+	}
+	return primaryResult && secondaryResult;
 }
 
 bool ControllerImpl::discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept
 {
 	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Requesting remote entity {} discovery", utils::toHexString(entityID, true));
-	return _controller->discoverRemoteEntity(entityID);
+	auto const primaryResult = _controller->discoverRemoteEntity(entityID);
+	auto secondaryResult = true;
+	if (_secondaryController != nullptr)
+	{
+		secondaryResult = _secondaryController->discoverRemoteEntity(entityID);
+	}
+	return primaryResult && secondaryResult;
 }
 
 bool ControllerImpl::forgetRemoteEntity(UniqueIdentifier const entityID) const noexcept
 {
 	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Requesting remote entity {} removal", utils::toHexString(entityID, true));
-	return _controller->forgetRemoteEntity(entityID);
+	auto const primaryResult = _controller->forgetRemoteEntity(entityID);
+	auto secondaryResult = true;
+	if (_secondaryController != nullptr)
+	{
+		secondaryResult = _secondaryController->forgetRemoteEntity(entityID);
+	}
+	return primaryResult && secondaryResult;
 }
 
 void ControllerImpl::setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept

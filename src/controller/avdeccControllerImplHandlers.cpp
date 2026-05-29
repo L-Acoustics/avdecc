@@ -639,42 +639,64 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 	}
 }
 
-void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
+void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onRegisterUnsolicitedNotificationsResult: {}", entity::ControllerEntity::statusToString(status));
 
-	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto controlledEntity = getControlledEntityImplGuard(entityID);
+	// Identify which PI this REGISTER result came back on (each PI is a distinct subscriber on the entity side, so the subscription state is tracked per PI).
+	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
 
-	if (controlledEntity)
+	// Whether to issue the dual-PI lazy registration after releasing the entity guard. We must NOT invoke tryLazyRegisterUnsolOnInterface while holding the ControlledEntityImplGuard, because the send path for the other PI may take protocol-interface locks whose acquisition order, combined with the entity-shared recursive_mutex, can lock-order-invert against the other PI's state-machine thread and cause the avdecc::StateMachine watchdog to fire.
+	auto shouldLazyRegisterBothPi = false;
+
 	{
-		auto& entity = *controlledEntity;
+		// Take a "scoped locked" shared copy of the ControlledEntity
+		auto controlledEntity = getControlledEntityImplGuard(entityID);
 
-		if (entity.checkAndClearExpectedRegisterUnsol())
+		if (controlledEntity)
 		{
-			entity.setUnsolicitedNotificationsSupported(true); // Set to true by default, will be set to false if we get a failure status
-			if (!!status)
+			auto& entity = *controlledEntity;
+
+			if (entity.checkAndClearExpectedRegisterUnsol())
 			{
-				entity.setSubscribedToUnsolicitedNotifications(true);
-			}
-			else
-			{
-				if (!processRegisterUnsolFailureStatus(status, &entity, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
+				entity.setUnsolicitedNotificationsSupported(true); // Set to true by default, will be set to false if we get a failure status
+				if (!!status)
 				{
-					controlledEntity->setGetFatalEnumerationError();
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &entity, QueryCommandError::RegisterUnsol);
-					return;
+					entity.setSubscribedToUnsolicitedNotifications(true, interfaceType);
+				}
+				else
+				{
+					if (!processRegisterUnsolFailureStatus(status, &entity, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
+					{
+						controlledEntity->setGetFatalEnumerationError();
+						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &entity, QueryCommandError::RegisterUnsol);
+						return;
+					}
+				}
+
+				// Got all expected "register unsolicited notifications"
+				if (entity.gotExpectedRegisterUnsol())
+				{
+					// Clear this enumeration step and check for next one
+					entity.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::RegisterUnsol);
+					checkEnumerationSteps(&entity);
+				}
+
+				// In dual-PI mode, the initial enumeration step above only registered on the PI that was picked by the proxy (typically Primary if reachable, otherwise Secondary).
+				// To get a redundant unsolicited subscription on both PIs, lazily (re-)register on each PI for which we have current reachability. The per-PI claim guard ensures we do not issue duplicate register commands.
+				// Defer the actual call until after the guard is released to avoid the cross-PI deadlock described above.
+				if (!!status && _controllerProxy && _controllerProxy->isDualInterface())
+				{
+					shouldLazyRegisterBothPi = true;
 				}
 			}
-
-			// Got all expected "register unsolicited notifications"
-			if (entity.gotExpectedRegisterUnsol())
-			{
-				// Clear this enumeration step and check for next one
-				entity.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::RegisterUnsol);
-				checkEnumerationSteps(&entity);
-			}
 		}
+	} // Entity guard released here
+
+	if (shouldLazyRegisterBothPi)
+	{
+		tryLazyRegisterUnsolOnInterface(entityID, Controller::InterfaceType::Primary);
+		tryLazyRegisterUnsolOnInterface(entityID, Controller::InterfaceType::Secondary);
 	}
 }
 

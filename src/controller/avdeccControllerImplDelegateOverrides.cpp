@@ -35,8 +35,22 @@ namespace controller
 /* entity::ControllerEntity::Delegate overrides                 */
 /* ************************************************************ */
 /* Global notifications */
-void ControllerImpl::onTransportError(entity::controller::Interface const* const /*controller*/) noexcept
+void ControllerImpl::onTransportError(entity::controller::Interface const* const controller) noexcept
 {
+	// Determine which physical interface failed
+	auto const failedType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+
+	if (_controllerProxy && _controllerProxy->isDualInterface())
+	{
+		auto const otherStillUp = _controllerProxy->markInterfaceDown(failedType);
+		if (otherStillUp)
+		{
+			// Other interface still up: notify partial failure only
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onRedundantInterfaceTransportError, this, failedType);
+			return;
+		}
+	}
+
 	notifyObserversMethod<Controller::Observer>(&Controller::Observer::onTransportError, this);
 }
 
@@ -44,6 +58,14 @@ void ControllerImpl::onTransportError(entity::controller::Interface const* const
 void ControllerImpl::onEntityOnline(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::Entity const& entity) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onEntityOnline");
+
+	// Identify the PI on which the entity was seen
+	auto const sourceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+	auto reachabilityTransition = false;
+	if (_controllerProxy)
+	{
+		reachabilityTransition = _controllerProxy->setEntityReachable(entityID, sourceType, true);
+	}
 
 	auto const caps = entity.getEntityCapabilities();
 	if (caps.test(entity::EntityCapability::EntityNotReady))
@@ -58,22 +80,35 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 	}
 
 	SharedControlledEntityImpl controlledEntity{};
+	auto entityAlreadyKnown = false;
 
 	// Create and add the entity
 	{
 		// Lock to protect _controlledEntities
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 
-#ifdef DEBUG
-		// TODO: This happens if an Entity has 2 interfaces on the same network (and there is a loop in the network). We should handle this case and report a message to the user
-		AVDECC_ASSERT(_controlledEntities.find(entityID) == _controlledEntities.end(), "Entity already online");
-#endif
-
 		auto entityIt = _controlledEntities.find(entityID);
 		if (entityIt == _controlledEntities.end())
 		{
 			controlledEntity = _controlledEntities.insert(std::make_pair(entityID, std::make_shared<ControlledEntityImpl>(entity, _entitiesSharedLockInformation, false))).first->second;
 		}
+		else
+		{
+			entityAlreadyKnown = true;
+		}
+	}
+
+	// In dual-PI mode, if the entity is already known on the other PI, just merge interface information via onEntityUpdate (which calls updateEntity -> InterfacesInformation merge) and do not duplicate enumeration.
+	if (entityAlreadyKnown)
+	{
+		LOG_CONTROLLER_DEBUG(entityID, "onEntityOnline: Entity already registered, updating it");
+		onEntityUpdate(controller, entityID, entity);
+		// If this PI was previously unreachable, lazily (re-)register unsolicited notifications on it so we keep a redundant subscription across both PIs.
+		if (reachabilityTransition)
+		{
+			tryLazyRegisterUnsolOnInterface(entityID, sourceType);
+		}
+		return;
 	}
 
 	if (controlledEntity)
@@ -111,35 +146,81 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 		// Check first enumeration step
 		checkEnumerationSteps(guardedEntity.get());
 	}
-	else
-	{
-		LOG_CONTROLLER_DEBUG(entityID, "onEntityOnline: Entity already registered, updating it");
-		// This should not happen, but just in case... update it
-		onEntityUpdate(controller, entityID, entity);
-	}
 }
 
 void ControllerImpl::onEntityUpdate(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::Entity const& entity) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onEntityUpdate");
 
-	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto controlledEntity = getControlledEntityImplGuard(entityID);
-
-	if (controlledEntity)
+	// Identify the PI on which the entity was seen
+	auto const sourceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+	auto reachabilityTransition = false;
+	if (_controllerProxy)
 	{
-		updateEntity(*controlledEntity, entity);
+		reachabilityTransition = _controllerProxy->setEntityReachable(entityID, sourceType, true);
 	}
-	else
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
 	{
-		// In case the entity was not ready when it was first discovered, maybe now is the time
-		onEntityOnline(controller, entityID, entity);
+		auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+		if (controlledEntity)
+		{
+			// In dual-interface mode, the new ADP message originates from one specific PI and only carries that PI's view of the entity's interfaces.
+			// Build a merged Entity that preserves any AvbInterfaceIndex entries already known from the other PI (additive union), so subsequent calls to updateEntity see the full union of interfaces observed across both PIs.
+			if (_controllerProxy && _controllerProxy->isDualInterface())
+			{
+				auto const& oldInterfaces = controlledEntity->getEntity().getInterfacesInformation();
+				auto const& newInterfaces = entity.getInterfacesInformation();
+				auto mergedInterfaces = newInterfaces;
+				for (auto const& kv : oldInterfaces)
+				{
+					// Keep old entries that are not present in the new ADP (they were contributed by the other PI)
+					if (mergedInterfaces.find(kv.first) == mergedInterfaces.end())
+					{
+						mergedInterfaces.insert(kv);
+					}
+				}
+				auto const mergedEntity = entity::Entity{ entity.getCommonInformation(), mergedInterfaces };
+				updateEntity(*controlledEntity, mergedEntity);
+			}
+			else
+			{
+				updateEntity(*controlledEntity, entity);
+			}
+		}
+		else
+		{
+			// In case the entity was not ready when it was first discovered, maybe now is the time
+			onEntityOnline(controller, entityID, entity);
+		}
+	} // Entity guard released here
+
+	// If this PI was previously unreachable, lazily (re-)register unsolicited notifications on it so we keep a redundant subscription across both PIs.
+	// Must be called OUTSIDE the entity guard scope above to avoid a cross-PI lock-order inversion against the other PI's send path (which can wedge the avdecc::StateMachine watchdog).
+	if (reachabilityTransition)
+	{
+		tryLazyRegisterUnsolOnInterface(entityID, sourceType);
 	}
 }
 
-void ControllerImpl::onEntityOffline(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID) noexcept
+void ControllerImpl::onEntityOffline(entity::controller::Interface const* const controller, UniqueIdentifier const entityID) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onEntityOffline");
+
+	// In dual-PI mode, only treat the entity as truly offline when both PIs report it offline.
+	if (_controllerProxy && _controllerProxy->isDualInterface())
+	{
+		auto const sourceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+		_controllerProxy->setEntityReachable(entityID, sourceType, false);
+		auto const reach = _controllerProxy->getEntityReachability(entityID);
+		if (reach.onPrimary || reach.onSecondary)
+		{
+			// Entity still reachable through the other PI: do not advertise offline
+			LOG_CONTROLLER_DEBUG(entityID, "onEntityOffline on one PI but still reachable on the other; not declaring offline");
+			return;
+		}
+	}
 
 	auto controlledEntity = SharedControlledEntityImpl{};
 
@@ -155,6 +236,11 @@ void ControllerImpl::onEntityOffline(entity::controller::Interface const* const 
 			controlledEntity = entityIt->second;
 			_controlledEntities.erase(entityIt);
 		}
+	}
+
+	if (_controllerProxy)
+	{
+		_controllerProxy->clearEntityReachability(entityID);
 	}
 
 	if (controlledEntity)
@@ -228,15 +314,18 @@ void ControllerImpl::onGetListenerStreamStateResponseSniffed(entity::controller:
 }
 
 /* Unsolicited notifications (not triggered for our own commands, the command's 'result' method will be called in that case) and only if command has no error */
-void ControllerImpl::onDeregisteredFromUnsolicitedNotifications(entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID) noexcept
+void ControllerImpl::onDeregisteredFromUnsolicitedNotifications(entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID) noexcept
 {
+	// Identify the PI that received the DEREGISTER: in dual-PI mode each PI is a separate subscriber on the entity side, so this notification only applies to the PI it came in on.
+	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateUnsolicitedNotificationsSubscription(entity, false, true);
+		updateUnsolicitedNotificationsSubscription(entity, false, true, interfaceType);
 	}
 }
 
@@ -1053,7 +1142,7 @@ void ControllerImpl::onAecpResponseTime(entity::controller::Interface const* con
 	}
 }
 
-void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedCounter, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedLossCounter, std::function<bool(ControlledEntityImpl&, la::avdecc::protocol::AecpSequenceID)> const& hasLostUnsolicitedNotification, void (Controller::Observer::*notifyUnsolicitedCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t), void (Controller::Observer::*notifyUnsolicitedLossCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t)) noexcept
+void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID, Controller::InterfaceType const interfaceType, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedCounter, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedLossCounter, std::function<bool(ControlledEntityImpl&, la::avdecc::protocol::AecpSequenceID)> const& hasLostUnsolicitedNotification, void (Controller::Observer::*notifyUnsolicitedCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t), void (Controller::Observer::*notifyUnsolicitedLossCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t)) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -1080,8 +1169,8 @@ void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entit
 
 			// As part of #50 (for now), just unsubscribe from unsolicited notifications
 			{
-				// Immediately set as unsubscribed, we are already loosing packets we don't want to miss the response to our unsubscribe
-				updateUnsolicitedNotificationsSubscription(entity, false, false);
+				// Immediately mark only THIS PI as unsubscribed (the other PI may still be carrying valid unsols); we are already loosing packets on this PI so we don't want to miss the response to our unsubscribe.
+				updateUnsolicitedNotificationsSubscription(entity, false, false, interfaceType);
 
 				// Properly (try to) unregister from unsol
 				unregisterUnsol(&entity);
@@ -1099,14 +1188,28 @@ void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entit
 	}
 }
 
-void ControllerImpl::onAemAecpUnsolicitedReceived(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept
+void ControllerImpl::onAemAecpUnsolicitedReceived(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept
 {
-	handleAecpUnsolicitedReceived(entityID, sequenceID, &ControlledEntityImpl::incrementAemAecpUnsolicitedCounter, &ControlledEntityImpl::incrementAemAecpUnsolicitedLossCounter, &ControlledEntityImpl::hasLostAemUnsolicitedNotification, &Controller::Observer::onAemAecpUnsolicitedCounterChanged, &Controller::Observer::onAemAecpUnsolicitedLossCounterChanged);
+	// Identify the PI on which the unsolicited notification was received: in dual-PI mode, each PI corresponds to a distinct ControllerEntityID (i.e. a separate subscriber on the entity side) and therefore maintains its own AEM sequence-number space.
+	auto const sourceInterfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+	handleAecpUnsolicitedReceived(entityID, sequenceID, sourceInterfaceType, &ControlledEntityImpl::incrementAemAecpUnsolicitedCounter, &ControlledEntityImpl::incrementAemAecpUnsolicitedLossCounter,
+		[sourceInterfaceType](ControlledEntityImpl& entity, la::avdecc::protocol::AecpSequenceID const seq) -> bool
+		{
+			return entity.hasLostAemUnsolicitedNotification(seq, sourceInterfaceType);
+		},
+		&Controller::Observer::onAemAecpUnsolicitedCounterChanged, &Controller::Observer::onAemAecpUnsolicitedLossCounterChanged);
 }
 
-void ControllerImpl::onMvuAecpUnsolicitedReceived(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept
+void ControllerImpl::onMvuAecpUnsolicitedReceived(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept
 {
-	handleAecpUnsolicitedReceived(entityID, sequenceID, &ControlledEntityImpl::incrementMvuAecpUnsolicitedCounter, &ControlledEntityImpl::incrementMvuAecpUnsolicitedLossCounter, &ControlledEntityImpl::hasLostMvuUnsolicitedNotification, &Controller::Observer::onMvuAecpUnsolicitedCounterChanged, &Controller::Observer::onMvuAecpUnsolicitedLossCounterChanged);
+	// Same dual-PI per-subscriber rationale as for AEM unsols above.
+	auto const sourceInterfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+	handleAecpUnsolicitedReceived(entityID, sequenceID, sourceInterfaceType, &ControlledEntityImpl::incrementMvuAecpUnsolicitedCounter, &ControlledEntityImpl::incrementMvuAecpUnsolicitedLossCounter,
+		[sourceInterfaceType](ControlledEntityImpl& entity, la::avdecc::protocol::AecpSequenceID const seq) -> bool
+		{
+			return entity.hasLostMvuUnsolicitedNotification(seq, sourceInterfaceType);
+		},
+		&Controller::Observer::onMvuAecpUnsolicitedCounterChanged, &Controller::Observer::onMvuAecpUnsolicitedLossCounterChanged);
 }
 
 } // namespace controller

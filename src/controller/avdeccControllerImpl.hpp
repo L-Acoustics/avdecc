@@ -63,6 +63,7 @@ public:
 	using SharedControlledEntityImpl = std::shared_ptr<ControlledEntityImpl>;
 
 	ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceID, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName, entity::controller::Interface const* const virtualEntityInterface);
+	ControllerImpl(std::vector<Controller::InterfaceConfiguration> const& interfaceConfigurations, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, entity::controller::Interface const* const virtualEntityInterface);
 
 	void unregisterExclusiveAccessToken(la::avdecc::UniqueIdentifier const entityID, ExclusiveAccessTokenImpl* const token) const noexcept;
 	static std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<SharedControlledEntity>> deserializeControlledEntitiesFromJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept;
@@ -78,7 +79,7 @@ private:
 	/* ************************************************************ */
 	virtual void destroy() noexcept override;
 
-	virtual UniqueIdentifier getControllerEID() const noexcept override;
+	virtual UniqueIdentifier getControllerEID(Controller::InterfaceType const interfaceType = Controller::InterfaceType::Primary) const noexcept override;
 
 	/* Controller configuration */
 	virtual void enableEntityAdvertising(std::uint32_t const availableDuration, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) override;
@@ -338,7 +339,7 @@ private:
 	virtual void onAecpTimeout(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID) noexcept override;
 	virtual void onAecpUnexpectedResponse(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID) noexcept override;
 	virtual void onAecpResponseTime(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept override;
-	void handleAecpUnsolicitedReceived(UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedCounter, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedLossCounter, std::function<bool(ControlledEntityImpl&, la::avdecc::protocol::AecpSequenceID)> const& hasLostUnsolicitedNotification, void (Controller::Observer::*notifyUnsolicitedCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t), void (Controller::Observer::*notifyUnsolicitedLossCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t)) noexcept;
+	void handleAecpUnsolicitedReceived(UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID, Controller::InterfaceType const interfaceType, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedCounter, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedLossCounter, std::function<bool(ControlledEntityImpl&, la::avdecc::protocol::AecpSequenceID)> const& hasLostUnsolicitedNotification, void (Controller::Observer::*notifyUnsolicitedCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t), void (Controller::Observer::*notifyUnsolicitedLossCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t)) noexcept;
 	virtual void onAemAecpUnsolicitedReceived(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept override;
 	virtual void onMvuAecpUnsolicitedReceived(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept override;
 
@@ -362,7 +363,15 @@ private:
 	static void setMilanWarningCompatibilityFlag(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, std::string const& specClause, std::string const& message) noexcept;
 	static void removeCompatibilityFlag(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag, std::string const& specClause, std::string const& message) noexcept;
 	static void decreaseMilanCompatibilityVersion(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::MilanVersion const& version, std::string const& specClause, std::string const& message) noexcept;
-	void updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed, bool const triggeredByEntity) const noexcept;
+	/**
+	 * @brief Update the unsolicited-notifications subscription state of an entity (single PI or all PIs).
+	 * @details When @a interfaceType is provided only that PI's subscription state is mutated; otherwise the change is applied to every PI. The observer notification #Controller::Observer::onUnsolicitedRegistrationChanged is fired only when the *global* subscription state (logical OR across PIs) flips, preserving the user-facing semantics (the entity is still considered subscribed as long as at least one PI is).
+	 * @param[in] controlledEntity The entity whose subscription state must be updated.
+	 * @param[in] isSubscribed New subscription state to apply.
+	 * @param[in] triggeredByEntity True if the change originated from an entity-initiated DEREGISTER (vs a controller-initiated change).
+	 * @param[in] interfaceType The targeted PI, or std::nullopt to apply to every PI at once.
+	 */
+	void updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed, bool const triggeredByEntity, std::optional<Controller::InterfaceType> const interfaceType = std::nullopt) const noexcept;
 	void updateAcquiredState(ControlledEntityImpl& controlledEntity, model::AcquireState const acquireState, UniqueIdentifier const owningEntity) const noexcept;
 	void updateLockedState(ControlledEntityImpl& controlledEntity, model::LockState const lockState, UniqueIdentifier const lockingEntity) const noexcept;
 	void updateConfiguration(entity::controller::Interface const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept;
@@ -648,7 +657,7 @@ private:
 		std::string specClause{}; /**< The spec clause that was violated, if any */
 		std::string message{}; /**< A message describing the error, if any */
 	};
-	using DelayedQueryHandler = std::function<void(entity::ControllerEntity*)>;
+	using DelayedQueryHandler = std::function<void(entity::controller::Interface const*)>;
 	struct DelayedQuery
 	{
 		std::chrono::time_point<std::chrono::system_clock> sendTime{};
@@ -693,6 +702,13 @@ private:
 	void checkDynamicInfoSupported(ControlledEntityImpl* const entity) noexcept;
 	void registerUnsol(ControlledEntityImpl* const entity) noexcept;
 	void unregisterUnsol(ControlledEntityImpl* const entity) noexcept;
+	/** Attempts to (re-)register unsolicited notifications for @a entityID on the specified PI without going through the dual-PI retry layer.
+	 *  Does nothing if the entity is not currently reachable on that PI, if the unsol state is not NotRegistered, if the entity is in single-PI mode and @a interfaceType is Secondary, or if @a entity is not advertised yet.
+	 *  This is the per-PI redundancy registration path called when a PI becomes (re-)reachable for an already-known entity.
+	 */
+	void tryLazyRegisterUnsolOnInterface(UniqueIdentifier const entityID, Controller::InterfaceType const interfaceType) noexcept;
+	/** Result handler for the lazy per-PI unsolicited notifications registration. Marks the proxy's per-PI unsol state accordingly. */
+	void onLazyRegisterUnsolicitedNotificationsResult(Controller::InterfaceType const interfaceType, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept;
 	void getStaticModel(ControlledEntityImpl* const entity) noexcept;
 	void getDynamicInfo(ControlledEntityImpl* const entity) noexcept;
 	void getDescriptorDynamicInfo(ControlledEntityImpl* const entity) noexcept;
@@ -833,8 +849,15 @@ private:
 	mutable std::recursive_mutex _lock{}; // A mutex to protect all sensitive data members
 	ControlledEntityImpl::LockInformation::SharedPointer _entitiesSharedLockInformation{ std::make_shared<ControlledEntityImpl::LockInformation>() }; // The SharedLockInformation to be used by all managed ControlledEntities
 	std::unordered_map<UniqueIdentifier, SharedControlledEntityImpl, UniqueIdentifier::hash> _controlledEntities;
+	// Optional per-PI executor wrappers owned by the ControllerImpl. Used in dual-PI mode when the caller did not
+	// provide an explicit executor name: the controller transparently registers per-PI unique executor names and
+	// owns their lifetime. Declared BEFORE the EndStations so they outlive them at destruction.
+	la::avdecc::ExecutorManager::ExecutorWrapper::UniquePointer _primaryExecutorWrapper{ nullptr, nullptr };
+	la::avdecc::ExecutorManager::ExecutorWrapper::UniquePointer _secondaryExecutorWrapper{ nullptr, nullptr };
 	EndStation::UniquePointer _endStation{ nullptr, nullptr };
+	EndStation::UniquePointer _secondaryEndStation{ nullptr, nullptr }; /**< Secondary EndStation, only valid in dual-interface (redundancy) mode. */
 	entity::ControllerEntity* _controller{ nullptr };
+	entity::ControllerEntity* _secondaryController{ nullptr }; /**< Secondary ControllerEntity, only valid in dual-interface mode. */
 	std::unique_ptr<ControllerVirtualProxy> _controllerProxy{ nullptr };
 	std::string _preferedLocale{ "en-US" };
 	bool _fullStaticModelEnumeration{ false };

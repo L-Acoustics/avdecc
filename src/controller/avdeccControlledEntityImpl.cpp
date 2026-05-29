@@ -141,7 +141,15 @@ bool ControlledEntityImpl::isUsingCachedEntityModel() const noexcept
 
 bool ControlledEntityImpl::isSubscribedToUnsolicitedNotifications() const noexcept
 {
-	return _isSubscribedToUnsolicitedNotifications;
+	// Globally subscribed if at least one PI is subscribed (covers both single-PI and dual-PI deployments).
+	for (auto const subscribed : _isSubscribedToUnsolicitedNotificationsPerInterface)
+	{
+		if (subscribed)
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 bool ControlledEntityImpl::areUnsolicitedNotificationsSupported() const noexcept
@@ -2797,15 +2805,25 @@ void ControlledEntityImpl::setNotUsingCachedEntityModel() noexcept
 	_isUsingCachedEntityModel = false;
 }
 
-void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept
+void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const isSubscribed, std::optional<la::avdecc::controller::Controller::InterfaceType> const interfaceType) noexcept
 {
-	_isSubscribedToUnsolicitedNotifications = isSubscribed;
-
-	// If unsubscribing, reset the expected sequence id
-	if (!isSubscribed)
+	// Iterate every PI slot and mutate the ones matching the requested scope (a single PI when interfaceType is set, every PI otherwise).
+	// On unsubscribe, the affected PI's expected sequence IDs are also reset; touching the other PI's slots would corrupt its loss tracking when only one PI lost its subscription (e.g. a transient cable disconnection on this PI causing the entity to send a DEREGISTER targeted at this PI only).
+	for (auto const currentType : la::avdecc::controller::Controller::AllInterfaceTypes)
 	{
-		_expectedAemSequenceID = std::nullopt;
-		_expectedMvuSequenceID = std::nullopt;
+		if (!interfaceType.has_value() || *interfaceType == currentType)
+		{
+			auto const idx = la::avdecc::utils::to_integral(currentType);
+			if (!AVDECC_ASSERT_WITH_RET(idx < _isSubscribedToUnsolicitedNotificationsPerInterface.size(), "Invalid InterfaceType value"))
+			{
+				continue;
+			}
+			_isSubscribedToUnsolicitedNotificationsPerInterface[idx] = isSubscribed;
+			if (!isSubscribed)
+			{
+				resetExpectedUnsolicitedSequenceID(currentType);
+			}
+		}
 	}
 }
 
@@ -2881,10 +2899,15 @@ ControlledEntity::Diagnostics& ControlledEntityImpl::getDiagnostics() noexcept
 	return _diagnostics;
 }
 
-bool ControlledEntityImpl::hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID) noexcept
+bool ControlledEntityImpl::hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept
 {
+	auto const idx = la::avdecc::utils::to_integral(interfaceType);
+	if (!AVDECC_ASSERT_WITH_RET(idx < _isSubscribedToUnsolicitedNotificationsPerInterface.size(), "Invalid InterfaceType value"))
+	{
+		return false;
+	}
 	auto unmatched = false;
-	if (_isSubscribedToUnsolicitedNotifications && _milanInfo && _milanInfo->protocolVersion >= 1)
+	if (_isSubscribedToUnsolicitedNotificationsPerInterface[idx] && _milanInfo && _milanInfo->protocolVersion >= 1)
 	{
 		// Compare received sequenceID and expected one, if it's not the first one received.
 		// We don't expect 0 as first value, since the controller itself might restart (with the same entityID) without properly deregistering first,
@@ -2899,14 +2922,35 @@ bool ControlledEntityImpl::hasLostUnsolicitedNotification(protocol::AecpSequence
 	return unmatched;
 }
 
-bool ControlledEntityImpl::hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept
+bool ControlledEntityImpl::hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept
 {
-	return hasLostUnsolicitedNotification(sequenceID, _expectedAemSequenceID);
+	auto const idx = la::avdecc::utils::to_integral(interfaceType);
+	if (!AVDECC_ASSERT_WITH_RET(idx < _expectedAemSequenceID.size(), "Invalid InterfaceType value"))
+	{
+		return false;
+	}
+	return hasLostUnsolicitedNotification(sequenceID, _expectedAemSequenceID[idx], interfaceType);
 }
 
-bool ControlledEntityImpl::hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept
+bool ControlledEntityImpl::hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept
 {
-	return hasLostUnsolicitedNotification(sequenceID, _expectedMvuSequenceID);
+	auto const idx = la::avdecc::utils::to_integral(interfaceType);
+	if (!AVDECC_ASSERT_WITH_RET(idx < _expectedMvuSequenceID.size(), "Invalid InterfaceType value"))
+	{
+		return false;
+	}
+	return hasLostUnsolicitedNotification(sequenceID, _expectedMvuSequenceID[idx], interfaceType);
+}
+
+void ControlledEntityImpl::resetExpectedUnsolicitedSequenceID(la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept
+{
+	auto const idx = la::avdecc::utils::to_integral(interfaceType);
+	if (!AVDECC_ASSERT_WITH_RET(idx < _expectedAemSequenceID.size(), "Invalid InterfaceType value"))
+	{
+		return;
+	}
+	_expectedAemSequenceID[idx] = std::nullopt;
+	_expectedMvuSequenceID[idx] = std::nullopt;
 }
 
 // Static methods

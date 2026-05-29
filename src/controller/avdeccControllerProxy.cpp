@@ -27,15 +27,129 @@
 #include <la/avdecc/utils.hpp>
 #include <la/avdecc/executor.hpp>
 
+#include <memory>
+#include <tuple>
+#include <type_traits>
+
 namespace la
 {
 namespace avdecc
 {
 namespace controller
 {
+namespace
+{
+/**
+* @brief Builds a retrying handler wrapper for AEM/AA/MVU commands (status is the 3rd parameter).
+* @details Wraps the user-provided handler so that, on a retryable error (TimedOut/UnknownEntity/NetworkError), the command is re-sent on the other physical interface (if any) before invoking the original handler. The retry is attempted at most once.
+* @param[in] proxy The owning proxy (used to query reachability and retry policy).
+* @param[in] originalHandler The user-provided completion handler.
+* @param[in] retryInvoker Callable invoked to resend the command on the other interface, given that interface and the (same) handler to use for the retry attempt.
+* @return A new handler with the same signature as @a originalHandler.
+*/
+template<typename Handler, typename Invoker>
+Handler makeRetryAemHandler(ControllerVirtualProxy const* const proxy, Handler const& originalHandler, Invoker const& retryInvoker) noexcept
+{
+	auto retried = std::make_shared<bool>(false);
+	return Handler{ [proxy, originalHandler, retryInvoker, retried](entity::controller::Interface const* const sender, UniqueIdentifier const eid, auto const status, auto const&... rest) noexcept
+		{
+			if (!*retried && proxy->isDualInterface() && ControllerVirtualProxy::shouldRetry(status))
+			{
+				// Only retry if the entity is currently reachable on the other PI. This avoids converting a legitimate
+				// failure (e.g. a real TimedOut from the only PI that ever saw the entity) into a misleading UnknownEntity
+				// returned by a PI that never discovered the target.
+				auto* const other = proxy->otherReachableInterface(eid, sender);
+				if (other != nullptr)
+				{
+					*retried = true;
+					retryInvoker(other, originalHandler);
+					return;
+				}
+			}
+			if (originalHandler)
+			{
+				originalHandler(sender, eid, status, rest...);
+			}
+		} };
+}
+
+/**
+* @brief Builds a retrying handler wrapper for ACMP commands (status is the LAST parameter).
+* @details Same intent as makeRetryAemHandler but for ACMP completion handlers, where the ControlStatus is the final argument.
+* @param[in] proxy The owning proxy.
+* @param[in] originalHandler The user-provided completion handler.
+* @param[in] retryInvoker Callable invoked to resend the command on the other interface.
+* @return A new handler with the same signature as @a originalHandler.
+*/
+template<typename Handler, typename Invoker>
+Handler makeRetryAcmpHandler(ControllerVirtualProxy const* const proxy, UniqueIdentifier const routingEntityID, Handler const& originalHandler, Invoker const& retryInvoker) noexcept
+{
+	auto retried = std::make_shared<bool>(false);
+	return Handler{ [proxy, routingEntityID, originalHandler, retryInvoker, retried](entity::controller::Interface const* const sender, auto const&... args) noexcept
+		{
+			static_assert(sizeof...(args) >= 1u, "ACMP handler must have at least one argument (the ControlStatus)");
+			auto const argsTuple = std::forward_as_tuple(args...);
+			auto const& status = std::get<sizeof...(args) - 1u>(argsTuple);
+			if (!*retried && proxy->isDualInterface() && ControllerVirtualProxy::shouldRetry(status))
+			{
+				auto* const other = proxy->otherReachableInterface(routingEntityID, sender);
+				if (other != nullptr)
+				{
+					*retried = true;
+					retryInvoker(other, originalHandler);
+					return;
+				}
+			}
+			if (originalHandler)
+			{
+				originalHandler(sender, args...);
+			}
+		} };
+}
+} // namespace
+
+/**
+* @brief Routes an AEM/AA/MVU forwarding call through the dual-interface retry layer.
+* @details Selects the appropriate real interface using @ref pickRealInterface and wraps the handler so that retryable errors automatically re-issue the command on the other physical interface.
+*/
+template<auto Method, typename HandlerT, typename... Args>
+void ControllerVirtualProxy::routeAemCommand(UniqueIdentifier const targetEntityID, HandlerT const& handler, Args const&... args) const noexcept
+{
+	auto invoker = std::function<void(entity::controller::Interface const* const, HandlerT const&)>{ [targetEntityID, args...](entity::controller::Interface const* const iface, HandlerT const& h) noexcept
+		{
+			(iface->*Method)(targetEntityID, args..., h);
+		} };
+	auto wrapped = makeRetryAemHandler(this, handler, invoker);
+	(pickRealInterface(targetEntityID)->*Method)(targetEntityID, args..., wrapped);
+}
+
+/**
+* @brief Routes an ACMP forwarding call through the dual-interface retry layer (status is the last parameter).
+*/
+template<auto Method, typename HandlerT, typename... Args>
+void ControllerVirtualProxy::routeAcmpCommand(UniqueIdentifier const routingKey, HandlerT const& handler, Args const&... args) const noexcept
+{
+	auto invoker = std::function<void(entity::controller::Interface const* const, HandlerT const&)>{ [args...](entity::controller::Interface const* const iface, HandlerT const& h) noexcept
+		{
+			(iface->*Method)(args..., h);
+		} };
+	auto wrapped = makeRetryAcmpHandler(this, routingKey, handler, invoker);
+	(pickRealInterface(routingKey)->*Method)(args..., wrapped);
+}
+
 ControllerVirtualProxy::ControllerVirtualProxy(protocol::ProtocolInterface const* const protocolInterface, entity::controller::Interface const* const realInterface, entity::controller::Interface const* const virtualInterface) noexcept
 	: _protocolInterface{ protocolInterface }
 	, _realInterface{ realInterface }
+	, _secondaryRealInterface{ nullptr }
+	, _virtualInterface{ virtualInterface }
+{
+	_executorName = _protocolInterface->getExecutorName();
+}
+
+ControllerVirtualProxy::ControllerVirtualProxy(protocol::ProtocolInterface const* const protocolInterface, entity::controller::Interface const* const primaryRealInterface, entity::controller::Interface const* const secondaryRealInterface, entity::controller::Interface const* const virtualInterface) noexcept
+	: _protocolInterface{ protocolInterface }
+	, _realInterface{ primaryRealInterface }
+	, _secondaryRealInterface{ secondaryRealInterface }
 	, _virtualInterface{ virtualInterface }
 {
 	_executorName = _protocolInterface->getExecutorName();
@@ -65,6 +179,279 @@ bool ControllerVirtualProxy::isVirtualEntity(UniqueIdentifier const& virtualEnti
 	return _virtualEntities.find(virtualEntity) != _virtualEntities.end();
 }
 
+bool ControllerVirtualProxy::setEntityReachable(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType, bool const reachable) noexcept
+{
+	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+	auto& info = _reachability[entityID];
+	auto const wasReachable = (interfaceType == Controller::InterfaceType::Primary) ? info.onPrimary : info.onSecondary;
+	if (interfaceType == Controller::InterfaceType::Primary)
+	{
+		info.onPrimary = reachable;
+		if (!reachable)
+		{
+			// PI lost reachability: drop any unsol registration we believed was active here, so the next time we see the entity on this PI we re-register.
+			info.unsolPrimary = UnsolState::NotRegistered;
+		}
+	}
+	else
+	{
+		info.onSecondary = reachable;
+		if (!reachable)
+		{
+			info.unsolSecondary = UnsolState::NotRegistered;
+		}
+	}
+	return reachable && !wasReachable;
+}
+
+void ControllerVirtualProxy::clearEntityReachability(UniqueIdentifier const& entityID) noexcept
+{
+	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+	_reachability.erase(entityID);
+}
+
+bool ControllerVirtualProxy::markInterfaceDown(Controller::InterfaceType const interfaceType) noexcept
+{
+	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+
+	// Update the per-PI transport-up state first (independent of any discovered entity).
+	if (interfaceType == Controller::InterfaceType::Primary)
+	{
+		_primaryInterfaceUp = false;
+	}
+	else
+	{
+		_secondaryInterfaceUp = false;
+	}
+
+	// Also clear per-entity reachability flags for the failing PI so subsequent routing decisions are accurate.
+	for (auto& [entityID, info] : _reachability)
+	{
+		if (interfaceType == Controller::InterfaceType::Primary)
+		{
+			info.onPrimary = false;
+			info.unsolPrimary = UnsolState::NotRegistered;
+		}
+		else
+		{
+			info.onSecondary = false;
+			info.unsolSecondary = UnsolState::NotRegistered;
+		}
+	}
+
+	// The redundancy guarantee is at the transport level: the controller is still operational as long as the
+	// other PI's transport has not also collapsed. This must NOT be conditioned on having already discovered
+	// entities (which would incorrectly escalate to a fatal error on early-boot transport faults).
+	return (interfaceType == Controller::InterfaceType::Primary) ? _secondaryInterfaceUp : _primaryInterfaceUp;
+}
+
+ControllerVirtualProxy::InterfaceReachability ControllerVirtualProxy::getEntityReachability(UniqueIdentifier const& entityID) const noexcept
+{
+	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+	auto const it = _reachability.find(entityID);
+	if (it == _reachability.end())
+	{
+		return InterfaceReachability{};
+	}
+	return InterfaceReachability{ it->second.onPrimary, it->second.onSecondary };
+}
+
+bool ControllerVirtualProxy::isDualInterface() const noexcept
+{
+	return _secondaryRealInterface != nullptr;
+}
+
+entity::controller::Interface const* ControllerVirtualProxy::getSecondaryRealInterface() const noexcept
+{
+	return _secondaryRealInterface;
+}
+
+entity::controller::Interface const* ControllerVirtualProxy::pickRealInterface(UniqueIdentifier const& targetEntityID) const noexcept
+{
+	// Single-interface mode: always primary
+	if (_secondaryRealInterface == nullptr)
+	{
+		return _realInterface;
+	}
+
+	// Dual-interface mode: pick based on reachability
+	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+	auto const it = _reachability.find(targetEntityID);
+	if (it == _reachability.end())
+	{
+		// Unknown entity: default to primary
+		return _realInterface;
+	}
+
+	auto const& info = it->second;
+	// Prefer primary when available
+	if (info.onPrimary)
+	{
+		return _realInterface;
+	}
+	if (info.onSecondary)
+	{
+		return _secondaryRealInterface;
+	}
+	// Neither interface reports the entity as reachable: default to primary so the command at least exits the controller (it will likely fail and that's OK)
+	return _realInterface;
+}
+
+entity::controller::Interface const* ControllerVirtualProxy::otherRealInterface(entity::controller::Interface const* const chosenInterface) const noexcept
+{
+	if (_secondaryRealInterface == nullptr)
+	{
+		return nullptr;
+	}
+	if (chosenInterface == _realInterface)
+	{
+		return _secondaryRealInterface;
+	}
+	return _realInterface;
+}
+
+entity::controller::Interface const* ControllerVirtualProxy::otherReachableInterface(UniqueIdentifier const& entityID, entity::controller::Interface const* const chosenInterface) const noexcept
+{
+	auto* const other = otherRealInterface(chosenInterface);
+	if (other == nullptr)
+	{
+		return nullptr;
+	}
+	// Look up the reachability for the other PI: only allow retry there if the entity has actually been seen on it.
+	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+	auto const it = _reachability.find(entityID);
+	if (it == _reachability.end())
+	{
+		return nullptr;
+	}
+	auto const& info = it->second;
+	auto const otherIsPrimary = (other == _realInterface);
+	if (otherIsPrimary && info.onPrimary)
+	{
+		return other;
+	}
+	if (!otherIsPrimary && info.onSecondary)
+	{
+		return other;
+	}
+	return nullptr;
+}
+
+bool ControllerVirtualProxy::tryClaimUnsolPending(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType) noexcept
+{
+	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+	auto const it = _reachability.find(entityID);
+	if (it == _reachability.end())
+	{
+		// We don't track unsol for entities that we haven't seen on any PI yet.
+		return false;
+	}
+	auto& info = it->second;
+	auto& state = (interfaceType == Controller::InterfaceType::Primary) ? info.unsolPrimary : info.unsolSecondary;
+	if (state != UnsolState::NotRegistered)
+	{
+		return false;
+	}
+	state = UnsolState::Pending;
+	return true;
+}
+
+void ControllerVirtualProxy::setUnsolState(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType, UnsolState const newState) noexcept
+{
+	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+	auto const it = _reachability.find(entityID);
+	if (it == _reachability.end())
+	{
+		return;
+	}
+	auto& info = it->second;
+	if (interfaceType == Controller::InterfaceType::Primary)
+	{
+		info.unsolPrimary = newState;
+	}
+	else
+	{
+		info.unsolSecondary = newState;
+	}
+}
+
+ControllerVirtualProxy::UnsolState ControllerVirtualProxy::getUnsolState(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType) const noexcept
+{
+	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+	auto const it = _reachability.find(entityID);
+	if (it == _reachability.end())
+	{
+		return UnsolState::NotRegistered;
+	}
+	auto const& info = it->second;
+	return (interfaceType == Controller::InterfaceType::Primary) ? info.unsolPrimary : info.unsolSecondary;
+}
+
+void ControllerVirtualProxy::registerUnsolicitedNotificationsOnInterface(UniqueIdentifier const targetEntityID, Controller::InterfaceType const interfaceType, RegisterUnsolicitedNotificationsHandler const& handler) const noexcept
+{
+	// Pick the concrete real PI to use. In single-PI mode the secondary interface is null and we always use the primary.
+	auto const* const targetInterface = (interfaceType == Controller::InterfaceType::Secondary && _secondaryRealInterface != nullptr) ? _secondaryRealInterface : _realInterface;
+	if (targetInterface == nullptr)
+	{
+		return;
+	}
+	// No dual-PI retry wrapping here: this method is used by the lazy per-PI registration logic and must hit exactly one PI.
+	targetInterface->registerUnsolicitedNotifications(targetEntityID, handler);
+}
+
+bool ControllerVirtualProxy::shouldRetry(entity::ControllerEntity::AemCommandStatus const status) noexcept
+{
+	switch (status)
+	{
+		case entity::ControllerEntity::AemCommandStatus::TimedOut:
+		case entity::ControllerEntity::AemCommandStatus::UnknownEntity:
+		case entity::ControllerEntity::AemCommandStatus::NetworkError:
+			return true;
+		default:
+			return false;
+	}
+}
+
+bool ControllerVirtualProxy::shouldRetry(entity::ControllerEntity::AaCommandStatus const status) noexcept
+{
+	switch (status)
+	{
+		case entity::ControllerEntity::AaCommandStatus::TimedOut:
+		case entity::ControllerEntity::AaCommandStatus::UnknownEntity:
+		case entity::ControllerEntity::AaCommandStatus::NetworkError:
+			return true;
+		default:
+			return false;
+	}
+}
+
+bool ControllerVirtualProxy::shouldRetry(entity::ControllerEntity::MvuCommandStatus const status) noexcept
+{
+	switch (status)
+	{
+		case entity::ControllerEntity::MvuCommandStatus::TimedOut:
+		case entity::ControllerEntity::MvuCommandStatus::UnknownEntity:
+		case entity::ControllerEntity::MvuCommandStatus::NetworkError:
+			return true;
+		default:
+			return false;
+	}
+}
+
+bool ControllerVirtualProxy::shouldRetry(entity::ControllerEntity::ControlStatus const status) noexcept
+{
+	switch (status)
+	{
+		case entity::ControllerEntity::ControlStatus::TimedOut:
+		case entity::ControllerEntity::ControlStatus::ListenerUnknownID:
+		case entity::ControllerEntity::ControlStatus::TalkerUnknownID:
+		case entity::ControllerEntity::ControlStatus::NetworkError:
+			return true;
+		default:
+			return false;
+	}
+}
+
 void ControllerVirtualProxy::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, AcquireEntityHandler const& handler) const noexcept
 {
 	auto const isVirtual = isVirtualEntity(targetEntityID);
@@ -81,7 +468,7 @@ void ControllerVirtualProxy::acquireEntity(UniqueIdentifier const targetEntityID
 	else
 	{
 		// Forward call to real interface
-		_realInterface->acquireEntity(targetEntityID, isPersistent, descriptorType, descriptorIndex, handler);
+		routeAemCommand<&entity::controller::Interface::acquireEntity>(targetEntityID, handler, isPersistent, descriptorType, descriptorIndex);
 	}
 }
 
@@ -101,7 +488,7 @@ void ControllerVirtualProxy::releaseEntity(UniqueIdentifier const targetEntityID
 	else
 	{
 		// Forward call to real interface
-		_realInterface->releaseEntity(targetEntityID, descriptorType, descriptorIndex, handler);
+		routeAemCommand<&entity::controller::Interface::releaseEntity>(targetEntityID, handler, descriptorType, descriptorIndex);
 	}
 }
 
@@ -121,7 +508,7 @@ void ControllerVirtualProxy::lockEntity(UniqueIdentifier const targetEntityID, e
 	else
 	{
 		// Forward call to real interface
-		_realInterface->lockEntity(targetEntityID, descriptorType, descriptorIndex, handler);
+		routeAemCommand<&entity::controller::Interface::lockEntity>(targetEntityID, handler, descriptorType, descriptorIndex);
 	}
 }
 
@@ -141,7 +528,7 @@ void ControllerVirtualProxy::unlockEntity(UniqueIdentifier const targetEntityID,
 	else
 	{
 		// Forward call to real interface
-		_realInterface->unlockEntity(targetEntityID, descriptorType, descriptorIndex, handler);
+		routeAemCommand<&entity::controller::Interface::unlockEntity>(targetEntityID, handler, descriptorType, descriptorIndex);
 	}
 }
 
@@ -161,7 +548,7 @@ void ControllerVirtualProxy::queryEntityAvailable(UniqueIdentifier const targetE
 	else
 	{
 		// Forward call to real interface
-		_realInterface->queryEntityAvailable(targetEntityID, handler);
+		routeAemCommand<&entity::controller::Interface::queryEntityAvailable>(targetEntityID, handler);
 	}
 }
 
@@ -181,7 +568,7 @@ void ControllerVirtualProxy::queryControllerAvailable(UniqueIdentifier const tar
 	else
 	{
 		// Forward call to real interface
-		_realInterface->queryControllerAvailable(targetEntityID, handler);
+		routeAemCommand<&entity::controller::Interface::queryControllerAvailable>(targetEntityID, handler);
 	}
 }
 
@@ -201,7 +588,7 @@ void ControllerVirtualProxy::registerUnsolicitedNotifications(UniqueIdentifier c
 	else
 	{
 		// Forward call to real interface
-		_realInterface->registerUnsolicitedNotifications(targetEntityID, handler);
+		routeAemCommand<&entity::controller::Interface::registerUnsolicitedNotifications>(targetEntityID, handler);
 	}
 }
 
@@ -221,7 +608,7 @@ void ControllerVirtualProxy::unregisterUnsolicitedNotifications(UniqueIdentifier
 	else
 	{
 		// Forward call to real interface
-		_realInterface->unregisterUnsolicitedNotifications(targetEntityID, handler);
+		routeAemCommand<&entity::controller::Interface::unregisterUnsolicitedNotifications>(targetEntityID, handler);
 	}
 }
 
@@ -241,7 +628,7 @@ void ControllerVirtualProxy::readEntityDescriptor(UniqueIdentifier const targetE
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readEntityDescriptor(targetEntityID, handler);
+		routeAemCommand<&entity::controller::Interface::readEntityDescriptor>(targetEntityID, handler);
 	}
 }
 
@@ -261,7 +648,7 @@ void ControllerVirtualProxy::readConfigurationDescriptor(UniqueIdentifier const 
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readConfigurationDescriptor(targetEntityID, configurationIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readConfigurationDescriptor>(targetEntityID, handler, configurationIndex);
 	}
 }
 
@@ -281,7 +668,7 @@ void ControllerVirtualProxy::readAudioUnitDescriptor(UniqueIdentifier const targ
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readAudioUnitDescriptor(targetEntityID, configurationIndex, audioUnitIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readAudioUnitDescriptor>(targetEntityID, handler, configurationIndex, audioUnitIndex);
 	}
 }
 
@@ -301,7 +688,7 @@ void ControllerVirtualProxy::readStreamInputDescriptor(UniqueIdentifier const ta
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readStreamInputDescriptor(targetEntityID, configurationIndex, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readStreamInputDescriptor>(targetEntityID, handler, configurationIndex, streamIndex);
 	}
 }
 
@@ -321,7 +708,7 @@ void ControllerVirtualProxy::readStreamOutputDescriptor(UniqueIdentifier const t
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readStreamOutputDescriptor(targetEntityID, configurationIndex, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readStreamOutputDescriptor>(targetEntityID, handler, configurationIndex, streamIndex);
 	}
 }
 
@@ -341,7 +728,7 @@ void ControllerVirtualProxy::readJackInputDescriptor(UniqueIdentifier const targ
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readJackInputDescriptor(targetEntityID, configurationIndex, jackIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readJackInputDescriptor>(targetEntityID, handler, configurationIndex, jackIndex);
 	}
 }
 
@@ -361,7 +748,7 @@ void ControllerVirtualProxy::readJackOutputDescriptor(UniqueIdentifier const tar
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readJackOutputDescriptor(targetEntityID, configurationIndex, jackIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readJackOutputDescriptor>(targetEntityID, handler, configurationIndex, jackIndex);
 	}
 }
 
@@ -381,7 +768,7 @@ void ControllerVirtualProxy::readAvbInterfaceDescriptor(UniqueIdentifier const t
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readAvbInterfaceDescriptor(targetEntityID, configurationIndex, avbInterfaceIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readAvbInterfaceDescriptor>(targetEntityID, handler, configurationIndex, avbInterfaceIndex);
 	}
 }
 
@@ -401,7 +788,7 @@ void ControllerVirtualProxy::readClockSourceDescriptor(UniqueIdentifier const ta
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readClockSourceDescriptor(targetEntityID, configurationIndex, clockSourceIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readClockSourceDescriptor>(targetEntityID, handler, configurationIndex, clockSourceIndex);
 	}
 }
 
@@ -421,7 +808,7 @@ void ControllerVirtualProxy::readMemoryObjectDescriptor(UniqueIdentifier const t
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readMemoryObjectDescriptor(targetEntityID, configurationIndex, memoryObjectIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readMemoryObjectDescriptor>(targetEntityID, handler, configurationIndex, memoryObjectIndex);
 	}
 }
 
@@ -441,7 +828,7 @@ void ControllerVirtualProxy::readLocaleDescriptor(UniqueIdentifier const targetE
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readLocaleDescriptor(targetEntityID, configurationIndex, localeIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readLocaleDescriptor>(targetEntityID, handler, configurationIndex, localeIndex);
 	}
 }
 
@@ -461,7 +848,7 @@ void ControllerVirtualProxy::readStringsDescriptor(UniqueIdentifier const target
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readStringsDescriptor(targetEntityID, configurationIndex, stringsIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readStringsDescriptor>(targetEntityID, handler, configurationIndex, stringsIndex);
 	}
 }
 
@@ -481,7 +868,7 @@ void ControllerVirtualProxy::readStreamPortInputDescriptor(UniqueIdentifier cons
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readStreamPortInputDescriptor(targetEntityID, configurationIndex, streamPortIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readStreamPortInputDescriptor>(targetEntityID, handler, configurationIndex, streamPortIndex);
 	}
 }
 
@@ -501,7 +888,7 @@ void ControllerVirtualProxy::readStreamPortOutputDescriptor(UniqueIdentifier con
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readStreamPortOutputDescriptor(targetEntityID, configurationIndex, streamPortIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readStreamPortOutputDescriptor>(targetEntityID, handler, configurationIndex, streamPortIndex);
 	}
 }
 
@@ -521,7 +908,7 @@ void ControllerVirtualProxy::readExternalPortInputDescriptor(UniqueIdentifier co
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readExternalPortInputDescriptor(targetEntityID, configurationIndex, externalPortIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readExternalPortInputDescriptor>(targetEntityID, handler, configurationIndex, externalPortIndex);
 	}
 }
 
@@ -541,7 +928,7 @@ void ControllerVirtualProxy::readExternalPortOutputDescriptor(UniqueIdentifier c
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readExternalPortOutputDescriptor(targetEntityID, configurationIndex, externalPortIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readExternalPortOutputDescriptor>(targetEntityID, handler, configurationIndex, externalPortIndex);
 	}
 }
 
@@ -561,7 +948,7 @@ void ControllerVirtualProxy::readInternalPortInputDescriptor(UniqueIdentifier co
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readInternalPortInputDescriptor(targetEntityID, configurationIndex, internalPortIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readInternalPortInputDescriptor>(targetEntityID, handler, configurationIndex, internalPortIndex);
 	}
 }
 
@@ -581,7 +968,7 @@ void ControllerVirtualProxy::readInternalPortOutputDescriptor(UniqueIdentifier c
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readInternalPortOutputDescriptor(targetEntityID, configurationIndex, internalPortIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readInternalPortOutputDescriptor>(targetEntityID, handler, configurationIndex, internalPortIndex);
 	}
 }
 
@@ -601,7 +988,7 @@ void ControllerVirtualProxy::readAudioClusterDescriptor(UniqueIdentifier const t
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readAudioClusterDescriptor(targetEntityID, configurationIndex, clusterIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readAudioClusterDescriptor>(targetEntityID, handler, configurationIndex, clusterIndex);
 	}
 }
 
@@ -621,7 +1008,7 @@ void ControllerVirtualProxy::readAudioMapDescriptor(UniqueIdentifier const targe
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readAudioMapDescriptor(targetEntityID, configurationIndex, mapIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readAudioMapDescriptor>(targetEntityID, handler, configurationIndex, mapIndex);
 	}
 }
 
@@ -641,7 +1028,7 @@ void ControllerVirtualProxy::readControlDescriptor(UniqueIdentifier const target
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readControlDescriptor(targetEntityID, configurationIndex, controlIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readControlDescriptor>(targetEntityID, handler, configurationIndex, controlIndex);
 	}
 }
 
@@ -661,7 +1048,7 @@ void ControllerVirtualProxy::readClockDomainDescriptor(UniqueIdentifier const ta
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readClockDomainDescriptor(targetEntityID, configurationIndex, clockDomainIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readClockDomainDescriptor>(targetEntityID, handler, configurationIndex, clockDomainIndex);
 	}
 }
 
@@ -682,7 +1069,7 @@ void ControllerVirtualProxy::readTimingDescriptor(UniqueIdentifier const targetE
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readTimingDescriptor(targetEntityID, configurationIndex, timingIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readTimingDescriptor>(targetEntityID, handler, configurationIndex, timingIndex);
 	}
 }
 
@@ -703,7 +1090,7 @@ void ControllerVirtualProxy::readPtpInstanceDescriptor(UniqueIdentifier const ta
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readPtpInstanceDescriptor(targetEntityID, configurationIndex, ptpInstanceIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readPtpInstanceDescriptor>(targetEntityID, handler, configurationIndex, ptpInstanceIndex);
 	}
 }
 
@@ -724,7 +1111,7 @@ void ControllerVirtualProxy::readPtpPortDescriptor(UniqueIdentifier const target
 	else
 	{
 		// Forward call to real interface
-		_realInterface->readPtpPortDescriptor(targetEntityID, configurationIndex, ptpPortIndex, handler);
+		routeAemCommand<&entity::controller::Interface::readPtpPortDescriptor>(targetEntityID, handler, configurationIndex, ptpPortIndex);
 	}
 }
 
@@ -744,7 +1131,7 @@ void ControllerVirtualProxy::setConfiguration(UniqueIdentifier const targetEntit
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setConfiguration(targetEntityID, configurationIndex, handler);
+		routeAemCommand<&entity::controller::Interface::setConfiguration>(targetEntityID, handler, configurationIndex);
 	}
 }
 
@@ -764,7 +1151,7 @@ void ControllerVirtualProxy::getConfiguration(UniqueIdentifier const targetEntit
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getConfiguration(targetEntityID, handler);
+		routeAemCommand<&entity::controller::Interface::getConfiguration>(targetEntityID, handler);
 	}
 }
 
@@ -784,7 +1171,7 @@ void ControllerVirtualProxy::setStreamInputFormat(UniqueIdentifier const targetE
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setStreamInputFormat(targetEntityID, streamIndex, streamFormat, handler);
+		routeAemCommand<&entity::controller::Interface::setStreamInputFormat>(targetEntityID, handler, streamIndex, streamFormat);
 	}
 }
 
@@ -804,7 +1191,7 @@ void ControllerVirtualProxy::getStreamInputFormat(UniqueIdentifier const targetE
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getStreamInputFormat(targetEntityID, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getStreamInputFormat>(targetEntityID, handler, streamIndex);
 	}
 }
 
@@ -824,7 +1211,7 @@ void ControllerVirtualProxy::setStreamOutputFormat(UniqueIdentifier const target
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setStreamOutputFormat(targetEntityID, streamIndex, streamFormat, handler);
+		routeAemCommand<&entity::controller::Interface::setStreamOutputFormat>(targetEntityID, handler, streamIndex, streamFormat);
 	}
 }
 
@@ -844,7 +1231,7 @@ void ControllerVirtualProxy::getStreamOutputFormat(UniqueIdentifier const target
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getStreamOutputFormat(targetEntityID, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getStreamOutputFormat>(targetEntityID, handler, streamIndex);
 	}
 }
 
@@ -864,7 +1251,7 @@ void ControllerVirtualProxy::getStreamPortInputAudioMap(UniqueIdentifier const t
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getStreamPortInputAudioMap(targetEntityID, streamPortIndex, mapIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getStreamPortInputAudioMap>(targetEntityID, handler, streamPortIndex, mapIndex);
 	}
 }
 
@@ -883,7 +1270,7 @@ void ControllerVirtualProxy::getStreamPortOutputAudioMap(UniqueIdentifier const 
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getStreamPortOutputAudioMap(targetEntityID, streamPortIndex, mapIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getStreamPortOutputAudioMap>(targetEntityID, handler, streamPortIndex, mapIndex);
 	}
 }
 
@@ -903,7 +1290,7 @@ void ControllerVirtualProxy::addStreamPortInputAudioMappings(UniqueIdentifier co
 	else
 	{
 		// Forward call to real interface
-		_realInterface->addStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings, handler);
+		routeAemCommand<&entity::controller::Interface::addStreamPortInputAudioMappings>(targetEntityID, handler, streamPortIndex, mappings);
 	}
 }
 
@@ -923,7 +1310,7 @@ void ControllerVirtualProxy::addStreamPortOutputAudioMappings(UniqueIdentifier c
 	else
 	{
 		// Forward call to real interface
-		_realInterface->addStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings, handler);
+		routeAemCommand<&entity::controller::Interface::addStreamPortOutputAudioMappings>(targetEntityID, handler, streamPortIndex, mappings);
 	}
 }
 
@@ -943,7 +1330,7 @@ void ControllerVirtualProxy::removeStreamPortInputAudioMappings(UniqueIdentifier
 	else
 	{
 		// Forward call to real interface
-		_realInterface->removeStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings, handler);
+		routeAemCommand<&entity::controller::Interface::removeStreamPortInputAudioMappings>(targetEntityID, handler, streamPortIndex, mappings);
 	}
 }
 
@@ -963,7 +1350,7 @@ void ControllerVirtualProxy::removeStreamPortOutputAudioMappings(UniqueIdentifie
 	else
 	{
 		// Forward call to real interface
-		_realInterface->removeStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings, handler);
+		routeAemCommand<&entity::controller::Interface::removeStreamPortOutputAudioMappings>(targetEntityID, handler, streamPortIndex, mappings);
 	}
 }
 
@@ -983,7 +1370,7 @@ void ControllerVirtualProxy::setStreamInputInfo(UniqueIdentifier const targetEnt
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setStreamInputInfo(targetEntityID, streamIndex, info, handler);
+		routeAemCommand<&entity::controller::Interface::setStreamInputInfo>(targetEntityID, handler, streamIndex, info);
 	}
 }
 
@@ -1003,7 +1390,7 @@ void ControllerVirtualProxy::setStreamOutputInfo(UniqueIdentifier const targetEn
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setStreamOutputInfo(targetEntityID, streamIndex, info, handler);
+		routeAemCommand<&entity::controller::Interface::setStreamOutputInfo>(targetEntityID, handler, streamIndex, info);
 	}
 }
 
@@ -1023,7 +1410,7 @@ void ControllerVirtualProxy::getStreamInputInfo(UniqueIdentifier const targetEnt
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getStreamInputInfo(targetEntityID, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getStreamInputInfo>(targetEntityID, handler, streamIndex);
 	}
 }
 
@@ -1043,7 +1430,7 @@ void ControllerVirtualProxy::getStreamOutputInfo(UniqueIdentifier const targetEn
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getStreamOutputInfo(targetEntityID, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getStreamOutputInfo>(targetEntityID, handler, streamIndex);
 	}
 }
 
@@ -1063,7 +1450,7 @@ void ControllerVirtualProxy::setEntityName(UniqueIdentifier const targetEntityID
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setEntityName(targetEntityID, entityName, handler);
+		routeAemCommand<&entity::controller::Interface::setEntityName>(targetEntityID, handler, entityName);
 	}
 }
 
@@ -1083,7 +1470,7 @@ void ControllerVirtualProxy::getEntityName(UniqueIdentifier const targetEntityID
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getEntityName(targetEntityID, handler);
+		routeAemCommand<&entity::controller::Interface::getEntityName>(targetEntityID, handler);
 	}
 }
 
@@ -1103,7 +1490,7 @@ void ControllerVirtualProxy::setEntityGroupName(UniqueIdentifier const targetEnt
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setEntityGroupName(targetEntityID, entityGroupName, handler);
+		routeAemCommand<&entity::controller::Interface::setEntityGroupName>(targetEntityID, handler, entityGroupName);
 	}
 }
 
@@ -1123,7 +1510,7 @@ void ControllerVirtualProxy::getEntityGroupName(UniqueIdentifier const targetEnt
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getEntityGroupName(targetEntityID, handler);
+		routeAemCommand<&entity::controller::Interface::getEntityGroupName>(targetEntityID, handler);
 	}
 }
 
@@ -1143,7 +1530,7 @@ void ControllerVirtualProxy::setConfigurationName(UniqueIdentifier const targetE
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setConfigurationName(targetEntityID, configurationIndex, configurationName, handler);
+		routeAemCommand<&entity::controller::Interface::setConfigurationName>(targetEntityID, handler, configurationIndex, configurationName);
 	}
 }
 
@@ -1163,7 +1550,7 @@ void ControllerVirtualProxy::getConfigurationName(UniqueIdentifier const targetE
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getConfigurationName(targetEntityID, configurationIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getConfigurationName>(targetEntityID, handler, configurationIndex);
 	}
 }
 
@@ -1183,7 +1570,7 @@ void ControllerVirtualProxy::setAudioUnitName(UniqueIdentifier const targetEntit
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setAudioUnitName(targetEntityID, configurationIndex, audioUnitIndex, audioUnitName, handler);
+		routeAemCommand<&entity::controller::Interface::setAudioUnitName>(targetEntityID, handler, configurationIndex, audioUnitIndex, audioUnitName);
 	}
 }
 
@@ -1203,7 +1590,7 @@ void ControllerVirtualProxy::getAudioUnitName(UniqueIdentifier const targetEntit
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getAudioUnitName(targetEntityID, configurationIndex, audioUnitIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getAudioUnitName>(targetEntityID, handler, configurationIndex, audioUnitIndex);
 	}
 }
 
@@ -1223,7 +1610,7 @@ void ControllerVirtualProxy::setStreamInputName(UniqueIdentifier const targetEnt
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setStreamInputName(targetEntityID, configurationIndex, streamIndex, streamInputName, handler);
+		routeAemCommand<&entity::controller::Interface::setStreamInputName>(targetEntityID, handler, configurationIndex, streamIndex, streamInputName);
 	}
 }
 
@@ -1243,7 +1630,7 @@ void ControllerVirtualProxy::getStreamInputName(UniqueIdentifier const targetEnt
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getStreamInputName(targetEntityID, configurationIndex, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getStreamInputName>(targetEntityID, handler, configurationIndex, streamIndex);
 	}
 }
 
@@ -1263,7 +1650,7 @@ void ControllerVirtualProxy::setStreamOutputName(UniqueIdentifier const targetEn
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setStreamOutputName(targetEntityID, configurationIndex, streamIndex, streamOutputName, handler);
+		routeAemCommand<&entity::controller::Interface::setStreamOutputName>(targetEntityID, handler, configurationIndex, streamIndex, streamOutputName);
 	}
 }
 
@@ -1283,7 +1670,7 @@ void ControllerVirtualProxy::getStreamOutputName(UniqueIdentifier const targetEn
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getStreamOutputName(targetEntityID, configurationIndex, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getStreamOutputName>(targetEntityID, handler, configurationIndex, streamIndex);
 	}
 }
 
@@ -1303,7 +1690,7 @@ void ControllerVirtualProxy::setJackInputName(UniqueIdentifier const targetEntit
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setJackInputName(targetEntityID, configurationIndex, jackIndex, jackInputName, handler);
+		routeAemCommand<&entity::controller::Interface::setJackInputName>(targetEntityID, handler, configurationIndex, jackIndex, jackInputName);
 	}
 }
 
@@ -1323,7 +1710,7 @@ void ControllerVirtualProxy::getJackInputName(UniqueIdentifier const targetEntit
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getJackInputName(targetEntityID, configurationIndex, jackIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getJackInputName>(targetEntityID, handler, configurationIndex, jackIndex);
 	}
 }
 
@@ -1343,7 +1730,7 @@ void ControllerVirtualProxy::setJackOutputName(UniqueIdentifier const targetEnti
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setJackOutputName(targetEntityID, configurationIndex, jackIndex, jackOutputName, handler);
+		routeAemCommand<&entity::controller::Interface::setJackOutputName>(targetEntityID, handler, configurationIndex, jackIndex, jackOutputName);
 	}
 }
 
@@ -1363,7 +1750,7 @@ void ControllerVirtualProxy::getJackOutputName(UniqueIdentifier const targetEnti
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getJackOutputName(targetEntityID, configurationIndex, jackIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getJackOutputName>(targetEntityID, handler, configurationIndex, jackIndex);
 	}
 }
 
@@ -1383,7 +1770,7 @@ void ControllerVirtualProxy::setAvbInterfaceName(UniqueIdentifier const targetEn
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setAvbInterfaceName(targetEntityID, configurationIndex, avbInterfaceIndex, avbInterfaceName, handler);
+		routeAemCommand<&entity::controller::Interface::setAvbInterfaceName>(targetEntityID, handler, configurationIndex, avbInterfaceIndex, avbInterfaceName);
 	}
 }
 
@@ -1403,7 +1790,7 @@ void ControllerVirtualProxy::getAvbInterfaceName(UniqueIdentifier const targetEn
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getAvbInterfaceName(targetEntityID, configurationIndex, avbInterfaceIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getAvbInterfaceName>(targetEntityID, handler, configurationIndex, avbInterfaceIndex);
 	}
 }
 
@@ -1423,7 +1810,7 @@ void ControllerVirtualProxy::setClockSourceName(UniqueIdentifier const targetEnt
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setClockSourceName(targetEntityID, configurationIndex, clockSourceIndex, clockSourceName, handler);
+		routeAemCommand<&entity::controller::Interface::setClockSourceName>(targetEntityID, handler, configurationIndex, clockSourceIndex, clockSourceName);
 	}
 }
 
@@ -1443,7 +1830,7 @@ void ControllerVirtualProxy::getClockSourceName(UniqueIdentifier const targetEnt
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getClockSourceName(targetEntityID, configurationIndex, clockSourceIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getClockSourceName>(targetEntityID, handler, configurationIndex, clockSourceIndex);
 	}
 }
 
@@ -1463,7 +1850,7 @@ void ControllerVirtualProxy::setMemoryObjectName(UniqueIdentifier const targetEn
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setMemoryObjectName(targetEntityID, configurationIndex, memoryObjectIndex, memoryObjectName, handler);
+		routeAemCommand<&entity::controller::Interface::setMemoryObjectName>(targetEntityID, handler, configurationIndex, memoryObjectIndex, memoryObjectName);
 	}
 }
 
@@ -1483,7 +1870,7 @@ void ControllerVirtualProxy::getMemoryObjectName(UniqueIdentifier const targetEn
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getMemoryObjectName(targetEntityID, configurationIndex, memoryObjectIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getMemoryObjectName>(targetEntityID, handler, configurationIndex, memoryObjectIndex);
 	}
 }
 
@@ -1503,7 +1890,7 @@ void ControllerVirtualProxy::setAudioClusterName(UniqueIdentifier const targetEn
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setAudioClusterName(targetEntityID, configurationIndex, audioClusterIndex, audioClusterName, handler);
+		routeAemCommand<&entity::controller::Interface::setAudioClusterName>(targetEntityID, handler, configurationIndex, audioClusterIndex, audioClusterName);
 	}
 }
 
@@ -1523,7 +1910,7 @@ void ControllerVirtualProxy::getAudioClusterName(UniqueIdentifier const targetEn
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getAudioClusterName(targetEntityID, configurationIndex, audioClusterIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getAudioClusterName>(targetEntityID, handler, configurationIndex, audioClusterIndex);
 	}
 }
 
@@ -1543,7 +1930,7 @@ void ControllerVirtualProxy::setControlName(UniqueIdentifier const targetEntityI
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setControlName(targetEntityID, configurationIndex, controlIndex, controlName, handler);
+		routeAemCommand<&entity::controller::Interface::setControlName>(targetEntityID, handler, configurationIndex, controlIndex, controlName);
 	}
 }
 
@@ -1563,7 +1950,7 @@ void ControllerVirtualProxy::getControlName(UniqueIdentifier const targetEntityI
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getControlName(targetEntityID, configurationIndex, controlIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getControlName>(targetEntityID, handler, configurationIndex, controlIndex);
 	}
 }
 
@@ -1583,7 +1970,7 @@ void ControllerVirtualProxy::setClockDomainName(UniqueIdentifier const targetEnt
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, clockDomainName, handler);
+		routeAemCommand<&entity::controller::Interface::setClockDomainName>(targetEntityID, handler, configurationIndex, clockDomainIndex, clockDomainName);
 	}
 }
 
@@ -1603,7 +1990,7 @@ void ControllerVirtualProxy::getClockDomainName(UniqueIdentifier const targetEnt
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getClockDomainName>(targetEntityID, handler, configurationIndex, clockDomainIndex);
 	}
 }
 
@@ -1623,7 +2010,7 @@ void ControllerVirtualProxy::setTimingName(UniqueIdentifier const targetEntityID
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setTimingName(targetEntityID, configurationIndex, timingIndex, timingName, handler);
+		routeAemCommand<&entity::controller::Interface::setTimingName>(targetEntityID, handler, configurationIndex, timingIndex, timingName);
 	}
 }
 
@@ -1643,7 +2030,7 @@ void ControllerVirtualProxy::getTimingName(UniqueIdentifier const targetEntityID
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getTimingName(targetEntityID, configurationIndex, timingIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getTimingName>(targetEntityID, handler, configurationIndex, timingIndex);
 	}
 }
 
@@ -1663,7 +2050,7 @@ void ControllerVirtualProxy::setPtpInstanceName(UniqueIdentifier const targetEnt
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setPtpInstanceName(targetEntityID, configurationIndex, ptpInstanceIndex, ptpInstanceName, handler);
+		routeAemCommand<&entity::controller::Interface::setPtpInstanceName>(targetEntityID, handler, configurationIndex, ptpInstanceIndex, ptpInstanceName);
 	}
 }
 
@@ -1683,7 +2070,7 @@ void ControllerVirtualProxy::getPtpInstanceName(UniqueIdentifier const targetEnt
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getPtpInstanceName(targetEntityID, configurationIndex, ptpInstanceIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getPtpInstanceName>(targetEntityID, handler, configurationIndex, ptpInstanceIndex);
 	}
 }
 
@@ -1703,7 +2090,7 @@ void ControllerVirtualProxy::setPtpPortName(UniqueIdentifier const targetEntityI
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setPtpPortName(targetEntityID, configurationIndex, ptpPortIndex, ptpPortName, handler);
+		routeAemCommand<&entity::controller::Interface::setPtpPortName>(targetEntityID, handler, configurationIndex, ptpPortIndex, ptpPortName);
 	}
 }
 
@@ -1723,7 +2110,7 @@ void ControllerVirtualProxy::getPtpPortName(UniqueIdentifier const targetEntityI
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getPtpPortName(targetEntityID, configurationIndex, ptpPortIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getPtpPortName>(targetEntityID, handler, configurationIndex, ptpPortIndex);
 	}
 }
 
@@ -1743,7 +2130,7 @@ void ControllerVirtualProxy::setAssociation(UniqueIdentifier const targetEntityI
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setAssociation(targetEntityID, associationID, handler);
+		routeAemCommand<&entity::controller::Interface::setAssociation>(targetEntityID, handler, associationID);
 	}
 }
 
@@ -1763,7 +2150,7 @@ void ControllerVirtualProxy::getAssociation(UniqueIdentifier const targetEntityI
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getAssociation(targetEntityID, handler);
+		routeAemCommand<&entity::controller::Interface::getAssociation>(targetEntityID, handler);
 	}
 }
 
@@ -1783,7 +2170,7 @@ void ControllerVirtualProxy::setAudioUnitSamplingRate(UniqueIdentifier const tar
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setAudioUnitSamplingRate(targetEntityID, audioUnitIndex, samplingRate, handler);
+		routeAemCommand<&entity::controller::Interface::setAudioUnitSamplingRate>(targetEntityID, handler, audioUnitIndex, samplingRate);
 	}
 }
 
@@ -1803,7 +2190,7 @@ void ControllerVirtualProxy::getAudioUnitSamplingRate(UniqueIdentifier const tar
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getAudioUnitSamplingRate(targetEntityID, audioUnitIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getAudioUnitSamplingRate>(targetEntityID, handler, audioUnitIndex);
 	}
 }
 
@@ -1823,7 +2210,7 @@ void ControllerVirtualProxy::setVideoClusterSamplingRate(UniqueIdentifier const 
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setVideoClusterSamplingRate(targetEntityID, videoClusterIndex, samplingRate, handler);
+		routeAemCommand<&entity::controller::Interface::setVideoClusterSamplingRate>(targetEntityID, handler, videoClusterIndex, samplingRate);
 	}
 }
 
@@ -1843,7 +2230,7 @@ void ControllerVirtualProxy::getVideoClusterSamplingRate(UniqueIdentifier const 
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getVideoClusterSamplingRate(targetEntityID, videoClusterIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getVideoClusterSamplingRate>(targetEntityID, handler, videoClusterIndex);
 	}
 }
 
@@ -1863,7 +2250,7 @@ void ControllerVirtualProxy::setSensorClusterSamplingRate(UniqueIdentifier const
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setSensorClusterSamplingRate(targetEntityID, sensorClusterIndex, samplingRate, handler);
+		routeAemCommand<&entity::controller::Interface::setSensorClusterSamplingRate>(targetEntityID, handler, sensorClusterIndex, samplingRate);
 	}
 }
 
@@ -1883,7 +2270,7 @@ void ControllerVirtualProxy::getSensorClusterSamplingRate(UniqueIdentifier const
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getSensorClusterSamplingRate(targetEntityID, sensorClusterIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getSensorClusterSamplingRate>(targetEntityID, handler, sensorClusterIndex);
 	}
 }
 
@@ -1903,7 +2290,7 @@ void ControllerVirtualProxy::setClockSource(UniqueIdentifier const targetEntityI
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setClockSource(targetEntityID, clockDomainIndex, clockSourceIndex, handler);
+		routeAemCommand<&entity::controller::Interface::setClockSource>(targetEntityID, handler, clockDomainIndex, clockSourceIndex);
 	}
 }
 
@@ -1923,7 +2310,7 @@ void ControllerVirtualProxy::getClockSource(UniqueIdentifier const targetEntityI
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getClockSource(targetEntityID, clockDomainIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getClockSource>(targetEntityID, handler, clockDomainIndex);
 	}
 }
 
@@ -1943,7 +2330,7 @@ void ControllerVirtualProxy::setControlValues(UniqueIdentifier const targetEntit
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setControlValues(targetEntityID, controlIndex, controlValues, handler);
+		routeAemCommand<&entity::controller::Interface::setControlValues>(targetEntityID, handler, controlIndex, controlValues);
 	}
 }
 
@@ -1963,7 +2350,7 @@ void ControllerVirtualProxy::getControlValues(UniqueIdentifier const targetEntit
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getControlValues(targetEntityID, controlIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getControlValues>(targetEntityID, handler, controlIndex);
 	}
 }
 
@@ -1983,7 +2370,7 @@ void ControllerVirtualProxy::startStreamInput(UniqueIdentifier const targetEntit
 	else
 	{
 		// Forward call to real interface
-		_realInterface->startStreamInput(targetEntityID, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::startStreamInput>(targetEntityID, handler, streamIndex);
 	}
 }
 
@@ -2003,7 +2390,7 @@ void ControllerVirtualProxy::startStreamOutput(UniqueIdentifier const targetEnti
 	else
 	{
 		// Forward call to real interface
-		_realInterface->startStreamOutput(targetEntityID, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::startStreamOutput>(targetEntityID, handler, streamIndex);
 	}
 }
 
@@ -2023,7 +2410,7 @@ void ControllerVirtualProxy::stopStreamInput(UniqueIdentifier const targetEntity
 	else
 	{
 		// Forward call to real interface
-		_realInterface->stopStreamInput(targetEntityID, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::stopStreamInput>(targetEntityID, handler, streamIndex);
 	}
 }
 
@@ -2043,7 +2430,7 @@ void ControllerVirtualProxy::stopStreamOutput(UniqueIdentifier const targetEntit
 	else
 	{
 		// Forward call to real interface
-		_realInterface->stopStreamOutput(targetEntityID, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::stopStreamOutput>(targetEntityID, handler, streamIndex);
 	}
 }
 
@@ -2063,7 +2450,7 @@ void ControllerVirtualProxy::getAvbInfo(UniqueIdentifier const targetEntityID, e
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getAvbInfo(targetEntityID, avbInterfaceIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getAvbInfo>(targetEntityID, handler, avbInterfaceIndex);
 	}
 }
 
@@ -2083,7 +2470,7 @@ void ControllerVirtualProxy::getAsPath(UniqueIdentifier const targetEntityID, en
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getAsPath(targetEntityID, avbInterfaceIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getAsPath>(targetEntityID, handler, avbInterfaceIndex);
 	}
 }
 
@@ -2103,7 +2490,7 @@ void ControllerVirtualProxy::getEntityCounters(UniqueIdentifier const targetEnti
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getEntityCounters(targetEntityID, handler);
+		routeAemCommand<&entity::controller::Interface::getEntityCounters>(targetEntityID, handler);
 	}
 }
 
@@ -2123,7 +2510,7 @@ void ControllerVirtualProxy::getAvbInterfaceCounters(UniqueIdentifier const targ
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getAvbInterfaceCounters(targetEntityID, avbInterfaceIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getAvbInterfaceCounters>(targetEntityID, handler, avbInterfaceIndex);
 	}
 }
 
@@ -2143,7 +2530,7 @@ void ControllerVirtualProxy::getClockDomainCounters(UniqueIdentifier const targe
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getClockDomainCounters(targetEntityID, clockDomainIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getClockDomainCounters>(targetEntityID, handler, clockDomainIndex);
 	}
 }
 
@@ -2163,7 +2550,7 @@ void ControllerVirtualProxy::getStreamInputCounters(UniqueIdentifier const targe
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getStreamInputCounters(targetEntityID, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getStreamInputCounters>(targetEntityID, handler, streamIndex);
 	}
 }
 
@@ -2183,7 +2570,7 @@ void ControllerVirtualProxy::getStreamOutputCounters(UniqueIdentifier const targ
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getStreamOutputCounters(targetEntityID, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getStreamOutputCounters>(targetEntityID, handler, streamIndex);
 	}
 }
 
@@ -2203,7 +2590,7 @@ void ControllerVirtualProxy::reboot(UniqueIdentifier const targetEntityID, Reboo
 	else
 	{
 		// Forward call to real interface
-		_realInterface->reboot(targetEntityID, handler);
+		routeAemCommand<&entity::controller::Interface::reboot>(targetEntityID, handler);
 	}
 }
 
@@ -2223,7 +2610,7 @@ void ControllerVirtualProxy::rebootToFirmware(UniqueIdentifier const targetEntit
 	else
 	{
 		// Forward call to real interface
-		_realInterface->rebootToFirmware(targetEntityID, memoryObjectIndex, handler);
+		routeAemCommand<&entity::controller::Interface::rebootToFirmware>(targetEntityID, handler, memoryObjectIndex);
 	}
 }
 
@@ -2243,7 +2630,7 @@ void ControllerVirtualProxy::startOperation(UniqueIdentifier const targetEntityI
 	else
 	{
 		// Forward call to real interface
-		_realInterface->startOperation(targetEntityID, descriptorType, descriptorIndex, operationType, memoryBuffer, handler);
+		routeAemCommand<&entity::controller::Interface::startOperation>(targetEntityID, handler, descriptorType, descriptorIndex, operationType, memoryBuffer);
 	}
 }
 
@@ -2263,7 +2650,7 @@ void ControllerVirtualProxy::abortOperation(UniqueIdentifier const targetEntityI
 	else
 	{
 		// Forward call to real interface
-		_realInterface->abortOperation(targetEntityID, descriptorType, descriptorIndex, operationID, handler);
+		routeAemCommand<&entity::controller::Interface::abortOperation>(targetEntityID, handler, descriptorType, descriptorIndex, operationID);
 	}
 }
 
@@ -2283,7 +2670,7 @@ void ControllerVirtualProxy::setMemoryObjectLength(UniqueIdentifier const target
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setMemoryObjectLength(targetEntityID, configurationIndex, memoryObjectIndex, length, handler);
+		routeAemCommand<&entity::controller::Interface::setMemoryObjectLength>(targetEntityID, handler, configurationIndex, memoryObjectIndex, length);
 	}
 }
 
@@ -2303,7 +2690,7 @@ void ControllerVirtualProxy::getMemoryObjectLength(UniqueIdentifier const target
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getMemoryObjectLength(targetEntityID, configurationIndex, memoryObjectIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getMemoryObjectLength>(targetEntityID, handler, configurationIndex, memoryObjectIndex);
 	}
 }
 
@@ -2323,7 +2710,7 @@ void ControllerVirtualProxy::getDynamicInfo(UniqueIdentifier const targetEntityI
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getDynamicInfo(targetEntityID, parameters, handler);
+		routeAemCommand<&entity::controller::Interface::getDynamicInfo>(targetEntityID, handler, parameters);
 	}
 }
 
@@ -2343,7 +2730,7 @@ void ControllerVirtualProxy::setMaxTransitTime(UniqueIdentifier const targetEnti
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setMaxTransitTime(targetEntityID, streamIndex, maxTransitTime, handler);
+		routeAemCommand<&entity::controller::Interface::setMaxTransitTime>(targetEntityID, handler, streamIndex, maxTransitTime);
 	}
 }
 
@@ -2363,7 +2750,7 @@ void ControllerVirtualProxy::getMaxTransitTime(UniqueIdentifier const targetEnti
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getMaxTransitTime(targetEntityID, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getMaxTransitTime>(targetEntityID, handler, streamIndex);
 	}
 }
 
@@ -2383,7 +2770,7 @@ void ControllerVirtualProxy::addressAccess(UniqueIdentifier const targetEntityID
 	else
 	{
 		// Forward call to real interface
-		_realInterface->addressAccess(targetEntityID, tlvs, handler);
+		routeAemCommand<&entity::controller::Interface::addressAccess>(targetEntityID, handler, tlvs);
 	}
 }
 
@@ -2403,7 +2790,7 @@ void ControllerVirtualProxy::getMilanInfo(UniqueIdentifier const targetEntityID,
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getMilanInfo(targetEntityID, handler);
+		routeAemCommand<&entity::controller::Interface::getMilanInfo>(targetEntityID, handler);
 	}
 }
 
@@ -2423,7 +2810,7 @@ void ControllerVirtualProxy::setSystemUniqueID(UniqueIdentifier const targetEnti
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setSystemUniqueID(targetEntityID, systemUniqueID, systemName, handler);
+		routeAemCommand<&entity::controller::Interface::setSystemUniqueID>(targetEntityID, handler, systemUniqueID, systemName);
 	}
 }
 
@@ -2443,7 +2830,7 @@ void ControllerVirtualProxy::getSystemUniqueID(UniqueIdentifier const targetEnti
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getSystemUniqueID(targetEntityID, handler);
+		routeAemCommand<&entity::controller::Interface::getSystemUniqueID>(targetEntityID, handler);
 	}
 }
 
@@ -2463,7 +2850,7 @@ void ControllerVirtualProxy::setMediaClockReferenceInfo(UniqueIdentifier const t
 	else
 	{
 		// Forward call to real interface
-		_realInterface->setMediaClockReferenceInfo(targetEntityID, clockDomainIndex, userPriority, domainName, handler);
+		routeAemCommand<&entity::controller::Interface::setMediaClockReferenceInfo>(targetEntityID, handler, clockDomainIndex, userPriority, domainName);
 	}
 }
 
@@ -2483,7 +2870,7 @@ void ControllerVirtualProxy::getMediaClockReferenceInfo(UniqueIdentifier const t
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getMediaClockReferenceInfo(targetEntityID, clockDomainIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getMediaClockReferenceInfo>(targetEntityID, handler, clockDomainIndex);
 	}
 }
 
@@ -2503,7 +2890,7 @@ void ControllerVirtualProxy::bindStream(UniqueIdentifier const targetEntityID, e
 	else
 	{
 		// Forward call to real interface
-		_realInterface->bindStream(targetEntityID, streamIndex, talkerStream, flags, handler);
+		routeAemCommand<&entity::controller::Interface::bindStream>(targetEntityID, handler, streamIndex, talkerStream, flags);
 	}
 }
 
@@ -2523,7 +2910,7 @@ void ControllerVirtualProxy::unbindStream(UniqueIdentifier const targetEntityID,
 	else
 	{
 		// Forward call to real interface
-		_realInterface->unbindStream(targetEntityID, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::unbindStream>(targetEntityID, handler, streamIndex);
 	}
 }
 
@@ -2543,7 +2930,7 @@ void ControllerVirtualProxy::getStreamInputInfoEx(UniqueIdentifier const targetE
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getStreamInputInfoEx(targetEntityID, streamIndex, handler);
+		routeAemCommand<&entity::controller::Interface::getStreamInputInfoEx>(targetEntityID, handler, streamIndex);
 	}
 }
 
@@ -2563,7 +2950,7 @@ void ControllerVirtualProxy::connectStream(entity::model::StreamIdentification c
 	else
 	{
 		// Forward call to real interface
-		_realInterface->connectStream(talkerStream, listenerStream, handler);
+		routeAcmpCommand<&entity::controller::Interface::connectStream>(listenerStream.entityID, handler, talkerStream, listenerStream);
 	}
 }
 
@@ -2583,7 +2970,7 @@ void ControllerVirtualProxy::disconnectStream(entity::model::StreamIdentificatio
 	else
 	{
 		// Forward call to real interface
-		_realInterface->disconnectStream(talkerStream, listenerStream, handler);
+		routeAcmpCommand<&entity::controller::Interface::disconnectStream>(listenerStream.entityID, handler, talkerStream, listenerStream);
 	}
 }
 
@@ -2603,7 +2990,7 @@ void ControllerVirtualProxy::disconnectTalkerStream(entity::model::StreamIdentif
 	else
 	{
 		// Forward call to real interface
-		_realInterface->disconnectTalkerStream(talkerStream, listenerStream, handler);
+		routeAcmpCommand<&entity::controller::Interface::disconnectTalkerStream>(talkerStream.entityID, handler, talkerStream, listenerStream);
 	}
 }
 
@@ -2623,7 +3010,7 @@ void ControllerVirtualProxy::getTalkerStreamState(entity::model::StreamIdentific
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getTalkerStreamState(talkerStream, handler);
+		routeAcmpCommand<&entity::controller::Interface::getTalkerStreamState>(talkerStream.entityID, handler, talkerStream);
 	}
 }
 
@@ -2643,7 +3030,7 @@ void ControllerVirtualProxy::getListenerStreamState(entity::model::StreamIdentif
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getListenerStreamState(listenerStream, handler);
+		routeAcmpCommand<&entity::controller::Interface::getListenerStreamState>(listenerStream.entityID, handler, listenerStream);
 	}
 }
 
@@ -2663,7 +3050,7 @@ void ControllerVirtualProxy::getTalkerStreamConnection(entity::model::StreamIden
 	else
 	{
 		// Forward call to real interface
-		_realInterface->getTalkerStreamConnection(talkerStream, connectionIndex, handler);
+		routeAcmpCommand<&entity::controller::Interface::getTalkerStreamConnection>(talkerStream.entityID, handler, talkerStream, connectionIndex);
 	}
 }
 

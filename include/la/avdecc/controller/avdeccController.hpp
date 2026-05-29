@@ -43,6 +43,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <array>
 #include <mutex>
 #include <chrono>
 #include <optional>
@@ -133,6 +134,36 @@ public:
 	using DeviceMemoryBuffer = MemoryBuffer;
 	static std::uint32_t constexpr ChecksumVersion = 5u;
 
+	/**
+	* @brief Type of interface (primary or secondary) when using redundancy.
+	* @details In dual-interface (redundancy) mode, the controller uses 2 physical network interfaces.
+	*          The first interface declared in the configuration is the Primary, the second is the Secondary.
+	*          In single-interface mode, only the Primary is valid.
+	*/
+	enum class InterfaceType : std::size_t
+	{
+		Primary = 0u, /**< The primary network interface. Always valid. */
+		Secondary = 1u, /**< The secondary network interface. Only valid when the controller was created in dual-interface mode. */
+	};
+
+	/** @brief Maximum number of network interfaces supported by the controller (one slot per #InterfaceType value). */
+	static constexpr auto NumInterfaces = std::size_t{ 2u };
+
+	/** @brief Ordered list of every valid #InterfaceType value, suitable for range-based iteration. */
+	static constexpr std::array<InterfaceType, NumInterfaces> AllInterfaceTypes{ InterfaceType::Primary, InterfaceType::Secondary };
+
+	/**
+	* @brief Configuration for a single network interface used by the controller.
+	* @details Used by the dual-interface (redundancy) overload of #create.
+	*          Multiple instances form an ordered list whose first element is the Primary.
+	*/
+	struct InterfaceConfiguration
+	{
+		protocol::ProtocolInterface::Type protocolInterfaceType{ protocol::ProtocolInterface::Type::None }; /**< Protocol interface type to use. */
+		std::string networkInterfaceID{}; /**< Network interface ID (see networkInterface::enumerateInterfaces). */
+		std::optional<std::string> executorName{ std::nullopt }; /**< Optional executor name. If two configurations share the same executor name, they share the executor; otherwise each has its own. */
+	};
+
 	enum class Error
 	{
 		NoError = 0,
@@ -144,6 +175,7 @@ public:
 		InvalidEntityModel = 6, /**< Provided EntityModel is invalid. */
 		DuplicateExecutorName = 7, /**< Provided executor name already exists. */
 		UnknownExecutorName = 8, /**< Provided executor name doesn't exist. */
+		InvalidInterfaceConfiguration = 9, /**< The provided InterfaceConfiguration list is invalid (empty, more than 2 elements, or contains duplicate networkInterfaceID values). */
 		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 
@@ -247,6 +279,8 @@ public:
 
 		// Global controller notifications
 		virtual void onTransportError(la::avdecc::controller::Controller const* const controller) noexcept = 0;
+		/** Triggered when a transport error occurs on a redundant interface in dual-interface mode. Only the specified interface (Primary or Secondary) is down; commands are now routed exclusively through the surviving interface. */
+		virtual void onRedundantInterfaceTransportError(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept = 0;
 		virtual void onEntityQueryError(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::Controller::QueryCommandError const error) noexcept = 0; // Might trigger even if entity is not "online" // Triggered when the controller failed to query all information it needs for an entity to be declared as Online
 
 		// Discovery notifications (ADP)
@@ -348,6 +382,7 @@ public:
 	public:
 		// Global controller notifications
 		virtual void onTransportError(la::avdecc::controller::Controller const* const /*controller*/) noexcept override {}
+		virtual void onRedundantInterfaceTransportError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::Controller::InterfaceType const /*interfaceType*/) noexcept override {}
 		virtual void onEntityQueryError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::Controller::QueryCommandError const /*error*/) noexcept override {} // Might trigger even if entity is not "online" // Triggered when the controller failed to query all information it needs for an entity to be declared as Online
 
 		// Discovery notifications (ADP)
@@ -554,8 +589,36 @@ public:
 		return UniquePointer(createRawController(protocolInterfaceType, networkInterfaceID, progID, entityModelID, preferedLocale, entityModelTree, executorName, virtualEntityInterface), deleter);
 	}
 
-	/** Returns the UniqueIdentifier this instance of the controller is using to identify itself on the network */
-	virtual UniqueIdentifier getControllerEID() const noexcept = 0;
+	/**
+	* @brief Factory method to create a new Controller with one or two network interfaces (redundancy).
+	* @details Creates a new Controller as a unique pointer. When two interface configurations are provided, the controller operates in dual-interface (redundancy) mode:
+	*          - Entity discovery is merged across both interfaces (a single onEntityOnline notification is emitted per remote entity).
+	*          - Commands are routed to the interface where the target entity is reachable, with automatic fallback to the other interface on TimedOut/UnknownEntity/Network errors.
+	*          - The local controller entity has a distinct EntityID on each interface (derived from progID + each interface MAC).
+	* @param[in] interfaceConfigurations One or two #InterfaceConfiguration instances. The first is the Primary, the (optional) second is the Secondary. Their #InterfaceConfiguration::networkInterfaceID must be distinct.
+	* @param[in] progID ID that will be used to generate the #UniqueIdentifier for this controller (combined with each interface's MAC).
+	* @param[in] entityModelID EntityModelID to publish for this controller. You can use entity::model::makeEntityModelID to create this value.
+	* @param[in] preferedLocale ISO 639-1 locale code of the prefered locale to use when querying entity information. If the specified locale is not found on the entity, then english is used.
+	* @param[in] entityModelTree The entity model tree to use for this controller entity, or null to not expose a model.
+	* @param[in] virtualEntityInterface The virtual entity interface to forward network calls to when manipulating a virtual entity, or null to always use the network interface.
+	* @return A new Controller as a Controller::UniquePointer.
+	* @note Throws #Exception if any networkInterfaceID is invalid, if the list is empty or contains more than 2 elements (Error::InvalidInterfaceConfiguration), if networkInterfaceID values are duplicated (Error::InvalidInterfaceConfiguration), or if progID is already used on the local computer.
+	*/
+	static UniquePointer create(std::vector<InterfaceConfiguration> const& interfaceConfigurations, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, entity::controller::Interface const* const virtualEntityInterface)
+	{
+		auto deleter = [](Controller* controller)
+		{
+			controller->destroy();
+		};
+		return UniquePointer(createRawControllerRedundant(interfaceConfigurations, progID, entityModelID, preferedLocale, entityModelTree, virtualEntityInterface), deleter);
+	}
+
+	/**
+	* @brief Returns the UniqueIdentifier this instance of the controller is using to identify itself on the network.
+	* @param[in] interfaceType Selects which interface's controller EntityID to return. Defaults to #InterfaceType::Primary for backward compatibility. In single-interface mode, requesting #InterfaceType::Secondary returns an invalid #UniqueIdentifier.
+	* @return The controller EntityID for the requested interface, or an invalid #UniqueIdentifier if not applicable.
+	*/
+	virtual UniqueIdentifier getControllerEID(InterfaceType const interfaceType = InterfaceType::Primary) const noexcept = 0;
 
 	/* Controller configuration methods */
 	/** Enables entity advertising with available duration included between 2-62 seconds on the specified interfaceIndex if set, otherwise on all interfaces. Might throw an Exception. */
@@ -709,8 +772,11 @@ protected:
 	Controller() = default;
 
 private:
-	/** Create method for COM-like interface */
+	/** Create method for COM-like interface (single-interface). */
 	static LA_AVDECC_CONTROLLER_API Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION createRawController(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceID, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName, entity::controller::Interface const* const virtualEntityInterface);
+
+	/** Create method for COM-like interface (dual-interface / redundancy). */
+	static LA_AVDECC_CONTROLLER_API Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION createRawControllerRedundant(std::vector<InterfaceConfiguration> const& interfaceConfigurations, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, entity::controller::Interface const* const virtualEntityInterface);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;
