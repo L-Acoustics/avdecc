@@ -2476,7 +2476,7 @@ std::tuple<model::AcquireState, UniqueIdentifier> ControllerImpl::getAcquiredInf
 			else
 			{
 				// Full status check based on returned owningEntity, some devices return SUCCESS although the requesting controller is not the one currently owning the entity
-				acquireState = owningEntity ? (owningEntity == getControllerEID() ? model::AcquireState::Acquired : model::AcquireState::AcquiredByOther) : model::AcquireState::NotAcquired;
+				acquireState = owningEntity ? (isLocalControllerEID(owningEntity) ? model::AcquireState::Acquired : model::AcquireState::AcquiredByOther) : model::AcquireState::NotAcquired;
 				owningController = owningEntity;
 			}
 			// Remove "Milan compatibility" as device does support a forbidden command
@@ -2535,7 +2535,7 @@ std::tuple<model::LockState, UniqueIdentifier> ControllerImpl::getLockedInfoFrom
 			else
 			{
 				// Full status check based on returned owningEntity, some devices return SUCCESS although the requesting controller is not the one currently owning the entity
-				lockState = lockingEntity ? (lockingEntity == getControllerEID() ? model::LockState::Locked : model::LockState::LockedByOther) : model::LockState::NotLocked;
+				lockState = lockingEntity ? (isLocalControllerEID(lockingEntity) ? model::LockState::Locked : model::LockState::LockedByOther) : model::LockState::NotLocked;
 				lockingController = lockingEntity;
 			}
 			break;

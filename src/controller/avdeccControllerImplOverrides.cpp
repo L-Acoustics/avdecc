@@ -472,15 +472,24 @@ void ControllerImpl::destroy() noexcept
 
 UniqueIdentifier ControllerImpl::getControllerEID(Controller::InterfaceType const interfaceType) const noexcept
 {
-	if (interfaceType == Controller::InterfaceType::Secondary)
+	switch (interfaceType)
 	{
-		if (_secondaryController != nullptr)
-		{
-			return _secondaryController->getEntityID();
-		}
-		return UniqueIdentifier{};
+		case Controller::InterfaceType::Primary:
+			if (_controller != nullptr)
+			{
+				return _controller->getEntityID();
+			}
+			return UniqueIdentifier{};
+		case Controller::InterfaceType::Secondary:
+			if (_secondaryController != nullptr)
+			{
+				return _secondaryController->getEntityID();
+			}
+			return UniqueIdentifier{};
+		default:
+			AVDECC_ASSERT(false, "Unknown InterfaceType");
+			return UniqueIdentifier{};
 	}
-	return _controller->getEntityID();
 }
 
 /* Controller configuration */

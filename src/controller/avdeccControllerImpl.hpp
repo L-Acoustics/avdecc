@@ -851,6 +851,20 @@ private:
 		return (_controller != nullptr && _controller->isSelfLocked()) || (_secondaryController != nullptr && _secondaryController->isSelfLocked());
 	}
 
+	/** Returns true if the specified EntityID is one of our local ControllerEntity EIDs (primary or, in dual-PI mode, secondary).
+	 * In dual-PI mode the controller owns two distinct EIDs (one per PI). An ACQUIRE/LOCK command may be sent through either PI,
+	 * so the entity may report ownership using either EID. Comparing only against the primary EID would misclassify a resource
+	 * we own through the secondary PI as "owned by another controller".
+	 */
+	bool isLocalControllerEID(UniqueIdentifier const eid) const noexcept
+	{
+		if (!eid)
+		{
+			return false;
+		}
+		return (eid == getControllerEID(InterfaceType::Primary)) || (eid == getControllerEID(InterfaceType::Secondary));
+	}
+
 	/* ************************************************************ */
 	/* Private members                                              */
 	/* ************************************************************ */

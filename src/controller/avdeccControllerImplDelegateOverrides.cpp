@@ -386,7 +386,7 @@ void ControllerImpl::onEntityAcquired(entity::controller::Interface const* const
 		auto& entity = *controlledEntity;
 		if (descriptorType == entity::model::DescriptorType::Entity)
 		{
-			updateAcquiredState(entity, owningEntity ? (owningEntity == getControllerEID() ? model::AcquireState::Acquired : model::AcquireState::AcquiredByOther) : model::AcquireState::NotAcquired, owningEntity);
+			updateAcquiredState(entity, owningEntity ? (isLocalControllerEID(owningEntity) ? model::AcquireState::Acquired : model::AcquireState::AcquiredByOther) : model::AcquireState::NotAcquired, owningEntity);
 		}
 	}
 }
@@ -401,7 +401,7 @@ void ControllerImpl::onEntityReleased(entity::controller::Interface const* const
 		auto& entity = *controlledEntity;
 		if (descriptorType == entity::model::DescriptorType::Entity)
 		{
-			updateAcquiredState(entity, owningEntity ? (owningEntity == getControllerEID() ? model::AcquireState::Acquired : model::AcquireState::AcquiredByOther) : model::AcquireState::NotAcquired, owningEntity);
+			updateAcquiredState(entity, owningEntity ? (isLocalControllerEID(owningEntity) ? model::AcquireState::Acquired : model::AcquireState::AcquiredByOther) : model::AcquireState::NotAcquired, owningEntity);
 		}
 	}
 }
@@ -416,7 +416,7 @@ void ControllerImpl::onEntityLocked(entity::controller::Interface const* const /
 		auto& entity = *controlledEntity;
 		if (descriptorType == entity::model::DescriptorType::Entity)
 		{
-			updateLockedState(entity, lockingEntity ? (lockingEntity == getControllerEID() ? model::LockState::Locked : model::LockState::LockedByOther) : model::LockState::NotLocked, lockingEntity);
+			updateLockedState(entity, lockingEntity ? (isLocalControllerEID(lockingEntity) ? model::LockState::Locked : model::LockState::LockedByOther) : model::LockState::NotLocked, lockingEntity);
 		}
 	}
 }
@@ -431,7 +431,7 @@ void ControllerImpl::onEntityUnlocked(entity::controller::Interface const* const
 		auto& entity = *controlledEntity;
 		if (descriptorType == entity::model::DescriptorType::Entity)
 		{
-			updateLockedState(entity, lockingEntity ? (lockingEntity == getControllerEID() ? model::LockState::Locked : model::LockState::LockedByOther) : model::LockState::NotLocked, lockingEntity);
+			updateLockedState(entity, lockingEntity ? (isLocalControllerEID(lockingEntity) ? model::LockState::Locked : model::LockState::LockedByOther) : model::LockState::NotLocked, lockingEntity);
 		}
 	}
 }
