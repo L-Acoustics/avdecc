@@ -700,9 +700,12 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 	}
 }
 
-void ControllerImpl::onUnregisterUnsolicitedNotificationsResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
+void ControllerImpl::onUnregisterUnsolicitedNotificationsResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onDeregisterUnsolicitedNotificationsResult: {}", entity::ControllerEntity::statusToString(status));
+
+	// Identify which PI actually answered the UNREGISTER: in dual-PI mode each PI is a separate subscriber on the entity side, so this answer only applies to the PI it came in on.
+	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
 
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -713,7 +716,7 @@ void ControllerImpl::onUnregisterUnsolicitedNotificationsResult(entity::controll
 
 		if (!!status)
 		{
-			updateUnsolicitedNotificationsSubscription(entity, false, false);
+			updateUnsolicitedNotificationsSubscription(entity, false, false, interfaceType);
 		}
 	}
 }

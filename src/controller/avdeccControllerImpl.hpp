@@ -363,14 +363,6 @@ private:
 	static void setMilanWarningCompatibilityFlag(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, std::string const& specClause, std::string const& message) noexcept;
 	static void removeCompatibilityFlag(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag, std::string const& specClause, std::string const& message) noexcept;
 	static void decreaseMilanCompatibilityVersion(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::MilanVersion const& version, std::string const& specClause, std::string const& message) noexcept;
-	/**
-	 * @brief Update the unsolicited-notifications subscription state of an entity (single PI or all PIs).
-	 * @details When @a interfaceType is provided only that PI's subscription state is mutated; otherwise the change is applied to every PI. The observer notification #Controller::Observer::onUnsolicitedRegistrationChanged is fired only when the *global* subscription state (logical OR across PIs) flips, preserving the user-facing semantics (the entity is still considered subscribed as long as at least one PI is).
-	 * @param[in] controlledEntity The entity whose subscription state must be updated.
-	 * @param[in] isSubscribed New subscription state to apply.
-	 * @param[in] triggeredByEntity True if the change originated from an entity-initiated DEREGISTER (vs a controller-initiated change).
-	 * @param[in] interfaceType The targeted PI, or std::nullopt to apply to every PI at once.
-	 */
 	void updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed, bool const triggeredByEntity, std::optional<Controller::InterfaceType> const interfaceType = std::nullopt) const noexcept;
 	void updateAcquiredState(ControlledEntityImpl& controlledEntity, model::AcquireState const acquireState, UniqueIdentifier const owningEntity) const noexcept;
 	void updateLockedState(ControlledEntityImpl& controlledEntity, model::LockState const lockState, UniqueIdentifier const lockingEntity) const noexcept;
