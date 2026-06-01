@@ -313,8 +313,6 @@ private:
 	entity::controller::Interface const* _virtualInterface{ nullptr };
 	std::string _executorName{};
 
-	// Reachability tracking (dual-interface mode only)
-	mutable std::mutex _reachabilityLock{};
 	/** Per-(entity, PI) state combining reachability and unsol registration. */
 	struct EntityState
 	{

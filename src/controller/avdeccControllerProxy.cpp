@@ -163,25 +163,25 @@ ControllerVirtualProxy::~ControllerVirtualProxy() noexcept
 
 void ControllerVirtualProxy::setVirtualEntity(UniqueIdentifier const& virtualEntity) noexcept
 {
-	auto const lg = std::lock_guard<std::mutex>{ _lock };
+	auto const lg = std::lock_guard{ _lock };
 	_virtualEntities.insert(virtualEntity);
 }
 
 void ControllerVirtualProxy::clearVirtualEntity(UniqueIdentifier const& virtualEntity) noexcept
 {
-	auto const lg = std::lock_guard<std::mutex>{ _lock };
+	auto const lg = std::lock_guard{ _lock };
 	_virtualEntities.erase(virtualEntity);
 }
 
 bool ControllerVirtualProxy::isVirtualEntity(UniqueIdentifier const& virtualEntity) const noexcept
 {
-	auto const lg = std::lock_guard<std::mutex>{ _lock };
+	auto const lg = std::lock_guard{ _lock };
 	return _virtualEntities.find(virtualEntity) != _virtualEntities.end();
 }
 
 bool ControllerVirtualProxy::setEntityReachable(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType, bool const reachable) noexcept
 {
-	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+	auto const lg = std::lock_guard{ _lock };
 	auto& info = _reachability[entityID];
 	auto const wasReachable = (interfaceType == Controller::InterfaceType::Primary) ? info.onPrimary : info.onSecondary;
 	if (interfaceType == Controller::InterfaceType::Primary)
@@ -206,59 +206,64 @@ bool ControllerVirtualProxy::setEntityReachable(UniqueIdentifier const& entityID
 
 void ControllerVirtualProxy::clearEntityReachability(UniqueIdentifier const& entityID) noexcept
 {
-	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+	auto const lg = std::lock_guard{ _lock };
 	_reachability.erase(entityID);
 }
 
 bool ControllerVirtualProxy::markInterfaceDown(Controller::InterfaceType const interfaceType) noexcept
 {
-	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+	auto const lg = std::lock_guard{ _lock };
 
 	// Update the per-PI transport-up state first (independent of any discovered entity).
-	if (interfaceType == Controller::InterfaceType::Primary)
+	switch (interfaceType)
 	{
-		_primaryInterfaceUp = false;
-	}
-	else
-	{
-		_secondaryInterfaceUp = false;
+		case Controller::InterfaceType::Primary:
+			_primaryInterfaceUp = false;
+			break;
+		case Controller::InterfaceType::Secondary:
+			_secondaryInterfaceUp = false;
+			break;
+		default:
+			AVDECC_ASSERT(false, "Unknown InterfaceType");
+			return false;
 	}
 
 	// Also clear per-entity reachability flags for the failing PI so subsequent routing decisions are accurate.
 	for (auto& [entityID, info] : _reachability)
 	{
-		if (interfaceType == Controller::InterfaceType::Primary)
+		switch (interfaceType)
 		{
-			info.onPrimary = false;
-			info.unsolPrimary = UnsolState::NotRegistered;
-		}
-		else
-		{
-			info.onSecondary = false;
-			info.unsolSecondary = UnsolState::NotRegistered;
+			case Controller::InterfaceType::Primary:
+				info.onPrimary = false;
+				info.unsolPrimary = UnsolState::NotRegistered;
+				break;
+			case Controller::InterfaceType::Secondary:
+				info.onSecondary = false;
+				info.unsolSecondary = UnsolState::NotRegistered;
+				break;
+			default:
+				AVDECC_ASSERT(false, "Unknown InterfaceType");
+				break;
 		}
 	}
 
-	// The redundancy guarantee is at the transport level: the controller is still operational as long as the
-	// other PI's transport has not also collapsed. This must NOT be conditioned on having already discovered
-	// entities (which would incorrectly escalate to a fatal error on early-boot transport faults).
+	// If the other interface is still up, return true to trigger a partial-failure notification. If both are now down (or we're in single-PI mode), return false to trigger a full failure notification.
 	return (interfaceType == Controller::InterfaceType::Primary) ? _secondaryInterfaceUp : _primaryInterfaceUp;
 }
 
 ControllerVirtualProxy::InterfaceReachability ControllerVirtualProxy::getEntityReachability(UniqueIdentifier const& entityID) const noexcept
 {
-	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
-	auto const it = _reachability.find(entityID);
-	if (it == _reachability.end())
+	auto const lg = std::lock_guard{ _lock };
+	if (auto const it = _reachability.find(entityID); it != _reachability.end())
 	{
-		return InterfaceReachability{};
+		return InterfaceReachability{ it->second.onPrimary, it->second.onSecondary };
 	}
-	return InterfaceReachability{ it->second.onPrimary, it->second.onSecondary };
+	return InterfaceReachability{};
 }
 
 void ControllerVirtualProxy::setEntityInterfaceIndices(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType, std::set<entity::model::AvbInterfaceIndex> indices) noexcept
 {
-	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+	auto const lg = std::lock_guard{ _lock };
 	auto& state = _reachability[entityID];
 	switch (interfaceType)
 	{
@@ -276,22 +281,22 @@ void ControllerVirtualProxy::setEntityInterfaceIndices(UniqueIdentifier const& e
 
 std::set<entity::model::AvbInterfaceIndex> ControllerVirtualProxy::getEntityInterfaceIndices(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType) const noexcept
 {
-	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
-	auto const it = _reachability.find(entityID);
-	if (it == _reachability.end())
+	auto const lg = std::lock_guard{ _lock };
+
+	if (auto const it = _reachability.find(entityID); it != _reachability.end())
 	{
-		return {};
+		switch (interfaceType)
+		{
+			case Controller::InterfaceType::Primary:
+				return it->second.interfacesFromPrimary;
+			case Controller::InterfaceType::Secondary:
+				return it->second.interfacesFromSecondary;
+			default:
+				AVDECC_ASSERT(false, "Unknown InterfaceType");
+				return {};
+		}
 	}
-	switch (interfaceType)
-	{
-		case Controller::InterfaceType::Primary:
-			return it->second.interfacesFromPrimary;
-		case Controller::InterfaceType::Secondary:
-			return it->second.interfacesFromSecondary;
-		default:
-			AVDECC_ASSERT(false, "Unknown InterfaceType");
-			return {};
-	}
+	return {};
 }
 
 bool ControllerVirtualProxy::isDualInterface() const noexcept
@@ -313,7 +318,7 @@ entity::controller::Interface const* ControllerVirtualProxy::pickRealInterface(U
 	}
 
 	// Dual-interface mode: pick based on reachability
-	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
+	auto const lg = std::lock_guard{ _lock };
 	auto const it = _reachability.find(targetEntityID);
 	if (it == _reachability.end())
 	{
@@ -355,74 +360,73 @@ entity::controller::Interface const* ControllerVirtualProxy::otherReachableInter
 	{
 		return nullptr;
 	}
+
 	// Look up the reachability for the other PI: only allow retry there if the entity has actually been seen on it.
-	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
-	auto const it = _reachability.find(entityID);
-	if (it == _reachability.end())
+	auto const lg = std::lock_guard{ _lock };
+
+	if (auto const it = _reachability.find(entityID); it != _reachability.end())
 	{
-		return nullptr;
-	}
-	auto const& info = it->second;
-	auto const otherIsPrimary = (other == _realInterface);
-	if (otherIsPrimary && info.onPrimary)
-	{
-		return other;
-	}
-	if (!otherIsPrimary && info.onSecondary)
-	{
-		return other;
+		auto const& info = it->second;
+		auto const otherIsPrimary = (other == _realInterface);
+		if (otherIsPrimary && info.onPrimary)
+		{
+			return other;
+		}
+		if (!otherIsPrimary && info.onSecondary)
+		{
+			return other;
+		}
 	}
 	return nullptr;
 }
 
 bool ControllerVirtualProxy::tryClaimUnsolPending(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType) noexcept
 {
-	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
-	auto const it = _reachability.find(entityID);
-	if (it == _reachability.end())
+	auto const lg = std::lock_guard{ _lock };
+
+	if (auto const it = _reachability.find(entityID); it != _reachability.end())
 	{
-		// We don't track unsol for entities that we haven't seen on any PI yet.
-		return false;
+		auto& info = it->second;
+		auto& state = (interfaceType == Controller::InterfaceType::Primary) ? info.unsolPrimary : info.unsolSecondary;
+		if (state != UnsolState::NotRegistered)
+		{
+			return false;
+		}
+		state = UnsolState::Pending;
+		return true;
 	}
-	auto& info = it->second;
-	auto& state = (interfaceType == Controller::InterfaceType::Primary) ? info.unsolPrimary : info.unsolSecondary;
-	if (state != UnsolState::NotRegistered)
-	{
-		return false;
-	}
-	state = UnsolState::Pending;
-	return true;
+	// We don't track unsol for entities that we haven't seen on any PI yet.
+	return false;
 }
 
 void ControllerVirtualProxy::setUnsolState(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType, UnsolState const newState) noexcept
 {
-	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
-	auto const it = _reachability.find(entityID);
-	if (it == _reachability.end())
+	auto const lg = std::lock_guard{ _lock };
+
+	if (auto const it = _reachability.find(entityID); it != _reachability.end())
 	{
-		return;
-	}
-	auto& info = it->second;
-	if (interfaceType == Controller::InterfaceType::Primary)
-	{
-		info.unsolPrimary = newState;
-	}
-	else
-	{
-		info.unsolSecondary = newState;
+		auto& info = it->second;
+		if (interfaceType == Controller::InterfaceType::Primary)
+		{
+			info.unsolPrimary = newState;
+		}
+		else
+		{
+			info.unsolSecondary = newState;
+		}
 	}
 }
 
 ControllerVirtualProxy::UnsolState ControllerVirtualProxy::getUnsolState(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType) const noexcept
 {
-	auto const lg = std::lock_guard<std::mutex>{ _reachabilityLock };
-	auto const it = _reachability.find(entityID);
-	if (it == _reachability.end())
+	auto const lg = std::lock_guard{ _lock };
+
+	if (auto const it = _reachability.find(entityID); it != _reachability.end())
 	{
-		return UnsolState::NotRegistered;
+		auto const& info = it->second;
+		return (interfaceType == Controller::InterfaceType::Primary) ? info.unsolPrimary : info.unsolSecondary;
 	}
-	auto const& info = it->second;
-	return (interfaceType == Controller::InterfaceType::Primary) ? info.unsolPrimary : info.unsolSecondary;
+	return UnsolState::NotRegistered;
 }
 
 void ControllerVirtualProxy::registerUnsolicitedNotificationsOnInterface(UniqueIdentifier const targetEntityID, Controller::InterfaceType const interfaceType, RegisterUnsolicitedNotificationsHandler const& handler) const noexcept

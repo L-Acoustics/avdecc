@@ -387,6 +387,9 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::Controller::InterfaceType, "uint")
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
+%ignore la::avdecc::controller::Controller::NumInterfaces; // Ignore because of constexpr undefined
+%ignore la::avdecc::controller::Controller::AllInterfaceTypes; // Ignore because of 'NumInterfaces' being ignored
+
 %nspace la::avdecc::controller::CompileOptionInfo;
 %rename("%s") la::avdecc::controller::CompileOptionInfo; // Unignore class
 
