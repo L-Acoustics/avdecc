@@ -29,6 +29,7 @@
 #include <la/avdecc/controller/avdeccController.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
 #include <la/avdecc/internals/streamFormatInfo.hpp>
+#include <la/avdecc/executor.hpp>
 #ifdef ENABLE_AVDECC_FEATURE_JSON
 #	include <la/avdecc/internals/jsonTypes.hpp>
 #endif // ENABLE_AVDECC_FEATURE_JSON
@@ -546,11 +547,13 @@ int doJob()
 			outputText("Secondary interface '" + secondaryIntfc.alias + "' selected; redundancy enabled.\n");
 		}
 
+		static auto constexpr DefaultExecutorName = "avdecc::protocol::DualPI";
+		auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
 		auto const buildInterfaceConfigurations = [&]()
 		{
 			auto configs = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
-			configs.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ protocolInterfaceType, intfc.id, std::nullopt });
-			configs.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ protocolInterfaceType, secondaryIntfc.id, std::nullopt });
+			configs.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ protocolInterfaceType, intfc.id, DefaultExecutorName });
+			configs.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ protocolInterfaceType, secondaryIntfc.id, DefaultExecutorName });
 			return configs;
 		};
 
