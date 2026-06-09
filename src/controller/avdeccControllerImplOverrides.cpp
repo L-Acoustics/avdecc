@@ -104,6 +104,22 @@ ControllerImpl::ControllerImpl(std::vector<Controller::InterfaceConfiguration> c
 		throw Exception(Error::InvalidInterfaceConfiguration, "Primary and Secondary network interface IDs must differ");
 	}
 
+	// !!!! TEMPORARY VALIDATION !!!!
+	// The same executor must be provided or dead-locks will occur.
+	// The issue being a message received on one-PI can cause another message to be sent to the second PI.
+	// Simple case:
+	//  - Executor-Secondary (PI locked): ADP-Available received and processed: newly discovered entity registered, enumeration state machine starting, ControlledEntityGuard (locked) taken
+	//  - Executor-Primary (PI locked): ADP-Available received and processed: entity updated, preparing to lazyRegisterUnsol, trying to get ControlledEntityGuard
+	//  - Executor-Secondary continues: Trying to send first enumeration message (GetMilanInfo) to Primary (pickRealInterface will return Primary), which is locked
+	//  => dead-lock
+	// Possible solution, have pickRealInterface choose the current PI if reentrant (called from Executor)
+#if 1
+	if (!interfaceConfigurations[0].executorName.has_value() || interfaceConfigurations[0].executorName != interfaceConfigurations[1].executorName)
+	{
+		throw Exception(Error::InvalidInterfaceConfiguration, "Primary and Secondary executors must be identical (current limitation)");
+	}
+#endif
+
 	try
 	{
 		// Helper to resolve the executor name for a given PI configuration.
@@ -460,6 +476,18 @@ ControllerImpl::~ControllerImpl()
 			_controllerProxy->unlockEntity(entityID, entity::model::DescriptorType::Entity, 0u, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
 		}
 	}
+
+	// Set interfaces as unreachable so we don't send retries
+	_controllerProxy->markInterfaceDown(Controller::InterfaceType::Primary);
+	_controllerProxy->markInterfaceDown(Controller::InterfaceType::Secondary);
+
+	// Destroy the Controller(s) before the class is destoyed
+	_controller = nullptr;
+	_secondaryController = nullptr;
+
+	// Destroy EndStation(s) before the class is destroyed
+	_endStation = nullptr;
+	_secondaryEndStation = nullptr;
 
 	// Destroy the controller proxy before the class is destroyed
 	_controllerProxy = nullptr;

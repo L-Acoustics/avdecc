@@ -643,12 +643,6 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 {
 	LOG_CONTROLLER_TRACE(entityID, "onRegisterUnsolicitedNotificationsResult: {}", entity::ControllerEntity::statusToString(status));
 
-	// Identify which PI this REGISTER result came back on (each PI is a distinct subscriber on the entity side, so the subscription state is tracked per PI).
-	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
-
-	// Whether to issue the dual-PI lazy registration after releasing the entity guard. We must NOT invoke tryLazyRegisterUnsolOnInterface while holding the ControlledEntityImplGuard, because the send path for the other PI may take protocol-interface locks whose acquisition order, combined with the entity-shared recursive_mutex, can lock-order-invert against the other PI's state-machine thread and cause the avdecc::StateMachine watchdog to fire.
-	auto shouldLazyRegisterBothPi = false;
-
 	{
 		// Take a "scoped locked" shared copy of the ControlledEntity
 		auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -660,9 +654,16 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 			if (entity.checkAndClearExpectedRegisterUnsol())
 			{
 				entity.setUnsolicitedNotificationsSupported(true); // Set to true by default, will be set to false if we get a failure status
+
+				auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+
+				// Update the proxy's per-PI unsol state: Registered on success, NotRegistered on any failure so the next reachability transition will retry.
+				auto const newState = (!!status) ? ControllerVirtualProxy::UnsolState::Registered : ControllerVirtualProxy::UnsolState::NotRegistered;
+				_controllerProxy->setUnsolState(entityID, interfaceType, newState);
+
 				if (!!status)
 				{
-					entity.setSubscribedToUnsolicitedNotifications(true, interfaceType);
+					updateUnsolicitedNotificationsSubscription(entity, true, false, interfaceType);
 				}
 				else
 				{
@@ -681,22 +682,8 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 					entity.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::RegisterUnsol);
 					checkEnumerationSteps(&entity);
 				}
-
-				// In dual-PI mode, the initial enumeration step above only registered on the PI that was picked by the proxy (typically Primary if reachable, otherwise Secondary).
-				// To get a redundant unsolicited subscription on both PIs, lazily (re-)register on each PI for which we have current reachability. The per-PI claim guard ensures we do not issue duplicate register commands.
-				// Defer the actual call until after the guard is released to avoid the cross-PI deadlock described above.
-				if (!!status && _controllerProxy && _controllerProxy->isDualInterface())
-				{
-					shouldLazyRegisterBothPi = true;
-				}
 			}
 		}
-	} // Entity guard released here
-
-	if (shouldLazyRegisterBothPi)
-	{
-		tryLazyRegisterUnsolOnInterface(entityID, Controller::InterfaceType::Primary);
-		tryLazyRegisterUnsolOnInterface(entityID, Controller::InterfaceType::Secondary);
 	}
 }
 

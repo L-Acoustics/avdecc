@@ -183,31 +183,40 @@ bool ControllerVirtualProxy::setEntityReachable(UniqueIdentifier const& entityID
 {
 	auto const lg = std::lock_guard{ _lock };
 	auto& info = _reachability[entityID];
-	auto const wasReachable = (interfaceType == Controller::InterfaceType::Primary) ? info.onPrimary : info.onSecondary;
-	if (interfaceType == Controller::InterfaceType::Primary)
-	{
-		info.onPrimary = reachable;
-		if (!reachable)
-		{
-			// PI lost reachability: drop any unsol registration we believed was active here, so the next time we see the entity on this PI we re-register.
-			info.unsolPrimary = UnsolState::NotRegistered;
-		}
-	}
-	else
-	{
-		info.onSecondary = reachable;
-		if (!reachable)
-		{
-			info.unsolSecondary = UnsolState::NotRegistered;
-		}
-	}
-	return reachable && !wasReachable;
-}
+	auto wasReachable = false;
 
-void ControllerVirtualProxy::clearEntityReachability(UniqueIdentifier const& entityID) noexcept
-{
-	auto const lg = std::lock_guard{ _lock };
-	_reachability.erase(entityID);
+	switch (interfaceType)
+	{
+		case Controller::InterfaceType::Primary:
+			wasReachable = info.onPrimary;
+			info.onPrimary = reachable;
+			if (!reachable)
+			{
+				// PI lost reachability: drop any unsol registration we believed was active here, so the next time we see the entity on this PI we re-register.
+				info.unsolPrimary = UnsolState::NotRegistered;
+			}
+			break;
+		case Controller::InterfaceType::Secondary:
+			wasReachable = info.onSecondary;
+			info.onSecondary = reachable;
+			if (!reachable)
+			{
+				// PI lost reachability: drop any unsol registration we believed was active here, so the next time we see the entity on this PI we re-register.
+				info.unsolSecondary = UnsolState::NotRegistered;
+			}
+			break;
+		default:
+			AVDECC_ASSERT(false, "Unknown InterfaceType");
+			return false;
+	}
+
+	// Clear if no longer reachable (on any interface)
+	if (!info.onPrimary && !info.onSecondary)
+	{
+		_reachability.erase(entityID);
+	}
+
+	return reachable && !wasReachable;
 }
 
 bool ControllerVirtualProxy::markInterfaceDown(Controller::InterfaceType const interfaceType) noexcept

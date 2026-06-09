@@ -80,9 +80,6 @@ public:
 	 */
 	bool setEntityReachable(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType, bool const reachable) noexcept;
 
-	/** Clears all reachability state for the specified entity (called when the entity goes fully offline). */
-	void clearEntityReachability(UniqueIdentifier const& entityID) noexcept;
-
 	/** Marks all entities as unreachable on the specified interface (called when a transport error is reported on that interface). Returns true if the other interface is still up, false if both PIs are now down (or single-PI mode). */
 	bool markInterfaceDown(Controller::InterfaceType const interfaceType) noexcept;
 

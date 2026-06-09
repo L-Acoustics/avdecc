@@ -695,12 +695,10 @@ private:
 	void registerUnsol(ControlledEntityImpl* const entity) noexcept;
 	void unregisterUnsol(ControlledEntityImpl* const entity) noexcept;
 	/** Attempts to (re-)register unsolicited notifications for @a entityID on the specified PI without going through the dual-PI retry layer.
-	 *  Does nothing if the entity is not currently reachable on that PI, if the unsol state is not NotRegistered, if the entity is in single-PI mode and @a interfaceType is Secondary, or if @a entity is not advertised yet.
+	 *  Does nothing if the entity is not currently reachable on that PI, if the unsol state is not NotRegistered, if the entity is in single-PI mode and @a interfaceType is Secondary.
 	 *  This is the per-PI redundancy registration path called when a PI becomes (re-)reachable for an already-known entity.
 	 */
 	void tryLazyRegisterUnsolOnInterface(UniqueIdentifier const entityID, Controller::InterfaceType const interfaceType) noexcept;
-	/** Result handler for the lazy per-PI unsolicited notifications registration. Marks the proxy's per-PI unsol state accordingly. */
-	void onLazyRegisterUnsolicitedNotificationsResult(Controller::InterfaceType const interfaceType, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept;
 	void getStaticModel(ControlledEntityImpl* const entity) noexcept;
 	void getDynamicInfo(ControlledEntityImpl* const entity) noexcept;
 	void getDescriptorDynamicInfo(ControlledEntityImpl* const entity) noexcept;

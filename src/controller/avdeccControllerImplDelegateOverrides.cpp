@@ -38,15 +38,15 @@ namespace controller
 void ControllerImpl::onTransportError(entity::controller::Interface const* const controller) noexcept
 {
 	// Determine which physical interface failed
-	auto const failedType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
 
-	if (_controllerProxy && _controllerProxy->isDualInterface())
+	if (_controllerProxy->isDualInterface())
 	{
-		auto const otherStillUp = _controllerProxy->markInterfaceDown(failedType);
+		auto const otherStillUp = _controllerProxy->markInterfaceDown(interfaceType);
 		if (otherStillUp)
 		{
 			// Other interface still up: notify partial failure only
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onRedundantInterfaceTransportError, this, failedType);
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onRedundantInterfaceTransportError, this, interfaceType);
 			return;
 		}
 	}
@@ -58,14 +58,6 @@ void ControllerImpl::onTransportError(entity::controller::Interface const* const
 void ControllerImpl::onEntityOnline(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::Entity const& entity) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onEntityOnline");
-
-	// Identify the PI on which the entity was seen
-	auto const sourceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
-	auto reachabilityTransition = false;
-	if (_controllerProxy)
-	{
-		reachabilityTransition = _controllerProxy->setEntityReachable(entityID, sourceType, true);
-	}
 
 	auto const caps = entity.getEntityCapabilities();
 	if (caps.test(entity::EntityCapability::EntityNotReady))
@@ -98,32 +90,30 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 		}
 	}
 
-	// Record which interface indices this PI contributed (for later removal on entity offline)
-	if (_controllerProxy && _controllerProxy->isDualInterface())
-	{
-		auto indicesFromThisPi = std::set<entity::model::AvbInterfaceIndex>{};
-		for (auto const& [idx, info] : entity.getInterfacesInformation())
-		{
-			indicesFromThisPi.insert(idx);
-		}
-		_controllerProxy->setEntityInterfaceIndices(entityID, sourceType, std::move(indicesFromThisPi));
-	}
-
 	// In dual-PI mode, if the entity is already known on the other PI, just merge interface information via onEntityUpdate (which calls updateEntity -> InterfacesInformation merge) and do not duplicate enumeration.
 	if (entityAlreadyKnown)
 	{
 		LOG_CONTROLLER_DEBUG(entityID, "onEntityOnline: Entity already registered, updating it");
 		onEntityUpdate(controller, entityID, entity);
-		// If this PI was previously unreachable, lazily (re-)register unsolicited notifications on it so we keep a redundant subscription across both PIs.
-		if (reachabilityTransition)
-		{
-			tryLazyRegisterUnsolOnInterface(entityID, sourceType);
-		}
 		return;
 	}
 
 	if (controlledEntity)
 	{
+		// Identify the PI on which the entity was seen
+		auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+
+		// Set entity reachable on this PI
+		_controllerProxy->setEntityReachable(entityID, interfaceType, true);
+
+		// Record which interface indices this PI contributed (for later removal on entity offline)
+		auto indicesFromThisPi = std::set<entity::model::AvbInterfaceIndex>{};
+		for (auto const& [idx, info] : entity.getInterfacesInformation())
+		{
+			indicesFromThisPi.insert(idx);
+		}
+		_controllerProxy->setEntityInterfaceIndices(entityID, interfaceType, std::move(indicesFromThisPi));
+
 		auto guardedEntity = ControlledEntityImplGuard{ std::move(controlledEntity), true };
 
 		// New entity get everything we can from it
@@ -164,12 +154,19 @@ void ControllerImpl::onEntityUpdate(entity::controller::Interface const* const c
 	LOG_CONTROLLER_TRACE(entityID, "onEntityUpdate");
 
 	// Identify the PI on which the entity was seen
-	auto const sourceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
-	auto reachabilityTransition = false;
-	if (_controllerProxy)
+	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+	auto shouldRegisterUnsol = false;
+
+	// Set entity reachable on this PI
+	shouldRegisterUnsol = _controllerProxy->setEntityReachable(entityID, interfaceType, true);
+
+	// Record which interface indices this PI contributed (for later removal on entity offline)
+	auto indicesFromThisPi = std::set<entity::model::AvbInterfaceIndex>{};
+	for (auto const& [idx, info] : entity.getInterfacesInformation())
 	{
-		reachabilityTransition = _controllerProxy->setEntityReachable(entityID, sourceType, true);
+		indicesFromThisPi.insert(idx);
 	}
+	_controllerProxy->setEntityInterfaceIndices(entityID, interfaceType, std::move(indicesFromThisPi));
 
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	{
@@ -179,20 +176,10 @@ void ControllerImpl::onEntityUpdate(entity::controller::Interface const* const c
 		{
 			// In dual-interface mode, the new ADP message originates from one specific PI and only carries that PI's view of the entity's interfaces.
 			// Build a merged Entity that preserves any AvbInterfaceIndex entries already known from the other PI (additive union), so subsequent calls to updateEntity see the full union of interfaces observed across both PIs.
-			if (_controllerProxy && _controllerProxy->isDualInterface())
+			if (_controllerProxy->isDualInterface())
 			{
 				auto const& oldInterfaces = controlledEntity->getEntity().getInterfacesInformation();
-				auto const& newInterfaces = entity.getInterfacesInformation();
-
-				// Record which interface indices this PI contributed (for later removal on entity offline)
-				auto indicesFromThisPi = std::set<entity::model::AvbInterfaceIndex>{};
-				for (auto const& [idx, info] : newInterfaces)
-				{
-					indicesFromThisPi.insert(idx);
-				}
-				_controllerProxy->setEntityInterfaceIndices(entityID, sourceType, std::move(indicesFromThisPi));
-
-				auto mergedInterfaces = newInterfaces;
+				auto mergedInterfaces = entity.getInterfacesInformation();
 				for (auto const& kv : oldInterfaces)
 				{
 					// Keep old entries that are not present in the new ADP (they were contributed by the other PI)
@@ -213,14 +200,15 @@ void ControllerImpl::onEntityUpdate(entity::controller::Interface const* const c
 		{
 			// In case the entity was not ready when it was first discovered, maybe now is the time
 			onEntityOnline(controller, entityID, entity);
+			shouldRegisterUnsol = false; // No need to register to unsol, it was done during onEntityOnline
 		}
 	} // Entity guard released here
 
 	// If this PI was previously unreachable, lazily (re-)register unsolicited notifications on it so we keep a redundant subscription across both PIs.
 	// Must be called OUTSIDE the entity guard scope above to avoid a cross-PI lock-order inversion against the other PI's send path (which can wedge the avdecc::StateMachine watchdog).
-	if (reachabilityTransition)
+	if (shouldRegisterUnsol)
 	{
-		tryLazyRegisterUnsolOnInterface(entityID, sourceType);
+		tryLazyRegisterUnsolOnInterface(entityID, interfaceType);
 	}
 }
 
@@ -228,45 +216,46 @@ void ControllerImpl::onEntityOffline(entity::controller::Interface const* const 
 {
 	LOG_CONTROLLER_TRACE(entityID, "onEntityOffline");
 
+	// Identify the PI on which the entity was lost
+	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+
+	// Clear the stored indices for the offline PI
+	auto const deadPiIndices = _controllerProxy->getEntityInterfaceIndices(entityID, interfaceType);
+	_controllerProxy->setEntityInterfaceIndices(entityID, interfaceType, {});
+
+	// Set entity unreachable on this PI
+	_controllerProxy->setEntityReachable(entityID, interfaceType, false);
+
+	auto const reach = _controllerProxy->getEntityReachability(entityID);
 	// In dual-PI mode, only treat the entity as truly offline when both PIs report it offline.
-	if (_controllerProxy && _controllerProxy->isDualInterface())
+	if (reach.onPrimary || reach.onSecondary)
 	{
-		auto const sourceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
-		_controllerProxy->setEntityReachable(entityID, sourceType, false);
-		auto const reach = _controllerProxy->getEntityReachability(entityID);
-		if (reach.onPrimary || reach.onSecondary)
+		// Entity still reachable through the other PI: remove the interfaces contributed by the offline PI and update the entity
+		LOG_CONTROLLER_DEBUG(entityID, "onEntityOffline on one PI but still reachable on the other; removing dead PI's interfaces");
+
+		// Update the entity: remove interfaces that were exclusively contributed by the dead PI
+		auto controlledEntity = getControlledEntityImplGuard(entityID);
+		if (controlledEntity)
 		{
-			// Entity still reachable through the other PI: remove the interfaces contributed by the offline PI and update the entity
-			LOG_CONTROLLER_DEBUG(entityID, "onEntityOffline on one PI but still reachable on the other; removing dead PI's interfaces");
+			auto const& currentInterfaces = controlledEntity->getEntity().getInterfacesInformation();
+			auto const otherType = (interfaceType == Controller::InterfaceType::Primary) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+			auto const otherPiIndices = _controllerProxy->getEntityInterfaceIndices(entityID, otherType);
 
-			auto const deadPiIndices = _controllerProxy->getEntityInterfaceIndices(entityID, sourceType);
-			// Clear the stored indices for the offline PI
-			_controllerProxy->setEntityInterfaceIndices(entityID, sourceType, {});
-
-			// Update the entity: remove interfaces that were exclusively contributed by the dead PI
-			auto controlledEntity = getControlledEntityImplGuard(entityID);
-			if (controlledEntity)
+			// Build reduced interfaces: keep only interfaces NOT exclusively from the dead PI
+			auto reducedInterfaces = entity::Entity::InterfacesInformation{};
+			for (auto const& [idx, info] : currentInterfaces)
 			{
-				auto const& currentInterfaces = controlledEntity->getEntity().getInterfacesInformation();
-				auto const otherType = (sourceType == Controller::InterfaceType::Primary) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
-				auto const otherPiIndices = _controllerProxy->getEntityInterfaceIndices(entityID, otherType);
-
-				// Build reduced interfaces: keep only interfaces NOT exclusively from the dead PI
-				auto reducedInterfaces = entity::Entity::InterfacesInformation{};
-				for (auto const& [idx, info] : currentInterfaces)
+				// Keep this interface if it was NOT from the dead PI, or if it's also present in the other PI's set
+				if (deadPiIndices.find(idx) == deadPiIndices.end() || otherPiIndices.find(idx) != otherPiIndices.end())
 				{
-					// Keep this interface if it was NOT from the dead PI, or if it's also present in the other PI's set
-					if (deadPiIndices.find(idx) == deadPiIndices.end() || otherPiIndices.find(idx) != otherPiIndices.end())
-					{
-						reducedInterfaces.insert({ idx, info });
-					}
+					reducedInterfaces.insert({ idx, info });
 				}
-
-				auto const reducedEntity = entity::Entity{ controlledEntity->getEntity().getCommonInformation(), reducedInterfaces };
-				updateEntity(*controlledEntity, reducedEntity);
 			}
-			return;
+
+			auto const reducedEntity = entity::Entity{ controlledEntity->getEntity().getCommonInformation(), reducedInterfaces };
+			updateEntity(*controlledEntity, reducedEntity);
 		}
+		return;
 	}
 
 	auto controlledEntity = SharedControlledEntityImpl{};
@@ -283,11 +272,6 @@ void ControllerImpl::onEntityOffline(entity::controller::Interface const* const 
 			controlledEntity = entityIt->second;
 			_controlledEntities.erase(entityIt);
 		}
-	}
-
-	if (_controllerProxy)
-	{
-		_controllerProxy->clearEntityReachability(entityID);
 	}
 
 	if (controlledEntity)

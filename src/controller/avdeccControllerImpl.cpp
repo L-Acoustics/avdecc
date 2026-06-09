@@ -3293,7 +3293,7 @@ void ControllerImpl::unregisterUnsol(ControlledEntityImpl* const entity) noexcep
 void ControllerImpl::tryLazyRegisterUnsolOnInterface(UniqueIdentifier const entityID, Controller::InterfaceType const interfaceType) noexcept
 {
 	// Only meaningful in dual-PI mode (single-PI mode does the initial registration through the enumeration step, no per-PI redundancy needed).
-	if (!_controllerProxy || !_controllerProxy->isDualInterface())
+	if (!_controllerProxy->isDualInterface())
 	{
 		return;
 	}
@@ -3328,34 +3328,29 @@ void ControllerImpl::tryLazyRegisterUnsolOnInterface(UniqueIdentifier const enti
 
 	LOG_CONTROLLER_TRACE(entityID, "Lazy registerUnsolicitedNotifications on {} interface", (interfaceType == Controller::InterfaceType::Primary) ? "Primary" : "Secondary");
 	_controllerProxy->registerUnsolicitedNotificationsOnInterface(entityID, interfaceType,
-		[this, interfaceType](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entID, entity::ControllerEntity::AemCommandStatus const status)
+		[this, interfaceType](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
 		{
-			onLazyRegisterUnsolicitedNotificationsResult(interfaceType, entID, status);
+			//onLazyRegisterUnsolicitedNotificationsResult(interfaceType, entID, status);
+			LOG_CONTROLLER_TRACE(entityID, "tryLazyRegisterUnsolOnInterfaceResult on {} interface: {}", (interfaceType == Controller::InterfaceType::Primary) ? "Primary" : "Secondary", entity::ControllerEntity::statusToString(status));
+
+			// Update the proxy's per-PI unsol state: Registered on success, NotRegistered on any failure so the next reachability transition will retry.
+			auto const newState = (!!status) ? ControllerVirtualProxy::UnsolState::Registered : ControllerVirtualProxy::UnsolState::NotRegistered;
+			_controllerProxy->setUnsolState(entityID, interfaceType, newState);
+
+			// On a successful (re-)registration, the entity-side subscriber state for this PI was just (re-)initialized: per the Milan spec, the entity restarts its per-controller-EID AEM/MVU unsolicited sequence numbering at 0 for a fresh subscription. We must clear our per-PI expected-seqID slot so the next unsolicited notification on that PI is accepted as the new baseline and is not mis-identified as a "lost notification" (which would trigger a spurious unregister).
+			if (!!status)
+			{
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+				if (controlledEntity)
+				{
+					controlledEntity->resetExpectedUnsolicitedSequenceID(interfaceType);
+
+					// Mark this PI as subscribed so the user-facing aggregate subscription state stays accurate even if the other PI later deregisters.
+					// Without this, a lazily-registered PI would not be reflected in the per-PI subscription state, and dropping the other PI's subscription would wrongly report a full unsubscribe to observers.
+					updateUnsolicitedNotificationsSubscription(*controlledEntity, true, false, interfaceType);
+				}
+			}
 		});
-}
-
-void ControllerImpl::onLazyRegisterUnsolicitedNotificationsResult(Controller::InterfaceType const interfaceType, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
-{
-	LOG_CONTROLLER_TRACE(entityID, "onLazyRegisterUnsolicitedNotificationsResult on {} interface: {}", (interfaceType == Controller::InterfaceType::Primary) ? "Primary" : "Secondary", entity::ControllerEntity::statusToString(status));
-
-	if (!_controllerProxy)
-	{
-		return;
-	}
-
-	// Update the proxy's per-PI unsol state: Registered on success, NotRegistered on any failure so the next reachability transition will retry.
-	auto const newState = (!!status) ? ControllerVirtualProxy::UnsolState::Registered : ControllerVirtualProxy::UnsolState::NotRegistered;
-	_controllerProxy->setUnsolState(entityID, interfaceType, newState);
-
-	// On a successful (re-)registration, the entity-side subscriber state for this PI was just (re-)initialized: per the Milan spec, the entity restarts its per-controller-EID AEM/MVU unsolicited sequence numbering at 0 for a fresh subscription. We must clear our per-PI expected-seqID slot so the next unsolicited notification on that PI is accepted as the new baseline and is not mis-identified as a "lost notification" (which would trigger a spurious unregister).
-	if (!!status)
-	{
-		auto controlledEntity = getControlledEntityImplGuard(entityID);
-		if (controlledEntity)
-		{
-			controlledEntity->resetExpectedUnsolicitedSequenceID(interfaceType);
-		}
-	}
 }
 
 void ControllerImpl::getStaticModel(ControlledEntityImpl* const entity) noexcept
