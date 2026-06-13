@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+- query InputStreamState if a pervious query for InputStreamInfoEx failed
+
 ## [4.3.1] - 2025-12-19
 ### Fixed
 - [Added option to ignore mismatching MVU responses Milan 1.0 devices responding with incorrect MVU command_type](https://github.com/L-Acoustics/avdecc/issues/195)
