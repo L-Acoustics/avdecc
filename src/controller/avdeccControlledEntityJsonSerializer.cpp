@@ -46,7 +46,7 @@ namespace jsonSerializer
 /* ************************************************************ */
 /* Public methods                                               */
 /* ************************************************************ */
-json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSerializer::Flags const flags)
+json createJsonObject(ControlledEntity const& entity, entity::model::jsonSerializer::Flags const flags)
 {
 	try
 	{
