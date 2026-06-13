@@ -228,6 +228,7 @@ public:
 	virtual bool hasAnyConfiguration() const noexcept override;
 	virtual entity::model::ConfigurationIndex getCurrentConfigurationIndex() const override;
 	virtual model::ChannelConnections const& getChannelConnections() const override;
+	virtual entity::model::EntityTree const& getEntityModelTree() const noexcept override;
 
 	// Const Node getters
 	virtual model::EntityNode const& getEntityNode() const override;
@@ -469,7 +470,6 @@ public:
 	Diagnostics& getDiagnostics() noexcept;
 	bool hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
 	bool hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
-	entity::model::EntityTree const& getEntityModelTree() const noexcept;
 	void buildEntityModelGraph(entity::model::EntityTree const& entityTree) noexcept;
 
 	// Static methods
