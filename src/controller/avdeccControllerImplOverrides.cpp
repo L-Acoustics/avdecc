@@ -27,8 +27,9 @@
 #include "avdeccEntityModelCache.hpp"
 #include "virtualEntityModelVisitor.hpp"
 #ifdef ENABLE_AVDECC_FEATURE_JSON
-#	include "avdeccControllerJsonTypes.hpp"
 #	include "avdeccControlledEntityJsonSerializer.hpp"
+#	include <la/avdecc/controller/internals/jsonSerialization.hpp>
+#	include <la/avdecc/controller/internals/jsonTypes.hpp>
 #endif // ENABLE_AVDECC_FEATURE_JSON
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON

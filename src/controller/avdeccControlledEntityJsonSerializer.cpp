@@ -26,8 +26,9 @@
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControlledEntityImpl.hpp"
 #ifdef ENABLE_AVDECC_FEATURE_JSON
-#	include "avdeccControllerJsonTypes.hpp"
 #	include "avdeccControlledEntityJsonSerializer.hpp"
+#	include <la/avdecc/controller/internals/jsonSerialization.hpp>
+#	include <la/avdecc/controller/internals/jsonTypes.hpp>
 #endif // ENABLE_AVDECC_FEATURE_JSON
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON
@@ -46,7 +47,7 @@ namespace jsonSerializer
 /* ************************************************************ */
 /* Public methods                                               */
 /* ************************************************************ */
-json createJsonObject(ControlledEntity const& entity, entity::model::jsonSerializer::Flags const flags)
+json LA_AVDECC_CONTROLLER_CALL_CONVENTION createJsonObject(ControlledEntity const& entity, entity::model::jsonSerializer::Flags const flags)
 {
 	try
 	{

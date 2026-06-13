@@ -32,9 +32,9 @@
 #include "entityModelChecksum.hpp"
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON
-#	include "avdeccControllerJsonTypes.hpp"
 #	include "avdeccControlledEntityJsonSerializer.hpp"
 #	include <la/avdecc/internals/jsonTypes.hpp>
+#	include <la/avdecc/controller/internals/jsonTypes.hpp>
 #endif // ENABLE_AVDECC_FEATURE_JSON
 #include <la/avdecc/internals/streamFormatInfo.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
