@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+- Allow `ControlledEntity` to get `la::avdecc::entity::model::EntityTree` via `getEntityModelTree()`
+- Make `la::avdecc::controller::jsonSerializer::createJsonObject()` and controller `jsonTypes.hpp` public
+
 ## [4.3.1] - 2025-12-19
 ### Fixed
 - [Added option to ignore mismatching MVU responses Milan 1.0 devices responding with incorrect MVU command_type](https://github.com/L-Acoustics/avdecc/issues/195)
