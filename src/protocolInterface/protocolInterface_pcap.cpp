@@ -23,6 +23,7 @@
 */
 
 #include "la/avdecc/internals/serialization.hpp"
+#include "la/avdecc/internals/protocolAdpdu.hpp"
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/watchDog.hpp"
@@ -50,6 +51,19 @@
 #	include <csignal>
 #endif // __linux__
 
+// ENABLE_AVDECC_PCAP_MULTICAST_JOIN opens the pcap interface without
+// promisicuous mode, instead explicitly joining the AVDECC control
+// multicast groups. If joining fails, promiscuous mode is tried.
+#ifdef ENABLE_AVDECC_PCAP_MULTICAST_JOIN
+#	if !defined(__linux__)
+#		error "ENABLE_AVDECC_PCAP_MULTICAST_JOIN is only supported on Linux"
+#	endif // !__linux__
+#	include <cstring>
+#	include <sys/socket.h>
+#	include <net/if.h>
+#	include <linux/if_packet.h>
+#endif // ENABLE_AVDECC_PCAP_MULTICAST_JOIN
+
 namespace la
 {
 namespace avdecc
@@ -66,49 +80,31 @@ public:
 	ProtocolInterfacePcapImpl(std::string const& networkInterfaceID, std::string const& executorName)
 		: ProtocolInterfacePcap(networkInterfaceID, executorName)
 	{
-		static constexpr int PCAP_BufferSize = 65536;
 		static constexpr int PCAP_PromiscMode = 1;
-		static constexpr int PCAP_TimeoutMsec = 5;
+#ifdef ENABLE_AVDECC_PCAP_MULTICAST_JOIN
+		constexpr int promiscMode = 0;
+#else
+		constexpr int promiscMode = PCAP_PromiscMode;
+#endif
 
 		// Should always be supported. Cannot create a PCap ProtocolInterface if it's not supported.
 		AVDECC_ASSERT(isSupported(), "Should always be supported. Cannot create a PCap ProtocolInterface if it's not supported");
 
-		// Open pcap on specified network interface
-		std::array<char, PCAP_ERRBUF_SIZE> errbuf;
-#ifdef _WIN32
-		// NPF device name
-		auto const pcapInterfaceName = std::string("\\Device\\NPF_") + networkInterfaceID;
-#else // !_WIN32
-		auto const pcapInterfaceName = networkInterfaceID;
-#endif // _WIN32
-		auto pcap = _pcapLibrary.open_live((pcapInterfaceName).c_str(), PCAP_BufferSize, PCAP_PromiscMode, PCAP_TimeoutMsec, errbuf.data());
-		// Failed to open interface (might be disabled)
-		if (pcap == nullptr)
-		{
-#ifdef _WIN32
-			// Try without NPF prefix
-			pcap = _pcapLibrary.open_live((networkInterfaceID).c_str(), PCAP_BufferSize, PCAP_PromiscMode, PCAP_TimeoutMsec, errbuf.data());
-			// Let's assume it's Win10pcap
-			if (pcap != nullptr)
-			{
-				throw Exception(Error::TransportError, "Win10Pcap is not supported. Please uninstall it and either use WinPcap or nPcap which are both compatible.");
-			}
-#endif // _WIN32
-			throw Exception(Error::TransportError, errbuf.data());
-		}
-
-		// Configure pcap filtering to ignore packets of other protocols
-		struct bpf_program fcode;
-		std::stringstream ss;
-		ss << "ether proto 0x" << std::hex << AvtpEtherType;
-		if (_pcapLibrary.compile(pcap, &fcode, ss.str().c_str(), 1, 0xffffffff) < 0)
-			throw Exception(Error::TransportError, "Failed to compile ether filter");
-		if (_pcapLibrary.setfilter(pcap, &fcode) < 0)
-			throw Exception(Error::TransportError, "Failed to set ether filter");
-		_pcapLibrary.freecode(&fcode);
+		auto pcap = openCaptureInterface(networkInterfaceID, promiscMode);
 
 		// Get socket descriptor
 		_fd = _pcapLibrary.fileno(pcap);
+
+#ifdef ENABLE_AVDECC_PCAP_MULTICAST_JOIN
+		if (!joinMulticastGroup(networkInterfaceID, Adpdu::Multicast_Mac_Address)
+			|| !joinMulticastGroup(networkInterfaceID, AemAecpdu::Identify_Mac_Address))
+		{
+			LOG_PROTOCOL_INTERFACE_WARN(networkInterface::MacAddress{}, networkInterface::MacAddress{}, "Failed to join the AVDECC multicast groups, falling back to promiscuous mode");
+			_pcapLibrary.close(pcap);
+			pcap = openCaptureInterface(networkInterfaceID, PCAP_PromiscMode);
+			_fd = _pcapLibrary.fileno(pcap);
+		}
+#endif // ENABLE_AVDECC_PCAP_MULTICAST_JOIN
 
 		// Store our pcap handle in a unique_ptr so the PCap library will be cleaned upon destruction of 'this'
 		// _pcapLibrary (accessed through the capture of 'this') will still be valid during destruction since it was declared before _pcap (thus destroyed after it)
@@ -675,6 +671,67 @@ private:
 		// Make a copy of the pcap message and forward to the processing queue
 		auto pcapMessage = la::avdecc::MemoryBuffer{ pkt_data, header->caplen };
 		self->processRawPacket(std::move(pcapMessage));
+	}
+
+#ifdef ENABLE_AVDECC_PCAP_MULTICAST_JOIN
+	/** Joins a single link-layer multicast group on the capture interface */
+	bool joinMulticastGroup(std::string const& interfaceName, networkInterface::MacAddress const& macAddress) const noexcept
+	{
+		auto const ifIndex = ::if_nametoindex(interfaceName.c_str());
+		if (ifIndex == 0)
+		{
+			return false;
+		}
+
+		auto mreq = packet_mreq{};
+		mreq.mr_ifindex = static_cast<int>(ifIndex);
+		mreq.mr_type = PACKET_MR_MULTICAST;
+		mreq.mr_alen = static_cast<unsigned short>(macAddress.size());
+		std::memcpy(mreq.mr_address, macAddress.data(), macAddress.size());
+		return ::setsockopt(_fd, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) == 0;
+	}
+#endif // ENABLE_AVDECC_PCAP_MULTICAST_JOIN
+
+	pcap_t* openCaptureInterface(std::string const& interfaceName, int promiscMode)
+	{
+		static constexpr int PCAP_BufferSize = 65536;
+		static constexpr int PCAP_TimeoutMsec = 5;
+
+		// Open pcap on specified network interface
+		std::array<char, PCAP_ERRBUF_SIZE> errbuf;
+#ifdef _WIN32
+		// NPF device name
+		auto const pcapInterfaceName = std::string("\\Device\\NPF_") + interfaceName;
+#else // !_WIN32
+		auto const pcapInterfaceName = interfaceName;
+#endif // _WIN32
+		auto pcap = _pcapLibrary.open_live(pcapInterfaceName.c_str(), PCAP_BufferSize, promiscMode, PCAP_TimeoutMsec, errbuf.data());
+		// Failed to open interface (might be disabled)
+		if (pcap == nullptr)
+		{
+#ifdef _WIN32
+			// Try without NPF prefix
+			pcap = _pcapLibrary.open_live(interfaceName.c_str(), PCAP_BufferSize, promiscMode, PCAP_TimeoutMsec, errbuf.data());
+			// Let's assume it's Win10pcap
+			if (pcap != nullptr)
+			{
+				throw Exception(Error::TransportError, "Win10Pcap is not supported. Please uninstall it and either use WinPcap or nPcap which are both compatible.");
+			}
+#endif // _WIN32
+			throw Exception(Error::TransportError, errbuf.data());
+		}
+
+		// Configure pcap filtering to ignore packets of other protocols
+		struct bpf_program fcode;
+		std::stringstream ss;
+		ss << "ether proto 0x" << std::hex << AvtpEtherType;
+		if (_pcapLibrary.compile(pcap, &fcode, ss.str().c_str(), 1, 0xffffffff) < 0)
+			throw Exception(Error::TransportError, "Failed to compile ether filter");
+		if (_pcapLibrary.setfilter(pcap, &fcode) < 0)
+			throw Exception(Error::TransportError, "Failed to set ether filter");
+		_pcapLibrary.freecode(&fcode);
+
+		return pcap;
 	}
 
 	Error sendPacket(SerializationBuffer const& buffer) const noexcept
