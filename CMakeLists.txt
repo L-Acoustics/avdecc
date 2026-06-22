@@ -27,6 +27,8 @@ option(BUILD_AVDECC_SWIG "Build SWIG Wrapper." FALSE)
 option(BUILD_AVDECC_CONTROLLER "Build avdecc controller library." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP "Build the pcap protocol interface." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING "Pcap protocol interface uses dynamic shared library linking (instead of static linking)." TRUE)
+option(ENABLE_AVDECC_PCAP_MULTICAST_JOIN "Use multicast join instead of promisicous mode with pcap protocol interface (Linux only)" FALSE)
+
 option(BUILD_AVDECC_INTERFACE_MAC "Build the macOS native protocol interface (macOS only)." TRUE)
 option(BUILD_AVDECC_INTERFACE_PROXY "Build the proxy protocol interface." FALSE)
 option(BUILD_AVDECC_INTERFACE_VIRTUAL "Build the virtual protocol interface (for unit tests)." TRUE)
@@ -138,6 +140,11 @@ endif()
 # Cannot build 'local domain socket protocol interface' for Windows target
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND BUILD_AVDECC_INTERFACE_LOCAL)
 	set(BUILD_AVDECC_INTERFACE_LOCAL FALSE)
+endif()
+
+# Pcap multicast join is only supported on Linux
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ENABLE_AVDECC_PCAP_MULTICAST_JOIN)
+	set(ENABLE_AVDECC_PCAP_MULTICAST_JOIN FALSE)
 endif()
 
 if(BUILD_AVDECC_INTERFACE_PROXY)
