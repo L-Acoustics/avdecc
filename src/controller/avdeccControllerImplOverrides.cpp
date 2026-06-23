@@ -113,10 +113,13 @@ ControllerImpl::ControllerImpl(std::vector<Controller::InterfaceConfiguration> c
 	//  - Executor-Secondary continues: Trying to send first enumeration message (GetMilanInfo) to Primary (pickRealInterface will return Primary), which is locked
 	//  => dead-lock
 	// Possible solution, have pickRealInterface choose the current PI if reentrant (called from Executor)
-#if 1
-	if (!interfaceConfigurations[0].executorName.has_value() || interfaceConfigurations[0].executorName != interfaceConfigurations[1].executorName)
+#if CONTROLLER_DUAL_INTERFACE_REQUIRES_SHARED_EXECUTOR
+	if (interfaceConfigurations.size() == 2)
 	{
-		throw Exception(Error::InvalidInterfaceConfiguration, "Primary and Secondary executors must be identical (current limitation)");
+		if (!interfaceConfigurations[0].executorName.has_value() || interfaceConfigurations[0].executorName != interfaceConfigurations[1].executorName)
+		{
+			throw Exception(Error::InvalidInterfaceConfiguration, "Primary and Secondary executors must be identical (current limitation)");
+		}
 	}
 #endif
 
@@ -178,6 +181,9 @@ ControllerImpl::ControllerImpl(std::vector<Controller::InterfaceConfiguration> c
 		AVDECC_ASSERT(false, "Unhandled exception");
 		throw Exception(Error::InternalError, e.what());
 	}
+
+	// Create the StateMachines thread
+	createStateMachinesThread();
 }
 
 ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceID, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName, entity::controller::Interface const* const virtualEntityInterface)
@@ -199,6 +205,12 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 		throw Exception(Error::InternalError, e.what());
 	}
 
+	// Create the StateMachines thread
+	createStateMachinesThread();
+}
+
+void ControllerImpl::createStateMachinesThread() noexcept
+{
 	// Create the StateMachines thread
 	_stateMachinesThread = std::thread(
 		[this]

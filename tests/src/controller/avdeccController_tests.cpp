@@ -55,6 +55,38 @@ static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
 
 namespace
 {
+/** RAII helper registering the executor(s) needed for a dual-interface (redundancy) test, honoring the
+ * CONTROLLER_DUAL_INTERFACE_REQUIRES_SHARED_EXECUTOR limitation.
+ * - When the limitation is active (== 1), a single shared executor is registered and used for both PIs.
+ * - When the limitation is lifted (== 0), two distinct executors are registered (one per PI).
+ * The registered executor wrappers are kept alive by this object, which must outlive the controller it feeds.
+ */
+struct DualPiExecutorSetup
+{
+	std::vector<la::avdecc::ExecutorManager::ExecutorWrapper::UniquePointer> wrappers{};
+	std::string primaryExecutorName{};
+	std::string secondaryExecutorName{};
+};
+
+inline DualPiExecutorSetup registerDualPiExecutors(std::string const& baseName)
+{
+	auto setup = DualPiExecutorSetup{};
+#if CONTROLLER_DUAL_INTERFACE_REQUIRES_SHARED_EXECUTOR
+	auto const sharedName = baseName + "_Shared";
+	setup.wrappers.push_back(la::avdecc::ExecutorManager::getInstance().registerExecutor(sharedName, la::avdecc::ExecutorWithDispatchQueue::create(sharedName, la::avdecc::utils::ThreadPriority::Highest)));
+	setup.primaryExecutorName = sharedName;
+	setup.secondaryExecutorName = sharedName;
+#else // !CONTROLLER_DUAL_INTERFACE_REQUIRES_SHARED_EXECUTOR
+	auto const nameA = baseName + "_A";
+	auto const nameB = baseName + "_B";
+	setup.wrappers.push_back(la::avdecc::ExecutorManager::getInstance().registerExecutor(nameA, la::avdecc::ExecutorWithDispatchQueue::create(nameA, la::avdecc::utils::ThreadPriority::Highest)));
+	setup.wrappers.push_back(la::avdecc::ExecutorManager::getInstance().registerExecutor(nameB, la::avdecc::ExecutorWithDispatchQueue::create(nameB, la::avdecc::utils::ThreadPriority::Highest)));
+	setup.primaryExecutorName = nameA;
+	setup.secondaryExecutorName = nameB;
+#endif // CONTROLLER_DUAL_INTERFACE_REQUIRES_SHARED_EXECUTOR
+	return setup;
+}
+
 class LogObserver : public la::avdecc::logger::Logger::Observer
 {
 public:
@@ -1090,23 +1122,22 @@ TEST(Controller, DualInterfaceAdpDeduplicationAcrossPhysicalInterfaces)
 		DECLARE_AVDECC_OBSERVER_GUARD(Obs);
 	};
 
-	// Register two distinct executors so the dual-interface controller can use one per interface (each provided executor name must already exist).
-	auto const executorWrapperA = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPI_ExecutorA", la::avdecc::ExecutorWithDispatchQueue::create("DualPI_ExecutorA", la::avdecc::utils::ThreadPriority::Highest));
-	auto const executorWrapperB = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPI_ExecutorB", la::avdecc::ExecutorWithDispatchQueue::create("DualPI_ExecutorB", la::avdecc::utils::ThreadPriority::Highest));
+	// Register the executor(s) for the dual-interface controller, honoring the shared-executor limitation.
+	auto const executors = registerDualPiExecutors("DualPI_Executor");
 
 	// Create a dual-interface controller (2 virtual protocol interfaces on distinct virtual buses).
 	auto interfaceConfigurations = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
-	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ "DualPI_ExecutorA" } });
-	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ "DualPI_ExecutorB" } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ executors.primaryExecutorName } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ executors.secondaryExecutorName } });
 	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0002, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
 
 	auto obs = Obs{ onlineCount, offlineCount, EntityID };
 	controller->registerObserver(&obs);
 
 	// Helper that sends an ADP::EntityAvailable on a specific virtual bus.
-	auto const sendAdpAvailableOnBus = [gPTP = controller->getControllerEID(), EntityID](char const* const busName, la::avdecc::entity::model::AvbInterfaceIndex const interfaceIndex)
+	auto const sendAdpAvailableOnBus = [gPTP = controller->getControllerEID(), EntityID, executorName = executors.primaryExecutorName](char const* const busName, la::avdecc::entity::model::AvbInterfaceIndex const interfaceIndex)
 	{
-		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(busName, { { static_cast<la::networkInterface::MacAddress::value_type>(0xA0 + interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }, "DualPI_ExecutorA"));
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(busName, { { static_cast<la::networkInterface::MacAddress::value_type>(0xA0 + interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }, executorName.c_str()));
 
 		auto adpdu = la::avdecc::protocol::Adpdu{};
 		adpdu.setSrcAddress(intfc->getMacAddress());
@@ -1235,12 +1266,11 @@ TEST(Controller, DualInterfaceTransportErrorIsRedundantNotFatal)
 		DECLARE_AVDECC_OBSERVER_GUARD(Obs);
 	};
 
-	auto const executorWrapperA = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPIError_ExecutorA", la::avdecc::ExecutorWithDispatchQueue::create("DualPIError_ExecutorA", la::avdecc::utils::ThreadPriority::Highest));
-	auto const executorWrapperB = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPIError_ExecutorB", la::avdecc::ExecutorWithDispatchQueue::create("DualPIError_ExecutorB", la::avdecc::utils::ThreadPriority::Highest));
+	auto const executors = registerDualPiExecutors("DualPIError_Executor");
 
 	auto interfaceConfigurations = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
-	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ "DualPIError_ExecutorA" } });
-	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ "DualPIError_ExecutorB" } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ executors.primaryExecutorName } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ executors.secondaryExecutorName } });
 	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0003, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
 
 	auto obs = Obs{ redundantErrorCount, fatalErrorCount, failingInterface };
@@ -1249,7 +1279,7 @@ TEST(Controller, DualInterfaceTransportErrorIsRedundantNotFatal)
 	// Inject a transport error on the Primary virtual bus by sending an empty packet through a side PI on the same bus.
 	// ProtocolInterfaceVirtual::forceTransportError() broadcasts to all observers on the bus (including the controller's primary PI).
 	{
-		auto sidePi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(PrimaryBusName, { { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF } }, "DualPIError_ExecutorA"));
+		auto sidePi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(PrimaryBusName, { { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF } }, executors.primaryExecutorName.c_str()));
 		sidePi->forceTransportError();
 		// Give the bus a moment to dispatch the notification.
 		std::this_thread::sleep_for(std::chrono::milliseconds(150));
@@ -1268,6 +1298,11 @@ TEST(Controller, DualInterfaceTransportErrorIsRedundantNotFatal)
  */
 TEST(Controller, DualInterfaceCreateWithDefaultExecutorsDoesNotCollide)
 {
+#if CONTROLLER_DUAL_INTERFACE_REQUIRES_SHARED_EXECUTOR
+	// This test specifically exercises the per-PI auto-generated (hence distinct) executors path, which is forbidden
+	// while the shared-executor limitation is active (std::nullopt yields distinct executors). Skip until lifted.
+	GTEST_SKIP() << "Dual-PI auto-generated distinct executors are disabled by CONTROLLER_DUAL_INTERFACE_REQUIRES_SHARED_EXECUTOR";
+#else
 	static auto constexpr PrimaryBusName = "DualPINoExec_Primary";
 	static auto constexpr SecondaryBusName = "DualPINoExec_Secondary";
 
@@ -1283,6 +1318,80 @@ TEST(Controller, DualInterfaceCreateWithDefaultExecutorsDoesNotCollide)
 	// therefore environment-dependent; here we only assert that the controller successfully spun up both PIs.
 	EXPECT_TRUE(controller->getControllerEID(la::avdecc::controller::Controller::InterfaceType::Primary));
 	EXPECT_TRUE(controller->getControllerEID(la::avdecc::controller::Controller::InterfaceType::Secondary));
+#endif // CONTROLLER_DUAL_INTERFACE_REQUIRES_SHARED_EXECUTOR
+}
+
+/*
+ * Regression test for a dual-PI (redundant) controller bug: the StateMachines thread — responsible for draining and
+ * dispatching _delayedQueries (and identification expirations) — was created only by the single-PI constructor. The
+ * dual-interface constructor never started it, so every delayed query pushed in redundant mode stayed in the queue
+ * forever and was never sent (breaking enumeration retries, packed-dynamic-info retries, etc.).
+ * This test brings an entity online on a dual-PI controller, pushes a delayed query, and verifies the StateMachines
+ * thread actually dispatches it. Before the fix, the handler is never invoked.
+ */
+TEST(Controller, DualInterfaceDelayedQueriesAreProcessed)
+{
+	static auto constexpr SharedExecutorName = "DualPIDelayed_Executor";
+	static auto constexpr PrimaryBusName = "DualPIDelayed_Primary";
+	static auto constexpr SecondaryBusName = "DualPIDelayed_Secondary";
+	constexpr auto EntityID = la::avdecc::UniqueIdentifier{ 0x00CAFEBABE0000DE };
+
+	// Single shared executor for both PIs (current dual-PI requirement: both interfaces must share the same executor).
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(SharedExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(SharedExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+
+	auto interfaceConfigurations = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ SharedExecutorName } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ SharedExecutorName } });
+	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x00DE, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
+	ASSERT_NE(nullptr, controller);
+
+	// Bring an entity online on the Primary bus (delayed-query dispatch only fires for online entities).
+	{
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(PrimaryBusName, { { 0xB0, 0x06, 0x05, 0x04, 0x03, 0x02 } }, SharedExecutorName));
+
+		auto adpdu = la::avdecc::protocol::Adpdu{};
+		adpdu.setSrcAddress(intfc->getMacAddress());
+		adpdu.setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
+		adpdu.setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
+		adpdu.setValidTime(10);
+		adpdu.setEntityID(EntityID);
+		adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+		adpdu.setEntityCapabilities(la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemInterfaceIndexValid });
+		adpdu.setTalkerStreamSources(0);
+		adpdu.setTalkerCapabilities({});
+		adpdu.setListenerStreamSinks(0);
+		adpdu.setListenerCapabilities({});
+		adpdu.setControllerCapabilities(la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented });
+		adpdu.setAvailableIndex(1);
+		adpdu.setGptpGrandmasterID(controller->getControllerEID());
+		adpdu.setGptpDomainNumber(0);
+		adpdu.setIdentifyControlIndex(0);
+		adpdu.setInterfaceIndex(0);
+		adpdu.setAssociationID(la::avdecc::UniqueIdentifier{});
+
+		intfc->sendAdpMessage(adpdu);
+
+		// Give the controller time to consume the message before destroying the sending interface.
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}
+	ASSERT_TRUE(!!controller->getControlledEntityGuard(EntityID));
+
+	// Push a delayed query and verify the StateMachines thread dispatches it.
+	auto handlerCalled = std::atomic<bool>{ false };
+	auto& impl = static_cast<la::avdecc::controller::ControllerImpl&>(*controller);
+	impl.addDelayedQuery(std::chrono::milliseconds{ 20 }, EntityID,
+		[&handlerCalled](la::avdecc::entity::controller::Interface const* const /*intfc*/) noexcept
+		{
+			handlerCalled.store(true);
+		});
+
+	// Without the StateMachines thread (the bug), the query is never drained and the handler is never invoked.
+	auto const deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+	while (!handlerCalled.load() && std::chrono::steady_clock::now() < deadline)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+	EXPECT_TRUE(handlerCalled.load());
 }
 
 /*
@@ -1708,22 +1817,21 @@ TEST(Controller, DualPiEntityOfflineRemovesInterface)
 	};
 
 	// Create executors for dual-PI
-	auto const executorWrapperA = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPIOffline_ExA", la::avdecc::ExecutorWithDispatchQueue::create("DualPIOffline_ExA", la::avdecc::utils::ThreadPriority::Highest));
-	auto const executorWrapperB = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPIOffline_ExB", la::avdecc::ExecutorWithDispatchQueue::create("DualPIOffline_ExB", la::avdecc::utils::ThreadPriority::Highest));
+	auto const executors = registerDualPiExecutors("DualPIOffline_Ex");
 
 	// Create dual-PI controller
 	auto interfaceConfigurations = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
-	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ "DualPIOffline_ExA" } });
-	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ "DualPIOffline_ExB" } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ executors.primaryExecutorName } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ executors.secondaryExecutorName } });
 	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0005, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
 
 	auto obs = Obs{ events, eventsMutex, EntityID };
 	controller->registerObserver(&obs);
 
 	// Helper to send ADP on a specific bus with a specific validTime (in 2-second units)
-	auto const sendAdpOnBus = [&controller, EntityID](char const* const busName, la::avdecc::entity::model::AvbInterfaceIndex const interfaceIndex, std::uint8_t const validTime)
+	auto const sendAdpOnBus = [&controller, EntityID, executorName = executors.primaryExecutorName](char const* const busName, la::avdecc::entity::model::AvbInterfaceIndex const interfaceIndex, std::uint8_t const validTime)
 	{
-		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(busName, { { static_cast<la::networkInterface::MacAddress::value_type>(0xB0 + interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }, "DualPIOffline_ExA"));
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(busName, { { static_cast<la::networkInterface::MacAddress::value_type>(0xB0 + interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }, executorName.c_str()));
 
 		auto adpdu = la::avdecc::protocol::Adpdu{};
 		adpdu.setSrcAddress(intfc->getMacAddress());
@@ -1852,22 +1960,21 @@ TEST(Controller, DualPiEntityOfflineRemovesInterfaceReversedOrder)
 	};
 
 	// Create executors for dual-PI
-	auto const executorWrapperA = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPIOfflineRev_ExA", la::avdecc::ExecutorWithDispatchQueue::create("DualPIOfflineRev_ExA", la::avdecc::utils::ThreadPriority::Highest));
-	auto const executorWrapperB = la::avdecc::ExecutorManager::getInstance().registerExecutor("DualPIOfflineRev_ExB", la::avdecc::ExecutorWithDispatchQueue::create("DualPIOfflineRev_ExB", la::avdecc::utils::ThreadPriority::Highest));
+	auto const executors = registerDualPiExecutors("DualPIOfflineRev_Ex");
 
 	// Create dual-PI controller
 	auto interfaceConfigurations = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
-	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ "DualPIOfflineRev_ExA" } });
-	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ "DualPIOfflineRev_ExB" } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ executors.primaryExecutorName } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ executors.secondaryExecutorName } });
 	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0006, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
 
 	auto obs = Obs{ interfaceOfflineIndex, EntityID };
 	controller->registerObserver(&obs);
 
 	// Helper to send ADP on a specific bus
-	auto const sendAdpOnBus = [&controller, EntityID](char const* const busName, la::avdecc::entity::model::AvbInterfaceIndex const interfaceIndex, std::uint8_t const validTime)
+	auto const sendAdpOnBus = [&controller, EntityID, executorName = executors.primaryExecutorName](char const* const busName, la::avdecc::entity::model::AvbInterfaceIndex const interfaceIndex, std::uint8_t const validTime)
 	{
-		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(busName, { { static_cast<la::networkInterface::MacAddress::value_type>(0xC0 + interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }, "DualPIOfflineRev_ExA"));
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(busName, { { static_cast<la::networkInterface::MacAddress::value_type>(0xC0 + interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }, executorName.c_str()));
 
 		auto adpdu = la::avdecc::protocol::Adpdu{};
 		adpdu.setSrcAddress(intfc->getMacAddress());

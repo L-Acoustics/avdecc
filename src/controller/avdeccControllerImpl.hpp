@@ -54,6 +54,15 @@ namespace controller
 {
 class ExclusiveAccessTokenImpl;
 
+/** When set to 1, dual-interface (redundancy) mode requires both protocol interfaces to share the same executor.
+ * This is a current limitation: with distinct executors, a cross-PI reentrancy deadlock can occur. A message
+ * received on one PI's executor can trigger sending a command to the other PI, which may be simultaneously locked
+ * by its own executor while processing an inbound message (A->B / B->A lock-order inversion).
+ * Set to 0 once pickRealInterface (or an equivalent mechanism) becomes reentrancy-aware and lifts this restriction.
+ * @note This macro is also consulted by the unit tests so dual-interface tests keep passing in both states.
+ */
+#define CONTROLLER_DUAL_INTERFACE_REQUIRES_SHARED_EXECUTOR 1
+
 /* ************************************************************************** */
 /* ControllerImpl class definition                                            */
 /* ************************************************************************** */
@@ -832,6 +841,10 @@ private:
 	}
 
 	void runJobOnExecutorAndWait(la::avdecc::ExecutorManager& executor, std::string const& exName, Executor::Job&& job) const noexcept;
+	/** Creates and starts the StateMachines thread, which processes delayed queries and identification expirations.
+	 * Must be called once at the end of construction (from every constructor), after all data members the thread relies on are initialized.
+	 */
+	void createStateMachinesThread() noexcept;
 	/** Returns true if the primary ControllerEntity is self-locked, or (in dual-PI mode) if the secondary one is.
 	 * This is used by network-thread assertions: in dual-PI mode, a callback may originate from the secondary PI's
 	 * network thread, in which case only the secondary's lock is held.
