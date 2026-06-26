@@ -22,7 +22,6 @@
 * @author Christophe Calmejane
 */
 
-#include "utils.hpp"
 #include "la/avdecc/utils.hpp"
 
 #if defined(_WIN32)
@@ -37,6 +36,7 @@
 #endif // __APPLE__
 #if defined(__unix__)
 #	include <pthread.h>
+#	include <signal.h>
 #endif // __unix__
 #include <iostream>
 #include <cstdio>
@@ -250,6 +250,7 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 {
 	bool shouldBreak{ true };
 	bool shouldAbort{ true };
+	auto const debugger = isDebuggerPresent();
 	try
 	{
 		char buffer[2048];
@@ -261,7 +262,13 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 			offset += std::vsnprintf(buffer + offset, sizeof(buffer) - offset, message, arg);
 			buffer[BufferLastCharOffset] = 0; // Contrary to std::snprintf, std::vsnprintf does not add \0 if there is not enough room
 
+#if defined(_WIN32)
+			OutputDebugString(buffer);
+#elif defined(__APPLE__)
 			std::cerr << buffer << std::endl;
+#elif defined(__unix__)
+			std::cerr << buffer << std::endl;
+#endif
 
 			if (offset < BufferLastCharOffset)
 			{
@@ -273,14 +280,14 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 					"Press 'Ignore' to try to continue normal execution\n");
 			}
 		}
-		if (isDebuggerPresent())
+		if (debugger)
 		{
 			shouldBreak = true; // Always call DebugBreak if debugger is attached
 			shouldAbort = false; // Always try to continue if debugger is attached
 		}
 		else
 		{
-#ifdef _WIN32
+#if defined(_WIN32)
 			auto const value = MessageBox(nullptr, buffer, "Assert", MB_ABORTRETRYIGNORE | MB_ICONERROR);
 			shouldBreak = (value == IDRETRY);
 			shouldAbort = (value == IDABORT);
@@ -293,11 +300,15 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 	}
 	if (shouldBreak)
 	{
-#ifdef _WIN32
+#if defined(_WIN32)
 		DebugBreak();
+#elif defined(__APPLE__)
+		__builtin_trap();
+#elif defined(__unix__)
+		raise(SIGTRAP);
 #endif
 	}
-	if (shouldAbort)
+	if (shouldAbort && !debugger)
 	{
 		std::abort();
 	}
