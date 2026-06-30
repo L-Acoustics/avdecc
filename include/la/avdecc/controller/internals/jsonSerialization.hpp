@@ -17,21 +17,14 @@
 * along with LA_avdecc.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/**
-* @file avdeccControlledEntityJsonSerializer.hpp
-* @author Christophe Calmejane
-* @brief Avdecc Entity JSON Serializer.
-*/
-
 #pragma once
 
 #include <la/avdecc/internals/jsonSerialization.hpp>
 
 #include <nlohmann/json.hpp>
 
-#include <string>
-
-using json = nlohmann::json;
+#include "exports.hpp"
+#include "avdeccControlledEntity.hpp"
 
 namespace la
 {
@@ -39,14 +32,10 @@ namespace avdecc
 {
 namespace controller
 {
-class ControlledEntityImpl;
 namespace jsonSerializer
 {
-// Deserialization methods
-void setEntityModel(ControlledEntityImpl& entity, json const& object, entity::model::jsonSerializer::Flags flags); // Throws DeserializationException
-void setEntityState(ControlledEntityImpl& entity, json const& object); // Throws DeserializationException
-void setEntityStatistics(ControlledEntityImpl& entity, json const& object); // Throws DeserializationException
-void setEntityDiagnostics(ControlledEntityImpl& entity, json const& object); // Throws DeserializationException
+// Serialization methods
+LA_AVDECC_CONTROLLER_API nlohmann::json LA_AVDECC_CONTROLLER_CALL_CONVENTION createJsonObject(ControlledEntity const& entity, entity::model::jsonSerializer::Flags const flags); // Throws SerializationException
 
 } // namespace jsonSerializer
 } // namespace controller

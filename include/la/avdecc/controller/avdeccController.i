@@ -326,6 +326,12 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller::ControlledEntity, Compatibili
 
 
 ////////////////////////////////////////
+// JSON SERIALIZATION
+////////////////////////////////////////
+// Include c++ declaration file
+%include "la/avdecc/controller/internals/jsonSerialization.hpp"
+
+////////////////////////////////////////
 // VIRTUAL CONTROLLED ENTITY BUILDER
 ////////////////////////////////////////
 // Bind structs and classes
