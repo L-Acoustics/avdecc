@@ -465,6 +465,8 @@ public:
 	 * @param[in] interfaceType The targeted PI, or std::nullopt to apply to every PI at once.
 	 */
 	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed, std::optional<la::avdecc::controller::Controller::InterfaceType> const interfaceType = std::nullopt) noexcept;
+	/** Returns true if the specified PI currently holds an unsolicited-notifications subscription (per-PI granularity, unlike the global #isSubscribedToUnsolicitedNotifications() which ORs all PIs). */
+	bool isSubscribedToUnsolicitedNotifications(la::avdecc::controller::Controller::InterfaceType const interfaceType) const noexcept;
 	void setUnsolicitedNotificationsSupported(bool const isSupported) noexcept;
 	bool wasAdvertised() const noexcept;
 	void setAdvertised(bool const wasAdvertised) noexcept;

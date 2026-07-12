@@ -2827,6 +2827,16 @@ void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const is
 	}
 }
 
+bool ControlledEntityImpl::isSubscribedToUnsolicitedNotifications(la::avdecc::controller::Controller::InterfaceType const interfaceType) const noexcept
+{
+	auto const idx = la::avdecc::utils::to_integral(interfaceType);
+	if (!AVDECC_ASSERT_WITH_RET(idx < _isSubscribedToUnsolicitedNotificationsPerInterface.size(), "Invalid InterfaceType value"))
+	{
+		return false;
+	}
+	return _isSubscribedToUnsolicitedNotificationsPerInterface[idx];
+}
+
 void ControlledEntityImpl::setUnsolicitedNotificationsSupported(bool const isSupported) noexcept
 {
 	_areUnsolicitedNotificationsSupported = isSupported;

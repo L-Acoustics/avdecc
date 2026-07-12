@@ -349,14 +349,37 @@ void ControllerImpl::onDeregisteredFromUnsolicitedNotifications(entity::controll
 {
 	// Identify the PI that received the DEREGISTER: in dual-PI mode each PI is a separate subscriber on the entity side, so this notification only applies to the PI it came in on.
 	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+	auto shouldReRegister = false;
 
-	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto controlledEntity = getControlledEntityImplGuard(entityID);
-
-	if (controlledEntity)
 	{
+		// Take a "scoped locked" shared copy of the ControlledEntity
+		auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+		if (!controlledEntity)
+		{
+			return;
+		}
+
 		auto& entity = *controlledEntity;
-		updateUnsolicitedNotificationsSubscription(entity, false, true, interfaceType);
+
+		// The entity dropped this PI's subscriber on its side (typically after an unanswered CONTROLLER_AVAILABLE during a transient link loss on this PI). In dual-PI mode, if the other PI kept a valid subscription the model is still in sync: simply re-register on this PI to restore the redundancy. Otherwise the subscription is globally lost (mark every PI so the user-facing aggregate state flips and the user may re-enumerate to resynchronize).
+		if (canRecoverUnsolThroughOtherInterface(entity, interfaceType))
+		{
+			updateUnsolicitedNotificationsSubscription(entity, false, true, interfaceType);
+			shouldReRegister = true;
+		}
+		else
+		{
+			updateUnsolicitedNotificationsSubscription(entity, false, true, std::nullopt);
+		}
+	} // Entity guard released here; commands may now safely be sent (cross-PI lock-order hygiene, see onEntityUpdate)
+
+	// The entity-side subscriber for this PI is gone: reset the proxy's per-PI unsol state so a new registration can be claimed.
+	_controllerProxy->setUnsolState(entityID, interfaceType, ControllerVirtualProxy::UnsolState::NotRegistered);
+
+	if (shouldReRegister)
+	{
+		tryLazyRegisterUnsolOnInterface(entityID, interfaceType);
 	}
 }
 
@@ -1175,11 +1198,25 @@ void ControllerImpl::onAecpResponseTime(entity::controller::Interface const* con
 
 void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID, Controller::InterfaceType const interfaceType, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedCounter, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedLossCounter, std::function<bool(ControlledEntityImpl&, la::avdecc::protocol::AecpSequenceID)> const& hasLostUnsolicitedNotification, void (Controller::Observer::*notifyUnsolicitedCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t), void (Controller::Observer::*notifyUnsolicitedLossCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t)) noexcept
 {
-	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto controlledEntity = getControlledEntityImplGuard(entityID);
-
-	if (controlledEntity)
+	// Action to be performed once the ControlledEntity guard is released: sending AECP commands while holding the guard could cross-PI deadlock (see onEntityUpdate), so we only decide here and act after the guard scope.
+	enum class PostAction
 	{
+		None, /**< Nothing to do. */
+		ReRegisterInterface, /**< Partial failure: re-register unsolicited notifications on this PI only (the other PI kept the model in sync, no re-enumeration needed). The proxy's per-PI unsol state must be reset first (the slot is believed Registered). */
+		RearmInterface, /**< The entity is still sending unsols on this PI although we believe it unsubscribed (eg. a previous re-register response was lost): attempt a re-registration on this PI (no proxy state reset, a legitimate Pending registration may be in flight). */
+		DropSubscription, /**< Full failure: no PI can vouch for the model anymore, drop the subscription entirely (the user is notified and may re-enumerate, as part of #50 for now). */
+	};
+	auto postAction = PostAction::None;
+
+	{
+		// Take a "scoped locked" shared copy of the ControlledEntity
+		auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+		if (!controlledEntity)
+		{
+			return;
+		}
+
 		auto& entity = *controlledEntity;
 
 		AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
@@ -1187,7 +1224,7 @@ void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entit
 		// Check for loss of unsolicited notification
 		if (hasLostUnsolicitedNotification(entity, sequenceID))
 		{
-			LOG_CONTROLLER_WARN(entityID, "Unsolicited notification lost detected");
+			LOG_CONTROLLER_WARN(entityID, "Unsolicited notification lost detected on {} interface", (interfaceType == Controller::InterfaceType::Primary) ? "Primary" : "Secondary");
 
 			// Update statistics
 			auto const value = incrementUnsolicitedLossCounter(entity);
@@ -1198,14 +1235,27 @@ void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entit
 				notifyObserversMethod<Controller::Observer>(notifyUnsolicitedLossCounterChanged, this, static_cast<ControlledEntity const*>(&entity), value);
 			}
 
-			// As part of #50 (for now), just unsubscribe from unsolicited notifications
+			// In dual-PI mode, as long as the other PI kept a valid subscription, the entity sent every model update to both subscribers and the model is still in sync: we only need to
+			// reset this PI's subscription (we cannot know whether the entity also dropped this PI's subscriber on its side, eg. after an unanswered CONTROLLER_AVAILABLE) and re-register on it.
+			if (canRecoverUnsolThroughOtherInterface(entity, interfaceType))
 			{
-				// Immediately mark only THIS PI as unsubscribed (the other PI may still be carrying valid unsols); we are already loosing packets on this PI so we don't want to miss the response to our unsubscribe.
+				// Immediately mark only THIS PI as unsubscribed (also resets its expected sequenceIDs); the user-facing aggregate subscription state stays 'subscribed' thanks to the other PI.
 				updateUnsolicitedNotificationsSubscription(entity, false, false, interfaceType);
-
-				// Properly (try to) unregister from unsol
-				unregisterUnsol(&entity);
+				postAction = PostAction::ReRegisterInterface;
 			}
+			else
+			{
+				// Single-PI mode, or the other PI cannot vouch for the model (unreachable or unsubscribed): model updates may have been missed, the subscription is no longer trustworthy on any PI.
+				// As part of #50 (for now), just unsubscribe from unsolicited notifications (on every PI, so the user-facing aggregate state flips and the user may re-enumerate to resynchronize).
+				updateUnsolicitedNotificationsSubscription(entity, false, false, std::nullopt);
+				postAction = PostAction::DropSubscription;
+			}
+		}
+		else if (_controllerProxy->isDualInterface() && !entity.isSubscribedToUnsolicitedNotifications(interfaceType) && canRecoverUnsolThroughOtherInterface(entity, interfaceType))
+		{
+			// We are receiving unsols on a PI we believe unsubscribed (the entity clearly still has a subscriber for it): a previous (re-)registration attempt probably failed or its response
+			// was lost. Since the other PI kept the model in sync, self-heal by re-registering on this PI (the claim will silently fail if a registration is already in flight).
+			postAction = PostAction::RearmInterface;
 		}
 
 		// Update statistics
@@ -1216,6 +1266,26 @@ void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entit
 		{
 			notifyObserversMethod<Controller::Observer>(notifyUnsolicitedCounterChanged, this, static_cast<ControlledEntity const*>(&entity), value);
 		}
+	} // Entity guard released here; commands may now safely be sent (cross-PI lock-order hygiene, see onEntityUpdate)
+
+	switch (postAction)
+	{
+		case PostAction::ReRegisterInterface:
+			// Reset the proxy's per-PI unsol state (believed Registered) so tryLazyRegisterUnsolOnInterface can claim the Pending slot, then re-register on this PI only.
+			_controllerProxy->setUnsolState(entityID, interfaceType, ControllerVirtualProxy::UnsolState::NotRegistered);
+			[[fallthrough]];
+		case PostAction::RearmInterface:
+			tryLazyRegisterUnsolOnInterface(entityID, interfaceType);
+			break;
+		case PostAction::DropSubscription:
+			// Reset both PIs' unsol states then properly (try to) unregister from unsol. From this point NOTHING will automatically re-subscribe this entity (see tryLazyRegisterUnsolOnInterface):
+			// the synchronization is lost and only a user-decided refreshEntity() may restore it.
+			_controllerProxy->setUnsolState(entityID, Controller::InterfaceType::Primary, ControllerVirtualProxy::UnsolState::NotRegistered);
+			_controllerProxy->setUnsolState(entityID, Controller::InterfaceType::Secondary, ControllerVirtualProxy::UnsolState::NotRegistered);
+			unregisterUnsol(entityID);
+			break;
+		default:
+			break;
 	}
 }
 

@@ -702,10 +702,19 @@ private:
 	void getMilanInfo(ControlledEntityImpl* const entity) noexcept;
 	void checkDynamicInfoSupported(ControlledEntityImpl* const entity) noexcept;
 	void registerUnsol(ControlledEntityImpl* const entity) noexcept;
-	void unregisterUnsol(ControlledEntityImpl* const entity) noexcept;
+	void unregisterUnsol(UniqueIdentifier const entityID) noexcept; // Must NOT be called while holding a ControlledEntity guard (sends AECP commands)
+	/**
+	 * @brief Returns true if the unsolicited-notifications subscription of @a controlledEntity can be recovered through the "other" PI after a failure on @a interfaceType.
+	 * @details Recovery without a full re-enumeration is possible only in dual-interface mode, when the other PI both still sees the entity (reachability) and still holds a valid subscription: in that case every model update kept flowing through the other PI, so the local model is still in sync and re-registering on @a interfaceType is enough.
+	 * @param[in] controlledEntity The entity to check.
+	 * @param[in] interfaceType The PI on which the subscription was lost/compromised.
+	 * @return True if a per-PI re-registration on @a interfaceType is sufficient, false if the subscription must be considered globally lost.
+	 */
+	bool canRecoverUnsolThroughOtherInterface(ControlledEntityImpl const& controlledEntity, Controller::InterfaceType const interfaceType) const noexcept;
 	/** Attempts to (re-)register unsolicited notifications for @a entityID on the specified PI without going through the dual-PI retry layer.
 	 *  Does nothing if the entity is not currently reachable on that PI, if the unsol state is not NotRegistered, if the entity is in single-PI mode and @a interfaceType is Secondary.
 	 *  This is the per-PI redundancy registration path called when a PI becomes (re-)reachable for an already-known entity.
+	 *  @note After a FULL unsolicited loss (no PI holding a subscription anymore), this method deliberately does NOTHING: re-subscribing would resume the unsol flow on a model that missed an unknown set of updates, misleading the user into believing the entity is in sync. Only a user-decided refreshEntity() may restore the synchronization (never automatically: the loss was most likely caused by network congestion and a rescan would make it worse).
 	 */
 	void tryLazyRegisterUnsolOnInterface(UniqueIdentifier const entityID, Controller::InterfaceType const interfaceType) noexcept;
 	void getStaticModel(ControlledEntityImpl* const entity) noexcept;

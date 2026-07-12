@@ -643,6 +643,9 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 {
 	LOG_CONTROLLER_TRACE(entityID, "onRegisterUnsolicitedNotificationsResult: {}", entity::ControllerEntity::statusToString(status));
 
+	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+	auto shouldEnsureOtherInterfaceRegistered = false;
+
 	{
 		// Take a "scoped locked" shared copy of the ControlledEntity
 		auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -655,8 +658,6 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 			{
 				entity.setUnsolicitedNotificationsSupported(true); // Set to true by default, will be set to false if we get a failure status
 
-				auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
-
 				// Update the proxy's per-PI unsol state: Registered on success, NotRegistered on any failure so the next reachability transition will retry.
 				auto const newState = (!!status) ? ControllerVirtualProxy::UnsolState::Registered : ControllerVirtualProxy::UnsolState::NotRegistered;
 				_controllerProxy->setUnsolState(entityID, interfaceType, newState);
@@ -664,6 +665,7 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 				if (!!status)
 				{
 					updateUnsolicitedNotificationsSubscription(entity, true, false, interfaceType);
+					shouldEnsureOtherInterfaceRegistered = true;
 				}
 				else
 				{
@@ -684,6 +686,15 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 				}
 			}
 		}
+	} // Entity guard released here; commands may now safely be sent (cross-PI lock-order hygiene, see onEntityUpdate)
+
+	// In dual-PI mode, make sure the redundant subscription is also established on the other PI, whatever the discovery ordering: when the entity is first seen on the Secondary PI, the
+	// enumeration's registration is routed to the Primary as soon as it becomes reachable (preferred by pickRealInterface) and the reachability-transition lazy path also targeted the
+	// Primary, leaving the Secondary unsubscribed with no transition left to trigger it. No-op if the other PI is already Registered/Pending or does not see the entity.
+	if (shouldEnsureOtherInterfaceRegistered && _controllerProxy->isDualInterface())
+	{
+		auto const otherType = (interfaceType == Controller::InterfaceType::Primary) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+		tryLazyRegisterUnsolOnInterface(entityID, otherType);
 	}
 }
 

@@ -3281,13 +3281,33 @@ void ControllerImpl::registerUnsol(ControlledEntityImpl* const entity) noexcept
 	_controllerProxy->registerUnsolicitedNotifications(entityID, std::bind(&ControllerImpl::onRegisterUnsolicitedNotificationsResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
-void ControllerImpl::unregisterUnsol(ControlledEntityImpl* const entity) noexcept
+void ControllerImpl::unregisterUnsol(UniqueIdentifier const entityID) noexcept
 {
-	auto const entityID = entity->getEntity().getEntityID();
-
-	// Unregister from unsolicited notifications
+	// Unregister from unsolicited notifications (in dual-interface mode, the proxy sends one DEREGISTER per PI and the result handler is invoked once per PI response)
 	LOG_CONTROLLER_TRACE(entityID, "unregisterUnsolicitedNotifications ()");
 	_controllerProxy->unregisterUnsolicitedNotifications(entityID, std::bind(&ControllerImpl::onUnregisterUnsolicitedNotificationsResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+}
+
+bool ControllerImpl::canRecoverUnsolThroughOtherInterface(ControlledEntityImpl const& controlledEntity, Controller::InterfaceType const interfaceType) const noexcept
+{
+	// Only possible in dual-interface mode
+	if (!_controllerProxy->isDualInterface())
+	{
+		return false;
+	}
+
+	auto const otherType = (interfaceType == Controller::InterfaceType::Primary) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+
+	// The other PI must still see the entity
+	auto const reach = _controllerProxy->getEntityReachability(controlledEntity.getEntity().getEntityID());
+	auto const otherReachable = (otherType == Controller::InterfaceType::Primary) ? reach.onPrimary : reach.onSecondary;
+	if (!otherReachable)
+	{
+		return false;
+	}
+
+	// The other PI must still hold a valid subscription (ie. it kept receiving every model update, so the local model is still in sync)
+	return controlledEntity.isSubscribedToUnsolicitedNotifications(otherType);
 }
 
 void ControllerImpl::tryLazyRegisterUnsolOnInterface(UniqueIdentifier const entityID, Controller::InterfaceType const interfaceType) noexcept
@@ -3316,6 +3336,13 @@ void ControllerImpl::tryLazyRegisterUnsolOnInterface(UniqueIdentifier const enti
 		auto const caps = controlledEntity->getEntity().getEntityCapabilities();
 		if (!caps.test(entity::EntityCapability::AemSupported))
 		{
+			return;
+		}
+		// If the entity is past its initial RegisterUnsol enumeration step, supports unsolicited notifications, but no PI holds a subscription anymore, the synchronization is FULLY lost: We don't want to re-subscribe automatically (a resumed unsol flow would try to update a possibly outdated model
+		// Only a user-decided refreshEntity() (which forgets the entity and re-enumerates from scratch) is allowed to restore the synchronization
+		if (!controlledEntity->getEnumerationSteps().test(ControlledEntityImpl::EnumerationStep::RegisterUnsol) && controlledEntity->areUnsolicitedNotificationsSupported() && !controlledEntity->isSubscribedToUnsolicitedNotifications())
+		{
+			LOG_CONTROLLER_DEBUG(entityID, "Not re-registering unsolicited notifications on {} interface: synchronization was fully lost, only a user-triggered refreshEntity can restore it", (interfaceType == Controller::InterfaceType::Primary) ? "Primary" : "Secondary");
 			return;
 		}
 	}

@@ -658,8 +658,18 @@ void ControllerVirtualProxy::unregisterUnsolicitedNotifications(UniqueIdentifier
 	}
 	else
 	{
-		// Forward call to real interface
-		routeAemCommand<&entity::controller::Interface::unregisterUnsolicitedNotifications>(targetEntityID, handler);
+		// In dual-interface mode, each PI is a separate subscriber on the entity side (distinct controller-EID): a DEREGISTER must be sent on each PI and must never be
+		// cross-PI retried (a retry on the other PI would drop that PI's healthy subscription). The handler is therefore invoked once per PI response.
+		if (isDualInterface())
+		{
+			_realInterface->unregisterUnsolicitedNotifications(targetEntityID, handler);
+			_secondaryRealInterface->unregisterUnsolicitedNotifications(targetEntityID, handler);
+		}
+		else
+		{
+			// Forward call to real interface
+			routeAemCommand<&entity::controller::Interface::unregisterUnsolicitedNotifications>(targetEntityID, handler);
+		}
 	}
 }
 
