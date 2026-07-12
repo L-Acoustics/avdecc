@@ -37,6 +37,9 @@
 #include "entity/controllerEntityImpl.hpp"
 #include "la/avdecc/internals/entityModelTreeCommon.hpp"
 #include "la/avdecc/internals/entityModelTypes.hpp"
+#include "la/avdecc/internals/protocolMvuAecpdu.hpp"
+#include "protocol/protocolAemPayloads.hpp"
+#include "protocol/protocolMvuPayloads.hpp"
 #include "protocolInterface/protocolInterface_virtual.hpp"
 
 #include <gtest/gtest.h>
@@ -1642,6 +1645,511 @@ TEST(ControlledEntity, PerInterfaceSubscriptionStateIsIndependent)
 	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 5u }, SecondaryIdx));
 	entity.setSubscribedToUnsolicitedNotifications(false);
 	EXPECT_FALSE(entity.isSubscribedToUnsolicitedNotifications());
+
+	// Per-PI getter must reflect each PI's own state (unlike the global aggregate).
+	entity.setSubscribedToUnsolicitedNotifications(true, PrimaryIdx);
+	EXPECT_TRUE(entity.isSubscribedToUnsolicitedNotifications(PrimaryIdx));
+	EXPECT_FALSE(entity.isSubscribedToUnsolicitedNotifications(SecondaryIdx));
+	entity.setSubscribedToUnsolicitedNotifications(true, SecondaryIdx);
+	EXPECT_TRUE(entity.isSubscribedToUnsolicitedNotifications(SecondaryIdx));
+	entity.setSubscribedToUnsolicitedNotifications(false, PrimaryIdx);
+	EXPECT_FALSE(entity.isSubscribedToUnsolicitedNotifications(PrimaryIdx));
+	EXPECT_TRUE(entity.isSubscribedToUnsolicitedNotifications(SecondaryIdx));
+}
+
+namespace
+{
+/** Polls @a predicate every 10 milliseconds until it returns true or @a timeout expires. Returns the last predicate evaluation. */
+inline bool waitFor(std::function<bool()> const& predicate, std::chrono::milliseconds const timeout)
+{
+	auto const deadline = std::chrono::steady_clock::now() + timeout;
+	while (std::chrono::steady_clock::now() < deadline)
+	{
+		if (predicate())
+		{
+			return true;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+	return predicate();
+}
+
+/** Minimal Milan-like entity emulator attached to ONE virtual bus, used by the dual-PI unsolicited-notification tests.
+ * Instantiate it twice with the same EntityID (once per bus) to emulate a redundant entity.
+ * Behavior:
+ *  - Replies to ADP EntityDiscover (global or targeted) with an ADP EntityAvailable.
+ *  - ACKs MVU GetMilanInfo with a Milan v1 MilanInfo (so the controller arms its unsolicited loss-detection).
+ *  - ACKs AEM REGISTER_UNSOLICITED_NOTIFICATION (counted, can be silenced through setAckRegisterCommands) and DEREGISTER_UNSOLICITED_NOTIFICATION (counted, always ACKed).
+ *  - Replies NotImplemented (echoing the command payload) to every other AEM command, so the enumeration fails fast on the static model without retries (irrelevant to these tests).
+ *  - Can emit AEM unsolicited notifications with an arbitrary sequenceID (to simulate unsolicited losses), using the per-bus controller EID/MacAddress captured from received commands.
+ */
+class UnsolTestEntity final : public la::avdecc::protocol::ProtocolInterface::Observer, public la::avdecc::protocol::ProtocolInterface::VendorUniqueDelegate
+{
+public:
+	UnsolTestEntity(char const* const busName, la::networkInterface::MacAddress const& macAddress, std::string const& executorName, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::AvbInterfaceIndex const interfaceIndex)
+		: _entityID{ entityID }
+		, _interfaceIndex{ interfaceIndex }
+		, _pi{ la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(busName, macAddress, executorName) }
+	{
+		_pi->registerObserver(this);
+		// A VendorUniqueDelegate is required for incoming MVU commands to be dispatched (they are otherwise dropped before reaching the Observer)
+		_pi->registerVendorUniqueDelegate(la::avdecc::protocol::MvuAecpdu::ProtocolID, this);
+	}
+
+	virtual ~UnsolTestEntity() noexcept override
+	{
+		_pi->unregisterVendorUniqueDelegate(la::avdecc::protocol::MvuAecpdu::ProtocolID);
+	}
+
+	void sendAdpAvailable() noexcept
+	{
+		sendAdp(la::avdecc::protocol::AdpMessageType::EntityAvailable);
+	}
+
+	void sendAdpDeparting() noexcept
+	{
+		sendAdp(la::avdecc::protocol::AdpMessageType::EntityDeparting);
+	}
+
+	/** Emits an AEM unsolicited notification (SET_NAME response) with the specified sequenceID. Requires at least one AECP command to have been received on this bus (to know the controller EID/MacAddress). */
+	void sendUnsolNotification(la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept
+	{
+		auto controllerEID = la::avdecc::UniqueIdentifier{};
+		auto controllerMac = la::networkInterface::MacAddress{};
+		{
+			auto const lg = std::lock_guard{ _lock };
+			controllerEID = _controllerEID;
+			controllerMac = _controllerMacAddress;
+		}
+		ASSERT_TRUE(!!controllerEID) << "No AECP command received yet on this bus, cannot send an unsolicited notification";
+
+		auto const ser = la::avdecc::protocol::aemPayload::serializeSetNameResponse(la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex{ 0u }, std::uint16_t{ 0u }, la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::AvdeccFixedString{ "UnsolTest" });
+		auto unsol = la::avdecc::protocol::AemAecpdu{ true };
+		unsol.setSrcAddress(_pi->getMacAddress());
+		unsol.setDestAddress(controllerMac);
+		unsol.setStatus(la::avdecc::protocol::AecpStatus::Success);
+		unsol.setTargetEntityID(_entityID);
+		unsol.setControllerEntityID(controllerEID);
+		unsol.setSequenceID(sequenceID);
+		unsol.setCommandType(la::avdecc::protocol::AemCommandType::SetName);
+		unsol.setUnsolicited(true);
+		unsol.setCommandSpecificData(ser.data(), ser.usedBytes());
+		_pi->sendAecpMessage(unsol);
+	}
+
+	/** When false, REGISTER_UNSOLICITED_NOTIFICATION commands are still counted but not ACKed (they will time out on the controller side). */
+	void setAckRegisterCommands(bool const ack) noexcept
+	{
+		_ackRegisterCommands = ack;
+	}
+
+	std::uint32_t getRegisterCount() const noexcept
+	{
+		return _registerCount;
+	}
+
+	std::uint32_t getDeregisterCount() const noexcept
+	{
+		return _deregisterCount;
+	}
+
+private:
+	void sendAdp(la::avdecc::protocol::AdpMessageType const messageType) noexcept
+	{
+		auto adpdu = la::avdecc::protocol::Adpdu{};
+		adpdu.setSrcAddress(_pi->getMacAddress());
+		adpdu.setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
+		adpdu.setMessageType(messageType);
+		adpdu.setValidTime(10);
+		adpdu.setEntityID(_entityID);
+		adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+		adpdu.setEntityCapabilities(la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported, la::avdecc::entity::EntityCapability::VendorUniqueSupported, la::avdecc::entity::EntityCapability::AemInterfaceIndexValid });
+		adpdu.setTalkerStreamSources(0);
+		adpdu.setTalkerCapabilities({});
+		adpdu.setListenerStreamSinks(0);
+		adpdu.setListenerCapabilities({});
+		adpdu.setControllerCapabilities({});
+		adpdu.setAvailableIndex(1);
+		adpdu.setGptpGrandmasterID({});
+		adpdu.setGptpDomainNumber(0);
+		adpdu.setIdentifyControlIndex(0);
+		adpdu.setInterfaceIndex(_interfaceIndex);
+		adpdu.setAssociationID(la::avdecc::UniqueIdentifier{});
+		_pi->sendAdpMessage(adpdu);
+	}
+
+	void sendAemResponse(la::avdecc::protocol::AemAecpdu const& command, la::avdecc::protocol::AecpStatus const status, void const* const payload, size_t const payloadLength) noexcept
+	{
+		auto response = la::avdecc::protocol::AemAecpdu{ true };
+		response.setSrcAddress(command.getDestAddress());
+		response.setDestAddress(command.getSrcAddress());
+		response.setStatus(status);
+		response.setTargetEntityID(command.getTargetEntityID());
+		response.setControllerEntityID(command.getControllerEntityID());
+		response.setSequenceID(command.getSequenceID());
+		response.setCommandType(command.getCommandType());
+		if (payload != nullptr && payloadLength != 0u)
+		{
+			response.setCommandSpecificData(payload, payloadLength);
+		}
+		_pi->sendAecpMessage(response);
+	}
+
+	// la::avdecc::protocol::ProtocolInterface::VendorUniqueDelegate overrides
+	virtual la::avdecc::protocol::Aecpdu::UniquePointer createAecpdu(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, bool const isResponse) noexcept override
+	{
+		return la::avdecc::protocol::MvuAecpdu::create(isResponse);
+	}
+
+	// la::avdecc::protocol::ProtocolInterface::Observer overrides
+	virtual void onAdpduReceived(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Adpdu const& adpdu) noexcept override
+	{
+		if (adpdu.getMessageType() == la::avdecc::protocol::AdpMessageType::EntityDiscover)
+		{
+			auto const targetID = adpdu.getEntityID();
+			if (!targetID || targetID == _entityID)
+			{
+				sendAdpAvailable();
+			}
+		}
+	}
+
+	virtual void onAecpduReceived(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override
+	{
+		auto const messageType = aecpdu.getMessageType();
+
+		if (messageType == la::avdecc::protocol::AecpMessageType::AemCommand)
+		{
+			auto const& aem = static_cast<la::avdecc::protocol::AemAecpdu const&>(aecpdu);
+			if (aem.getTargetEntityID() != _entityID)
+			{
+				return;
+			}
+			// Capture the per-bus controller identity (EID + MacAddress), required to emit unsolicited notifications
+			{
+				auto const lg = std::lock_guard{ _lock };
+				_controllerEID = aem.getControllerEntityID();
+				_controllerMacAddress = aem.getSrcAddress();
+			}
+			auto const commandType = aem.getCommandType();
+			if (commandType == la::avdecc::protocol::AemCommandType::RegisterUnsolicitedNotification)
+			{
+				++_registerCount;
+				if (_ackRegisterCommands)
+				{
+					sendAemResponse(aem, la::avdecc::protocol::AecpStatus::Success, nullptr, 0u);
+				}
+			}
+			else if (commandType == la::avdecc::protocol::AemCommandType::DeregisterUnsolicitedNotification)
+			{
+				++_deregisterCount;
+				sendAemResponse(aem, la::avdecc::protocol::AecpStatus::Success, nullptr, 0u);
+			}
+			else
+			{
+				// Reply NotImplemented (echoing the command payload) so the enumeration fails fast without retries
+				auto const payload = aem.getPayload();
+				sendAemResponse(aem, la::avdecc::protocol::AecpStatus::NotImplemented, payload.first, payload.second);
+			}
+		}
+		else if (messageType == la::avdecc::protocol::AecpMessageType::VendorUniqueCommand)
+		{
+			auto const& vu = static_cast<la::avdecc::protocol::VuAecpdu const&>(aecpdu);
+			if (!(vu.getProtocolIdentifier() == la::avdecc::protocol::MvuAecpdu::ProtocolID))
+			{
+				return;
+			}
+			auto const& mvu = static_cast<la::avdecc::protocol::MvuAecpdu const&>(vu);
+			if (mvu.getTargetEntityID() != _entityID)
+			{
+				return;
+			}
+			{
+				auto const lg = std::lock_guard{ _lock };
+				_controllerEID = mvu.getControllerEntityID();
+				_controllerMacAddress = mvu.getSrcAddress();
+			}
+			if (mvu.getCommandType() == la::avdecc::protocol::MvuCommandType::GetMilanInfo)
+			{
+				// Reply with a Milan v1 MilanInfo so the controller arms its unsolicited loss-detection
+				auto const ser = la::avdecc::protocol::mvuPayload::serializeGetMilanInfoResponse(la::avdecc::entity::model::MilanInfo{ 1u, {}, la::avdecc::entity::model::MilanVersion{ 1, 0 }, la::avdecc::entity::model::MilanVersion{ 1, 0 } });
+				auto response = la::avdecc::protocol::MvuAecpdu{ true };
+				response.setSrcAddress(mvu.getDestAddress());
+				response.setDestAddress(mvu.getSrcAddress());
+				response.setStatus(la::avdecc::protocol::AecpStatus::Success);
+				response.setTargetEntityID(mvu.getTargetEntityID());
+				response.setControllerEntityID(mvu.getControllerEntityID());
+				response.setSequenceID(mvu.getSequenceID());
+				response.setCommandType(la::avdecc::protocol::MvuCommandType::GetMilanInfo);
+				response.setUnsolicited(false);
+				response.setCommandSpecificData(ser.data(), ser.usedBytes());
+				_pi->sendAecpMessage(response);
+			}
+		}
+	}
+
+	la::avdecc::UniqueIdentifier _entityID{};
+	la::avdecc::entity::model::AvbInterfaceIndex _interfaceIndex{ 0u };
+	std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual> _pi{};
+	std::mutex _lock{};
+	la::avdecc::UniqueIdentifier _controllerEID{};
+	la::networkInterface::MacAddress _controllerMacAddress{};
+	std::atomic_bool _ackRegisterCommands{ true };
+	std::atomic<std::uint32_t> _registerCount{ 0u };
+	std::atomic<std::uint32_t> _deregisterCount{ 0u };
+	DECLARE_AVDECC_OBSERVER_GUARD(UnsolTestEntity);
+};
+} // namespace
+
+/*
+ * Dual-PI redundancy: unsolicited-notification loss detected on ONE PI while the other PI still holds a valid
+ * subscription. The entity keeps sending every model update to both subscribers (one per PI), so the model is
+ * still in sync through the healthy PI: the controller must NOT drop the whole subscription (pre-fix behavior:
+ * a DEREGISTER was sent through pickRealInterface, killing the HEALTHY primary subscription when the loss was
+ * on the secondary!), but simply re-register on the lossy PI (fresh entity-side subscriber + fresh sequenceID
+ * baseline on our side).
+ */
+TEST(Controller, DualPiUnsolLossOnOneInterfaceRecoversWithoutDroppingSubscription)
+{
+	static auto constexpr PrimaryBusName = "UnsolLoss_Primary";
+	static auto constexpr SecondaryBusName = "UnsolLoss_Secondary";
+	constexpr auto EntityID = la::avdecc::UniqueIdentifier{ 0x00CAFEBABE0000A1 };
+
+	auto const executors = registerDualPiExecutors("UnsolLoss_Ex");
+
+	auto interfaceConfigurations = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ executors.primaryExecutorName } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ executors.secondaryExecutorName } });
+	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0011, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
+
+	auto primaryEntity = UnsolTestEntity{ PrimaryBusName, { { 0xA1, 0x06, 0x05, 0x04, 0x03, 0x02 } }, executors.primaryExecutorName, EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 0u } };
+	auto secondaryEntity = UnsolTestEntity{ SecondaryBusName, { { 0xA2, 0x06, 0x05, 0x04, 0x03, 0x02 } }, executors.secondaryExecutorName, EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 1u } };
+
+	// Bring the entity online on both buses; the controller must register unsolicited notifications on each PI (enumeration on the first seen PI, lazy per-PI registration on the other).
+	primaryEntity.sendAdpAvailable();
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	secondaryEntity.sendAdpAvailable();
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			return primaryEntity.getRegisterCount() >= 1u && secondaryEntity.getRegisterCount() >= 1u;
+		},
+		std::chrono::seconds(5)))
+		<< "Initial per-PI unsolicited registrations not seen";
+	// Wait for the entity to be advertised and (globally) subscribed, then let the controller finish processing the per-PI registration responses (per-PI subscription marked, sequenceID baselines reset)
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			auto const entity = controller->getControlledEntityGuard(EntityID);
+			return !!entity && entity->isSubscribedToUnsolicitedNotifications();
+		},
+		std::chrono::seconds(5)))
+		<< "Entity not advertised or not subscribed to unsolicited notifications";
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	auto const basePrimaryRegisterCount = primaryEntity.getRegisterCount();
+	auto const baseSecondaryRegisterCount = secondaryEntity.getRegisterCount();
+
+	// Establish sequenceID baselines on both PIs, then advance without gap: no loss must be detected.
+	primaryEntity.sendUnsolNotification(0u);
+	secondaryEntity.sendUnsolNotification(0u);
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	primaryEntity.sendUnsolNotification(1u);
+	secondaryEntity.sendUnsolNotification(1u);
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	EXPECT_EQ(basePrimaryRegisterCount, primaryEntity.getRegisterCount()) << "No re-registration expected without unsol loss";
+	EXPECT_EQ(baseSecondaryRegisterCount, secondaryEntity.getRegisterCount()) << "No re-registration expected without unsol loss";
+	EXPECT_EQ(0u, primaryEntity.getDeregisterCount());
+	EXPECT_EQ(0u, secondaryEntity.getDeregisterCount());
+
+	// Simulate an unsol loss on the SECONDARY PI (expected seqID 2, received 10): the controller must re-register on the Secondary PI only.
+	secondaryEntity.sendUnsolNotification(10u);
+	EXPECT_TRUE(waitFor(
+		[&]
+		{
+			return secondaryEntity.getRegisterCount() == baseSecondaryRegisterCount + 1u;
+		},
+		std::chrono::seconds(3)))
+		<< "Expected a re-registration on the lossy (Secondary) PI";
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	EXPECT_EQ(basePrimaryRegisterCount, primaryEntity.getRegisterCount()) << "The healthy (Primary) PI must not be re-registered";
+	EXPECT_EQ(0u, primaryEntity.getDeregisterCount()) << "The healthy (Primary) PI subscription must NOT be deregistered (pre-fix bug)";
+	EXPECT_EQ(0u, secondaryEntity.getDeregisterCount()) << "No deregistration expected on a recoverable partial loss";
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_TRUE(entity->isSubscribedToUnsolicitedNotifications()) << "The user-facing aggregate subscription state must remain 'subscribed' on a recoverable partial loss";
+	}
+
+	// The re-registration must have reset the expected sequenceID baseline: a fresh seqID=0 on Secondary is accepted without loss.
+	secondaryEntity.sendUnsolNotification(0u);
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	EXPECT_EQ(baseSecondaryRegisterCount + 1u, secondaryEntity.getRegisterCount()) << "Fresh baseline after re-registration must not be flagged as a loss";
+	EXPECT_EQ(0u, secondaryEntity.getDeregisterCount());
+
+	// Now simulate an unsol loss on the PRIMARY PI (expected seqID 2, received 10): recovery through the (healthy again) Secondary PI.
+	primaryEntity.sendUnsolNotification(10u);
+	EXPECT_TRUE(waitFor(
+		[&]
+		{
+			return primaryEntity.getRegisterCount() == basePrimaryRegisterCount + 1u;
+		},
+		std::chrono::seconds(3)))
+		<< "Expected a re-registration on the lossy (Primary) PI";
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	EXPECT_EQ(baseSecondaryRegisterCount + 1u, secondaryEntity.getRegisterCount()) << "The healthy (Secondary) PI must not be re-registered";
+	EXPECT_EQ(0u, primaryEntity.getDeregisterCount());
+	EXPECT_EQ(0u, secondaryEntity.getDeregisterCount());
+}
+
+/*
+ * Dual-PI redundancy: unsolicited-notification loss affecting BOTH PIs (no healthy subscriber left to vouch for
+ * the model). The controller must drop the subscription entirely (previous single-PI behavior: DEREGISTER, user
+ * notified through the aggregate state flip). From that point NOTHING may automatically re-subscribe the entity —
+ * neither incoming unsols nor a later ADP flap — because a resumed unsol flow would let the user believe the model
+ * is in sync although an unknown set of updates was missed. And no automatic re-enumeration either: unsol losses
+ * are usually caused by network congestion, so an automatic full rescan would make things worse. The ONLY recovery
+ * path is a user-decided refreshEntity() (forget + re-enumerate from scratch), validated at the end of this test.
+ */
+TEST(Controller, DualPiUnsolLossOnBothInterfacesDropsSubscription)
+{
+	static auto constexpr PrimaryBusName = "UnsolLossBoth_Primary";
+	static auto constexpr SecondaryBusName = "UnsolLossBoth_Secondary";
+	constexpr auto EntityID = la::avdecc::UniqueIdentifier{ 0x00CAFEBABE0000A2 };
+
+	auto const executors = registerDualPiExecutors("UnsolLossBoth_Ex");
+
+	auto interfaceConfigurations = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ executors.primaryExecutorName } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ executors.secondaryExecutorName } });
+	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0012, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
+
+	auto primaryEntity = UnsolTestEntity{ PrimaryBusName, { { 0xA3, 0x06, 0x05, 0x04, 0x03, 0x02 } }, executors.primaryExecutorName, EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 0u } };
+	auto secondaryEntity = UnsolTestEntity{ SecondaryBusName, { { 0xA4, 0x06, 0x05, 0x04, 0x03, 0x02 } }, executors.secondaryExecutorName, EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 1u } };
+
+	// Bring the entity online on both buses and wait for both per-PI registrations.
+	primaryEntity.sendAdpAvailable();
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	secondaryEntity.sendAdpAvailable();
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			return primaryEntity.getRegisterCount() >= 1u && secondaryEntity.getRegisterCount() >= 1u;
+		},
+		std::chrono::seconds(5)))
+		<< "Initial per-PI unsolicited registrations not seen";
+	// Wait for the entity to be advertised and (globally) subscribed, then let the controller finish processing the per-PI registration responses
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			auto const entity = controller->getControlledEntityGuard(EntityID);
+			return !!entity && entity->isSubscribedToUnsolicitedNotifications();
+		},
+		std::chrono::seconds(5)))
+		<< "Entity not advertised or not subscribed to unsolicited notifications";
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	auto const baseSecondaryRegisterCount = secondaryEntity.getRegisterCount();
+
+	// Establish sequenceID baselines on both PIs.
+	primaryEntity.sendUnsolNotification(0u);
+	secondaryEntity.sendUnsolNotification(0u);
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	primaryEntity.sendUnsolNotification(1u);
+	secondaryEntity.sendUnsolNotification(1u);
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+	// Break the Secondary PI: unsol loss detected, the automatic re-registration attempt is never ACKed (the entity-side subscription is effectively dead on this PI).
+	secondaryEntity.setAckRegisterCommands(false);
+	secondaryEntity.sendUnsolNotification(10u);
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			return secondaryEntity.getRegisterCount() == baseSecondaryRegisterCount + 1u;
+		},
+		std::chrono::seconds(3)))
+		<< "Expected a re-registration attempt on the lossy (Secondary) PI";
+	// Wait for the re-registration command to time out on the controller side (the Secondary PI is now unsubscribed with no pending recovery).
+	std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+	// Now break the Primary PI as well: no healthy PI left, the subscription must be dropped entirely (DEREGISTER sent on every PI, no re-registration).
+	primaryEntity.setAckRegisterCommands(false);
+	primaryEntity.sendUnsolNotification(10u);
+	EXPECT_TRUE(waitFor(
+		[&]
+		{
+			return primaryEntity.getDeregisterCount() >= 1u && secondaryEntity.getDeregisterCount() >= 1u;
+		},
+		std::chrono::seconds(5)))
+		<< "Expected a DEREGISTER on both PIs when the subscription is dropped";
+	// The user-facing aggregate subscription state must flip to false (so the user knows a re-enumeration is required)
+	EXPECT_TRUE(waitFor(
+		[&]
+		{
+			auto const entity = controller->getControlledEntityGuard(EntityID);
+			return !!entity && !entity->isSubscribedToUnsolicitedNotifications();
+		},
+		std::chrono::seconds(2)))
+		<< "The user-facing aggregate subscription state must flip to 'unsubscribed' on a full loss";
+	auto const primaryRegisterCountAfterDrop = primaryEntity.getRegisterCount();
+	auto const secondaryRegisterCountAfterDrop = secondaryEntity.getRegisterCount();
+
+	// Incoming unsols must NOT trigger a silent re-registration anymore (the model may have missed updates, only a full re-enumeration may resynchronize it).
+	primaryEntity.sendUnsolNotification(11u);
+	secondaryEntity.sendUnsolNotification(11u);
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	EXPECT_EQ(primaryRegisterCountAfterDrop, primaryEntity.getRegisterCount()) << "No silent re-registration after a full subscription drop";
+	EXPECT_EQ(secondaryRegisterCountAfterDrop, secondaryEntity.getRegisterCount()) << "No silent re-registration after a full subscription drop";
+
+	// An ADP flap on the Secondary PI must NOT automatically re-subscribe either (the model missed an unknown set of updates; a resumed unsol flow would fake a valid synchronization).
+	// The flap is verified through the entity's InterfacesInformation (removed on departing, merged back on available) so the no-re-registration assertion below is not vacuous.
+	primaryEntity.setAckRegisterCommands(true);
+	secondaryEntity.setAckRegisterCommands(true);
+	auto const interfacesCount = [&]() -> size_t
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		return entity ? entity->getEntity().getInterfacesInformation().size() : 0u;
+	};
+	secondaryEntity.sendAdpDeparting();
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			return interfacesCount() == 1u;
+		},
+		std::chrono::seconds(4)))
+		<< "Departing on the Secondary PI not processed";
+	secondaryEntity.sendAdpAvailable();
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			return interfacesCount() == 2u;
+		},
+		std::chrono::seconds(4)))
+		<< "Available on the Secondary PI not processed";
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	EXPECT_EQ(primaryRegisterCountAfterDrop, primaryEntity.getRegisterCount()) << "No automatic re-subscription expected after a full loss (Primary PI)";
+	EXPECT_EQ(secondaryRegisterCountAfterDrop, secondaryEntity.getRegisterCount()) << "No automatic re-subscription expected after a full loss, even on an ADP flap (Secondary PI)";
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_FALSE(entity->isSubscribedToUnsolicitedNotifications()) << "The entity must remain 'unsubscribed' until the user decides to resynchronize";
+	}
+
+	// The ONLY recovery path: a user-decided refreshEntity(), which forgets the entity and re-enumerates from scratch (fresh registrations on both PIs).
+	ASSERT_TRUE(controller->refreshEntity(EntityID));
+	EXPECT_TRUE(waitFor(
+		[&]
+		{
+			return primaryEntity.getRegisterCount() > primaryRegisterCountAfterDrop && secondaryEntity.getRegisterCount() > secondaryRegisterCountAfterDrop;
+		},
+		std::chrono::seconds(10)))
+		<< "Expected a full re-enumeration (fresh registrations on both PIs) after the user-decided refreshEntity";
+	EXPECT_TRUE(waitFor(
+		[&]
+		{
+			auto const entity = controller->getControlledEntityGuard(EntityID);
+			return !!entity && entity->isSubscribedToUnsolicitedNotifications();
+		},
+		std::chrono::seconds(5)))
+		<< "Entity not re-advertised or not re-subscribed after refreshEntity";
 }
 
 /*
