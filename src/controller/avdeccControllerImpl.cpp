@@ -385,16 +385,31 @@ void ControllerImpl::updateUnsolicitedNotificationsSubscription(ControlledEntity
 {
 	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	// Capture the global state before mutation so we only notify observers when the user-facing aggregate state actually flips.
-	auto const oldGlobalValue = controlledEntity.isSubscribedToUnsolicitedNotifications();
+	// Capture the per-PI states before mutation so we only notify observers for the interfaces whose state actually changed.
+	auto oldValues = std::array<bool, Controller::NumInterfaces>{};
+	for (auto const currentType : Controller::AllInterfaceTypes)
+	{
+		oldValues[utils::to_integral(currentType)] = controlledEntity.isSubscribedToUnsolicitedNotifications(currentType);
+	}
 
 	controlledEntity.setSubscribedToUnsolicitedNotifications(isSubscribed, interfaceType);
 
-	auto const newGlobalValue = controlledEntity.isSubscribedToUnsolicitedNotifications();
-
-	if (oldGlobalValue != newGlobalValue && controlledEntity.wasAdvertised())
+	// Notify observers once per interface whose subscription state changed: it is up to the observer to track whether at least one interface is still subscribed
+	if (controlledEntity.wasAdvertised())
 	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onUnsolicitedRegistrationChanged, this, &controlledEntity, newGlobalValue, triggeredByEntity);
+		for (auto const currentType : Controller::AllInterfaceTypes)
+		{
+			// The Secondary slot does not exist from the user's point of view in single-interface mode
+			if (currentType == Controller::InterfaceType::Secondary && !_controllerProxy->isDualInterface())
+			{
+				continue;
+			}
+			auto const newValue = controlledEntity.isSubscribedToUnsolicitedNotifications(currentType);
+			if (oldValues[utils::to_integral(currentType)] != newValue)
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onUnsolicitedRegistrationChanged, this, &controlledEntity, newValue, triggeredByEntity, currentType);
+			}
+		}
 	}
 }
 

@@ -9,12 +9,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Redundancy (dual physical interface) controller support
   - New `Controller::create(std::vector<InterfaceConfiguration> const&, ...)` factory overload accepting a Primary and a Secondary physical-interface configuration
   - New `Controller::InterfaceType` enum (`Primary`, `Secondary`) and `Controller::InterfaceConfiguration` struct
-  - New `Controller::Observer::onRedundantInterfaceTransportError` notification, fired when one physical interface fails while the other remains operational (the global `onTransportError` is now reserved for the truly fatal case where both interfaces are down)
   - New `Controller::getControllerEID(InterfaceType)` accessor to retrieve the per-PI controller EID
   - New `Error::InvalidInterfaceConfiguration` error code (value 9)
   - Automatic ADP deduplication when the same entity is advertised on both physical interfaces (single `ControlledEntity`, merged `InterfacesInformation`, single `onEntityOnline`/`onEntityOffline` lifecycle)
   - Automatic command auto-retry on the alternate physical interface for transient transport-class errors (AEM/AA/MVU: `TimedOut`, `UnknownEntity`, `NetworkError`; ACMP: `TimedOut`, `ListenerUnknownID`, `TalkerUnknownID`, `NetworkError`)
   - C# bindings updated accordingly (new `InterfaceType` enum, `InterfaceConfiguration`, and `createRedundant` factory)
+
+### Changed
+- **API break** (see doc/MIGRATION-5.0.md): per-interface events paradigm — in dual-interface mode it is the observer's responsibility to track per-interface states (in single-interface mode the new parameter is always `InterfaceType::Primary` and the behavior is unchanged)
+  - `Controller::Observer::onTransportError` gained an `InterfaceType` parameter and is fired once per failing interface
+  - `Controller::Observer::onUnsolicitedRegistrationChanged` gained an `InterfaceType` parameter and is fired for each interface whose subscription state changes
+  - The 8 Statistics events (`onAecpRetryCounterChanged`, `onAecpTimeoutCounterChanged`, `onAecpUnexpectedResponseCounterChanged`, `onAecpResponseAverageTimeChanged`, `onAemAecpUnsolicitedCounterChanged`, `onAemAecpUnsolicitedLossCounterChanged`, `onMvuAecpUnsolicitedCounterChanged`, `onMvuAecpUnsolicitedLossCounterChanged`) gained a trailing `InterfaceType` parameter indicating on which interface the event occurred
 
 ### Fixed
 - Possible crash (segfault) in onPreAdvertiseEntity when controlledEntityConfigurationNode is nullptr and CBR feature is enabled

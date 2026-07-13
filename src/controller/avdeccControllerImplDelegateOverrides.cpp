@@ -40,18 +40,14 @@ void ControllerImpl::onTransportError(entity::controller::Interface const* const
 	// Determine which physical interface failed
 	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
 
+	// In dual-interface mode, update the internal per-PI routing state (commands are no longer routed nor retried through the failed interface)
 	if (_controllerProxy->isDualInterface())
 	{
-		auto const otherStillUp = _controllerProxy->markInterfaceDown(interfaceType);
-		if (otherStillUp)
-		{
-			// Other interface still up: notify partial failure only
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onRedundantInterfaceTransportError, this, interfaceType);
-			return;
-		}
+		_controllerProxy->markInterfaceDown(interfaceType);
 	}
 
-	notifyObserversMethod<Controller::Observer>(&Controller::Observer::onTransportError, this);
+	// Notify observers with the failed interface: it is up to the observer to track whether at least one interface is still up
+	notifyObserversMethod<Controller::Observer>(&Controller::Observer::onTransportError, this, interfaceType);
 }
 
 /* Discovery Protocol (ADP) delegate */
@@ -1111,8 +1107,11 @@ void ControllerImpl::onEntityIdentifyNotification(entity::controller::Interface 
 }
 
 /* **** Statistics **** */
-void ControllerImpl::onAecpRetry(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID) noexcept
+void ControllerImpl::onAecpRetry(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID) noexcept
 {
+	// Identify the PI on which the event occurred
+	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
@@ -1127,13 +1126,16 @@ void ControllerImpl::onAecpRetry(entity::controller::Interface const* const /*co
 		// Entity was advertised to the user, notify observers
 		if (entity.wasAdvertised())
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpRetryCounterChanged, this, &entity, value);
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpRetryCounterChanged, this, &entity, value, interfaceType);
 		}
 	}
 }
 
-void ControllerImpl::onAecpTimeout(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID) noexcept
+void ControllerImpl::onAecpTimeout(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID) noexcept
 {
+	// Identify the PI on which the event occurred
+	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
@@ -1148,13 +1150,16 @@ void ControllerImpl::onAecpTimeout(entity::controller::Interface const* const /*
 		// Entity was advertised to the user, notify observers
 		if (entity.wasAdvertised())
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpTimeoutCounterChanged, this, &entity, value);
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpTimeoutCounterChanged, this, &entity, value, interfaceType);
 		}
 	}
 }
 
-void ControllerImpl::onAecpUnexpectedResponse(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID) noexcept
+void ControllerImpl::onAecpUnexpectedResponse(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID) noexcept
 {
+	// Identify the PI on which the event occurred
+	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
@@ -1169,13 +1174,16 @@ void ControllerImpl::onAecpUnexpectedResponse(entity::controller::Interface cons
 		// Entity was advertised to the user, notify observers
 		if (entity.wasAdvertised())
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpUnexpectedResponseCounterChanged, this, &entity, value);
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpUnexpectedResponseCounterChanged, this, &entity, value, interfaceType);
 		}
 	}
 }
 
-void ControllerImpl::onAecpResponseTime(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept
+void ControllerImpl::onAecpResponseTime(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept
 {
+	// Identify the PI on which the event occurred
+	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
@@ -1191,12 +1199,12 @@ void ControllerImpl::onAecpResponseTime(entity::controller::Interface const* con
 		// Entity was advertised to the user, notify observers
 		if (entity.wasAdvertised() && previous != value)
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpResponseAverageTimeChanged, this, &entity, value);
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpResponseAverageTimeChanged, this, &entity, value, interfaceType);
 		}
 	}
 }
 
-void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID, Controller::InterfaceType const interfaceType, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedCounter, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedLossCounter, std::function<bool(ControlledEntityImpl&, la::avdecc::protocol::AecpSequenceID)> const& hasLostUnsolicitedNotification, void (Controller::Observer::*notifyUnsolicitedCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t), void (Controller::Observer::*notifyUnsolicitedLossCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t)) noexcept
+void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID, Controller::InterfaceType const interfaceType, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedCounter, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedLossCounter, std::function<bool(ControlledEntityImpl&, la::avdecc::protocol::AecpSequenceID)> const& hasLostUnsolicitedNotification, void (Controller::Observer::*notifyUnsolicitedCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t, Controller::InterfaceType), void (Controller::Observer::*notifyUnsolicitedLossCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t, Controller::InterfaceType)) noexcept
 {
 	// Action to be performed once the ControlledEntity guard is released: sending AECP commands while holding the guard could cross-PI deadlock (see onEntityUpdate), so we only decide here and act after the guard scope.
 	enum class PostAction
@@ -1232,7 +1240,7 @@ void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entit
 			// Entity was advertised to the user, notify observers
 			if (entity.wasAdvertised())
 			{
-				notifyObserversMethod<Controller::Observer>(notifyUnsolicitedLossCounterChanged, this, static_cast<ControlledEntity const*>(&entity), value);
+				notifyObserversMethod<Controller::Observer>(notifyUnsolicitedLossCounterChanged, this, static_cast<ControlledEntity const*>(&entity), value, interfaceType);
 			}
 
 			// In dual-PI mode, as long as the other PI kept a valid subscription, the entity sent every model update to both subscribers and the model is still in sync: we only need to
@@ -1264,9 +1272,9 @@ void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entit
 		// Entity was advertised to the user, notify observers
 		if (entity.wasAdvertised())
 		{
-			notifyObserversMethod<Controller::Observer>(notifyUnsolicitedCounterChanged, this, static_cast<ControlledEntity const*>(&entity), value);
+			notifyObserversMethod<Controller::Observer>(notifyUnsolicitedCounterChanged, this, static_cast<ControlledEntity const*>(&entity), value, interfaceType);
 		}
-	} // Entity guard released here; commands may now safely be sent (cross-PI lock-order hygiene, see onEntityUpdate)
+	} // Entity guard released here; commands may safely be sent from this point (sending while holding the guard could cross-PI deadlock, see onEntityUpdate)
 
 	switch (postAction)
 	{

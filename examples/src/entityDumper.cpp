@@ -69,7 +69,7 @@ private:
 	}
 	// la::avdecc::controller::Controller::Observer overrides
 	// Global notifications
-	virtual void onTransportError(la::avdecc::controller::Controller const* const controller) noexcept override;
+	virtual void onTransportError(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept override;
 	virtual void onEntityQueryError(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::Controller::QueryCommandError const error) noexcept override;
 	// Discovery notifications (ADP)
 	virtual void onEntityOnline(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity) noexcept override;
@@ -107,9 +107,9 @@ Dumper::~Dumper() noexcept
 	la::avdecc::logger::Logger::getInstance().unregisterObserver(this);
 }
 
-void Dumper::onTransportError(la::avdecc::controller::Controller const* const /*controller*/) noexcept
+void Dumper::onTransportError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept
 {
-	outputText("Fatal error on transport layer\n");
+	outputText(std::string{ "Fatal error on transport layer of the " } + ((interfaceType == la::avdecc::controller::Controller::InterfaceType::Primary) ? "Primary" : "Secondary") + " interface\n");
 }
 
 void Dumper::onEntityQueryError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* entity, la::avdecc::controller::Controller::QueryCommandError const error) noexcept

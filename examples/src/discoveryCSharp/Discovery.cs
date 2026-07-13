@@ -204,9 +204,9 @@ class DiscoveryApp
 
 		private class Observer : la.avdecc.controller.Controller.DefaultedObserver
 		{
-			public override void onTransportError(la.avdecc.controller.Controller controller)
+			public override void onTransportError(la.avdecc.controller.Controller controller, la.avdecc.controller.Controller.InterfaceType interfaceType)
 			{
-				Console.WriteLine("Fatal error on transport layer");
+				Console.WriteLine($"Fatal error on transport layer of the {interfaceType} interface");
 			}
 
 			public override void onEntityQueryError(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, la.avdecc.controller.Controller.QueryCommandError error)
@@ -262,34 +262,34 @@ class DiscoveryApp
 				Console.WriteLine($"Unit going offline: {entityID}");
 			}
 
-			public override void onAecpRetryCounterChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ulong value)
+			public override void onAecpRetryCounterChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ulong value, la.avdecc.controller.Controller.InterfaceType interfaceType)
 			{
 				var entityID = entity.getEntity().getEntityID().getValue().ToString("X");
 				Console.WriteLine($"Aecp Retry Counter {entityID}: {value}");
 			}
 
-			public override void onAecpTimeoutCounterChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ulong value)
+			public override void onAecpTimeoutCounterChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ulong value, la.avdecc.controller.Controller.InterfaceType interfaceType)
 			{
 				var entityID = entity.getEntity().getEntityID().getValue().ToString("X");
 				Console.WriteLine($"Aecp Timeout Counter for {entityID}: {value}");
 			}
-			public override void onAecpUnexpectedResponseCounterChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ulong value)
+			public override void onAecpUnexpectedResponseCounterChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ulong value, la.avdecc.controller.Controller.InterfaceType interfaceType)
 			{
 				var entityID = entity.getEntity().getEntityID().getValue().ToString("X");
 				Console.WriteLine($"Aecp Unexpected Response Counter for {entityID}: {value}");
 			}
-			public override void onAecpResponseAverageTimeChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, std.chrono.milliseconds value)
+			public override void onAecpResponseAverageTimeChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, std.chrono.milliseconds value, la.avdecc.controller.Controller.InterfaceType interfaceType)
 			{
 				var entityID = entity.getEntity().getEntityID().getValue().ToString("X");
 				Console.WriteLine($"Aecp Response Average Time for {entityID}: {value} msec");
 			}
 
-			public override void onAemAecpUnsolicitedCounterChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ulong value)
+			public override void onAemAecpUnsolicitedCounterChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ulong value, la.avdecc.controller.Controller.InterfaceType interfaceType)
 			{
 				var entityID = entity.getEntity().getEntityID().getValue().ToString("X");
 				Console.WriteLine($"Aem Aecp Unsolicited Counter for {entityID}: {value}");
 			}
-			public override void onAemAecpUnsolicitedLossCounterChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ulong value)
+			public override void onAemAecpUnsolicitedLossCounterChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ulong value, la.avdecc.controller.Controller.InterfaceType interfaceType)
 			{
 				var entityID = entity.getEntity().getEntityID().getValue().ToString("X");
 				Console.WriteLine($"Aem Aecp Unsolicited Loss Counter for {entityID}: {value}");

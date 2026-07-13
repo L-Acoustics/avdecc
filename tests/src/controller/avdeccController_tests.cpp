@@ -1229,42 +1229,34 @@ TEST(Controller, RetryPolicyMatchesSpecification)
 }
 
 /*
- * Redundancy transport-error handling: when one physical interface fires onTransportError while the other
- * is still up, the controller must escalate it as the *redundant* notification (onRedundantInterfaceTransportError)
- * and NOT as the global onTransportError (which would cause the controller to be treated as fully dead).
+ * Redundancy transport-error handling: onTransportError is fired once per failing physical interface, carrying the
+ * identity of that interface. It is up to the observer to track whether at least one interface is still up.
  */
-TEST(Controller, DualInterfaceTransportErrorIsRedundantNotFatal)
+TEST(Controller, DualInterfaceTransportErrorReportsFailedInterface)
 {
 	static auto constexpr PrimaryBusName = "DualPIError_Primary";
 	static auto constexpr SecondaryBusName = "DualPIError_Secondary";
 
-	auto redundantErrorCount = std::atomic<std::uint32_t>{ 0u };
-	auto fatalErrorCount = std::atomic<std::uint32_t>{ 0u };
+	auto errorCount = std::atomic<std::uint32_t>{ 0u };
 	auto failingInterface = std::atomic<int>{ -1 };
 
 	class Obs final : public la::avdecc::controller::Controller::DefaultedObserver
 	{
 	public:
-		Obs(std::atomic<std::uint32_t>& redundantCounter, std::atomic<std::uint32_t>& fatalCounter, std::atomic<int>& failingPi) noexcept
-			: _redundantCounter{ redundantCounter }
-			, _fatalCounter{ fatalCounter }
+		Obs(std::atomic<std::uint32_t>& errorCounter, std::atomic<int>& failingPi) noexcept
+			: _errorCounter{ errorCounter }
 			, _failingPi{ failingPi }
 		{
 		}
 
 	private:
-		virtual void onTransportError(la::avdecc::controller::Controller const* const /*controller*/) noexcept override
+		virtual void onTransportError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept override
 		{
-			++_fatalCounter;
-		}
-		virtual void onRedundantInterfaceTransportError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept override
-		{
-			++_redundantCounter;
+			++_errorCounter;
 			_failingPi.store(static_cast<int>(interfaceType));
 		}
 
-		std::atomic<std::uint32_t>& _redundantCounter;
-		std::atomic<std::uint32_t>& _fatalCounter;
+		std::atomic<std::uint32_t>& _errorCounter;
 		std::atomic<int>& _failingPi;
 		DECLARE_AVDECC_OBSERVER_GUARD(Obs);
 	};
@@ -1276,7 +1268,7 @@ TEST(Controller, DualInterfaceTransportErrorIsRedundantNotFatal)
 	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ executors.secondaryExecutorName } });
 	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0003, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
 
-	auto obs = Obs{ redundantErrorCount, fatalErrorCount, failingInterface };
+	auto obs = Obs{ errorCount, failingInterface };
 	controller->registerObserver(&obs);
 
 	// Inject a transport error on the Primary virtual bus by sending an empty packet through a side PI on the same bus.
@@ -1288,9 +1280,8 @@ TEST(Controller, DualInterfaceTransportErrorIsRedundantNotFatal)
 		std::this_thread::sleep_for(std::chrono::milliseconds(150));
 	}
 
-	// The Primary PI must be reported as a redundant (non-fatal) transport error; no global onTransportError yet.
-	EXPECT_EQ(1u, redundantErrorCount.load());
-	EXPECT_EQ(0u, fatalErrorCount.load());
+	// The transport error must be reported exactly once, identifying the Primary interface (the Secondary is untouched).
+	EXPECT_EQ(1u, errorCount.load());
 	EXPECT_EQ(static_cast<int>(la::avdecc::controller::Controller::InterfaceType::Primary), failingInterface.load());
 }
 
@@ -1899,6 +1890,41 @@ private:
 	std::atomic<std::uint32_t> _deregisterCount{ 0u };
 	DECLARE_AVDECC_OBSERVER_GUARD(UnsolTestEntity);
 };
+
+/** Records every onUnsolicitedRegistrationChanged event (per-interface subscription changes) for later inspection. */
+class UnsolRegistrationObserver final : public la::avdecc::controller::Controller::DefaultedObserver
+{
+public:
+	struct Event
+	{
+		bool isSubscribed{ false };
+		bool triggeredByEntity{ false };
+		la::avdecc::controller::Controller::InterfaceType interfaceType{ la::avdecc::controller::Controller::InterfaceType::Primary };
+	};
+
+	std::vector<Event> getEvents() const noexcept
+	{
+		auto const lg = std::lock_guard{ _lock };
+		return _events;
+	}
+
+	void clearEvents() noexcept
+	{
+		auto const lg = std::lock_guard{ _lock };
+		_events.clear();
+	}
+
+private:
+	virtual void onUnsolicitedRegistrationChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, bool const isSubscribed, bool const triggeredByEntity, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept override
+	{
+		auto const lg = std::lock_guard{ _lock };
+		_events.push_back(Event{ isSubscribed, triggeredByEntity, interfaceType });
+	}
+
+	mutable std::mutex _lock{};
+	std::vector<Event> _events{};
+	DECLARE_AVDECC_OBSERVER_GUARD(UnsolRegistrationObserver);
+};
 } // namespace
 
 /*
@@ -1921,6 +1947,9 @@ TEST(Controller, DualPiUnsolLossOnOneInterfaceRecoversWithoutDroppingSubscriptio
 	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ executors.primaryExecutorName } });
 	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ executors.secondaryExecutorName } });
 	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0011, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
+
+	auto unsolObs = UnsolRegistrationObserver{};
+	controller->registerObserver(&unsolObs);
 
 	auto primaryEntity = UnsolTestEntity{ PrimaryBusName, { { 0xA1, 0x06, 0x05, 0x04, 0x03, 0x02 } }, executors.primaryExecutorName, EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 0u } };
 	auto secondaryEntity = UnsolTestEntity{ SecondaryBusName, { { 0xA2, 0x06, 0x05, 0x04, 0x03, 0x02 } }, executors.secondaryExecutorName, EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 1u } };
@@ -1948,6 +1977,7 @@ TEST(Controller, DualPiUnsolLossOnOneInterfaceRecoversWithoutDroppingSubscriptio
 	std::this_thread::sleep_for(std::chrono::milliseconds(300));
 	auto const basePrimaryRegisterCount = primaryEntity.getRegisterCount();
 	auto const baseSecondaryRegisterCount = secondaryEntity.getRegisterCount();
+	unsolObs.clearEvents();
 
 	// Establish sequenceID baselines on both PIs, then advance without gap: no loss must be detected.
 	primaryEntity.sendUnsolNotification(0u);
@@ -1979,6 +2009,17 @@ TEST(Controller, DualPiUnsolLossOnOneInterfaceRecoversWithoutDroppingSubscriptio
 		ASSERT_TRUE(!!entity);
 		EXPECT_TRUE(entity->isSubscribedToUnsolicitedNotifications()) << "The user-facing aggregate subscription state must remain 'subscribed' on a recoverable partial loss";
 	}
+	// The per-interface subscription events must reflect the Secondary-only unsubscribe/resubscribe cycle (nothing on the Primary).
+	{
+		auto const events = unsolObs.getEvents();
+		ASSERT_EQ(2u, events.size()) << "Expected exactly one unsubscribed + one subscribed event on the Secondary interface";
+		EXPECT_FALSE(events[0].isSubscribed);
+		EXPECT_FALSE(events[0].triggeredByEntity);
+		EXPECT_EQ(la::avdecc::controller::Controller::InterfaceType::Secondary, events[0].interfaceType);
+		EXPECT_TRUE(events[1].isSubscribed);
+		EXPECT_EQ(la::avdecc::controller::Controller::InterfaceType::Secondary, events[1].interfaceType);
+		unsolObs.clearEvents();
+	}
 
 	// The re-registration must have reset the expected sequenceID baseline: a fresh seqID=0 on Secondary is accepted without loss.
 	secondaryEntity.sendUnsolNotification(0u);
@@ -1999,6 +2040,15 @@ TEST(Controller, DualPiUnsolLossOnOneInterfaceRecoversWithoutDroppingSubscriptio
 	EXPECT_EQ(baseSecondaryRegisterCount + 1u, secondaryEntity.getRegisterCount()) << "The healthy (Secondary) PI must not be re-registered";
 	EXPECT_EQ(0u, primaryEntity.getDeregisterCount());
 	EXPECT_EQ(0u, secondaryEntity.getDeregisterCount());
+	// The per-interface subscription events must reflect the Primary-only unsubscribe/resubscribe cycle (nothing on the Secondary).
+	{
+		auto const events = unsolObs.getEvents();
+		ASSERT_EQ(2u, events.size()) << "Expected exactly one unsubscribed + one subscribed event on the Primary interface";
+		EXPECT_FALSE(events[0].isSubscribed);
+		EXPECT_EQ(la::avdecc::controller::Controller::InterfaceType::Primary, events[0].interfaceType);
+		EXPECT_TRUE(events[1].isSubscribed);
+		EXPECT_EQ(la::avdecc::controller::Controller::InterfaceType::Primary, events[1].interfaceType);
+	}
 }
 
 /*
@@ -2022,6 +2072,9 @@ TEST(Controller, DualPiUnsolLossOnBothInterfacesDropsSubscription)
 	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ executors.primaryExecutorName } });
 	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ executors.secondaryExecutorName } });
 	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0012, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
+
+	auto unsolObs = UnsolRegistrationObserver{};
+	controller->registerObserver(&unsolObs);
 
 	auto primaryEntity = UnsolTestEntity{ PrimaryBusName, { { 0xA3, 0x06, 0x05, 0x04, 0x03, 0x02 } }, executors.primaryExecutorName, EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 0u } };
 	auto secondaryEntity = UnsolTestEntity{ SecondaryBusName, { { 0xA4, 0x06, 0x05, 0x04, 0x03, 0x02 } }, executors.secondaryExecutorName, EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 1u } };
@@ -2048,6 +2101,7 @@ TEST(Controller, DualPiUnsolLossOnBothInterfacesDropsSubscription)
 		<< "Entity not advertised or not subscribed to unsolicited notifications";
 	std::this_thread::sleep_for(std::chrono::milliseconds(300));
 	auto const baseSecondaryRegisterCount = secondaryEntity.getRegisterCount();
+	unsolObs.clearEvents();
 
 	// Establish sequenceID baselines on both PIs.
 	primaryEntity.sendUnsolNotification(0u);
@@ -2091,6 +2145,16 @@ TEST(Controller, DualPiUnsolLossOnBothInterfacesDropsSubscription)
 		<< "The user-facing aggregate subscription state must flip to 'unsubscribed' on a full loss";
 	auto const primaryRegisterCountAfterDrop = primaryEntity.getRegisterCount();
 	auto const secondaryRegisterCountAfterDrop = secondaryEntity.getRegisterCount();
+	// The per-interface subscription events must reflect the successive losses: first the Secondary, then the Primary (each notified once, never re-subscribed).
+	{
+		auto const events = unsolObs.getEvents();
+		ASSERT_EQ(2u, events.size()) << "Expected exactly one unsubscribed event per interface";
+		EXPECT_FALSE(events[0].isSubscribed);
+		EXPECT_EQ(la::avdecc::controller::Controller::InterfaceType::Secondary, events[0].interfaceType);
+		EXPECT_FALSE(events[1].isSubscribed);
+		EXPECT_EQ(la::avdecc::controller::Controller::InterfaceType::Primary, events[1].interfaceType);
+		unsolObs.clearEvents();
+	}
 
 	// Incoming unsols must NOT trigger a silent re-registration anymore (the model may have missed updates, only a full re-enumeration may resynchronize it).
 	primaryEntity.sendUnsolNotification(11u);
@@ -2132,6 +2196,7 @@ TEST(Controller, DualPiUnsolLossOnBothInterfacesDropsSubscription)
 		ASSERT_TRUE(!!entity);
 		EXPECT_FALSE(entity->isSubscribedToUnsolicitedNotifications()) << "The entity must remain 'unsubscribed' until the user decides to resynchronize";
 	}
+	EXPECT_TRUE(unsolObs.getEvents().empty()) << "No subscription event expected while the entity remains fully unsubscribed";
 
 	// The ONLY recovery path: a user-decided refreshEntity(), which forgets the entity and re-enumerates from scratch (fresh registrations on both PIs).
 	ASSERT_TRUE(controller->refreshEntity(EntityID));

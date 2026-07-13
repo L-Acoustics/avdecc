@@ -61,7 +61,7 @@ namespace controller
 * (either added, removed or signature modification).
 * Any other change (including templates, inline methods, defines, typedefs, ...) are considered a modification of the interface.
 */
-constexpr std::uint32_t InterfaceVersion = 404;
+constexpr std::uint32_t InterfaceVersion = 500;
 
 /**
 * @brief Checks if the library is compatible with specified interface version.
@@ -140,14 +140,14 @@ public:
 	*          The first interface declared in the configuration is the Primary, the second is the Secondary.
 	*          In single-interface mode, only the Primary is valid.
 	*/
-	enum class InterfaceType : std::size_t
+	enum class InterfaceType : std::uint32_t
 	{
 		Primary = 0u, /**< The primary network interface. Always valid. */
 		Secondary = 1u, /**< The secondary network interface. Only valid when the controller was created in dual-interface mode. */
 	};
 
 	/** @brief Maximum number of network interfaces supported by the controller (one slot per #InterfaceType value). */
-	static constexpr auto NumInterfaces = std::size_t{ 2u };
+	static constexpr auto NumInterfaces = std::uint32_t{ 2u };
 
 	/** @brief Ordered list of every valid #InterfaceType value, suitable for range-based iteration. */
 	static constexpr std::array<InterfaceType, NumInterfaces> AllInterfaceTypes{ InterfaceType::Primary, InterfaceType::Secondary };
@@ -278,9 +278,8 @@ public:
 		virtual ~Observer() noexcept = default;
 
 		// Global controller notifications
-		virtual void onTransportError(la::avdecc::controller::Controller const* const controller) noexcept = 0;
-		/** Triggered when a transport error occurs on a redundant interface in dual-interface mode. Only the specified interface (Primary or Secondary) is down; commands are now routed exclusively through the surviving interface. */
-		virtual void onRedundantInterfaceTransportError(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept = 0;
+		/** Triggered when a fatal transport error occurs on the specified interface. In dual-interface mode this is triggered once per failing interface: it is up to the observer to track whether at least one interface is still up. */
+		virtual void onTransportError(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept = 0;
 		virtual void onEntityQueryError(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::Controller::QueryCommandError const error) noexcept = 0; // Might trigger even if entity is not "online" // Triggered when the controller failed to query all information it needs for an entity to be declared as Online
 
 		// Discovery notifications (ADP)
@@ -293,7 +292,8 @@ public:
 		virtual void onGptpChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, la::avdecc::UniqueIdentifier const grandMasterID, std::uint8_t const grandMasterDomain) noexcept = 0;
 
 		// Global entity notifications
-		virtual void onUnsolicitedRegistrationChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, bool const isSubscribed, bool const triggeredByEntity) noexcept = 0;
+		/** Triggered when the unsolicited-notifications subscription state changes on the specified interface. In dual-interface mode each interface is a separate subscriber and is notified independently: it is up to the observer to track whether at least one interface is still subscribed. */
+		virtual void onUnsolicitedRegistrationChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, bool const isSubscribed, bool const triggeredByEntity, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept = 0;
 		virtual void onCompatibilityChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::ControlledEntity::CompatibilityFlags const compatibilityFlags, la::avdecc::entity::model::MilanVersion const& milanCompatibleVersion) noexcept = 0;
 		virtual void onIdentificationStarted(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity) noexcept = 0;
 		virtual void onIdentificationStopped(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity) noexcept = 0;
@@ -354,23 +354,23 @@ public:
 		virtual void onSystemUniqueIDChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::UniqueIdentifier const systemUniqueID, la::avdecc::entity::model::AvdeccFixedString const& systemName) noexcept = 0;
 		virtual void onMediaClockReferenceInfoChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::MediaClockReferenceInfo const& mcrInfo) noexcept = 0;
 
-		// Statistics
+		// Statistics (the trailing interfaceType parameter indicates on which interface the event occurred; counter values are aggregated across interfaces)
 		/** When the count of AECP retry changed */
-		virtual void onAecpRetryCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept = 0;
+		virtual void onAecpRetryCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept = 0;
 		/** When the count of AECP timeout changed */
-		virtual void onAecpTimeoutCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept = 0;
+		virtual void onAecpTimeoutCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept = 0;
 		/** When the count of AECP unexpected response changed */
-		virtual void onAecpUnexpectedResponseCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept = 0;
+		virtual void onAecpUnexpectedResponseCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept = 0;
 		/** When the AECP average response time changed */
-		virtual void onAecpResponseAverageTimeChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::chrono::milliseconds const& value) noexcept = 0;
+		virtual void onAecpResponseAverageTimeChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::chrono::milliseconds const& value, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept = 0;
 		/** When the count of AEM-AECP unsolicited notifications changed */
-		virtual void onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept = 0;
+		virtual void onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept = 0;
 		/** When the count of lost AEM-AECP unsolicited notifications changed */
-		virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept = 0;
+		virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept = 0;
 		/** When the count of MVU-AECP unsolicited notifications changed */
-		virtual void onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept = 0;
+		virtual void onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept = 0;
 		/** When the count of lost MVU-AECP unsolicited notifications changed */
-		virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept = 0;
+		virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept = 0;
 
 		// Diagnostics
 		virtual void onDiagnosticsChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::ControlledEntity::Diagnostics const& diags) noexcept = 0;
@@ -381,8 +381,7 @@ public:
 	{
 	public:
 		// Global controller notifications
-		virtual void onTransportError(la::avdecc::controller::Controller const* const /*controller*/) noexcept override {}
-		virtual void onRedundantInterfaceTransportError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::Controller::InterfaceType const /*interfaceType*/) noexcept override {}
+		virtual void onTransportError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::Controller::InterfaceType const /*interfaceType*/) noexcept override {}
 		virtual void onEntityQueryError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::Controller::QueryCommandError const /*error*/) noexcept override {} // Might trigger even if entity is not "online" // Triggered when the controller failed to query all information it needs for an entity to be declared as Online
 
 		// Discovery notifications (ADP)
@@ -395,7 +394,7 @@ public:
 		virtual void onGptpChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AvbInterfaceIndex const /*avbInterfaceIndex*/, la::avdecc::UniqueIdentifier const /*grandMasterID*/, std::uint8_t const /*grandMasterDomain*/) noexcept override {}
 
 		// Global entity notifications
-		virtual void onUnsolicitedRegistrationChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, bool const /*isSubscribed*/, bool const /*triggeredByEntity*/) noexcept override {}
+		virtual void onUnsolicitedRegistrationChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, bool const /*isSubscribed*/, bool const /*triggeredByEntity*/, la::avdecc::controller::Controller::InterfaceType const /*interfaceType*/) noexcept override {}
 		virtual void onCompatibilityChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::ControlledEntity::CompatibilityFlags const /*compatibilityFlags*/, la::avdecc::entity::model::MilanVersion const& /*milanCompatibleVersion*/) noexcept override {}
 		virtual void onIdentificationStarted(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/) noexcept override {}
 		virtual void onIdentificationStopped(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/) noexcept override {}
@@ -458,21 +457,21 @@ public:
 
 		// Statistics
 		/** When the count of AECP retry changed */
-		virtual void onAecpRetryCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override {}
+		virtual void onAecpRetryCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::Controller::InterfaceType const /*interfaceType*/) noexcept override {}
 		/** When the count of AECP timeout changed */
-		virtual void onAecpTimeoutCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override {}
+		virtual void onAecpTimeoutCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::Controller::InterfaceType const /*interfaceType*/) noexcept override {}
 		/** When the count of AECP unexpected response changed */
-		virtual void onAecpUnexpectedResponseCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override {}
+		virtual void onAecpUnexpectedResponseCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::Controller::InterfaceType const /*interfaceType*/) noexcept override {}
 		/** When the AECP average response time changed */
-		virtual void onAecpResponseAverageTimeChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::chrono::milliseconds const& /*value*/) noexcept override {}
+		virtual void onAecpResponseAverageTimeChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::chrono::milliseconds const& /*value*/, la::avdecc::controller::Controller::InterfaceType const /*interfaceType*/) noexcept override {}
 		/** When the count of AEM-AECP unsolicited notifications changed */
-		virtual void onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override {}
+		virtual void onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::Controller::InterfaceType const /*interfaceType*/) noexcept override {}
 		/** When the count of lost AEM-AECP unsolicited notifications changed */
-		virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override {}
+		virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::Controller::InterfaceType const /*interfaceType*/) noexcept override {}
 		/** When the count of MVU-AECP unsolicited notifications changed */
-		virtual void onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override {}
+		virtual void onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::Controller::InterfaceType const /*interfaceType*/) noexcept override {}
 		/** When the count of lost MVU-AECP unsolicited notifications changed */
-		virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override {}
+		virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::Controller::InterfaceType const /*interfaceType*/) noexcept override {}
 
 		// Diagnostics
 		virtual void onDiagnosticsChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::ControlledEntity::Diagnostics const& /*diags*/) noexcept override {}
