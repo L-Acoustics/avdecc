@@ -186,9 +186,9 @@ public:
 		std::flush(std::cout);
 	}
 
-	virtual void onTransportError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept override
+	virtual void onTransportError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::InterfaceType const interfaceType) noexcept override
 	{
-		std::cerr << "[ERROR  ] Transport error on " << ((interfaceType == la::avdecc::controller::Controller::InterfaceType::Primary) ? "Primary" : "Secondary") << " interface\n";
+		std::cerr << "[ERROR  ] Transport error on " << ((interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary") << " interface\n";
 	}
 };
 

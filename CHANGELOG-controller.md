@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Redundancy (dual physical interface) controller support
   - New `Controller::create(std::vector<InterfaceConfiguration> const&, ...)` factory overload accepting a Primary and a Secondary physical-interface configuration
-  - New `Controller::InterfaceType` enum (`Primary`, `Secondary`) and `Controller::InterfaceConfiguration` struct
+  - New `InterfaceType` enum (`Primary`, `Secondary`) and `Controller::InterfaceConfiguration` struct
   - New `Controller::getControllerEID(InterfaceType)` accessor to retrieve the per-PI controller EID
   - New `Error::InvalidInterfaceConfiguration` error code (value 9)
   - Automatic ADP deduplication when the same entity is advertised on both physical interfaces (single `ControlledEntity`, merged `InterfacesInformation`, single `onEntityOnline`/`onEntityOffline` lifecycle)
@@ -19,7 +19,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - **API break** (see doc/MIGRATION-5.0.md): per-interface events paradigm — in dual-interface mode it is the observer's responsibility to track per-interface states (in single-interface mode the new parameter is always `InterfaceType::Primary` and the behavior is unchanged)
   - `Controller::Observer::onTransportError` gained an `InterfaceType` parameter and is fired once per failing interface
   - `Controller::Observer::onUnsolicitedRegistrationChanged` gained an `InterfaceType` parameter and is fired for each interface whose subscription state changes
-  - The 8 Statistics events (`onAecpRetryCounterChanged`, `onAecpTimeoutCounterChanged`, `onAecpUnexpectedResponseCounterChanged`, `onAecpResponseAverageTimeChanged`, `onAemAecpUnsolicitedCounterChanged`, `onAemAecpUnsolicitedLossCounterChanged`, `onMvuAecpUnsolicitedCounterChanged`, `onMvuAecpUnsolicitedLossCounterChanged`) gained a trailing `InterfaceType` parameter indicating on which interface the event occurred
+  - Statistics are maintained per interface (counters and AECP response-time average): the 8 Statistics events (`onAecpRetryCounterChanged`, `onAecpTimeoutCounterChanged`, `onAecpUnexpectedResponseCounterChanged`, `onAecpResponseAverageTimeChanged`, `onAemAecpUnsolicitedCounterChanged`, `onAemAecpUnsolicitedLossCounterChanged`, `onMvuAecpUnsolicitedCounterChanged`, `onMvuAecpUnsolicitedLossCounterChanged`) gained a trailing `InterfaceType` parameter and carry that interface's counter value, and the matching `ControlledEntity` getters gained an `InterfaceType` parameter (defaulted to `Primary`)
+  - Entity dump (JSON) `statistics` object nests the counters in one object per interface (`primary` / `secondary`), entity dump version bumped to 3; files using the previous flat format are still loadable (counters applying to the Primary interface)
 
 ### Fixed
 - Possible crash (segfault) in onPreAdvertiseEntity when controlledEntityConfigurationNode is nullptr and CBR feature is enabled

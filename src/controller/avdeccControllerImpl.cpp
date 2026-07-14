@@ -381,13 +381,13 @@ void ControllerImpl::decreaseMilanCompatibilityVersion(ControllerImpl const* con
 	}
 }
 
-void ControllerImpl::updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed, bool const triggeredByEntity, std::optional<Controller::InterfaceType> const interfaceType) const noexcept
+void ControllerImpl::updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed, bool const triggeredByEntity, std::optional<InterfaceType> const interfaceType) const noexcept
 {
 	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Capture the per-PI states before mutation so we only notify observers for the interfaces whose state actually changed.
-	auto oldValues = std::array<bool, Controller::NumInterfaces>{};
-	for (auto const currentType : Controller::AllInterfaceTypes)
+	auto oldValues = std::array<bool, NumInterfaces>{};
+	for (auto const currentType : AllInterfaceTypes)
 	{
 		oldValues[utils::to_integral(currentType)] = controlledEntity.isSubscribedToUnsolicitedNotifications(currentType);
 	}
@@ -397,10 +397,10 @@ void ControllerImpl::updateUnsolicitedNotificationsSubscription(ControlledEntity
 	// Notify observers once per interface whose subscription state changed: it is up to the observer to track whether at least one interface is still subscribed
 	if (controlledEntity.wasAdvertised())
 	{
-		for (auto const currentType : Controller::AllInterfaceTypes)
+		for (auto const currentType : AllInterfaceTypes)
 		{
 			// The Secondary slot does not exist from the user's point of view in single-interface mode
-			if (currentType == Controller::InterfaceType::Secondary && !_controllerProxy->isDualInterface())
+			if (currentType == InterfaceType::Secondary && !_controllerProxy->isDualInterface())
 			{
 				continue;
 			}
@@ -3303,7 +3303,7 @@ void ControllerImpl::unregisterUnsol(UniqueIdentifier const entityID) noexcept
 	_controllerProxy->unregisterUnsolicitedNotifications(entityID, std::bind(&ControllerImpl::onUnregisterUnsolicitedNotificationsResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
-bool ControllerImpl::canRecoverUnsolThroughOtherInterface(ControlledEntityImpl const& controlledEntity, Controller::InterfaceType const interfaceType) const noexcept
+bool ControllerImpl::canRecoverUnsolThroughOtherInterface(ControlledEntityImpl const& controlledEntity, InterfaceType const interfaceType) const noexcept
 {
 	// Only possible in dual-interface mode
 	if (!_controllerProxy->isDualInterface())
@@ -3311,11 +3311,11 @@ bool ControllerImpl::canRecoverUnsolThroughOtherInterface(ControlledEntityImpl c
 		return false;
 	}
 
-	auto const otherType = (interfaceType == Controller::InterfaceType::Primary) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+	auto const otherType = (interfaceType == InterfaceType::Primary) ? InterfaceType::Secondary : InterfaceType::Primary;
 
 	// The other PI must still see the entity
 	auto const reach = _controllerProxy->getEntityReachability(controlledEntity.getEntity().getEntityID());
-	auto const otherReachable = (otherType == Controller::InterfaceType::Primary) ? reach.onPrimary : reach.onSecondary;
+	auto const otherReachable = (otherType == InterfaceType::Primary) ? reach.onPrimary : reach.onSecondary;
 	if (!otherReachable)
 	{
 		return false;
@@ -3325,7 +3325,7 @@ bool ControllerImpl::canRecoverUnsolThroughOtherInterface(ControlledEntityImpl c
 	return controlledEntity.isSubscribedToUnsolicitedNotifications(otherType);
 }
 
-void ControllerImpl::tryLazyRegisterUnsolOnInterface(UniqueIdentifier const entityID, Controller::InterfaceType const interfaceType) noexcept
+void ControllerImpl::tryLazyRegisterUnsolOnInterface(UniqueIdentifier const entityID, InterfaceType const interfaceType) noexcept
 {
 	// Only meaningful in dual-PI mode (single-PI mode does the initial registration through the enumeration step, no per-PI redundancy needed).
 	if (!_controllerProxy->isDualInterface())
@@ -3335,7 +3335,7 @@ void ControllerImpl::tryLazyRegisterUnsolOnInterface(UniqueIdentifier const enti
 
 	// Reachability check: do not attempt to register on a PI that does not currently see the entity.
 	auto const reach = _controllerProxy->getEntityReachability(entityID);
-	auto const isReachable = (interfaceType == Controller::InterfaceType::Primary) ? reach.onPrimary : reach.onSecondary;
+	auto const isReachable = (interfaceType == InterfaceType::Primary) ? reach.onPrimary : reach.onSecondary;
 	if (!isReachable)
 	{
 		return;
@@ -3357,7 +3357,7 @@ void ControllerImpl::tryLazyRegisterUnsolOnInterface(UniqueIdentifier const enti
 		// Only a user-decided refreshEntity() (which forgets the entity and re-enumerates from scratch) is allowed to restore the synchronization
 		if (!controlledEntity->getEnumerationSteps().test(ControlledEntityImpl::EnumerationStep::RegisterUnsol) && controlledEntity->areUnsolicitedNotificationsSupported() && !controlledEntity->isSubscribedToUnsolicitedNotifications())
 		{
-			LOG_CONTROLLER_DEBUG(entityID, "Not re-registering unsolicited notifications on {} interface: synchronization was fully lost, only a user-triggered refreshEntity can restore it", (interfaceType == Controller::InterfaceType::Primary) ? "Primary" : "Secondary");
+			LOG_CONTROLLER_DEBUG(entityID, "Not re-registering unsolicited notifications on {} interface: synchronization was fully lost, only a user-triggered refreshEntity can restore it", (interfaceType == InterfaceType::Primary) ? "Primary" : "Secondary");
 			return;
 		}
 	}
@@ -3368,12 +3368,12 @@ void ControllerImpl::tryLazyRegisterUnsolOnInterface(UniqueIdentifier const enti
 		return;
 	}
 
-	LOG_CONTROLLER_TRACE(entityID, "Lazy registerUnsolicitedNotifications on {} interface", (interfaceType == Controller::InterfaceType::Primary) ? "Primary" : "Secondary");
+	LOG_CONTROLLER_TRACE(entityID, "Lazy registerUnsolicitedNotifications on {} interface", (interfaceType == InterfaceType::Primary) ? "Primary" : "Secondary");
 	_controllerProxy->registerUnsolicitedNotificationsOnInterface(entityID, interfaceType,
 		[this, interfaceType](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
 		{
 			//onLazyRegisterUnsolicitedNotificationsResult(interfaceType, entID, status);
-			LOG_CONTROLLER_TRACE(entityID, "tryLazyRegisterUnsolOnInterfaceResult on {} interface: {}", (interfaceType == Controller::InterfaceType::Primary) ? "Primary" : "Secondary", entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "tryLazyRegisterUnsolOnInterfaceResult on {} interface: {}", (interfaceType == InterfaceType::Primary) ? "Primary" : "Secondary", entity::ControllerEntity::statusToString(status));
 
 			// Update the proxy's per-PI unsol state: Registered on success, NotRegistered on any failure so the next reachability transition will retry.
 			auto const newState = (!!status) ? ControllerVirtualProxy::UnsolState::Registered : ControllerVirtualProxy::UnsolState::NotRegistered;

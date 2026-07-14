@@ -643,7 +643,7 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 {
 	LOG_CONTROLLER_TRACE(entityID, "onRegisterUnsolicitedNotificationsResult: {}", entity::ControllerEntity::statusToString(status));
 
-	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+	auto const interfaceType = (controller == _secondaryController) ? InterfaceType::Secondary : InterfaceType::Primary;
 	auto shouldEnsureOtherInterfaceRegistered = false;
 
 	{
@@ -693,7 +693,7 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 	// Primary, leaving the Secondary unsubscribed with no transition left to trigger it. No-op if the other PI is already Registered/Pending or does not see the entity.
 	if (shouldEnsureOtherInterfaceRegistered && _controllerProxy->isDualInterface())
 	{
-		auto const otherType = (interfaceType == Controller::InterfaceType::Primary) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+		auto const otherType = (interfaceType == InterfaceType::Primary) ? InterfaceType::Secondary : InterfaceType::Primary;
 		tryLazyRegisterUnsolOnInterface(entityID, otherType);
 	}
 }
@@ -703,7 +703,7 @@ void ControllerImpl::onUnregisterUnsolicitedNotificationsResult(entity::controll
 	LOG_CONTROLLER_TRACE(entityID, "onDeregisterUnsolicitedNotificationsResult: {}", entity::ControllerEntity::statusToString(status));
 
 	// Identify which PI actually answered the UNREGISTER: in dual-PI mode each PI is a separate subscriber on the entity side, so this answer only applies to the PI it came in on.
-	auto const interfaceType = (controller == _secondaryController) ? Controller::InterfaceType::Secondary : Controller::InterfaceType::Primary;
+	auto const interfaceType = (controller == _secondaryController) ? InterfaceType::Secondary : InterfaceType::Primary;
 
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);

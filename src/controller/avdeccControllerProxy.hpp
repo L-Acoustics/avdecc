@@ -78,19 +78,19 @@ public:
 	 * @details In dual-PI mode, also resets the per-PI unsolicited-notification state to NotRegistered when transitioning to unreachable, so the registration is re-issued the next time the PI comes back.
 	 * @return True if this call caused a `false→true` transition on the given interface (the caller may use this to lazily re-register unsolicited notifications on the PI that just came back online).
 	 */
-	bool setEntityReachable(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType, bool const reachable) noexcept;
+	bool setEntityReachable(UniqueIdentifier const& entityID, InterfaceType const interfaceType, bool const reachable) noexcept;
 
 	/** Marks all entities as unreachable on the specified interface (called when a transport error is reported on that interface). Returns true if the other interface is still up, false if both PIs are now down (or single-PI mode). */
-	bool markInterfaceDown(Controller::InterfaceType const interfaceType) noexcept;
+	bool markInterfaceDown(InterfaceType const interfaceType) noexcept;
 
 	/** Returns the current reachability for the specified entity (both PIs false if entity is unknown). */
 	InterfaceReachability getEntityReachability(UniqueIdentifier const& entityID) const noexcept;
 
 	/** Records the set of AvbInterfaceIndex values last observed via the specified PI's ADP for the given entity. */
-	void setEntityInterfaceIndices(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType, std::set<entity::model::AvbInterfaceIndex> indices) noexcept;
+	void setEntityInterfaceIndices(UniqueIdentifier const& entityID, InterfaceType const interfaceType, std::set<entity::model::AvbInterfaceIndex> indices) noexcept;
 
 	/** Returns the set of AvbInterfaceIndex values last observed via the specified PI's ADP for the given entity. */
-	std::set<entity::model::AvbInterfaceIndex> getEntityInterfaceIndices(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType) const noexcept;
+	std::set<entity::model::AvbInterfaceIndex> getEntityInterfaceIndices(UniqueIdentifier const& entityID, InterfaceType const interfaceType) const noexcept;
 
 	/** Returns true if the controller is operating in dual-interface mode. */
 	bool isDualInterface() const noexcept;
@@ -108,19 +108,19 @@ public:
 	entity::controller::Interface const* otherReachableInterface(UniqueIdentifier const& entityID, entity::controller::Interface const* const chosenInterface) const noexcept;
 
 	/** Atomically transitions the unsol state for (@a entityID, @a interfaceType) from NotRegistered to Pending and returns true if the caller "owns" the transition (i.e. should send the register command now). Returns false otherwise (already Pending or Registered, or in single-PI mode and @a interfaceType is Secondary). */
-	bool tryClaimUnsolPending(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType) noexcept;
+	bool tryClaimUnsolPending(UniqueIdentifier const& entityID, InterfaceType const interfaceType) noexcept;
 
 	/** Sets the unsol state for the (@a entityID, @a interfaceType) pair. Typically called from the per-PI register result handler. */
-	void setUnsolState(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType, UnsolState const state) noexcept;
+	void setUnsolState(UniqueIdentifier const& entityID, InterfaceType const interfaceType, UnsolState const state) noexcept;
 
 	/** Returns the current unsol state for the (@a entityID, @a interfaceType) pair. */
-	UnsolState getUnsolState(UniqueIdentifier const& entityID, Controller::InterfaceType const interfaceType) const noexcept;
+	UnsolState getUnsolState(UniqueIdentifier const& entityID, InterfaceType const interfaceType) const noexcept;
 
 	/** Sends a REGISTER_UNSOLICITED_NOTIFICATION command directly on the specified real PI, bypassing the proxy's pickRealInterface and the dual-PI retry layer.
 	 * @details This is used to register the talker's unsolicited subscription on each reachable PI independently, so that loss of one PI does not silently drop unsolicited notifications.
 	 * @note In single-PI mode, the command is always sent on the primary interface regardless of @a interfaceType.
 	 */
-	void registerUnsolicitedNotificationsOnInterface(UniqueIdentifier const targetEntityID, Controller::InterfaceType const interfaceType, RegisterUnsolicitedNotificationsHandler const& handler) const noexcept;
+	void registerUnsolicitedNotificationsOnInterface(UniqueIdentifier const targetEntityID, InterfaceType const interfaceType, RegisterUnsolicitedNotificationsHandler const& handler) const noexcept;
 
 	/** Returns true if the AEM command status indicates the command should be retried on the fallback interface in dual-interface mode. */
 	static bool shouldRetry(entity::ControllerEntity::AemCommandStatus const status) noexcept;

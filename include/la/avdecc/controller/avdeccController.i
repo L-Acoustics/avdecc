@@ -315,6 +315,10 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity::CompatibilityFlag, "
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamPortInputInvalidAudioMappingsForStreamFormat;
 %catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamOutputConnections;
 
+DEFINE_ENUM_CLASS(la::avdecc::controller::InterfaceType, "uint")
+%ignore la::avdecc::controller::NumInterfaces; // Ignore because of constexpr undefined
+%ignore la::avdecc::controller::AllInterfaceTypes; // Ignore because of 'NumInterfaces' being ignored
+
 // Include c++ declaration file
 %include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
@@ -382,13 +386,9 @@ private:
 DEFINE_ENUM_CLASS(la::avdecc::controller::CompileOption, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::controller::Controller::Error, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::controller::Controller::QueryCommandError, "uint")
-DEFINE_ENUM_CLASS(la::avdecc::controller::Controller::InterfaceType, "uint")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
-
-%ignore la::avdecc::controller::Controller::NumInterfaces; // Ignore because of constexpr undefined
-%ignore la::avdecc::controller::Controller::AllInterfaceTypes; // Ignore because of 'NumInterfaces' being ignored
 
 %nspace la::avdecc::controller::CompileOptionInfo;
 %rename("%s") la::avdecc::controller::CompileOptionInfo; // Unignore class

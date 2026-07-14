@@ -88,7 +88,7 @@ private:
 	/* ************************************************************ */
 	virtual void destroy() noexcept override;
 
-	virtual UniqueIdentifier getControllerEID(Controller::InterfaceType const interfaceType = Controller::InterfaceType::Primary) const noexcept override;
+	virtual UniqueIdentifier getControllerEID(InterfaceType const interfaceType = InterfaceType::Primary) const noexcept override;
 
 	/* Controller configuration */
 	virtual void enableEntityAdvertising(std::uint32_t const availableDuration, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) override;
@@ -348,7 +348,7 @@ private:
 	virtual void onAecpTimeout(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID) noexcept override;
 	virtual void onAecpUnexpectedResponse(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID) noexcept override;
 	virtual void onAecpResponseTime(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept override;
-	void handleAecpUnsolicitedReceived(UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID, Controller::InterfaceType const interfaceType, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedCounter, std::function<std::uint64_t(ControlledEntityImpl&)> const& incrementUnsolicitedLossCounter, std::function<bool(ControlledEntityImpl&, la::avdecc::protocol::AecpSequenceID)> const& hasLostUnsolicitedNotification, void (Controller::Observer::*notifyUnsolicitedCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t, Controller::InterfaceType), void (Controller::Observer::*notifyUnsolicitedLossCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t, Controller::InterfaceType)) noexcept;
+	void handleAecpUnsolicitedReceived(UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID, InterfaceType const interfaceType, std::function<std::uint64_t(ControlledEntityImpl&, InterfaceType)> const& incrementUnsolicitedCounter, std::function<std::uint64_t(ControlledEntityImpl&, InterfaceType)> const& incrementUnsolicitedLossCounter, std::function<bool(ControlledEntityImpl&, la::avdecc::protocol::AecpSequenceID)> const& hasLostUnsolicitedNotification, void (Controller::Observer::*notifyUnsolicitedCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t, InterfaceType), void (Controller::Observer::*notifyUnsolicitedLossCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t, InterfaceType)) noexcept;
 	virtual void onAemAecpUnsolicitedReceived(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept override;
 	virtual void onMvuAecpUnsolicitedReceived(entity::controller::Interface const* const controller, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept override;
 
@@ -372,7 +372,7 @@ private:
 	static void setMilanWarningCompatibilityFlag(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, std::string const& specClause, std::string const& message) noexcept;
 	static void removeCompatibilityFlag(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag, std::string const& specClause, std::string const& message) noexcept;
 	static void decreaseMilanCompatibilityVersion(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::MilanVersion const& version, std::string const& specClause, std::string const& message) noexcept;
-	void updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed, bool const triggeredByEntity, std::optional<Controller::InterfaceType> const interfaceType = std::nullopt) const noexcept;
+	void updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed, bool const triggeredByEntity, std::optional<InterfaceType> const interfaceType = std::nullopt) const noexcept;
 	void updateAcquiredState(ControlledEntityImpl& controlledEntity, model::AcquireState const acquireState, UniqueIdentifier const owningEntity) const noexcept;
 	void updateLockedState(ControlledEntityImpl& controlledEntity, model::LockState const lockState, UniqueIdentifier const lockingEntity) const noexcept;
 	void updateConfiguration(entity::controller::Interface const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept;
@@ -710,13 +710,13 @@ private:
 	 * @param[in] interfaceType The PI on which the subscription was lost/compromised.
 	 * @return True if a per-PI re-registration on @a interfaceType is sufficient, false if the subscription must be considered globally lost.
 	 */
-	bool canRecoverUnsolThroughOtherInterface(ControlledEntityImpl const& controlledEntity, Controller::InterfaceType const interfaceType) const noexcept;
+	bool canRecoverUnsolThroughOtherInterface(ControlledEntityImpl const& controlledEntity, InterfaceType const interfaceType) const noexcept;
 	/** Attempts to (re-)register unsolicited notifications for @a entityID on the specified PI without going through the dual-PI retry layer.
 	 *  Does nothing if the entity is not currently reachable on that PI, if the unsol state is not NotRegistered, if the entity is in single-PI mode and @a interfaceType is Secondary.
 	 *  This is the per-PI redundancy registration path called when a PI becomes (re-)reachable for an already-known entity.
 	 *  @note After a FULL unsolicited loss (no PI holding a subscription anymore), this method deliberately does NOTHING: re-subscribing would resume the unsol flow on a model that missed an unknown set of updates, misleading the user into believing the entity is in sync. Only a user-decided refreshEntity() may restore the synchronization (never automatically: the loss was most likely caused by network congestion and a rescan would make it worse).
 	 */
-	void tryLazyRegisterUnsolOnInterface(UniqueIdentifier const entityID, Controller::InterfaceType const interfaceType) noexcept;
+	void tryLazyRegisterUnsolOnInterface(UniqueIdentifier const entityID, InterfaceType const interfaceType) noexcept;
 	void getStaticModel(ControlledEntityImpl* const entity) noexcept;
 	void getDynamicInfo(ControlledEntityImpl* const entity) noexcept;
 	void getDescriptorDynamicInfo(ControlledEntityImpl* const entity) noexcept;

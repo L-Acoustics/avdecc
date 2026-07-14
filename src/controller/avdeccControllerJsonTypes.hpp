@@ -78,6 +78,8 @@ constexpr auto ControlledEntityState_UnsolSupported = "unsol_supported";
 constexpr auto ControlledEntityState_ActiveConfiguration = "active_configuration";
 
 /* ControlledEntityStatistics */
+constexpr auto ControlledEntityStatistics_PrimaryInterface = "primary";
+constexpr auto ControlledEntityStatistics_SecondaryInterface = "secondary";
 constexpr auto ControlledEntityStatistics_AecpRetryCounter = "aecp_retry_counter";
 constexpr auto ControlledEntityStatistics_AecpTimeoutCounter = "aecp_timeout_counter";
 constexpr auto ControlledEntityStatistics_AecpUnexpectedResponseCounter = "aecp_unexpected_response_counter";
@@ -178,7 +180,7 @@ namespace keyValue
 constexpr auto Controller_DumpVersion = std::uint32_t{ 1 };
 
 /* ControlledEntity nodes */
-constexpr auto ControlledEntity_DumpVersion = std::uint32_t{ 2 };
+constexpr auto ControlledEntity_DumpVersion = std::uint32_t{ 3 };
 constexpr auto ControlledEntity_SchemaBaseURL = "https://raw.githubusercontent.com/L-Acoustics/avdecc/refs/heads/main/resources/schemas/AVE/";
 
 } // namespace keyValue

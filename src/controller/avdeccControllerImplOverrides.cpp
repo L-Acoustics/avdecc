@@ -490,8 +490,8 @@ ControllerImpl::~ControllerImpl()
 	}
 
 	// Set interfaces as unreachable so we don't send retries
-	_controllerProxy->markInterfaceDown(Controller::InterfaceType::Primary);
-	_controllerProxy->markInterfaceDown(Controller::InterfaceType::Secondary);
+	_controllerProxy->markInterfaceDown(InterfaceType::Primary);
+	_controllerProxy->markInterfaceDown(InterfaceType::Secondary);
 
 	// Destroy the Controller(s) before the class is destoyed
 	_controller = nullptr;
@@ -510,17 +510,17 @@ void ControllerImpl::destroy() noexcept
 	delete this;
 }
 
-UniqueIdentifier ControllerImpl::getControllerEID(Controller::InterfaceType const interfaceType) const noexcept
+UniqueIdentifier ControllerImpl::getControllerEID(InterfaceType const interfaceType) const noexcept
 {
 	switch (interfaceType)
 	{
-		case Controller::InterfaceType::Primary:
+		case InterfaceType::Primary:
 			if (_controller != nullptr)
 			{
 				return _controller->getEntityID();
 			}
 			return UniqueIdentifier{};
-		case Controller::InterfaceType::Secondary:
+		case InterfaceType::Secondary:
 			if (_secondaryController != nullptr)
 			{
 				return _secondaryController->getEntityID();

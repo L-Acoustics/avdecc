@@ -33,6 +33,8 @@
 #include "avdeccControlledEntityModel.hpp"
 #include "exports.hpp"
 
+#include <array>
+#include <cstdint>
 #include <string>
 #include <memory>
 #include <mutex>
@@ -48,6 +50,24 @@ namespace avdecc
 {
 namespace controller
 {
+/**
+* @brief Type of interface (primary or secondary) when using redundancy.
+* @details In dual-interface (redundancy) mode, the controller uses 2 physical network interfaces.
+*          The first interface declared in the configuration is the Primary, the second is the Secondary.
+*          In single-interface mode, only the Primary is valid.
+*/
+enum class InterfaceType : std::uint32_t
+{
+	Primary = 0u, /**< The primary network interface. Always valid. */
+	Secondary = 1u, /**< The secondary network interface. Only valid when the controller was created in dual-interface mode. */
+};
+
+/** @brief Maximum number of network interfaces supported by the controller (one slot per #InterfaceType value). */
+static constexpr auto NumInterfaces = std::uint32_t{ 2u };
+
+/** @brief Ordered list of every valid #InterfaceType value, suitable for range-based iteration. */
+static constexpr std::array<InterfaceType, NumInterfaces> AllInterfaceTypes{ InterfaceType::Primary, InterfaceType::Secondary };
+
 /* ************************************************************************** */
 /* ControlledEntity                                                           */
 /* ************************************************************************** */
@@ -226,15 +246,15 @@ public:
 	/** Get connections information about a talker's stream */
 	virtual entity::model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 
-	// Statistics
-	virtual std::uint64_t getAecpRetryCounter() const noexcept = 0;
-	virtual std::uint64_t getAecpTimeoutCounter() const noexcept = 0;
-	virtual std::uint64_t getAecpUnexpectedResponseCounter() const noexcept = 0;
-	virtual std::chrono::milliseconds const& getAecpResponseAverageTime() const noexcept = 0;
-	virtual std::uint64_t getAemAecpUnsolicitedCounter() const noexcept = 0;
-	virtual std::uint64_t getAemAecpUnsolicitedLossCounter() const noexcept = 0;
-	virtual std::uint64_t getMvuAecpUnsolicitedCounter() const noexcept = 0;
-	virtual std::uint64_t getMvuAecpUnsolicitedLossCounter() const noexcept = 0;
+	// Statistics (each interface maintains its own counters; in single-interface mode only the Primary values are meaningful)
+	virtual std::uint64_t getAecpRetryCounter(InterfaceType const interfaceType = InterfaceType::Primary) const noexcept = 0;
+	virtual std::uint64_t getAecpTimeoutCounter(InterfaceType const interfaceType = InterfaceType::Primary) const noexcept = 0;
+	virtual std::uint64_t getAecpUnexpectedResponseCounter(InterfaceType const interfaceType = InterfaceType::Primary) const noexcept = 0;
+	virtual std::chrono::milliseconds const& getAecpResponseAverageTime(InterfaceType const interfaceType = InterfaceType::Primary) const noexcept = 0;
+	virtual std::uint64_t getAemAecpUnsolicitedCounter(InterfaceType const interfaceType = InterfaceType::Primary) const noexcept = 0;
+	virtual std::uint64_t getAemAecpUnsolicitedLossCounter(InterfaceType const interfaceType = InterfaceType::Primary) const noexcept = 0;
+	virtual std::uint64_t getMvuAecpUnsolicitedCounter(InterfaceType const interfaceType = InterfaceType::Primary) const noexcept = 0;
+	virtual std::uint64_t getMvuAecpUnsolicitedLossCounter(InterfaceType const interfaceType = InterfaceType::Primary) const noexcept = 0;
 	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept = 0;
 
 	// Diagnostics

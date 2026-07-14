@@ -44,6 +44,9 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <nlohmann/json.hpp>
+#include <filesystem>
+#include <fstream>
 #include <string>
 #include <thread>
 #include <chrono>
@@ -1250,7 +1253,7 @@ TEST(Controller, DualInterfaceTransportErrorReportsFailedInterface)
 		}
 
 	private:
-		virtual void onTransportError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept override
+		virtual void onTransportError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::InterfaceType const interfaceType) noexcept override
 		{
 			++_errorCounter;
 			_failingPi.store(static_cast<int>(interfaceType));
@@ -1282,7 +1285,7 @@ TEST(Controller, DualInterfaceTransportErrorReportsFailedInterface)
 
 	// The transport error must be reported exactly once, identifying the Primary interface (the Secondary is untouched).
 	EXPECT_EQ(1u, errorCount.load());
-	EXPECT_EQ(static_cast<int>(la::avdecc::controller::Controller::InterfaceType::Primary), failingInterface.load());
+	EXPECT_EQ(static_cast<int>(la::avdecc::controller::InterfaceType::Primary), failingInterface.load());
 }
 
 /*
@@ -1310,8 +1313,8 @@ TEST(Controller, DualInterfaceCreateWithDefaultExecutorsDoesNotCollide)
 	ASSERT_NE(nullptr, controller);
 	// Both PI EIDs must be valid (non-default). EID-distinctness is governed by the underlying NIC MACs and is
 	// therefore environment-dependent; here we only assert that the controller successfully spun up both PIs.
-	EXPECT_TRUE(controller->getControllerEID(la::avdecc::controller::Controller::InterfaceType::Primary));
-	EXPECT_TRUE(controller->getControllerEID(la::avdecc::controller::Controller::InterfaceType::Secondary));
+	EXPECT_TRUE(controller->getControllerEID(la::avdecc::controller::InterfaceType::Primary));
+	EXPECT_TRUE(controller->getControllerEID(la::avdecc::controller::InterfaceType::Secondary));
 #endif // CONTROLLER_DUAL_INTERFACE_REQUIRES_SHARED_EXECUTOR
 }
 
@@ -1430,26 +1433,26 @@ TEST(Controller, RetryFallbackOnlyIfEntityReachableOnOtherPi)
 	EXPECT_EQ(nullptr, dual.otherReachableInterface(eid, secondaryIfc));
 
 	// Entity reachable only on Primary; sender=Primary → no fallback (Secondary doesn't know it).
-	dual.setEntityReachable(eid, la::avdecc::controller::Controller::InterfaceType::Primary, true);
+	dual.setEntityReachable(eid, la::avdecc::controller::InterfaceType::Primary, true);
 	EXPECT_EQ(nullptr, dual.otherReachableInterface(eid, primaryIfc));
 	// And sender=Secondary should fallback to Primary (which does have it).
 	EXPECT_EQ(primaryIfc, dual.otherReachableInterface(eid, secondaryIfc));
 
 	// Entity reachable only on Secondary; sender=Primary → fallback to Secondary.
-	dual.setEntityReachable(eid, la::avdecc::controller::Controller::InterfaceType::Primary, false);
-	dual.setEntityReachable(eid, la::avdecc::controller::Controller::InterfaceType::Secondary, true);
+	dual.setEntityReachable(eid, la::avdecc::controller::InterfaceType::Primary, false);
+	dual.setEntityReachable(eid, la::avdecc::controller::InterfaceType::Secondary, true);
 	EXPECT_EQ(secondaryIfc, dual.otherReachableInterface(eid, primaryIfc));
 	EXPECT_EQ(nullptr, dual.otherReachableInterface(eid, secondaryIfc));
 
 	// Entity reachable on both; sender=Primary → fallback to Secondary, sender=Secondary → fallback to Primary.
-	dual.setEntityReachable(eid, la::avdecc::controller::Controller::InterfaceType::Primary, true);
+	dual.setEntityReachable(eid, la::avdecc::controller::InterfaceType::Primary, true);
 	EXPECT_EQ(secondaryIfc, dual.otherReachableInterface(eid, primaryIfc));
 	EXPECT_EQ(primaryIfc, dual.otherReachableInterface(eid, secondaryIfc));
 }
 
 TEST(Controller, UnsolPerInterfaceStateMachine)
 {
-	using IfcType = la::avdecc::controller::Controller::InterfaceType;
+	using IfcType = la::avdecc::controller::InterfaceType;
 	using UnsolState = la::avdecc::controller::ControllerVirtualProxy::UnsolState;
 
 	static auto constexpr BusName = "UnsolPI_Bus";
@@ -1519,8 +1522,8 @@ TEST(Controller, UnsolPerInterfaceStateMachine)
  */
 TEST(ControlledEntity, PerInterfaceUnsolicitedSequenceTracking)
 {
-	static auto constexpr PrimaryIdx = la::avdecc::controller::Controller::InterfaceType::Primary;
-	static auto constexpr SecondaryIdx = la::avdecc::controller::Controller::InterfaceType::Secondary;
+	static auto constexpr PrimaryIdx = la::avdecc::controller::InterfaceType::Primary;
+	static auto constexpr SecondaryIdx = la::avdecc::controller::InterfaceType::Secondary;
 
 	auto sharedLock = std::make_shared<la::avdecc::controller::ControlledEntityImpl::LockInformation>();
 	auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
@@ -1579,8 +1582,8 @@ TEST(ControlledEntity, PerInterfaceUnsolicitedSequenceTracking)
  */
 TEST(ControlledEntity, PerInterfaceSubscriptionStateIsIndependent)
 {
-	static auto constexpr PrimaryIdx = la::avdecc::controller::Controller::InterfaceType::Primary;
-	static auto constexpr SecondaryIdx = la::avdecc::controller::Controller::InterfaceType::Secondary;
+	static auto constexpr PrimaryIdx = la::avdecc::controller::InterfaceType::Primary;
+	static auto constexpr SecondaryIdx = la::avdecc::controller::InterfaceType::Secondary;
 
 	auto sharedLock = std::make_shared<la::avdecc::controller::ControlledEntityImpl::LockInformation>();
 	auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
@@ -1646,6 +1649,114 @@ TEST(ControlledEntity, PerInterfaceSubscriptionStateIsIndependent)
 	entity.setSubscribedToUnsolicitedNotifications(false, PrimaryIdx);
 	EXPECT_FALSE(entity.isSubscribedToUnsolicitedNotifications(PrimaryIdx));
 	EXPECT_TRUE(entity.isSubscribedToUnsolicitedNotifications(SecondaryIdx));
+}
+
+/*
+ * Statistics are maintained per interface: counters and the response-time average of one interface must never
+ * be affected by events occurring on the other interface.
+ */
+TEST(ControlledEntity, PerInterfaceStatistics)
+{
+	static auto constexpr PrimaryIdx = la::avdecc::controller::InterfaceType::Primary;
+	static auto constexpr SecondaryIdx = la::avdecc::controller::InterfaceType::Secondary;
+
+	auto sharedLock = std::make_shared<la::avdecc::controller::ControlledEntityImpl::LockInformation>();
+	auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
+	auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::networkInterface::MacAddress{}, 31u, 0u, std::nullopt, std::nullopt } };
+	auto const e{ la::avdecc::entity::Entity{ commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } } } };
+	auto entity = la::avdecc::controller::ControlledEntityImpl{ e, sharedLock, false };
+
+	// All counters start at zero on both interfaces
+	EXPECT_EQ(0u, entity.getAecpRetryCounter(PrimaryIdx));
+	EXPECT_EQ(0u, entity.getAecpRetryCounter(SecondaryIdx));
+
+	// Incrementing a counter on one interface must not modify the other interface's counter
+	EXPECT_EQ(1u, entity.incrementAecpRetryCounter(PrimaryIdx));
+	EXPECT_EQ(2u, entity.incrementAecpRetryCounter(PrimaryIdx));
+	EXPECT_EQ(1u, entity.incrementAecpRetryCounter(SecondaryIdx));
+	EXPECT_EQ(2u, entity.getAecpRetryCounter(PrimaryIdx));
+	EXPECT_EQ(1u, entity.getAecpRetryCounter(SecondaryIdx));
+
+	EXPECT_EQ(1u, entity.incrementAecpTimeoutCounter(SecondaryIdx));
+	EXPECT_EQ(0u, entity.getAecpTimeoutCounter(PrimaryIdx));
+	EXPECT_EQ(1u, entity.incrementAecpUnexpectedResponseCounter(PrimaryIdx));
+	EXPECT_EQ(0u, entity.getAecpUnexpectedResponseCounter(SecondaryIdx));
+	EXPECT_EQ(1u, entity.incrementAemAecpUnsolicitedCounter(PrimaryIdx));
+	EXPECT_EQ(0u, entity.getAemAecpUnsolicitedCounter(SecondaryIdx));
+	EXPECT_EQ(1u, entity.incrementAemAecpUnsolicitedLossCounter(SecondaryIdx));
+	EXPECT_EQ(0u, entity.getAemAecpUnsolicitedLossCounter(PrimaryIdx));
+	EXPECT_EQ(1u, entity.incrementMvuAecpUnsolicitedCounter(SecondaryIdx));
+	EXPECT_EQ(0u, entity.getMvuAecpUnsolicitedCounter(PrimaryIdx));
+	EXPECT_EQ(1u, entity.incrementMvuAecpUnsolicitedLossCounter(PrimaryIdx));
+	EXPECT_EQ(0u, entity.getMvuAecpUnsolicitedLossCounter(SecondaryIdx));
+
+	// Each interface computes its own response-time average
+	EXPECT_EQ(std::chrono::milliseconds{ 10 }, entity.updateAecpResponseTimeAverage(std::chrono::milliseconds{ 10 }, PrimaryIdx));
+	EXPECT_EQ(std::chrono::milliseconds{ 15 }, entity.updateAecpResponseTimeAverage(std::chrono::milliseconds{ 20 }, PrimaryIdx));
+	EXPECT_EQ(std::chrono::milliseconds{ 100 }, entity.updateAecpResponseTimeAverage(std::chrono::milliseconds{ 100 }, SecondaryIdx));
+	EXPECT_EQ(std::chrono::milliseconds{ 15 }, entity.getAecpResponseAverageTime(PrimaryIdx));
+	EXPECT_EQ(std::chrono::milliseconds{ 100 }, entity.getAecpResponseAverageTime(SecondaryIdx));
+}
+
+/*
+ * Statistics dump/load: entity dumps are written using the per-interface statistics format; files using the
+ * flat statistics format are still loadable, their counters applying to the Primary interface.
+ */
+TEST(Controller, StatisticsJsonFormats)
+{
+	static auto constexpr PrimaryIdx = la::avdecc::controller::InterfaceType::Primary;
+	static auto constexpr SecondaryIdx = la::avdecc::controller::InterfaceType::Secondary;
+	static auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x0000000000000012 };
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	auto const dumpPath = (std::filesystem::temp_directory_path() / "la_avdecc_stats_dump_test.json").string();
+
+	// Load a flat-format entity dump: statistics must apply to the Primary interface
+	{
+		auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0021, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+		{
+			auto const [error, message] = controller->loadVirtualEntityFromJson("data/MediaClockModel/Entity_0x12.json", flags);
+			ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error) << message;
+		}
+		{
+			auto const entity = controller->getControlledEntityGuard(EntityID);
+			ASSERT_TRUE(!!entity);
+			EXPECT_EQ(std::chrono::milliseconds{ 15 }, entity->getAecpResponseAverageTime(PrimaryIdx));
+			EXPECT_EQ(std::chrono::milliseconds{ 0 }, entity->getAecpResponseAverageTime(SecondaryIdx));
+		}
+		// Dump the entity: the file must use the per-interface statistics format
+		{
+			auto const [error, message] = controller->serializeControlledEntityAsJson(EntityID, dumpPath, flags, "unit test");
+			ASSERT_EQ(la::avdecc::jsonSerializer::SerializationError::NoError, error) << message;
+		}
+	}
+
+	// Validate the written format
+	{
+		auto ifs = std::ifstream{ dumpPath };
+		auto const object = nlohmann::json::parse(ifs);
+		auto const& statistics = object.at("statistics");
+		ASSERT_TRUE(statistics.find("primary") != statistics.end());
+		ASSERT_TRUE(statistics.find("secondary") != statistics.end());
+		EXPECT_TRUE(statistics.find("aecp_retry_counter") == statistics.end()) << "Counters must be nested in the per-interface objects";
+		EXPECT_EQ(15, statistics.at("primary").at("aecp_response_average_time").get<int>());
+		EXPECT_EQ(0, statistics.at("secondary").at("aecp_response_average_time").get<int>());
+		EXPECT_TRUE(statistics.find("enumeration_time") != statistics.end());
+	}
+
+	// Reload the per-interface file: statistics must land on the same interfaces
+	{
+		auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0022, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+		{
+			auto const [error, message] = controller->loadVirtualEntityFromJson(dumpPath, flags);
+			ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error) << message;
+		}
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_EQ(std::chrono::milliseconds{ 15 }, entity->getAecpResponseAverageTime(PrimaryIdx));
+		EXPECT_EQ(std::chrono::milliseconds{ 0 }, entity->getAecpResponseAverageTime(SecondaryIdx));
+	}
+
+	std::filesystem::remove(dumpPath);
 }
 
 namespace
@@ -1899,7 +2010,7 @@ public:
 	{
 		bool isSubscribed{ false };
 		bool triggeredByEntity{ false };
-		la::avdecc::controller::Controller::InterfaceType interfaceType{ la::avdecc::controller::Controller::InterfaceType::Primary };
+		la::avdecc::controller::InterfaceType interfaceType{ la::avdecc::controller::InterfaceType::Primary };
 	};
 
 	std::vector<Event> getEvents() const noexcept
@@ -1915,7 +2026,7 @@ public:
 	}
 
 private:
-	virtual void onUnsolicitedRegistrationChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, bool const isSubscribed, bool const triggeredByEntity, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept override
+	virtual void onUnsolicitedRegistrationChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, bool const isSubscribed, bool const triggeredByEntity, la::avdecc::controller::InterfaceType const interfaceType) noexcept override
 	{
 		auto const lg = std::lock_guard{ _lock };
 		_events.push_back(Event{ isSubscribed, triggeredByEntity, interfaceType });
@@ -2015,10 +2126,19 @@ TEST(Controller, DualPiUnsolLossOnOneInterfaceRecoversWithoutDroppingSubscriptio
 		ASSERT_EQ(2u, events.size()) << "Expected exactly one unsubscribed + one subscribed event on the Secondary interface";
 		EXPECT_FALSE(events[0].isSubscribed);
 		EXPECT_FALSE(events[0].triggeredByEntity);
-		EXPECT_EQ(la::avdecc::controller::Controller::InterfaceType::Secondary, events[0].interfaceType);
+		EXPECT_EQ(la::avdecc::controller::InterfaceType::Secondary, events[0].interfaceType);
 		EXPECT_TRUE(events[1].isSubscribed);
-		EXPECT_EQ(la::avdecc::controller::Controller::InterfaceType::Secondary, events[1].interfaceType);
+		EXPECT_EQ(la::avdecc::controller::InterfaceType::Secondary, events[1].interfaceType);
 		unsolObs.clearEvents();
+	}
+	// The statistics counters are maintained per interface: the Primary received 2 unsols (no loss), the Secondary 3 unsols (1 loss).
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_EQ(2u, entity->getAemAecpUnsolicitedCounter(la::avdecc::controller::InterfaceType::Primary));
+		EXPECT_EQ(3u, entity->getAemAecpUnsolicitedCounter(la::avdecc::controller::InterfaceType::Secondary));
+		EXPECT_EQ(0u, entity->getAemAecpUnsolicitedLossCounter(la::avdecc::controller::InterfaceType::Primary));
+		EXPECT_EQ(1u, entity->getAemAecpUnsolicitedLossCounter(la::avdecc::controller::InterfaceType::Secondary));
 	}
 
 	// The re-registration must have reset the expected sequenceID baseline: a fresh seqID=0 on Secondary is accepted without loss.
@@ -2045,9 +2165,9 @@ TEST(Controller, DualPiUnsolLossOnOneInterfaceRecoversWithoutDroppingSubscriptio
 		auto const events = unsolObs.getEvents();
 		ASSERT_EQ(2u, events.size()) << "Expected exactly one unsubscribed + one subscribed event on the Primary interface";
 		EXPECT_FALSE(events[0].isSubscribed);
-		EXPECT_EQ(la::avdecc::controller::Controller::InterfaceType::Primary, events[0].interfaceType);
+		EXPECT_EQ(la::avdecc::controller::InterfaceType::Primary, events[0].interfaceType);
 		EXPECT_TRUE(events[1].isSubscribed);
-		EXPECT_EQ(la::avdecc::controller::Controller::InterfaceType::Primary, events[1].interfaceType);
+		EXPECT_EQ(la::avdecc::controller::InterfaceType::Primary, events[1].interfaceType);
 	}
 }
 
@@ -2150,9 +2270,9 @@ TEST(Controller, DualPiUnsolLossOnBothInterfacesDropsSubscription)
 		auto const events = unsolObs.getEvents();
 		ASSERT_EQ(2u, events.size()) << "Expected exactly one unsubscribed event per interface";
 		EXPECT_FALSE(events[0].isSubscribed);
-		EXPECT_EQ(la::avdecc::controller::Controller::InterfaceType::Secondary, events[0].interfaceType);
+		EXPECT_EQ(la::avdecc::controller::InterfaceType::Secondary, events[0].interfaceType);
 		EXPECT_FALSE(events[1].isSubscribed);
-		EXPECT_EQ(la::avdecc::controller::Controller::InterfaceType::Primary, events[1].interfaceType);
+		EXPECT_EQ(la::avdecc::controller::InterfaceType::Primary, events[1].interfaceType);
 		unsolObs.clearEvents();
 	}
 

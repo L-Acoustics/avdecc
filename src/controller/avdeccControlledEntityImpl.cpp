@@ -655,44 +655,44 @@ entity::model::StreamConnections const& ControlledEntityImpl::getStreamOutputCon
 }
 
 // Statistics
-std::uint64_t ControlledEntityImpl::getAecpRetryCounter() const noexcept
+std::uint64_t ControlledEntityImpl::getAecpRetryCounter(la::avdecc::controller::InterfaceType const interfaceType) const noexcept
 {
-	return _aecpRetryCounter;
+	return getInterfaceStatistics(interfaceType).aecpRetryCounter;
 }
 
-std::uint64_t ControlledEntityImpl::getAecpTimeoutCounter() const noexcept
+std::uint64_t ControlledEntityImpl::getAecpTimeoutCounter(la::avdecc::controller::InterfaceType const interfaceType) const noexcept
 {
-	return _aecpTimeoutCounter;
+	return getInterfaceStatistics(interfaceType).aecpTimeoutCounter;
 }
 
-std::uint64_t ControlledEntityImpl::getAecpUnexpectedResponseCounter() const noexcept
+std::uint64_t ControlledEntityImpl::getAecpUnexpectedResponseCounter(la::avdecc::controller::InterfaceType const interfaceType) const noexcept
 {
-	return _aecpUnexpectedResponseCounter;
+	return getInterfaceStatistics(interfaceType).aecpUnexpectedResponseCounter;
 }
 
-std::chrono::milliseconds const& ControlledEntityImpl::getAecpResponseAverageTime() const noexcept
+std::chrono::milliseconds const& ControlledEntityImpl::getAecpResponseAverageTime(la::avdecc::controller::InterfaceType const interfaceType) const noexcept
 {
-	return _aecpResponseAverageTime;
+	return getInterfaceStatistics(interfaceType).aecpResponseAverageTime;
 }
 
-std::uint64_t ControlledEntityImpl::getAemAecpUnsolicitedCounter() const noexcept
+std::uint64_t ControlledEntityImpl::getAemAecpUnsolicitedCounter(la::avdecc::controller::InterfaceType const interfaceType) const noexcept
 {
-	return _aemAecpUnsolicitedCounter;
+	return getInterfaceStatistics(interfaceType).aemAecpUnsolicitedCounter;
 }
 
-std::uint64_t ControlledEntityImpl::getAemAecpUnsolicitedLossCounter() const noexcept
+std::uint64_t ControlledEntityImpl::getAemAecpUnsolicitedLossCounter(la::avdecc::controller::InterfaceType const interfaceType) const noexcept
 {
-	return _aemAecpUnsolicitedLossCounter;
+	return getInterfaceStatistics(interfaceType).aemAecpUnsolicitedLossCounter;
 }
 
-std::uint64_t ControlledEntityImpl::getMvuAecpUnsolicitedCounter() const noexcept
+std::uint64_t ControlledEntityImpl::getMvuAecpUnsolicitedCounter(la::avdecc::controller::InterfaceType const interfaceType) const noexcept
 {
-	return _mvuAecpUnsolicitedCounter;
+	return getInterfaceStatistics(interfaceType).mvuAecpUnsolicitedCounter;
 }
 
-std::uint64_t ControlledEntityImpl::getMvuAecpUnsolicitedLossCounter() const noexcept
+std::uint64_t ControlledEntityImpl::getMvuAecpUnsolicitedLossCounter(la::avdecc::controller::InterfaceType const interfaceType) const noexcept
 {
-	return _mvuAecpUnsolicitedLossCounter;
+	return getInterfaceStatistics(interfaceType).mvuAecpUnsolicitedLossCounter;
 }
 
 std::chrono::milliseconds const& ControlledEntityImpl::getEnumerationTime() const noexcept
@@ -1632,44 +1632,44 @@ void ControlledEntityImpl::setSystemUniqueID(UniqueIdentifier const uniqueID, en
 }
 
 // Setters of the Statistics
-void ControlledEntityImpl::setAecpRetryCounter(std::uint64_t const value) noexcept
+void ControlledEntityImpl::setAecpRetryCounter(std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	_aecpRetryCounter = value;
+	getInterfaceStatistics(interfaceType).aecpRetryCounter = value;
 }
 
-void ControlledEntityImpl::setAecpTimeoutCounter(std::uint64_t const value) noexcept
+void ControlledEntityImpl::setAecpTimeoutCounter(std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	_aecpTimeoutCounter = value;
+	getInterfaceStatistics(interfaceType).aecpTimeoutCounter = value;
 }
 
-void ControlledEntityImpl::setAecpUnexpectedResponseCounter(std::uint64_t const value) noexcept
+void ControlledEntityImpl::setAecpUnexpectedResponseCounter(std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	_aecpUnexpectedResponseCounter = value;
+	getInterfaceStatistics(interfaceType).aecpUnexpectedResponseCounter = value;
 }
 
-void ControlledEntityImpl::setAecpResponseAverageTime(std::chrono::milliseconds const& value) noexcept
+void ControlledEntityImpl::setAecpResponseAverageTime(std::chrono::milliseconds const& value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	_aecpResponseAverageTime = value;
+	getInterfaceStatistics(interfaceType).aecpResponseAverageTime = value;
 }
 
-void ControlledEntityImpl::setAemAecpUnsolicitedCounter(std::uint64_t const value) noexcept
+void ControlledEntityImpl::setAemAecpUnsolicitedCounter(std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	_aemAecpUnsolicitedCounter = value;
+	getInterfaceStatistics(interfaceType).aemAecpUnsolicitedCounter = value;
 }
 
-void ControlledEntityImpl::setAemAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept
+void ControlledEntityImpl::setAemAecpUnsolicitedLossCounter(std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	_aemAecpUnsolicitedLossCounter = value;
+	getInterfaceStatistics(interfaceType).aemAecpUnsolicitedLossCounter = value;
 }
 
-void ControlledEntityImpl::setMvuAecpUnsolicitedCounter(std::uint64_t const value) noexcept
+void ControlledEntityImpl::setMvuAecpUnsolicitedCounter(std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	_mvuAecpUnsolicitedCounter = value;
+	getInterfaceStatistics(interfaceType).mvuAecpUnsolicitedCounter = value;
 }
 
-void ControlledEntityImpl::setMvuAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept
+void ControlledEntityImpl::setMvuAecpUnsolicitedLossCounter(std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	_mvuAecpUnsolicitedLossCounter = value;
+	getInterfaceStatistics(interfaceType).mvuAecpUnsolicitedLossCounter = value;
 }
 
 void ControlledEntityImpl::setEnumerationTime(std::chrono::milliseconds const& value) noexcept
@@ -2321,55 +2321,83 @@ void ControlledEntityImpl::setPtpPortDescriptor(entity::model::PtpPortDescriptor
 }
 
 // Setters of statistics
-std::uint64_t ControlledEntityImpl::incrementAecpRetryCounter() noexcept
+ControlledEntityImpl::InterfaceStatistics& ControlledEntityImpl::getInterfaceStatistics(la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	++_aecpRetryCounter;
-	return _aecpRetryCounter;
+	auto const idx = la::avdecc::utils::to_integral(interfaceType);
+	if (!AVDECC_ASSERT_WITH_RET(idx < _statisticsPerInterface.size(), "Invalid InterfaceType value"))
+	{
+		return _statisticsPerInterface[0u];
+	}
+	return _statisticsPerInterface[idx];
 }
 
-std::uint64_t ControlledEntityImpl::incrementAecpTimeoutCounter() noexcept
+ControlledEntityImpl::InterfaceStatistics const& ControlledEntityImpl::getInterfaceStatistics(la::avdecc::controller::InterfaceType const interfaceType) const noexcept
 {
-	++_aecpTimeoutCounter;
-	return _aecpTimeoutCounter;
+	auto const idx = la::avdecc::utils::to_integral(interfaceType);
+	if (!AVDECC_ASSERT_WITH_RET(idx < _statisticsPerInterface.size(), "Invalid InterfaceType value"))
+	{
+		return _statisticsPerInterface[0u];
+	}
+	return _statisticsPerInterface[idx];
 }
 
-std::uint64_t ControlledEntityImpl::incrementAecpUnexpectedResponseCounter() noexcept
+std::uint64_t ControlledEntityImpl::incrementAecpRetryCounter(la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	++_aecpUnexpectedResponseCounter;
-	return _aecpUnexpectedResponseCounter;
+	auto& statistics = getInterfaceStatistics(interfaceType);
+	++statistics.aecpRetryCounter;
+	return statistics.aecpRetryCounter;
 }
 
-std::chrono::milliseconds const& ControlledEntityImpl::updateAecpResponseTimeAverage(std::chrono::milliseconds const& responseTime) noexcept
+std::uint64_t ControlledEntityImpl::incrementAecpTimeoutCounter(la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	++_aecpResponsesCount;
-	_aecpResponseTimeSum += responseTime;
-	_aecpResponseAverageTime = _aecpResponseTimeSum / _aecpResponsesCount;
-
-	return _aecpResponseAverageTime;
+	auto& statistics = getInterfaceStatistics(interfaceType);
+	++statistics.aecpTimeoutCounter;
+	return statistics.aecpTimeoutCounter;
 }
 
-std::uint64_t ControlledEntityImpl::incrementAemAecpUnsolicitedCounter() noexcept
+std::uint64_t ControlledEntityImpl::incrementAecpUnexpectedResponseCounter(la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	++_aemAecpUnsolicitedCounter;
-	return _aemAecpUnsolicitedCounter;
+	auto& statistics = getInterfaceStatistics(interfaceType);
+	++statistics.aecpUnexpectedResponseCounter;
+	return statistics.aecpUnexpectedResponseCounter;
 }
 
-std::uint64_t ControlledEntityImpl::incrementAemAecpUnsolicitedLossCounter() noexcept
+std::chrono::milliseconds const& ControlledEntityImpl::updateAecpResponseTimeAverage(std::chrono::milliseconds const& responseTime, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	++_aemAecpUnsolicitedLossCounter;
-	return _aemAecpUnsolicitedLossCounter;
+	auto& statistics = getInterfaceStatistics(interfaceType);
+	++statistics.aecpResponsesCount;
+	statistics.aecpResponseTimeSum += responseTime;
+	statistics.aecpResponseAverageTime = statistics.aecpResponseTimeSum / statistics.aecpResponsesCount;
+
+	return statistics.aecpResponseAverageTime;
 }
 
-std::uint64_t ControlledEntityImpl::incrementMvuAecpUnsolicitedCounter() noexcept
+std::uint64_t ControlledEntityImpl::incrementAemAecpUnsolicitedCounter(la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	++_mvuAecpUnsolicitedCounter;
-	return _mvuAecpUnsolicitedCounter;
+	auto& statistics = getInterfaceStatistics(interfaceType);
+	++statistics.aemAecpUnsolicitedCounter;
+	return statistics.aemAecpUnsolicitedCounter;
 }
 
-std::uint64_t ControlledEntityImpl::incrementMvuAecpUnsolicitedLossCounter() noexcept
+std::uint64_t ControlledEntityImpl::incrementAemAecpUnsolicitedLossCounter(la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	++_mvuAecpUnsolicitedLossCounter;
-	return _mvuAecpUnsolicitedLossCounter;
+	auto& statistics = getInterfaceStatistics(interfaceType);
+	++statistics.aemAecpUnsolicitedLossCounter;
+	return statistics.aemAecpUnsolicitedLossCounter;
+}
+
+std::uint64_t ControlledEntityImpl::incrementMvuAecpUnsolicitedCounter(la::avdecc::controller::InterfaceType const interfaceType) noexcept
+{
+	auto& statistics = getInterfaceStatistics(interfaceType);
+	++statistics.mvuAecpUnsolicitedCounter;
+	return statistics.mvuAecpUnsolicitedCounter;
+}
+
+std::uint64_t ControlledEntityImpl::incrementMvuAecpUnsolicitedLossCounter(la::avdecc::controller::InterfaceType const interfaceType) noexcept
+{
+	auto& statistics = getInterfaceStatistics(interfaceType);
+	++statistics.mvuAecpUnsolicitedLossCounter;
+	return statistics.mvuAecpUnsolicitedLossCounter;
 }
 
 void ControlledEntityImpl::setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept
@@ -2805,11 +2833,11 @@ void ControlledEntityImpl::setNotUsingCachedEntityModel() noexcept
 	_isUsingCachedEntityModel = false;
 }
 
-void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const isSubscribed, std::optional<la::avdecc::controller::Controller::InterfaceType> const interfaceType) noexcept
+void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const isSubscribed, std::optional<la::avdecc::controller::InterfaceType> const interfaceType) noexcept
 {
 	// Iterate every PI slot and mutate the ones matching the requested scope (a single PI when interfaceType is set, every PI otherwise).
 	// On unsubscribe, the affected PI's expected sequence IDs are also reset; touching the other PI's slots would corrupt its loss tracking when only one PI lost its subscription (e.g. a transient cable disconnection on this PI causing the entity to send a DEREGISTER targeted at this PI only).
-	for (auto const currentType : la::avdecc::controller::Controller::AllInterfaceTypes)
+	for (auto const currentType : la::avdecc::controller::AllInterfaceTypes)
 	{
 		if (!interfaceType.has_value() || *interfaceType == currentType)
 		{
@@ -2827,7 +2855,7 @@ void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const is
 	}
 }
 
-bool ControlledEntityImpl::isSubscribedToUnsolicitedNotifications(la::avdecc::controller::Controller::InterfaceType const interfaceType) const noexcept
+bool ControlledEntityImpl::isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType const interfaceType) const noexcept
 {
 	auto const idx = la::avdecc::utils::to_integral(interfaceType);
 	if (!AVDECC_ASSERT_WITH_RET(idx < _isSubscribedToUnsolicitedNotificationsPerInterface.size(), "Invalid InterfaceType value"))
@@ -2909,7 +2937,7 @@ ControlledEntity::Diagnostics& ControlledEntityImpl::getDiagnostics() noexcept
 	return _diagnostics;
 }
 
-bool ControlledEntityImpl::hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept
+bool ControlledEntityImpl::hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
 	auto const idx = la::avdecc::utils::to_integral(interfaceType);
 	if (!AVDECC_ASSERT_WITH_RET(idx < _isSubscribedToUnsolicitedNotificationsPerInterface.size(), "Invalid InterfaceType value"))
@@ -2932,7 +2960,7 @@ bool ControlledEntityImpl::hasLostUnsolicitedNotification(protocol::AecpSequence
 	return unmatched;
 }
 
-bool ControlledEntityImpl::hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept
+bool ControlledEntityImpl::hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
 	auto const idx = la::avdecc::utils::to_integral(interfaceType);
 	if (!AVDECC_ASSERT_WITH_RET(idx < _expectedAemSequenceID.size(), "Invalid InterfaceType value"))
@@ -2942,7 +2970,7 @@ bool ControlledEntityImpl::hasLostAemUnsolicitedNotification(protocol::AecpSeque
 	return hasLostUnsolicitedNotification(sequenceID, _expectedAemSequenceID[idx], interfaceType);
 }
 
-bool ControlledEntityImpl::hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept
+bool ControlledEntityImpl::hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
 	auto const idx = la::avdecc::utils::to_integral(interfaceType);
 	if (!AVDECC_ASSERT_WITH_RET(idx < _expectedMvuSequenceID.size(), "Invalid InterfaceType value"))
@@ -2952,7 +2980,7 @@ bool ControlledEntityImpl::hasLostMvuUnsolicitedNotification(protocol::AecpSeque
 	return hasLostUnsolicitedNotification(sequenceID, _expectedMvuSequenceID[idx], interfaceType);
 }
 
-void ControlledEntityImpl::resetExpectedUnsolicitedSequenceID(la::avdecc::controller::Controller::InterfaceType const interfaceType) noexcept
+void ControlledEntityImpl::resetExpectedUnsolicitedSequenceID(la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
 	auto const idx = la::avdecc::utils::to_integral(interfaceType);
 	if (!AVDECC_ASSERT_WITH_RET(idx < _expectedAemSequenceID.size(), "Invalid InterfaceType value"))
