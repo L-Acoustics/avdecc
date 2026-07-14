@@ -207,6 +207,7 @@ public:
 	virtual bool isPackedDynamicInfoSupported() const noexcept override;
 	virtual bool isUsingCachedEntityModel() const noexcept override;
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept override;
+	virtual bool isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType const interfaceType) const noexcept override;
 	virtual bool areUnsolicitedNotificationsSupported() const noexcept override;
 	virtual bool isAcquired() const noexcept override;
 	virtual bool isAcquireCommandInProgress() const noexcept override;
@@ -484,8 +485,6 @@ public:
 	 * @param[in] interfaceType The targeted PI, or std::nullopt to apply to every PI at once.
 	 */
 	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed, std::optional<la::avdecc::controller::InterfaceType> const interfaceType = std::nullopt) noexcept;
-	/** Returns true if the specified PI currently holds an unsolicited-notifications subscription (per-PI granularity, unlike the global #isSubscribedToUnsolicitedNotifications() which ORs all PIs). */
-	bool isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType const interfaceType) const noexcept;
 	void setUnsolicitedNotificationsSupported(bool const isSupported) noexcept;
 	bool wasAdvertised() const noexcept;
 	void setAdvertised(bool const wasAdvertised) noexcept;

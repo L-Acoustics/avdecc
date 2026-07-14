@@ -2089,6 +2089,13 @@ TEST(Controller, DualPiUnsolLossOnOneInterfaceRecoversWithoutDroppingSubscriptio
 	auto const basePrimaryRegisterCount = primaryEntity.getRegisterCount();
 	auto const baseSecondaryRegisterCount = secondaryEntity.getRegisterCount();
 	unsolObs.clearEvents();
+	// Both interfaces hold their own subscription (per-interface public getter)
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_TRUE(entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Primary));
+		EXPECT_TRUE(entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Secondary));
+	}
 
 	// Establish sequenceID baselines on both PIs, then advance without gap: no loss must be detected.
 	primaryEntity.sendUnsolNotification(0u);

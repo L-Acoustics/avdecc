@@ -176,7 +176,8 @@ public:
 	virtual bool gotFatalEnumerationError() const noexcept = 0; // True if the controller had a fatal error during entity information retrieval (leading to Exception::Type::EnumerationError if any throwing method is called).
 	virtual bool isPackedDynamicInfoSupported() const noexcept = 0; // True if the entity supports GET_DYNAMIC_INFO
 	virtual bool isUsingCachedEntityModel() const noexcept = 0; // True if the entity model was loaded from the cache
-	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept = 0;
+	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept = 0; // Global subscription state: true if subscribed on at least one interface
+	virtual bool isSubscribedToUnsolicitedNotifications(InterfaceType const interfaceType) const noexcept = 0; // Per-interface subscription state: true if the specified interface holds a subscription (each interface is a separate subscriber on the entity side)
 	virtual bool areUnsolicitedNotificationsSupported() const noexcept = 0;
 	virtual bool isAcquired() const noexcept = 0; // Is entity acquired by the controller it's attached to
 	virtual bool isAcquireCommandInProgress() const noexcept = 0; // Is the attached controller trying to acquire or release the entity

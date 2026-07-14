@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - New `InterfaceType` enum (`Primary`, `Secondary`) and `Controller::InterfaceConfiguration` struct
   - New `Controller::getControllerEID(InterfaceType)` accessor to retrieve the per-PI controller EID
   - New `Error::InvalidInterfaceConfiguration` error code (value 9)
+  - New `ControlledEntity::isSubscribedToUnsolicitedNotifications(InterfaceType)` overload to query the per-interface state (the parameterless getter still returns the global state)
   - Automatic ADP deduplication when the same entity is advertised on both physical interfaces (single `ControlledEntity`, merged `InterfacesInformation`, single `onEntityOnline`/`onEntityOffline` lifecycle)
   - Automatic command auto-retry on the alternate physical interface for transient transport-class errors (AEM/AA/MVU: `TimedOut`, `UnknownEntity`, `NetworkError`; ACMP: `TimedOut`, `ListenerUnknownID`, `TalkerUnknownID`, `NetworkError`)
   - C# bindings updated accordingly (new `InterfaceType` enum, `InterfaceConfiguration`, and `createRedundant` factory)
