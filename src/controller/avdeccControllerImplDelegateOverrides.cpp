@@ -250,6 +250,9 @@ void ControllerImpl::onEntityOffline(entity::controller::Interface const* const 
 
 			auto const reducedEntity = entity::Entity{ controlledEntity->getEntity().getCommonInformation(), reducedInterfaces };
 			updateEntity(*controlledEntity, reducedEntity);
+
+			// Losing the PI also loses its unsolicited-notification subscriber on the entity side: reflect it on the ControlledEntity's per-PI subscription state and notify observers (setEntityReachable() above already reset the proxy's own per-PI unsol bookkeeping, but not the ControlledEntity's). The user-facing aggregate subscription state stays 'subscribed' as long as the other PI keeps its subscription; only the per-PI Secondary/Primary state flips. Passing false unconditionally is safe: updateUnsolicitedNotificationsSubscription only notifies when the per-PI state actually changed (no event if this PI was not subscribed).
+			updateUnsolicitedNotificationsSubscription(*controlledEntity, false, false, interfaceType);
 		}
 		return;
 	}

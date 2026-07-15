@@ -2345,6 +2345,100 @@ TEST(Controller, DualPiUnsolLossOnBothInterfacesDropsSubscription)
 }
 
 /*
+ * Dual-PI redundancy: an entity subscribed to unsolicited notifications on BOTH PIs loses one PI entirely (ADP
+ * departing/timeout -> onEntityOffline). Losing the PI also loses its unsolicited-notification subscriber on the
+ * entity side, so the controller must:
+ *   - remove the dead PI's contributed interface and emit onEntityRedundantInterfaceOffline (pre-existing behavior), AND
+ *   - flip the ControlledEntity's per-PI subscription state for the dead PI to 'unsubscribed' and emit
+ *     onUnsolicitedRegistrationChanged for it (the pre-fix bug: this event was never emitted because setEntityReachable
+ *     only reset the proxy's private per-PI unsol bookkeeping, never the ControlledEntity's).
+ * The user-facing aggregate subscription state must stay 'subscribed' (the surviving PI still holds a subscription).
+ */
+TEST(Controller, DualPiEntityOfflineOnOnePiUnsubscribesThatInterface)
+{
+	static auto constexpr PrimaryBusName = "DualPIOfflineUnsol_Primary";
+	static auto constexpr SecondaryBusName = "DualPIOfflineUnsol_Secondary";
+	constexpr auto EntityID = la::avdecc::UniqueIdentifier{ 0x00CAFEBABE0000A5 };
+
+	auto const executors = registerDualPiExecutors("DualPIOfflineUnsol_Ex");
+
+	auto interfaceConfigurations = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ executors.primaryExecutorName } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ executors.secondaryExecutorName } });
+	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0015, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
+
+	auto unsolObs = UnsolRegistrationObserver{};
+	controller->registerObserver(&unsolObs);
+
+	auto primaryEntity = UnsolTestEntity{ PrimaryBusName, { { 0xA9, 0x06, 0x05, 0x04, 0x03, 0x02 } }, executors.primaryExecutorName, EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 0u } };
+	auto secondaryEntity = UnsolTestEntity{ SecondaryBusName, { { 0xAA, 0x06, 0x05, 0x04, 0x03, 0x02 } }, executors.secondaryExecutorName, EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 1u } };
+
+	// Bring the entity online on both buses and wait for both per-PI unsolicited registrations.
+	primaryEntity.sendAdpAvailable();
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	secondaryEntity.sendAdpAvailable();
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			return primaryEntity.getRegisterCount() >= 1u && secondaryEntity.getRegisterCount() >= 1u;
+		},
+		std::chrono::seconds(5)))
+		<< "Initial per-PI unsolicited registrations not seen";
+	// Wait for the entity to be advertised and subscribed on BOTH PIs (per-PI registration responses processed).
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			auto const entity = controller->getControlledEntityGuard(EntityID);
+			return !!entity && entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Primary) && entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Secondary);
+		},
+		std::chrono::seconds(5)))
+		<< "Entity not subscribed to unsolicited notifications on both PIs";
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	// Both interfaces are known and both subscriptions are held.
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_EQ(2u, entity->getEntity().getInterfacesInformation().size());
+		EXPECT_TRUE(entity->isSubscribedToUnsolicitedNotifications());
+		EXPECT_TRUE(entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Primary));
+		EXPECT_TRUE(entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Secondary));
+	}
+	unsolObs.clearEvents();
+
+	// Lose the entity entirely on the Secondary PI (ADP departing -> onEntityOffline for that PI while still reachable on Primary).
+	secondaryEntity.sendAdpDeparting();
+
+	// The Secondary's interface must be removed and its per-PI subscription flipped to 'unsubscribed'.
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			auto const entity = controller->getControlledEntityGuard(EntityID);
+			return !!entity && entity->getEntity().getInterfacesInformation().size() == 1u && !entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Secondary);
+		},
+		std::chrono::seconds(5)))
+		<< "Secondary interface not removed or its per-PI subscription not flipped to unsubscribed";
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		// The Primary PI still holds its subscription: the user-facing aggregate state stays 'subscribed'.
+		EXPECT_TRUE(entity->isSubscribedToUnsolicitedNotifications()) << "The user-facing aggregate subscription state must remain 'subscribed' while the Primary PI keeps its subscription";
+		EXPECT_TRUE(entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Primary)) << "The healthy (Primary) PI subscription must be untouched";
+		EXPECT_FALSE(entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Secondary)) << "The lost (Secondary) PI must no longer be subscribed";
+	}
+	// Exactly one onUnsolicitedRegistrationChanged event, for the Secondary interface, unsubscribed (this is the event the pre-fix code never emitted).
+	{
+		auto const events = unsolObs.getEvents();
+		ASSERT_EQ(1u, events.size()) << "Expected exactly one per-interface subscription event (Secondary unsubscribed)";
+		EXPECT_FALSE(events[0].isSubscribed);
+		EXPECT_FALSE(events[0].triggeredByEntity) << "The change was detected by the controller (PI loss), not triggered by an entity-side deregistration";
+		EXPECT_EQ(la::avdecc::controller::InterfaceType::Secondary, events[0].interfaceType);
+	}
+
+	controller->unregisterObserver(&unsolObs);
+}
+
+/*
  * TESTING https://github.com/L-Acoustics/avdecc/issues/86
  * Controller should properly handle redundancy
  */
