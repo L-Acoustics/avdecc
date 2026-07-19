@@ -144,14 +144,19 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 		if (flags.test(entity::model::jsonSerializer::Flag::ProcessStatistics))
 		{
 			auto& statistics = object[keyName::ControlledEntity_Statistics];
-			statistics[controller::keyName::ControlledEntityStatistics_AecpRetryCounter] = entity.getAecpRetryCounter();
-			statistics[controller::keyName::ControlledEntityStatistics_AecpTimeoutCounter] = entity.getAecpTimeoutCounter();
-			statistics[controller::keyName::ControlledEntityStatistics_AecpUnexpectedResponseCounter] = entity.getAecpUnexpectedResponseCounter();
-			statistics[controller::keyName::ControlledEntityStatistics_AecpResponseAverageTime] = entity.getAecpResponseAverageTime();
-			statistics[controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedCounter] = entity.getAemAecpUnsolicitedCounter();
-			statistics[controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedLossCounter] = entity.getAemAecpUnsolicitedLossCounter();
-			statistics[controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedCounter] = entity.getMvuAecpUnsolicitedCounter();
-			statistics[controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedLossCounter] = entity.getMvuAecpUnsolicitedLossCounter();
+			// Each interface has its own set of counters
+			for (auto const interfaceType : AllInterfaceTypes)
+			{
+				auto& interfaceStatistics = statistics[(interfaceType == InterfaceType::Primary) ? controller::keyName::ControlledEntityStatistics_PrimaryInterface : controller::keyName::ControlledEntityStatistics_SecondaryInterface];
+				interfaceStatistics[controller::keyName::ControlledEntityStatistics_AecpRetryCounter] = entity.getAecpRetryCounter(interfaceType);
+				interfaceStatistics[controller::keyName::ControlledEntityStatistics_AecpTimeoutCounter] = entity.getAecpTimeoutCounter(interfaceType);
+				interfaceStatistics[controller::keyName::ControlledEntityStatistics_AecpUnexpectedResponseCounter] = entity.getAecpUnexpectedResponseCounter(interfaceType);
+				interfaceStatistics[controller::keyName::ControlledEntityStatistics_AecpResponseAverageTime] = entity.getAecpResponseAverageTime(interfaceType);
+				interfaceStatistics[controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedCounter] = entity.getAemAecpUnsolicitedCounter(interfaceType);
+				interfaceStatistics[controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedLossCounter] = entity.getAemAecpUnsolicitedLossCounter(interfaceType);
+				interfaceStatistics[controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedCounter] = entity.getMvuAecpUnsolicitedCounter(interfaceType);
+				interfaceStatistics[controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedLossCounter] = entity.getMvuAecpUnsolicitedLossCounter(interfaceType);
+			}
 			statistics[controller::keyName::ControlledEntityStatistics_EnumerationTime] = entity.getEnumerationTime();
 		}
 
@@ -305,66 +310,87 @@ void setEntityState(ControlledEntityImpl& entity, json const& object)
 	}
 }
 
+static void setEntityInterfaceStatistics(ControlledEntityImpl& entity, json const& object, InterfaceType const interfaceType)
+{
+	// Everything is optional
+	{
+		auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpRetryCounter);
+		if (it != object.end())
+		{
+			entity.setAecpRetryCounter(it->get<std::uint64_t>(), interfaceType);
+		}
+	}
+	{
+		auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpTimeoutCounter);
+		if (it != object.end())
+		{
+			entity.setAecpTimeoutCounter(it->get<std::uint64_t>(), interfaceType);
+		}
+	}
+	{
+		auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpUnexpectedResponseCounter);
+		if (it != object.end())
+		{
+			entity.setAecpUnexpectedResponseCounter(it->get<std::uint64_t>(), interfaceType);
+		}
+	}
+	{
+		auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpResponseAverageTime);
+		if (it != object.end())
+		{
+			entity.setAecpResponseAverageTime(it->get<std::chrono::milliseconds>(), interfaceType);
+		}
+	}
+	{
+		auto const it = object.find(controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedCounter);
+		if (it != object.end())
+		{
+			entity.setAemAecpUnsolicitedCounter(it->get<std::uint64_t>(), interfaceType);
+		}
+	}
+	{
+		auto const it = object.find(controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedLossCounter);
+		if (it != object.end())
+		{
+			entity.setAemAecpUnsolicitedLossCounter(it->get<std::uint64_t>(), interfaceType);
+		}
+	}
+	{
+		auto const it = object.find(controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedCounter);
+		if (it != object.end())
+		{
+			entity.setMvuAecpUnsolicitedCounter(it->get<std::uint64_t>(), interfaceType);
+		}
+	}
+	{
+		auto const it = object.find(controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedLossCounter);
+		if (it != object.end())
+		{
+			entity.setMvuAecpUnsolicitedLossCounter(it->get<std::uint64_t>(), interfaceType);
+		}
+	}
+}
+
 void setEntityStatistics(ControlledEntityImpl& entity, json const& object)
 {
 	try
 	{
-		// Everything is optional
+		// Per-interface format: one object per interface
+		if (object.find(controller::keyName::ControlledEntityStatistics_PrimaryInterface) != object.end())
 		{
-			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpRetryCounter);
-			if (it != object.end())
+			for (auto const interfaceType : AllInterfaceTypes)
 			{
-				entity.setAecpRetryCounter(it->get<std::uint64_t>());
+				auto const it = object.find((interfaceType == InterfaceType::Primary) ? controller::keyName::ControlledEntityStatistics_PrimaryInterface : controller::keyName::ControlledEntityStatistics_SecondaryInterface);
+				if (it != object.end())
+				{
+					setEntityInterfaceStatistics(entity, *it, interfaceType);
+				}
 			}
 		}
+		// Flat format (files dumped before the per-interface format existed): counters apply to the Primary interface
+		else
 		{
-			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpTimeoutCounter);
-			if (it != object.end())
-			{
-				entity.setAecpTimeoutCounter(it->get<std::uint64_t>());
-			}
-		}
-		{
-			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpUnexpectedResponseCounter);
-			if (it != object.end())
-			{
-				entity.setAecpUnexpectedResponseCounter(it->get<std::uint64_t>());
-			}
-		}
-		{
-			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpResponseAverageTime);
-			if (it != object.end())
-			{
-				entity.setAecpResponseAverageTime(it->get<std::chrono::milliseconds>());
-			}
-		}
-		{
-			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedCounter);
-			if (it != object.end())
-			{
-				entity.setAemAecpUnsolicitedCounter(it->get<std::uint64_t>());
-			}
-		}
-		{
-			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedLossCounter);
-			if (it != object.end())
-			{
-				entity.setAemAecpUnsolicitedLossCounter(it->get<std::uint64_t>());
-			}
-		}
-		{
-			auto const it = object.find(controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedCounter);
-			if (it != object.end())
-			{
-				entity.setMvuAecpUnsolicitedCounter(it->get<std::uint64_t>());
-			}
-		}
-		{
-			auto const it = object.find(controller::keyName::ControlledEntityStatistics_MvuAecpUnsolicitedLossCounter);
-			if (it != object.end())
-			{
-				entity.setMvuAecpUnsolicitedLossCounter(it->get<std::uint64_t>());
-			}
+			setEntityInterfaceStatistics(entity, object, InterfaceType::Primary);
 		}
 		{
 			auto const it = object.find(controller::keyName::ControlledEntityStatistics_EnumerationTime);

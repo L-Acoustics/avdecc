@@ -113,7 +113,7 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 					shouldUpdate = true;
 				}
 			}
-			// The AvbInterface was not found in the previous stored entity. Looks like cable redundancy and we just discovered the other interface
+			// The AvbInterface was not found in the previous stored entity. Looks like redundancy (cable or Milan) and we just discovered the other interface
 			else
 			{
 				shouldUpdate = true;
@@ -212,7 +212,7 @@ void ControllerImpl::addCompatibilityFlag(ControllerImpl const* const controller
 
 		if (controller)
 		{
-			AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+			AVDECC_ASSERT(controller->isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 			// Entity was advertised to the user, notify observers
 			if (controlledEntity.wasAdvertised())
 			{
@@ -238,7 +238,7 @@ void ControllerImpl::setMisbehavingCompatibilityFlag(ControllerImpl const* const
 
 		if (controller)
 		{
-			AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+			AVDECC_ASSERT(controller->isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 			// Entity was advertised to the user, notify observers
 			if (controlledEntity.wasAdvertised())
 			{
@@ -268,7 +268,7 @@ void ControllerImpl::setMilanWarningCompatibilityFlag(ControllerImpl const* cons
 
 			if (controller)
 			{
-				AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+				AVDECC_ASSERT(controller->isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 				// Create a compatibilityChanged event
 				controlledEntity.addCompatibilityChangedEvent(ControlledEntity::CompatibilityChangedEvent{ oldFlags, oldMilanCompatibilityVersion, newFlags, newMilanCompatibilityVersion, specClause, message });
 				// Entity was advertised to the user, notify observers
@@ -331,7 +331,7 @@ void ControllerImpl::removeCompatibilityFlag(ControllerImpl const* const control
 
 		if (controller)
 		{
-			AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+			AVDECC_ASSERT(controller->isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 			// Create a compatibilityChanged event
 			controlledEntity.addCompatibilityChangedEvent(ControlledEntity::CompatibilityChangedEvent{ oldFlags, oldMilanCompatibilityVersion, newFlags, newMilanCompatibilityVersion, specClause, message });
 			// Entity was advertised to the user, notify observers
@@ -368,7 +368,7 @@ void ControllerImpl::decreaseMilanCompatibilityVersion(ControllerImpl const* con
 
 		if (controller)
 		{
-			AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+			AVDECC_ASSERT(controller->isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 			// Create a compatibilityChanged event
 			auto const compatibilityFlags = controlledEntity.getCompatibilityFlags();
 			controlledEntity.addCompatibilityChangedEvent(ControlledEntity::CompatibilityChangedEvent{ compatibilityFlags, oldMilanCompatibilityVersion, compatibilityFlags, version, specClause, message });
@@ -381,27 +381,41 @@ void ControllerImpl::decreaseMilanCompatibilityVersion(ControllerImpl const* con
 	}
 }
 
-void ControllerImpl::updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed, bool const triggeredByEntity) const noexcept
+void ControllerImpl::updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed, bool const triggeredByEntity, std::optional<InterfaceType> const interfaceType) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto const oldValue = controlledEntity.isSubscribedToUnsolicitedNotifications();
-
-	if (oldValue != isSubscribed)
+	// Capture the per-PI states before mutation so we only notify observers for the interfaces whose state actually changed.
+	auto oldValues = std::array<bool, NumInterfaces>{};
+	for (auto const currentType : AllInterfaceTypes)
 	{
-		controlledEntity.setSubscribedToUnsolicitedNotifications(isSubscribed);
+		oldValues[utils::to_integral(currentType)] = controlledEntity.isSubscribedToUnsolicitedNotifications(currentType);
+	}
 
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
+	controlledEntity.setSubscribedToUnsolicitedNotifications(isSubscribed, interfaceType);
+
+	// Notify observers once per interface whose subscription state changed: it is up to the observer to track whether at least one interface is still subscribed
+	if (controlledEntity.wasAdvertised())
+	{
+		for (auto const currentType : AllInterfaceTypes)
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onUnsolicitedRegistrationChanged, this, &controlledEntity, isSubscribed, triggeredByEntity);
+			// The Secondary slot does not exist from the user's point of view in single-interface mode
+			if (currentType == InterfaceType::Secondary && !_controllerProxy->isDualInterface())
+			{
+				continue;
+			}
+			auto const newValue = controlledEntity.isSubscribedToUnsolicitedNotifications(currentType);
+			if (oldValues[utils::to_integral(currentType)] != newValue)
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onUnsolicitedRegistrationChanged, this, &controlledEntity, newValue, triggeredByEntity, currentType);
+			}
 		}
 	}
 }
 
 void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity, model::AcquireState const acquireState, UniqueIdentifier const owningEntity) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setAcquireState(acquireState);
 	controlledEntity.setOwningController(owningEntity);
@@ -421,7 +435,7 @@ void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity,
 
 void ControllerImpl::updateLockedState(ControlledEntityImpl& controlledEntity, model::LockState const lockState, UniqueIdentifier const lockingEntity) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setLockState(lockState);
 	controlledEntity.setLockingController(lockingEntity);
@@ -502,7 +516,7 @@ void ControllerImpl::updateConfiguration(entity::controller::Interface const* co
 
 void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
 	if (!currentConfigurationIndexOpt)
@@ -528,7 +542,7 @@ void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEnt
 
 void ControllerImpl::updateStreamOutputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
 	if (!currentConfigurationIndexOpt)
@@ -623,7 +637,7 @@ static bool computeIsOverLatency(std::chrono::nanoseconds const& presentationTim
 
 void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const streamFormatRequired, bool const milanExtendedRequired, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto hasStreamFormat = info.streamInfoFlags.test(entity::StreamInfoFlag::StreamFormatValid);
 
@@ -768,7 +782,7 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 
 void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const streamFormatRequired, bool const milanExtendedRequired, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto hasStreamFormat = info.streamInfoFlags.test(entity::StreamInfoFlag::StreamFormatValid);
 
@@ -882,7 +896,7 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 
 void ControllerImpl::updateEntityName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto* const dynamicModel = controlledEntity.getModelAccessStrategy().getEntityNodeDynamicModel(notFoundBehavior);
 	if (dynamicModel)
@@ -902,7 +916,7 @@ void ControllerImpl::updateEntityName(ControlledEntityImpl& controlledEntity, en
 
 void ControllerImpl::updateEntityGroupName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityGroupName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto* const dynamicModel = controlledEntity.getModelAccessStrategy().getEntityNodeDynamicModel(notFoundBehavior);
 	if (dynamicModel)
@@ -922,7 +936,7 @@ void ControllerImpl::updateEntityGroupName(ControlledEntityImpl& controlledEntit
 
 void ControllerImpl::updateConfigurationName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setConfigurationName(configurationIndex, configurationName, notFoundBehavior);
 
@@ -935,7 +949,7 @@ void ControllerImpl::updateConfigurationName(ControlledEntityImpl& controlledEnt
 
 void ControllerImpl::updateAudioUnitName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AvdeccFixedString const& audioUnitName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setObjectName(configurationIndex, audioUnitIndex, &TreeModelAccessStrategy::getAudioUnitNodeDynamicModel, audioUnitName, notFoundBehavior);
 
@@ -948,7 +962,7 @@ void ControllerImpl::updateAudioUnitName(ControlledEntityImpl& controlledEntity,
 
 void ControllerImpl::updateStreamInputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamInputName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setObjectName(configurationIndex, streamIndex, &TreeModelAccessStrategy::getStreamInputNodeDynamicModel, streamInputName, notFoundBehavior);
 
@@ -961,7 +975,7 @@ void ControllerImpl::updateStreamInputName(ControlledEntityImpl& controlledEntit
 
 void ControllerImpl::updateStreamOutputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamOutputName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setObjectName(configurationIndex, streamIndex, &TreeModelAccessStrategy::getStreamOutputNodeDynamicModel, streamOutputName, notFoundBehavior);
 
@@ -974,7 +988,7 @@ void ControllerImpl::updateStreamOutputName(ControlledEntityImpl& controlledEnti
 
 void ControllerImpl::updateJackInputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& jackInputName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setObjectName(configurationIndex, jackIndex, &TreeModelAccessStrategy::getJackInputNodeDynamicModel, jackInputName, notFoundBehavior);
 
@@ -987,7 +1001,7 @@ void ControllerImpl::updateJackInputName(ControlledEntityImpl& controlledEntity,
 
 void ControllerImpl::updateJackOutputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& jackOutputName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setObjectName(configurationIndex, jackIndex, &TreeModelAccessStrategy::getJackOutputNodeDynamicModel, jackOutputName, notFoundBehavior);
 
@@ -1000,7 +1014,7 @@ void ControllerImpl::updateJackOutputName(ControlledEntityImpl& controlledEntity
 
 void ControllerImpl::updateAvbInterfaceName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& avbInterfaceName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setObjectName(configurationIndex, avbInterfaceIndex, &TreeModelAccessStrategy::getAvbInterfaceNodeDynamicModel, avbInterfaceName, notFoundBehavior);
 
@@ -1013,7 +1027,7 @@ void ControllerImpl::updateAvbInterfaceName(ControlledEntityImpl& controlledEnti
 
 void ControllerImpl::updateClockSourceName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& clockSourceName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setObjectName(configurationIndex, clockSourceIndex, &TreeModelAccessStrategy::getClockSourceNodeDynamicModel, clockSourceName, notFoundBehavior);
 
@@ -1026,7 +1040,7 @@ void ControllerImpl::updateClockSourceName(ControlledEntityImpl& controlledEntit
 
 void ControllerImpl::updateMemoryObjectName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::AvdeccFixedString const& memoryObjectName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setObjectName(configurationIndex, memoryObjectIndex, &TreeModelAccessStrategy::getMemoryObjectNodeDynamicModel, memoryObjectName, notFoundBehavior);
 
@@ -1039,7 +1053,7 @@ void ControllerImpl::updateMemoryObjectName(ControlledEntityImpl& controlledEnti
 
 void ControllerImpl::updateAudioClusterName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& audioClusterName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setObjectName(configurationIndex, audioClusterIndex, &TreeModelAccessStrategy::getAudioClusterNodeDynamicModel, audioClusterName, notFoundBehavior);
 
@@ -1052,7 +1066,7 @@ void ControllerImpl::updateAudioClusterName(ControlledEntityImpl& controlledEnti
 
 void ControllerImpl::updateControlName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex, entity::model::AvdeccFixedString const& controlName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setObjectName(configurationIndex, controlIndex, &TreeModelAccessStrategy::getControlNodeDynamicModel, controlName, notFoundBehavior);
 
@@ -1065,7 +1079,7 @@ void ControllerImpl::updateControlName(ControlledEntityImpl& controlledEntity, e
 
 void ControllerImpl::updateClockDomainName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& clockDomainName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setObjectName(configurationIndex, clockDomainIndex, &TreeModelAccessStrategy::getClockDomainNodeDynamicModel, clockDomainName, notFoundBehavior);
 
@@ -1078,7 +1092,7 @@ void ControllerImpl::updateClockDomainName(ControlledEntityImpl& controlledEntit
 
 void ControllerImpl::updateTimingName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex, entity::model::AvdeccFixedString const& timingName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setObjectName(configurationIndex, timingIndex, &TreeModelAccessStrategy::getTimingNodeDynamicModel, timingName, notFoundBehavior);
 
@@ -1091,7 +1105,7 @@ void ControllerImpl::updateTimingName(ControlledEntityImpl& controlledEntity, en
 
 void ControllerImpl::updatePtpInstanceName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex, entity::model::AvdeccFixedString const& ptpInstanceName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setObjectName(configurationIndex, ptpInstanceIndex, &TreeModelAccessStrategy::getPtpInstanceNodeDynamicModel, ptpInstanceName, notFoundBehavior);
 
@@ -1104,7 +1118,7 @@ void ControllerImpl::updatePtpInstanceName(ControlledEntityImpl& controlledEntit
 
 void ControllerImpl::updatePtpPortName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex, entity::model::AvdeccFixedString const& ptpPortName, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setObjectName(configurationIndex, ptpPortIndex, &TreeModelAccessStrategy::getPtpPortNodeDynamicModel, ptpPortName, notFoundBehavior);
 
@@ -1117,7 +1131,7 @@ void ControllerImpl::updatePtpPortName(ControlledEntityImpl& controlledEntity, e
 
 void ControllerImpl::updateAssociationID(ControlledEntityImpl& controlledEntity, std::optional<UniqueIdentifier> const associationID, TreeModelAccessStrategy::NotFoundBehavior const /*notFoundBehavior*/) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto& entity = controlledEntity.getEntity();
 	auto const previousAssociationID = entity.getAssociationID();
@@ -1145,7 +1159,7 @@ void ControllerImpl::updateAssociationID(ControlledEntityImpl& controlledEntity,
 
 void ControllerImpl::updateAudioUnitSamplingRate(ControlledEntityImpl& controlledEntity, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setSamplingRate(audioUnitIndex, samplingRate, notFoundBehavior);
 
@@ -1161,7 +1175,7 @@ void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, e
 	auto const& e = controlledEntity.getEntity();
 	auto const entityID = e.getEntityID();
 
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setClockSource(clockDomainIndex, clockSourceIndex, notFoundBehavior);
 
@@ -1212,7 +1226,7 @@ void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, e
 
 bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity, entity::model::ControlIndex const controlIndex, MemoryBuffer const& packedControlValues, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
 	if (!currentConfigurationIndexOpt)
@@ -1282,7 +1296,7 @@ bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity,
 
 void ControllerImpl::updateStreamInputRunningStatus(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isRunning, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
 	if (!currentConfigurationIndexOpt)
@@ -1317,7 +1331,7 @@ void ControllerImpl::updateStreamInputRunningStatus(ControlledEntityImpl& contro
 
 void ControllerImpl::updateStreamOutputRunningStatus(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isRunning, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
 	if (!currentConfigurationIndexOpt)
@@ -1352,7 +1366,7 @@ void ControllerImpl::updateStreamOutputRunningStatus(ControlledEntityImpl& contr
 
 void ControllerImpl::updateGptpInformation(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, networkInterface::MacAddress const& macAddress, UniqueIdentifier const& gptpGrandmasterID, std::uint8_t const gptpDomainNumber, TreeModelAccessStrategy::NotFoundBehavior const /*notFoundBehavior*/) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto infoChanged = false;
 
@@ -1430,7 +1444,7 @@ void ControllerImpl::updateGptpInformation(ControlledEntityImpl& controlledEntit
 
 void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Build AvbInterfaceInfo structure
 	auto const avbInterfaceInfo = entity::model::AvbInterfaceInfo{ info.propagationDelay, info.flags, info.mappings };
@@ -1462,7 +1476,7 @@ void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entit
 
 void ControllerImpl::updateAsPath(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto const previousPath = controlledEntity.setAsPath(avbInterfaceIndex, asPath, notFoundBehavior);
 
@@ -1494,7 +1508,7 @@ void ControllerImpl::updateAvbInterfaceLinkStatus(ControllerImpl const* const co
 
 void ControllerImpl::updateEntityCounters(ControlledEntityImpl& controlledEntity, entity::EntityCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Get previous counters
 	auto* const entityCounters = controlledEntity.getEntityCounters(notFoundBehavior);
@@ -1516,7 +1530,7 @@ void ControllerImpl::updateEntityCounters(ControlledEntityImpl& controlledEntity
 
 void ControllerImpl::updateAvbInterfaceCounters(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Get previous counters
 	auto* const avbInterfaceCounters = controlledEntity.getAvbInterfaceCounters(avbInterfaceIndex, notFoundBehavior);
@@ -1554,7 +1568,7 @@ void ControllerImpl::updateAvbInterfaceCounters(ControlledEntityImpl& controlled
 
 void ControllerImpl::updateClockDomainCounters(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::ClockDomainCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Get previous counters
 	auto* const clockDomainCounters = controlledEntity.getClockDomainCounters(clockDomainIndex, notFoundBehavior);
@@ -1589,7 +1603,7 @@ void ControllerImpl::updateClockDomainCounters(ControlledEntityImpl& controlledE
 
 void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::StreamInputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Get previous counters
 	auto* const streamCounters = controlledEntity.getStreamInputCounters(streamIndex, notFoundBehavior);
@@ -1651,7 +1665,7 @@ entity::model::StreamOutputCounters::CounterType ControllerImpl::getStreamOutput
 
 void ControllerImpl::updateSignalPresenceCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::DescriptorCounter const signalPresence1, entity::model::DescriptorCounter const signalPresence2, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
 	if (!currentConfigurationIndexOpt)
@@ -1686,7 +1700,7 @@ void ControllerImpl::updateSignalPresenceCounters(ControlledEntityImpl& controll
 
 void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamOutputCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Get previous counters
 	auto* const streamCounters = controlledEntity.getStreamOutputCounters(streamIndex, notFoundBehavior);
@@ -1764,7 +1778,7 @@ void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlled
 
 void ControllerImpl::updateMemoryObjectLength(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto* const memoryObjectNode = controlledEntity.getModelAccessStrategy().getMemoryObjectNode(configurationIndex, memoryObjectIndex, notFoundBehavior);
 	if (memoryObjectNode)
@@ -1788,7 +1802,7 @@ void ControllerImpl::updateMemoryObjectLength(ControlledEntityImpl& controlledEn
 
 void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.addStreamPortInputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortInput>(controlledEntity, streamPortIndex, mappings), notFoundBehavior);
 
@@ -1876,7 +1890,7 @@ void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImp
 
 void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.removeStreamPortInputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortInput>(controlledEntity, streamPortIndex, mappings), notFoundBehavior);
 
@@ -1969,7 +1983,7 @@ void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityI
 
 void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.addStreamPortOutputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortOutput>(controlledEntity, streamPortIndex, mappings), notFoundBehavior);
 
@@ -2022,7 +2036,7 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityIm
 
 void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.removeStreamPortOutputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortOutput>(controlledEntity, streamPortIndex, mappings), notFoundBehavior);
 
@@ -2075,7 +2089,7 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntity
 
 void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete, TreeModelAccessStrategy::NotFoundBehavior const /*notFoundBehavior*/) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -2110,7 +2124,7 @@ void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntit
 
 void ControllerImpl::updateMaxTransitTime(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
 	if (!currentConfigurationIndexOpt)
@@ -2157,7 +2171,7 @@ void ControllerImpl::updateRedundancyWarning(ControllerImpl const* const control
 	// Entity was advertised to the user, notify observers
 	if (controller && notify && controlledEntity.wasAdvertised())
 	{
-		AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+		AVDECC_ASSERT(controller->isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 		controller->notifyObserversMethod<Controller::Observer>(&Controller::Observer::onDiagnosticsChanged, controller, &controlledEntity, diags);
 	}
 }
@@ -2184,7 +2198,7 @@ void ControllerImpl::updateControlCurrentValueOutOfBounds(ControllerImpl const* 
 		// Entity was advertised to the user, notify observers
 		if (controller && controlledEntity.wasAdvertised())
 		{
-			AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+			AVDECC_ASSERT(controller->isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 			controller->notifyObserversMethod<Controller::Observer>(&Controller::Observer::onDiagnosticsChanged, controller, &controlledEntity, diags);
 		}
 	}
@@ -2192,7 +2206,7 @@ void ControllerImpl::updateControlCurrentValueOutOfBounds(ControllerImpl const* 
 
 void ControllerImpl::updateStreamInputLatency(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isOverLatency) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto& diags = controlledEntity.getDiagnostics();
 	auto const previouslyInError = diags.streamInputOverLatency.count(streamIndex) > 0;
@@ -2221,7 +2235,7 @@ void ControllerImpl::updateStreamInputLatency(ControlledEntityImpl& controlledEn
 
 void ControllerImpl::updateSystemUniqueID(ControlledEntityImpl& controlledEntity, UniqueIdentifier const uniqueID, entity::model::AvdeccFixedString const& systemName) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setSystemUniqueID(uniqueID, systemName);
 
@@ -2234,7 +2248,7 @@ void ControllerImpl::updateSystemUniqueID(ControlledEntityImpl& controlledEntity
 
 void ControllerImpl::updateMediaClockReferenceInfo(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::DefaultMediaClockReferencePriority const defaultPriority, entity::model::MediaClockReferenceInfo const& info, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
 	if (!currentConfigurationIndexOpt)
@@ -2278,7 +2292,7 @@ void ControllerImpl::updateMediaClockReferenceInfo(ControlledEntityImpl& control
 
 void ControllerImpl::updateStreamInputInfoEx(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInputInfoEx const& streamInputInfoEx, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
 	if (!currentConfigurationIndexOpt)
@@ -2477,7 +2491,7 @@ std::tuple<model::AcquireState, UniqueIdentifier> ControllerImpl::getAcquiredInf
 			else
 			{
 				// Full status check based on returned owningEntity, some devices return SUCCESS although the requesting controller is not the one currently owning the entity
-				acquireState = owningEntity ? (owningEntity == getControllerEID() ? model::AcquireState::Acquired : model::AcquireState::AcquiredByOther) : model::AcquireState::NotAcquired;
+				acquireState = owningEntity ? (isLocalControllerEID(owningEntity) ? model::AcquireState::Acquired : model::AcquireState::AcquiredByOther) : model::AcquireState::NotAcquired;
 				owningController = owningEntity;
 			}
 			// Remove "Milan compatibility" as device does support a forbidden command
@@ -2536,7 +2550,7 @@ std::tuple<model::LockState, UniqueIdentifier> ControllerImpl::getLockedInfoFrom
 			else
 			{
 				// Full status check based on returned owningEntity, some devices return SUCCESS although the requesting controller is not the one currently owning the entity
-				lockState = lockingEntity ? (lockingEntity == getControllerEID() ? model::LockState::Locked : model::LockState::LockedByOther) : model::LockState::NotLocked;
+				lockState = lockingEntity ? (isLocalControllerEID(lockingEntity) ? model::LockState::Locked : model::LockState::LockedByOther) : model::LockState::NotLocked;
 				lockingController = lockingEntity;
 			}
 			break;
@@ -2625,12 +2639,12 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, Contro
 	entity->setMilanInfoExpected(milanInfoType);
 
 	auto const entityID = entity->getEntity().getEntityID();
-	std::function<void(entity::ControllerEntity*)> queryFunc{};
+	std::function<void(entity::controller::Interface const*)> queryFunc{};
 
 	switch (milanInfoType)
 	{
 		case ControlledEntityImpl::MilanInfoType::MilanInfo:
-			queryFunc = [this, entityID](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getMilanInfo ()");
 				controller->getMilanInfo(entityID, std::bind(&ControllerImpl::onGetMilanInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
@@ -2646,7 +2660,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, Contro
 	{
 		if (queryFunc)
 		{
-			queryFunc(_controller);
+			queryFunc(_controllerProxy.get());
 		}
 	}
 	else
@@ -2661,152 +2675,152 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	entity->setDescriptorExpected(configurationIndex, descriptorType, descriptorIndex);
 
 	auto const entityID = entity->getEntity().getEntityID();
-	std::function<void(entity::ControllerEntity*)> queryFunc{};
+	std::function<void(entity::controller::Interface const*)> queryFunc{};
 
 	switch (descriptorType)
 	{
 		case entity::model::DescriptorType::Entity:
-			queryFunc = [this, entityID](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readEntityDescriptor ()");
 				controller->readEntityDescriptor(entityID, std::bind(&ControllerImpl::onEntityDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 			};
 			break;
 		case entity::model::DescriptorType::Configuration:
-			queryFunc = [this, entityID, configurationIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readConfigurationDescriptor (ConfigurationIndex={})", configurationIndex);
 				controller->readConfigurationDescriptor(entityID, configurationIndex, std::bind(&ControllerImpl::onConfigurationDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 			};
 			break;
 		case entity::model::DescriptorType::AudioUnit:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readAudioUnitDescriptor (ConfigurationIndex={} AudioUnitIndex={})", configurationIndex, descriptorIndex);
 				controller->readAudioUnitDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAudioUnitDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::StreamInput:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readStreamInputDescriptor (ConfigurationIndex={} StreamIndex={})", configurationIndex, descriptorIndex);
 				controller->readStreamInputDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onStreamInputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::StreamOutput:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readStreamOutputDescriptor (ConfigurationIndex={} StreamIndex={})", configurationIndex, descriptorIndex);
 				controller->readStreamOutputDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onStreamOutputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::JackInput:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readJackInputDescriptor (ConfigurationIndex={} JackIndex={})", configurationIndex, descriptorIndex);
 				controller->readJackInputDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onJackInputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::JackOutput:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readJackOutputDescriptor (ConfigurationIndex={} JackIndex={})", configurationIndex, descriptorIndex);
 				controller->readJackOutputDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onJackOutputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::AvbInterface:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readAvbInterfaceDescriptor (ConfigurationIndex={}, AvbInterfaceIndex={})", configurationIndex, descriptorIndex);
 				controller->readAvbInterfaceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, ControlledEntityImpl::EnumerationStep::GetStaticModel));
 			};
 			break;
 		case entity::model::DescriptorType::ClockSource:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readClockSourceDescriptor (ConfigurationIndex={} ClockSourceIndex={})", configurationIndex, descriptorIndex);
 				controller->readClockSourceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onClockSourceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, ControlledEntityImpl::EnumerationStep::GetStaticModel));
 			};
 			break;
 		case entity::model::DescriptorType::MemoryObject:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readMemoryObjectDescriptor (ConfigurationIndex={}, MemoryObjectIndex={})", configurationIndex, descriptorIndex);
 				controller->readMemoryObjectDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onMemoryObjectDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::Locale:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readLocaleDescriptor (ConfigurationIndex={} LocaleIndex={})", configurationIndex, descriptorIndex);
 				controller->readLocaleDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onLocaleDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::Strings:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readStringsDescriptor (ConfigurationIndex={} StringsIndex={})", configurationIndex, descriptorIndex);
 				controller->readStringsDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onStringsDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::StreamPortInput:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readStreamPortInputDescriptor (ConfigurationIndex={}, StreamPortIndex={})", configurationIndex, descriptorIndex);
 				controller->readStreamPortInputDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onStreamPortInputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::StreamPortOutput:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readStreamPortOutputDescriptor (ConfigurationIndex={} StreamPortIndex={})", configurationIndex, descriptorIndex);
 				controller->readStreamPortOutputDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onStreamPortOutputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::AudioCluster:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readAudioClusterDescriptor (ConfigurationIndex={} ClusterIndex={})", configurationIndex, descriptorIndex);
 				controller->readAudioClusterDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAudioClusterDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::AudioMap:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readAudioMapDescriptor (ConfigurationIndex={} MapIndex={})", configurationIndex, descriptorIndex);
 				controller->readAudioMapDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAudioMapDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::Control:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readControlDescriptor (ConfigurationIndex={}, ControlIndex={})", configurationIndex, descriptorIndex);
 				controller->readControlDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onControlDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::ClockDomain:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readClockDomainDescriptor (ConfigurationIndex={}, ClockDomainIndex={})", configurationIndex, descriptorIndex);
 				controller->readClockDomainDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onClockDomainDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::Timing:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readTimingDescriptor (ConfigurationIndex={}, TimingIndex={})", configurationIndex, descriptorIndex);
 				controller->readTimingDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onTimingDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::PtpInstance:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readPtpInstanceDescriptor (ConfigurationIndex={}, PtpInstanceIndex={})", configurationIndex, descriptorIndex);
 				controller->readPtpInstanceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onPtpInstanceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case entity::model::DescriptorType::PtpPort:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readPtpPortDescriptor (ConfigurationIndex={}, PtpPortIndex={})", configurationIndex, descriptorIndex);
 				controller->readPtpPortDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onPtpPortDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
@@ -2822,7 +2836,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	{
 		if (queryFunc)
 		{
-			queryFunc(_controller);
+			queryFunc(_controllerProxy.get());
 		}
 	}
 	else
@@ -2837,12 +2851,12 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	entity->setDynamicInfoExpected(configurationIndex, dynamicInfoType, descriptorIndex, subIndex);
 
 	auto const entityID = entity->getEntity().getEntityID();
-	std::function<void(entity::ControllerEntity*)> queryFunc{};
+	std::function<void(entity::controller::Interface const*)> queryFunc{};
 
 	switch (dynamicInfoType)
 	{
 		case ControlledEntityImpl::DynamicInfoType::AcquiredState:
-			queryFunc = [this, entityID](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID](entity::controller::Interface const* const controller) noexcept
 			{
 				// Send an ACQUIRE command with the RELEASE flag to detect the current acquired state of the entity
 				// It won't change the current acquired state except if we were the acquiring controller, which doesn't matter anyway because having to enumerate the device again means we got interrupted in the middle of something and it's best to start over
@@ -2851,7 +2865,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::LockedState:
-			queryFunc = [this, entityID](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID](entity::controller::Interface const* const controller) noexcept
 			{
 				// Send a LOCK command with the RELEASE flag to detect the current locked state of the entity
 				// It won't change the current locked state except if we were the locking controller, which doesn't matter anyway because having to enumerate the device again means we got interrupted in the middle of something and it's best to start over
@@ -2860,28 +2874,28 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::InputStreamPortAudioMappings:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex, subIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex, subIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getStreamPortInputAudioMap (StreamPortIndex={})", descriptorIndex);
 				controller->getStreamPortInputAudioMap(entityID, descriptorIndex, subIndex, std::bind(&ControllerImpl::onGetStreamPortInputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::OutputStreamPortAudioMappings:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex, subIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex, subIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getStreamPortOutputAudioMap (StreamPortIndex={})", descriptorIndex);
 				controller->getStreamPortOutputAudioMap(entityID, descriptorIndex, subIndex, std::bind(&ControllerImpl::onGetStreamPortOutputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::InputStreamState:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getListenerStreamState (StreamIndex={})", descriptorIndex);
 				controller->getListenerStreamState({ entityID, descriptorIndex }, std::bind(&ControllerImpl::onGetListenerStreamStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::OutputStreamState:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getTalkerStreamState (StreamIndex={})", descriptorIndex);
 				controller->getTalkerStreamState({ entityID, descriptorIndex }, std::bind(&ControllerImpl::onGetTalkerStreamStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
@@ -2891,91 +2905,91 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			AVDECC_ASSERT(false, "Another overload of this method should be called for this DynamicInfoType");
 			break;
 		case ControlledEntityImpl::DynamicInfoType::InputStreamInfo:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getStreamInputInfo (StreamIndex={})", descriptorIndex);
 				controller->getStreamInputInfo(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetStreamInputInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::OutputStreamInfo:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getStreamOutputInfo (StreamIndex={})", descriptorIndex);
 				controller->getStreamOutputInfo(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetStreamOutputInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::GetAvbInfo:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getAvbInfo (AvbInterfaceIndex={})", descriptorIndex);
 				controller->getAvbInfo(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetAvbInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::GetAsPath:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getAsPath (AvbInterfaceIndex={})", descriptorIndex);
 				controller->getAsPath(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetAsPathResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::GetEntityCounters:
-			queryFunc = [this, entityID](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getEntityCounters ()");
 				controller->getEntityCounters(entityID, std::bind(&ControllerImpl::onGetEntityCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getAvbInterfaceCounters (AvbInterfaceIndex={})", descriptorIndex);
 				controller->getAvbInterfaceCounters(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetAvbInterfaceCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getClockDomainCounters (ClockDomainIndex={})", descriptorIndex);
 				controller->getClockDomainCounters(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetClockDomainCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getStreamInputCounters (StreamIndex={})", descriptorIndex);
 				controller->getStreamInputCounters(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetStreamInputCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getStreamOutputCounters (StreamIndex={})", descriptorIndex);
 				controller->getStreamOutputCounters(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetStreamOutputCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::GetMaxTransitTime:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getMaxTransitTime (StreamIndex={})", descriptorIndex);
 				controller->getMaxTransitTime(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetMaxTransitTimeResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::GetSystemUniqueID:
-			queryFunc = [this, entityID](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getSystemUniqueID ()");
 				controller->getSystemUniqueID(entityID, std::bind(&ControllerImpl::onGetSystemUniqueIDResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::GetMediaClockReferenceInfo:
-			queryFunc = [this, entityID, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getMediaClockReferenceInfo (MediaClockIndex={})", descriptorIndex);
 				controller->getMediaClockReferenceInfo(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetMediaClockReferenceInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::InputStreamInfoEx:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getStreamInputInfoEx (StreamIndex={})", descriptorIndex);
 				controller->getStreamInputInfoEx(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetStreamInputInfoExResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
@@ -2991,7 +3005,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	{
 		if (queryFunc)
 		{
-			queryFunc(_controller);
+			queryFunc(_controllerProxy.get());
 		}
 	}
 	else
@@ -3011,9 +3025,9 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	entity->setDynamicInfoExpected(configurationIndex, dynamicInfoType, talkerStream.streamIndex, subIndex);
 
 	auto const entityID = entity->getEntity().getEntityID();
-	std::function<void(entity::ControllerEntity*)> queryFunc{};
+	std::function<void(entity::controller::Interface const*)> queryFunc{};
 
-	queryFunc = [this, configurationIndex, talkerStream, subIndex](entity::ControllerEntity* const controller) noexcept
+	queryFunc = [this, configurationIndex, talkerStream, subIndex](entity::controller::Interface const* const controller) noexcept
 	{
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "getTalkerStreamConnection (TalkerID={} TalkerIndex={} SubIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, subIndex);
 		controller->getTalkerStreamConnection(talkerStream, subIndex, std::bind(&ControllerImpl::onGetTalkerStreamConnectionResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex, subIndex));
@@ -3024,7 +3038,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	{
 		if (queryFunc)
 		{
-			queryFunc(_controller);
+			queryFunc(_controllerProxy.get());
 		}
 	}
 	else
@@ -3039,152 +3053,152 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	entity->setDescriptorDynamicInfoExpected(configurationIndex, descriptorDynamicInfoType, descriptorIndex);
 
 	auto const entityID = entity->getEntity().getEntityID();
-	std::function<void(entity::ControllerEntity*)> queryFunc{};
+	std::function<void(entity::controller::Interface const*)> queryFunc{};
 
 	switch (descriptorDynamicInfoType)
 	{
 		case ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName:
-			queryFunc = [this, entityID, configurationIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getConfigurationName (ConfigurationIndex={})", configurationIndex);
 				controller->getConfigurationName(entityID, configurationIndex, std::bind(&ControllerImpl::onConfigurationNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getAudioUnitName (ConfigurationIndex={} AudioUnitIndex={})", configurationIndex, descriptorIndex);
 				controller->getAudioUnitName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAudioUnitNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getAudioUnitSamplingRate (ConfigurationIndex={} AudioUnitIndex={})", configurationIndex, descriptorIndex);
 				controller->getAudioUnitSamplingRate(entityID, descriptorIndex, std::bind(&ControllerImpl::onAudioUnitSamplingRateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getStreamInputName (ConfigurationIndex={} StreamIndex={})", configurationIndex, descriptorIndex);
 				controller->getStreamInputName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onInputStreamNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getStreamInputFormat (ConfigurationIndex={} StreamIndex={})", configurationIndex, descriptorIndex);
 				controller->getStreamInputFormat(entityID, descriptorIndex, std::bind(&ControllerImpl::onInputStreamFormatResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getStreamOutputName (ConfigurationIndex={} StreamIndex={})", configurationIndex, descriptorIndex);
 				controller->getStreamOutputName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onOutputStreamNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getStreamOutputFormat (ConfigurationIndex={} StreamIndex={})", configurationIndex, descriptorIndex);
 				controller->getStreamOutputFormat(entityID, descriptorIndex, std::bind(&ControllerImpl::onOutputStreamFormatResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getJackInputName (ConfigurationIndex={} JackIndex={})", configurationIndex, descriptorIndex);
 				controller->getJackInputName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onInputJackNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getJackOutputName (ConfigurationIndex={} JackIndex={})", configurationIndex, descriptorIndex);
 				controller->getJackOutputName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onOutputJackNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceDescriptor:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readAvbInterfaceDescriptor (ConfigurationIndex={}, AvbInterfaceIndex={})", configurationIndex, descriptorIndex);
 				controller->readAvbInterfaceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceDescriptor:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "readClockSourceDescriptor (ConfigurationIndex={} ClockSourceIndex={})", configurationIndex, descriptorIndex);
 				controller->readClockSourceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onClockSourceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={})", configurationIndex, descriptorIndex);
 				controller->getMemoryObjectName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onMemoryObjectNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getMemoryObjectLength (ConfigurationIndex={} MemoryObjectIndex={})", configurationIndex, descriptorIndex);
 				controller->getMemoryObjectLength(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onMemoryObjectLengthResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getAudioClusterName (ConfigurationIndex={} AudioClusterIndex={})", configurationIndex, descriptorIndex);
 				controller->getAudioClusterName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAudioClusterNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::ControlName:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getControlName (ConfigurationIndex={} ControlIndex={})", configurationIndex, descriptorIndex);
 				controller->getControlName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onControlNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::ControlValues:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getControl (ConfigurationIndex={} ControlIndex={})", configurationIndex, descriptorIndex);
 				controller->getControlValues(entityID, descriptorIndex, std::bind(&ControllerImpl::onControlValuesResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getClockDomainName (ConfigurationIndex={} ClockDomainIndex={})", configurationIndex, descriptorIndex);
 				controller->getClockDomainName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onClockDomainNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getClockSource (ConfigurationIndex={} ClockDomainIndex={})", configurationIndex, descriptorIndex);
 				controller->getClockSource(entityID, descriptorIndex, std::bind(&ControllerImpl::onClockDomainSourceIndexResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::TimingName:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getTimingName (ConfigurationIndex={} TimingIndex={})", configurationIndex, descriptorIndex);
 				controller->getTimingName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onTimingNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::PtpInstanceName:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getPtpInstanceName (ConfigurationIndex={} PtpInstanceIndex={})", configurationIndex, descriptorIndex);
 				controller->getPtpInstanceName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onPtpInstanceNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::PtpPortName:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::controller::Interface const* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getPtpPortName (ConfigurationIndex={} PtpPortIndex={})", configurationIndex, descriptorIndex);
 				controller->getPtpPortName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onPtpPortNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
@@ -3200,7 +3214,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	{
 		if (queryFunc)
 		{
-			queryFunc(_controller);
+			queryFunc(_controllerProxy.get());
 		}
 	}
 	else
@@ -3215,9 +3229,9 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	entity->setPackedDynamicInfoExpected(packetID);
 
 	auto const entityID = entity->getEntity().getEntityID();
-	std::function<void(entity::ControllerEntity*)> queryFunc{};
+	std::function<void(entity::controller::Interface const*)> queryFunc{};
 
-	queryFunc = [this, entityID, dynamicInfoParameters, packetID, step](entity::ControllerEntity* const controller) noexcept
+	queryFunc = [this, entityID, dynamicInfoParameters, packetID, step](entity::controller::Interface const* const controller) noexcept
 	{
 		LOG_CONTROLLER_TRACE(entityID, "getDynamicInfo (PacketID={} Step={})", packetID, avdecc::utils::to_integral(step));
 		controller->getDynamicInfo(entityID, dynamicInfoParameters, std::bind(&ControllerImpl::onGetDynamicInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, dynamicInfoParameters, packetID, step));
@@ -3228,7 +3242,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	{
 		if (queryFunc)
 		{
-			queryFunc(_controller);
+			queryFunc(_controllerProxy.get());
 		}
 	}
 	else
@@ -3267,7 +3281,7 @@ void ControllerImpl::checkDynamicInfoSupported(ControlledEntityImpl* const entit
 
 	// Query an empty getDynamicInfo to check if it is supported
 	LOG_CONTROLLER_TRACE(entityID, "empty getDynamicInfo ()");
-	_controller->getDynamicInfo(entityID, {}, std::bind(&ControllerImpl::onEmptyGetDynamicInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	_controllerProxy->getDynamicInfo(entityID, {}, std::bind(&ControllerImpl::onEmptyGetDynamicInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
 void ControllerImpl::registerUnsol(ControlledEntityImpl* const entity) noexcept
@@ -3279,16 +3293,106 @@ void ControllerImpl::registerUnsol(ControlledEntityImpl* const entity) noexcept
 
 	// Register for unsolicited notifications
 	LOG_CONTROLLER_TRACE(entityID, "registerUnsolicitedNotifications ()");
-	_controller->registerUnsolicitedNotifications(entityID, std::bind(&ControllerImpl::onRegisterUnsolicitedNotificationsResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	_controllerProxy->registerUnsolicitedNotifications(entityID, std::bind(&ControllerImpl::onRegisterUnsolicitedNotificationsResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
-void ControllerImpl::unregisterUnsol(ControlledEntityImpl* const entity) noexcept
+void ControllerImpl::unregisterUnsol(UniqueIdentifier const entityID) noexcept
 {
-	auto const entityID = entity->getEntity().getEntityID();
-
-	// Unregister from unsolicited notifications
+	// Unregister from unsolicited notifications (in dual-interface mode, the proxy sends one DEREGISTER per PI and the result handler is invoked once per PI response)
 	LOG_CONTROLLER_TRACE(entityID, "unregisterUnsolicitedNotifications ()");
-	_controller->unregisterUnsolicitedNotifications(entityID, std::bind(&ControllerImpl::onUnregisterUnsolicitedNotificationsResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	_controllerProxy->unregisterUnsolicitedNotifications(entityID, std::bind(&ControllerImpl::onUnregisterUnsolicitedNotificationsResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+}
+
+bool ControllerImpl::canRecoverUnsolThroughOtherInterface(ControlledEntityImpl const& controlledEntity, InterfaceType const interfaceType) const noexcept
+{
+	// Only possible in dual-interface mode
+	if (!_controllerProxy->isDualInterface())
+	{
+		return false;
+	}
+
+	auto const otherType = (interfaceType == InterfaceType::Primary) ? InterfaceType::Secondary : InterfaceType::Primary;
+
+	// The other PI must still see the entity
+	auto const reach = _controllerProxy->getEntityReachability(controlledEntity.getEntity().getEntityID());
+	auto const otherReachable = (otherType == InterfaceType::Primary) ? reach.onPrimary : reach.onSecondary;
+	if (!otherReachable)
+	{
+		return false;
+	}
+
+	// The other PI must still hold a valid subscription (ie. it kept receiving every model update, so the local model is still in sync)
+	return controlledEntity.isSubscribedToUnsolicitedNotifications(otherType);
+}
+
+void ControllerImpl::tryLazyRegisterUnsolOnInterface(UniqueIdentifier const entityID, InterfaceType const interfaceType) noexcept
+{
+	// Only meaningful in dual-PI mode (single-PI mode does the initial registration through the enumeration step, no per-PI redundancy needed).
+	if (!_controllerProxy->isDualInterface())
+	{
+		return;
+	}
+
+	// Reachability check: do not attempt to register on a PI that does not currently see the entity.
+	auto const reach = _controllerProxy->getEntityReachability(entityID);
+	auto const isReachable = (interfaceType == InterfaceType::Primary) ? reach.onPrimary : reach.onSecondary;
+	if (!isReachable)
+	{
+		return;
+	}
+
+	// Skip if the entity is not in a state where it can answer AECP yet (avoids racing the initial enumeration on a brand-new entity, the enumeration's own RegisterUnsol step will handle that case).
+	{
+		auto controlledEntity = getControlledEntityImplGuard(entityID);
+		if (!controlledEntity)
+		{
+			return;
+		}
+		auto const caps = controlledEntity->getEntity().getEntityCapabilities();
+		if (!caps.test(entity::EntityCapability::AemSupported))
+		{
+			return;
+		}
+		// If the entity is past its initial RegisterUnsol enumeration step, supports unsolicited notifications, but no PI holds a subscription anymore, the synchronization is FULLY lost: We don't want to re-subscribe automatically (a resumed unsol flow would try to update a possibly outdated model
+		// Only a user-decided refreshEntity() (which forgets the entity and re-enumerates from scratch) is allowed to restore the synchronization
+		if (!controlledEntity->getEnumerationSteps().test(ControlledEntityImpl::EnumerationStep::RegisterUnsol) && controlledEntity->areUnsolicitedNotificationsSupported() && !controlledEntity->isSubscribedToUnsolicitedNotifications())
+		{
+			LOG_CONTROLLER_DEBUG(entityID, "Not re-registering unsolicited notifications on {} interface: synchronization was fully lost, only a user-triggered refreshEntity can restore it", (interfaceType == InterfaceType::Primary) ? "Primary" : "Secondary");
+			return;
+		}
+	}
+
+	// Atomically claim the Pending slot, sending exactly one register command per (entity, PI) pair while it stays in that state.
+	if (!_controllerProxy->tryClaimUnsolPending(entityID, interfaceType))
+	{
+		return;
+	}
+
+	LOG_CONTROLLER_TRACE(entityID, "Lazy registerUnsolicitedNotifications on {} interface", (interfaceType == InterfaceType::Primary) ? "Primary" : "Secondary");
+	_controllerProxy->registerUnsolicitedNotificationsOnInterface(entityID, interfaceType,
+		[this, interfaceType](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
+		{
+			//onLazyRegisterUnsolicitedNotificationsResult(interfaceType, entID, status);
+			LOG_CONTROLLER_TRACE(entityID, "tryLazyRegisterUnsolOnInterfaceResult on {} interface: {}", (interfaceType == InterfaceType::Primary) ? "Primary" : "Secondary", entity::ControllerEntity::statusToString(status));
+
+			// Update the proxy's per-PI unsol state: Registered on success, NotRegistered on any failure so the next reachability transition will retry.
+			auto const newState = (!!status) ? ControllerVirtualProxy::UnsolState::Registered : ControllerVirtualProxy::UnsolState::NotRegistered;
+			_controllerProxy->setUnsolState(entityID, interfaceType, newState);
+
+			// On a successful (re-)registration, the entity-side subscriber state for this PI was just (re-)initialized: per the Milan spec, the entity restarts its per-controller-EID AEM/MVU unsolicited sequence numbering at 0 for a fresh subscription. We must clear our per-PI expected-seqID slot so the next unsolicited notification on that PI is accepted as the new baseline and is not mis-identified as a "lost notification" (which would trigger a spurious unregister).
+			if (!!status)
+			{
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+				if (controlledEntity)
+				{
+					controlledEntity->resetExpectedUnsolicitedSequenceID(interfaceType);
+
+					// Mark this PI as subscribed so the user-facing aggregate subscription state stays accurate even if the other PI later deregisters.
+					// Without this, a lazily-registered PI would not be reflected in the per-PI subscription state, and dropping the other PI's subscription would wrongly report a full unsubscribe to observers.
+					updateUnsolicitedNotificationsSubscription(*controlledEntity, true, false, interfaceType);
+				}
+			}
+		});
 }
 
 void ControllerImpl::getStaticModel(ControlledEntityImpl* const entity) noexcept
@@ -5705,7 +5809,7 @@ void ControllerImpl::computeAndUpdateChannelConnectionsFromConfigurationNode(Con
 /** Actions to be done on the entity, just before advertising, which require looking at other already advertised entities (only for attached entities) */
 void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto const& e = controlledEntity.getEntity();
 	auto const entityID = e.getEntityID();
@@ -5937,7 +6041,7 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 	// For a Listener, we want to inform all the talkers we are connected to, that we left
 	if (e.getListenerCapabilities().test(entity::ListenerCapability::Implemented) && isAemSupported && hasAnyConfiguration)
 	{
-		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+		AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 		try
 		{
@@ -7188,7 +7292,7 @@ bool ControllerImpl::fetchCorrespondingDescriptor(ControlledEntityImpl* const en
 
 void ControllerImpl::handleListenerStreamStateNotification(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, bool const isConnected, std::optional<entity::ConnectionFlags> const flags, bool const changedByOther) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Build StreamConnectionState::State
 	auto conState{ entity::model::StreamInputConnectionInfo::State::NotConnected };
@@ -7410,7 +7514,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 
 void ControllerImpl::handleTalkerStreamStateNotification(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, bool const isConnected, entity::ConnectionFlags const flags, bool const changedByOther) const noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+	AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Build Talker StreamIdentification
 	auto const isFastConnect = flags.test(entity::ConnectionFlag::FastConnect);

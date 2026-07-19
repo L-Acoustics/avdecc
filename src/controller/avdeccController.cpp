@@ -108,6 +108,11 @@ Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::createRawController
 	return new ControllerImpl(protocolInterfaceType, networkInterfaceID, progID, entityModelID, preferedLocale, entityModelTree, executorName, virtualEntityInterface);
 }
 
+Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::createRawControllerRedundant(std::vector<InterfaceConfiguration> const& interfaceConfigurations, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, entity::controller::Interface const* const virtualEntityInterface)
+{
+	return new ControllerImpl(interfaceConfigurations, progID, entityModelID, preferedLocale, entityModelTree, virtualEntityInterface);
+}
+
 } // namespace controller
 } // namespace avdecc
 } // namespace la

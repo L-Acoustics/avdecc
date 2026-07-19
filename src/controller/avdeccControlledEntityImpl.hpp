@@ -29,6 +29,7 @@
 #include <la/avdecc/internals/entityModelTree.hpp>
 
 #include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"
+#include "la/avdecc/controller/avdeccController.hpp"
 
 #include <string>
 #include <unordered_map>
@@ -41,6 +42,7 @@
 #include <thread>
 #include <tuple>
 #include <optional>
+#include <array>
 
 namespace la
 {
@@ -205,6 +207,7 @@ public:
 	virtual bool isPackedDynamicInfoSupported() const noexcept override;
 	virtual bool isUsingCachedEntityModel() const noexcept override;
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept override;
+	virtual bool isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType const interfaceType) const noexcept override;
 	virtual bool areUnsolicitedNotificationsSupported() const noexcept override;
 	virtual bool isAcquired() const noexcept override;
 	virtual bool isAcquireCommandInProgress() const noexcept override;
@@ -275,14 +278,14 @@ public:
 	virtual entity::model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 
 	// Statistics
-	virtual std::uint64_t getAecpRetryCounter() const noexcept override;
-	virtual std::uint64_t getAecpTimeoutCounter() const noexcept override;
-	virtual std::uint64_t getAecpUnexpectedResponseCounter() const noexcept override;
-	virtual std::chrono::milliseconds const& getAecpResponseAverageTime() const noexcept override;
-	virtual std::uint64_t getAemAecpUnsolicitedCounter() const noexcept override;
-	virtual std::uint64_t getAemAecpUnsolicitedLossCounter() const noexcept override;
-	virtual std::uint64_t getMvuAecpUnsolicitedCounter() const noexcept override;
-	virtual std::uint64_t getMvuAecpUnsolicitedLossCounter() const noexcept override;
+	virtual std::uint64_t getAecpRetryCounter(la::avdecc::controller::InterfaceType const interfaceType) const noexcept override;
+	virtual std::uint64_t getAecpTimeoutCounter(la::avdecc::controller::InterfaceType const interfaceType) const noexcept override;
+	virtual std::uint64_t getAecpUnexpectedResponseCounter(la::avdecc::controller::InterfaceType const interfaceType) const noexcept override;
+	virtual std::chrono::milliseconds const& getAecpResponseAverageTime(la::avdecc::controller::InterfaceType const interfaceType) const noexcept override;
+	virtual std::uint64_t getAemAecpUnsolicitedCounter(la::avdecc::controller::InterfaceType const interfaceType) const noexcept override;
+	virtual std::uint64_t getAemAecpUnsolicitedLossCounter(la::avdecc::controller::InterfaceType const interfaceType) const noexcept override;
+	virtual std::uint64_t getMvuAecpUnsolicitedCounter(la::avdecc::controller::InterfaceType const interfaceType) const noexcept override;
+	virtual std::uint64_t getMvuAecpUnsolicitedLossCounter(la::avdecc::controller::InterfaceType const interfaceType) const noexcept override;
 	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept override;
 
 	// Diagnostics
@@ -344,15 +347,15 @@ public:
 	void setMilanDynamicState(entity::model::MilanDynamicState const& state) noexcept;
 	void setSystemUniqueID(UniqueIdentifier const uniqueID, entity::model::AvdeccFixedString const& systemName) noexcept;
 
-	// Setters of the Statistics
-	void setAecpRetryCounter(std::uint64_t const value) noexcept;
-	void setAecpTimeoutCounter(std::uint64_t const value) noexcept;
-	void setAecpUnexpectedResponseCounter(std::uint64_t const value) noexcept;
-	void setAecpResponseAverageTime(std::chrono::milliseconds const& value) noexcept;
-	void setAemAecpUnsolicitedCounter(std::uint64_t const value) noexcept;
-	void setAemAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept;
-	void setMvuAecpUnsolicitedCounter(std::uint64_t const value) noexcept;
-	void setMvuAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept;
+	// Setters of the Statistics (each interface maintains its own counters)
+	void setAecpRetryCounter(std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	void setAecpTimeoutCounter(std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	void setAecpUnexpectedResponseCounter(std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	void setAecpResponseAverageTime(std::chrono::milliseconds const& value, la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	void setAemAecpUnsolicitedCounter(std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	void setAemAecpUnsolicitedLossCounter(std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	void setMvuAecpUnsolicitedCounter(std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	void setMvuAecpUnsolicitedLossCounter(std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept;
 	void setEnumerationTime(std::chrono::milliseconds const& value) noexcept;
 
 	// Setters of the Diagnostics
@@ -383,17 +386,36 @@ public:
 	void setPtpInstanceDescriptor(entity::model::PtpInstanceDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex) noexcept;
 	void setPtpPortDescriptor(entity::model::PtpPortDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex) noexcept;
 
-	// Setters of statistics
-	std::uint64_t incrementAecpRetryCounter() noexcept;
-	std::uint64_t incrementAecpTimeoutCounter() noexcept;
-	std::uint64_t incrementAecpUnexpectedResponseCounter() noexcept;
-	std::chrono::milliseconds const& updateAecpResponseTimeAverage(std::chrono::milliseconds const& responseTime) noexcept;
-	std::uint64_t incrementAemAecpUnsolicitedCounter() noexcept;
-	std::uint64_t incrementAemAecpUnsolicitedLossCounter() noexcept;
-	std::uint64_t incrementMvuAecpUnsolicitedCounter() noexcept;
-	std::uint64_t incrementMvuAecpUnsolicitedLossCounter() noexcept;
+	// Setters of statistics (each interface maintains its own counters; the returned value is the updated counter of that interface)
+	std::uint64_t incrementAecpRetryCounter(la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	std::uint64_t incrementAecpTimeoutCounter(la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	std::uint64_t incrementAecpUnexpectedResponseCounter(la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	std::chrono::milliseconds const& updateAecpResponseTimeAverage(std::chrono::milliseconds const& responseTime, la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	std::uint64_t incrementAemAecpUnsolicitedCounter(la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	std::uint64_t incrementAemAecpUnsolicitedLossCounter(la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	std::uint64_t incrementMvuAecpUnsolicitedCounter(la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	std::uint64_t incrementMvuAecpUnsolicitedLossCounter(la::avdecc::controller::InterfaceType const interfaceType) noexcept;
 	void setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept;
 	void setEndEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& endTime) noexcept;
+
+	/** Per-interface statistics counters (indexed by la::avdecc::controller::InterfaceType). */
+	struct InterfaceStatistics
+	{
+		std::uint64_t aecpRetryCounter{ 0ull };
+		std::uint64_t aecpTimeoutCounter{ 0ull };
+		std::uint64_t aecpUnexpectedResponseCounter{ 0ull };
+		std::uint64_t aecpResponsesCount{ 0ull }; // Intermediate variable used by aecpResponseAverageTime
+		std::chrono::milliseconds aecpResponseTimeSum{}; // Intermediate variable used by aecpResponseAverageTime
+		std::chrono::milliseconds aecpResponseAverageTime{};
+		std::uint64_t aemAecpUnsolicitedCounter{ 0ull };
+		std::uint64_t aemAecpUnsolicitedLossCounter{ 0ull };
+		std::uint64_t mvuAecpUnsolicitedCounter{ 0ull };
+		std::uint64_t mvuAecpUnsolicitedLossCounter{ 0ull };
+	};
+
+	/** Returns the statistics slot for the specified interface (falls back to the Primary slot on an invalid value). */
+	InterfaceStatistics& getInterfaceStatistics(la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	InterfaceStatistics const& getInterfaceStatistics(la::avdecc::controller::InterfaceType const interfaceType) const noexcept;
 
 	// Expected CheckDynamicInfoSupported query methods
 	bool checkAndClearExpectedCheckDynamicInfoSupported() noexcept;
@@ -456,7 +478,13 @@ public:
 	void setGetFatalEnumerationError() noexcept;
 	void setPackedDynamicInfoSupported(bool const isSupported) noexcept;
 	void setNotUsingCachedEntityModel() noexcept;
-	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
+	/**
+	 * @brief Set the unsolicited-notifications subscription state for one or all PIs.
+	 * @details In dual-PI mode each PI is a separate subscriber on the entity side (distinct controller-EID), so the subscription state is tracked per PI. When @a interfaceType is set, only that PI's subscription state is mutated (and its expected sequence IDs reset on unsubscribe). When @a interfaceType is std::nullopt, the same @a isSubscribed value is applied to every PI (used by JSON load, virtual entity visitor or any other caller that has no PI granularity).
+	 * @param[in] isSubscribed New subscription state to apply.
+	 * @param[in] interfaceType The targeted PI, or std::nullopt to apply to every PI at once.
+	 */
+	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed, std::optional<la::avdecc::controller::InterfaceType> const interfaceType = std::nullopt) noexcept;
 	void setUnsolicitedNotificationsSupported(bool const isSupported) noexcept;
 	bool wasAdvertised() const noexcept;
 	void setAdvertised(bool const wasAdvertised) noexcept;
@@ -467,8 +495,14 @@ public:
 	bool isRedundantSecondaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	bool isRedundantSecondaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	Diagnostics& getDiagnostics() noexcept;
-	bool hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
-	bool hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
+	bool hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept; /**< @a interfaceType selects which PI's sequence space to check. */
+	bool hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept; /**< @a interfaceType selects which PI's sequence space to check. */
+	/**
+	 * @brief Clears the per-PI expected AEM/MVU unsolicited sequenceID slots so the next unsolicited message received on that PI is accepted as the new baseline (no loss reported).
+	 * @details Must be called whenever the entity-side subscriber state for that PI may have been re-initialized, typically right after a successful (re-)registration on that PI. Failing to do so causes false-positive loss detection (and a spurious unregister) when the entity restarts its per-controller-EID sequence numbering at 0 on a fresh subscription.
+	 * @param[in] interfaceType The targeted PI.
+	 */
+	void resetExpectedUnsolicitedSequenceID(la::avdecc::controller::InterfaceType const interfaceType) noexcept;
 	entity::model::EntityTree const& getEntityModelTree() const noexcept;
 	void buildEntityModelGraph(entity::model::EntityTree const& entityTree) noexcept;
 
@@ -499,7 +533,7 @@ private:
 	void fixStreamPortInputMappings(std::map<entity::model::StreamPortIndex, model::StreamPortInputNode>& streamPorts) noexcept;
 	void fixStreamPortMappings(model::ConfigurationNode& configNode) noexcept;
 	void setDefaultPresentationTimes(model::ConfigurationNode& configNode) noexcept;
-	bool hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID) noexcept;
+	bool hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	void buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -524,7 +558,7 @@ private:
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
 	bool _isPackedDynamicInfoSupported{ false }; // Is the GET_DYNAMIC_INFO command supported
 	bool _isUsingCachedEntityModel{ false }; // Is the entity model loaded from the cache
-	bool _isSubscribedToUnsolicitedNotifications{ false }; // Are we subscribed to unsolicited notifications
+	std::array<bool, la::avdecc::controller::NumInterfaces> _isSubscribedToUnsolicitedNotificationsPerInterface{ false, false }; /**< Per-PI subscription state (indexed by #la::avdecc::controller::InterfaceType). The global #isSubscribedToUnsolicitedNotifications() returns true as soon as at least one PI is subscribed. In dual-PI mode, each PI is a separate subscriber on the entity side and can be (un)subscribed independently. */
 	bool _areUnsolicitedNotificationsSupported{ false }; // Are unsolicited notifications supported
 	bool _advertised{ false }; // Has the entity been advertised to the observers
 	bool _expectedCheckDynamicInfoSupported{ false };
@@ -539,8 +573,8 @@ private:
 	UniqueIdentifier _owningControllerID{}; // EID of the controller currently owning (who acquired) this entity
 	model::LockState _lockState{ model::LockState::Undefined };
 	UniqueIdentifier _lockingControllerID{}; // EID of the controller currently locking (who locked) this entity
-	std::optional<protocol::AecpSequenceID> _expectedAemSequenceID{ std::nullopt };
-	std::optional<protocol::AecpSequenceID> _expectedMvuSequenceID{ std::nullopt };
+	std::array<std::optional<protocol::AecpSequenceID>, la::avdecc::controller::NumInterfaces> _expectedAemSequenceID{ std::nullopt, std::nullopt }; /**< Expected next AEM unsolicited sequenceID, indexed by #la::avdecc::controller::InterfaceType. Each PI is a separate subscriber on the entity side and therefore maintains its own sequence numbering. */
+	std::array<std::optional<protocol::AecpSequenceID>, la::avdecc::controller::NumInterfaces> _expectedMvuSequenceID{ std::nullopt, std::nullopt }; /**< Expected next MVU unsolicited sequenceID, indexed by #la::avdecc::controller::InterfaceType. */
 	// Milan specific information
 	std::optional<entity::model::MilanInfo> _milanInfo{ std::nullopt };
 	std::optional<entity::model::MilanDynamicState> _milanDynamicState{ std::nullopt };
@@ -559,17 +593,8 @@ private:
 	RedundantStreamCategory _redundantPrimaryStreamOutputs{}; // Cached indexes of all Redundant Primary Streams (a non-redundant stream won't be listed here)
 	RedundantStreamCategory _redundantSecondaryStreamInputs{}; // Cached indexes of all Redundant Secondary Streams
 	RedundantStreamCategory _redundantSecondaryStreamOutputs{}; // Cached indexes of all Redundant Secondary Streams
-	// Statistics
-	std::uint64_t _aecpRetryCounter{ 0ull };
-	std::uint64_t _aecpTimeoutCounter{ 0ull };
-	std::uint64_t _aecpUnexpectedResponseCounter{ 0ull };
-	std::uint64_t _aecpResponsesCount{ 0ull }; // Intermediate variable used by _aecpResponseAverageTime
-	std::chrono::milliseconds _aecpResponseTimeSum{}; // Intermediate variable used by _aecpResponseAverageTime
-	std::chrono::milliseconds _aecpResponseAverageTime{};
-	std::uint64_t _aemAecpUnsolicitedCounter{ 0ull };
-	std::uint64_t _aemAecpUnsolicitedLossCounter{ 0ull };
-	std::uint64_t _mvuAecpUnsolicitedCounter{ 0ull };
-	std::uint64_t _mvuAecpUnsolicitedLossCounter{ 0ull };
+	// Statistics (one slot per interface)
+	std::array<InterfaceStatistics, la::avdecc::controller::NumInterfaces> _statisticsPerInterface{};
 	std::chrono::time_point<std::chrono::steady_clock> _enumerationStartTime{}; // Intermediate variable used by _enumerationTime
 	std::chrono::milliseconds _enumerationTime{};
 	// Diagnostics

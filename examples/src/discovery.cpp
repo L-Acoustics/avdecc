@@ -29,6 +29,7 @@
 #include <la/avdecc/controller/avdeccController.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
 #include <la/avdecc/internals/streamFormatInfo.hpp>
+#include <la/avdecc/executor.hpp>
 #ifdef ENABLE_AVDECC_FEATURE_JSON
 #	include <la/avdecc/internals/jsonTypes.hpp>
 #endif // ENABLE_AVDECC_FEATURE_JSON
@@ -183,6 +184,8 @@ class Discovery : public la::avdecc::controller::Controller::DefaultedObserver, 
 public:
 	/** Constructor/destructor/destroy */
 	Discovery(la::avdecc::protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale);
+	/** Dual-interface (redundancy) constructor. */
+	Discovery(std::vector<la::avdecc::controller::Controller::InterfaceConfiguration> const& interfaceConfigurations, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale);
 	~Discovery() noexcept override
 	{
 		la::avdecc::logger::Logger::getInstance().unregisterObserver(this);
@@ -204,20 +207,20 @@ private:
 	}
 	// la::avdecc::controller::Controller::Observer overrides
 	// Global notifications
-	virtual void onTransportError(la::avdecc::controller::Controller const* const controller) noexcept override;
+	virtual void onTransportError(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::InterfaceType const interfaceType) noexcept override;
 	virtual void onEntityQueryError(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::Controller::QueryCommandError const error) noexcept override;
 	// Discovery notifications (ADP)
 	virtual void onEntityOnline(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity) noexcept override;
 	virtual void onEntityOffline(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity) noexcept override;
 	// Statistics
-	virtual void onAecpRetryCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override;
-	virtual void onAecpTimeoutCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override;
-	virtual void onAecpUnexpectedResponseCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override;
-	virtual void onAecpResponseAverageTimeChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::chrono::milliseconds const& value) noexcept override;
-	virtual void onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override;
-	virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override;
-	virtual void onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override;
-	virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override;
+	virtual void onAecpRetryCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
+	virtual void onAecpTimeoutCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
+	virtual void onAecpUnexpectedResponseCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
+	virtual void onAecpResponseAverageTimeChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::chrono::milliseconds const& value, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
+	virtual void onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
+	virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
+	virtual void onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
+	virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
 	virtual void onMaxTransitTimeChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime) noexcept override;
 	virtual void onStreamOutputCountersChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamOutputCounters const& counters) noexcept override;
 
@@ -256,6 +259,21 @@ Discovery::Discovery(la::avdecc::protocol::ProtocolInterface::Type const protoco
 #endif // LOAD_TEST_VIRTUAL_ENTITY_FROM_AEM
 }
 
+Discovery::Discovery(std::vector<la::avdecc::controller::Controller::InterfaceConfiguration> const& interfaceConfigurations, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale)
+	: _controller(la::avdecc::controller::Controller::create(interfaceConfigurations, progID, entityModelID, preferedLocale, nullptr, nullptr))
+{
+	// Register observers
+	la::avdecc::logger::Logger::getInstance().registerObserver(this);
+	_controller->registerObserver(this);
+	// Start controller advertising
+	_controller->enableEntityAdvertising(10);
+	// Enable aem caching and fast enum
+	_controller->enableEntityModelCache();
+	_controller->enableFastEnumeration();
+	// Set default log level
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Trace);
+}
+
 std::string Discovery::flagsToString(la::avdecc::controller::ControlledEntity::CompatibilityFlags const compatibilityFlags) const noexcept
 {
 	auto str = std::string{};
@@ -282,9 +300,10 @@ std::string Discovery::flagsToString(la::avdecc::controller::ControlledEntity::C
 	return str;
 }
 
-void Discovery::onTransportError(la::avdecc::controller::Controller const* const /*controller*/) noexcept
+void Discovery::onTransportError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
-	outputText("Fatal error on transport layer\n");
+	auto const piName = (interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary";
+	outputText(std::string{ "Fatal error on transport layer of the " } + piName + " interface\n");
 }
 
 void Discovery::onEntityQueryError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* entity, la::avdecc::controller::Controller::QueryCommandError const error) noexcept
@@ -303,6 +322,7 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 		if (vendorID == VENDOR_ID)
 		{
 			outputText("New LA unit online: " + la::avdecc::utils::toHexString(entityID, true) + " (Compatibility: " + flagsToString(entity->getCompatibilityFlags()) + ")\n");
+#if 0
 			_controller->acquireEntity(entity->getEntity().getEntityID(), false,
 				[](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const /*owningEntity*/) noexcept
 				{
@@ -316,6 +336,7 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 				{
 					outputText("setSystemUniqueID response: " + la::avdecc::entity::ControllerEntity::statusToString(status) + "\n");
 				});
+#endif
 		}
 		else if (entity->getEntity().getTalkerCapabilities().test(la::avdecc::entity::TalkerCapability::Implemented))
 		{
@@ -326,6 +347,7 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 			outputText("New unknown entity online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
 		}
 
+#if 0
 		// Get PNG Manufacturer image
 		auto const& configNode = entity->getCurrentConfigurationNode();
 		for (auto const& objIt : configNode.memoryObjects)
@@ -355,6 +377,7 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 					});
 			}
 		}
+#endif
 	}
 	else
 	{
@@ -369,52 +392,52 @@ void Discovery::onEntityOffline(la::avdecc::controller::Controller const* const 
 }
 
 // Statistics
-void Discovery::onAecpRetryCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept
+void Discovery::onAecpRetryCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	outputText("AECP Retry Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + "\n");
+	outputText("AECP Retry Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + " (on " + ((interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary") + " interface)\n");
 }
 
-void Discovery::onAecpTimeoutCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept
+void Discovery::onAecpTimeoutCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	outputText("Aecp Timeout Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + "\n");
+	outputText("Aecp Timeout Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + " (on " + ((interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary") + " interface)\n");
 }
 
-void Discovery::onAecpUnexpectedResponseCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept
+void Discovery::onAecpUnexpectedResponseCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	outputText("Aecp Unexpected Response Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + "\n");
+	outputText("Aecp Unexpected Response Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + " (on " + ((interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary") + " interface)\n");
 }
 
-void Discovery::onAecpResponseAverageTimeChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::chrono::milliseconds const& value) noexcept
+void Discovery::onAecpResponseAverageTimeChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::chrono::milliseconds const& value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	outputText("Aecp Response Average Time for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value.count()) + " msec\n");
+	outputText("Aecp Response Average Time for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value.count()) + " msec (on " + ((interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary") + " interface)\n");
 }
 
-void Discovery::onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept
+void Discovery::onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	outputText("Aem Aecp Unsolicited Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + "\n");
+	outputText("Aem Aecp Unsolicited Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + " (on " + ((interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary") + " interface)\n");
 }
 
-void Discovery::onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept
+void Discovery::onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	outputText("Aem Aecp Unsolicited Loss Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + "\n");
+	outputText("Aem Aecp Unsolicited Loss Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + " (on " + ((interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary") + " interface)\n");
 }
 
-void Discovery::onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept
+void Discovery::onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	outputText("Mvu Aecp Unsolicited Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + "\n");
+	outputText("Mvu Aecp Unsolicited Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + " (on " + ((interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary") + " interface)\n");
 }
 
-void Discovery::onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept
+void Discovery::onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	outputText("Mvu Aecp Unsolicited Loss Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + "\n");
+	outputText("Mvu Aecp Unsolicited Loss Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + " (on " + ((interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary") + " interface)\n");
 }
 
 void Discovery::onMaxTransitTimeChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime) noexcept
@@ -510,19 +533,44 @@ int doJob()
 	{
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "', discovery active:\n");
 
-		// Create a discovery object
+		// Optionally enable redundancy by selecting a secondary network interface.
+		auto const secondaryIntfc = chooseSecondaryNetworkInterface(intfc);
+		auto const useDualInterface = (secondaryIntfc.type != la::networkInterface::Interface::Type::None);
+		if (useDualInterface)
 		{
-			auto discovery = Discovery{ protocolInterfaceType, intfc.id, 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en" };
-			std::this_thread::sleep_for(std::chrono::seconds(10));
-			outputText("Destroying discovery object\n");
+			outputText("Secondary interface '" + secondaryIntfc.alias + "' selected; redundancy enabled.\n");
 		}
 
-		// Create another one
+		static auto constexpr DefaultExecutorName = "avdecc::protocol::DualPI";
+		auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+		auto const buildInterfaceConfigurations = [&]()
 		{
-			auto discovery = Discovery{ protocolInterfaceType, intfc.id, 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en" };
-			std::this_thread::sleep_for(std::chrono::seconds(1500));
+			auto configs = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
+			configs.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ protocolInterfaceType, intfc.id, DefaultExecutorName });
+			configs.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ protocolInterfaceType, secondaryIntfc.id, DefaultExecutorName });
+			return configs;
+		};
+
+		auto const runDiscoveryFor = [&](std::chrono::seconds const duration)
+		{
+			if (useDualInterface)
+			{
+				auto discovery = Discovery{ buildInterfaceConfigurations(), 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en" };
+				std::this_thread::sleep_for(duration);
+			}
+			else
+			{
+				auto discovery = Discovery{ protocolInterfaceType, intfc.id, 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en" };
+				std::this_thread::sleep_for(duration);
+			}
 			outputText("Destroying discovery object\n");
-		}
+		};
+
+		// Create a discovery object
+		//runDiscoveryFor(std::chrono::seconds(10));
+
+		// Create another one
+		runDiscoveryFor(std::chrono::seconds(1500));
 	}
 	catch (la::avdecc::controller::Controller::Exception const& e)
 	{

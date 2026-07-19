@@ -639,48 +639,71 @@ void ControllerImpl::onGetDynamicInfoResult(entity::controller::Interface const*
 	}
 }
 
-void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
+void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onRegisterUnsolicitedNotificationsResult: {}", entity::ControllerEntity::statusToString(status));
 
-	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto controlledEntity = getControlledEntityImplGuard(entityID);
+	auto const interfaceType = (controller == _secondaryController) ? InterfaceType::Secondary : InterfaceType::Primary;
+	auto shouldEnsureOtherInterfaceRegistered = false;
 
-	if (controlledEntity)
 	{
-		auto& entity = *controlledEntity;
+		// Take a "scoped locked" shared copy of the ControlledEntity
+		auto controlledEntity = getControlledEntityImplGuard(entityID);
 
-		if (entity.checkAndClearExpectedRegisterUnsol())
+		if (controlledEntity)
 		{
-			entity.setUnsolicitedNotificationsSupported(true); // Set to true by default, will be set to false if we get a failure status
-			if (!!status)
+			auto& entity = *controlledEntity;
+
+			if (entity.checkAndClearExpectedRegisterUnsol())
 			{
-				entity.setSubscribedToUnsolicitedNotifications(true);
-			}
-			else
-			{
-				if (!processRegisterUnsolFailureStatus(status, &entity, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
+				entity.setUnsolicitedNotificationsSupported(true); // Set to true by default, will be set to false if we get a failure status
+
+				// Update the proxy's per-PI unsol state: Registered on success, NotRegistered on any failure so the next reachability transition will retry.
+				auto const newState = (!!status) ? ControllerVirtualProxy::UnsolState::Registered : ControllerVirtualProxy::UnsolState::NotRegistered;
+				_controllerProxy->setUnsolState(entityID, interfaceType, newState);
+
+				if (!!status)
 				{
-					controlledEntity->setGetFatalEnumerationError();
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &entity, QueryCommandError::RegisterUnsol);
-					return;
+					updateUnsolicitedNotificationsSubscription(entity, true, false, interfaceType);
+					shouldEnsureOtherInterfaceRegistered = true;
+				}
+				else
+				{
+					if (!processRegisterUnsolFailureStatus(status, &entity, MilanRequirements{ MilanRequiredVersions{ entity::model::MilanVersion{ 1, 0 } } }))
+					{
+						controlledEntity->setGetFatalEnumerationError();
+						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &entity, QueryCommandError::RegisterUnsol);
+						return;
+					}
+				}
+
+				// Got all expected "register unsolicited notifications"
+				if (entity.gotExpectedRegisterUnsol())
+				{
+					// Clear this enumeration step and check for next one
+					entity.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::RegisterUnsol);
+					checkEnumerationSteps(&entity);
 				}
 			}
-
-			// Got all expected "register unsolicited notifications"
-			if (entity.gotExpectedRegisterUnsol())
-			{
-				// Clear this enumeration step and check for next one
-				entity.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::RegisterUnsol);
-				checkEnumerationSteps(&entity);
-			}
 		}
+	} // Entity guard released here; commands may now safely be sent (cross-PI lock-order hygiene, see onEntityUpdate)
+
+	// In dual-PI mode, make sure the redundant subscription is also established on the other PI, whatever the discovery ordering: when the entity is first seen on the Secondary PI, the
+	// enumeration's registration is routed to the Primary as soon as it becomes reachable (preferred by pickRealInterface) and the reachability-transition lazy path also targeted the
+	// Primary, leaving the Secondary unsubscribed with no transition left to trigger it. No-op if the other PI is already Registered/Pending or does not see the entity.
+	if (shouldEnsureOtherInterfaceRegistered && _controllerProxy->isDualInterface())
+	{
+		auto const otherType = (interfaceType == InterfaceType::Primary) ? InterfaceType::Secondary : InterfaceType::Primary;
+		tryLazyRegisterUnsolOnInterface(entityID, otherType);
 	}
 }
 
-void ControllerImpl::onUnregisterUnsolicitedNotificationsResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
+void ControllerImpl::onUnregisterUnsolicitedNotificationsResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onDeregisterUnsolicitedNotificationsResult: {}", entity::ControllerEntity::statusToString(status));
+
+	// Identify which PI actually answered the UNREGISTER: in dual-PI mode each PI is a separate subscriber on the entity side, so this answer only applies to the PI it came in on.
+	auto const interfaceType = (controller == _secondaryController) ? InterfaceType::Secondary : InterfaceType::Primary;
 
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -691,7 +714,7 @@ void ControllerImpl::onUnregisterUnsolicitedNotificationsResult(entity::controll
 
 		if (!!status)
 		{
-			updateUnsolicitedNotificationsSubscription(entity, false, false);
+			updateUnsolicitedNotificationsSubscription(entity, false, false, interfaceType);
 		}
 	}
 }

@@ -24,10 +24,13 @@
 
 #pragma once
 
+#include "la/avdecc/controller/avdeccController.hpp"
+
 #include <la/avdecc/internals/controllerEntity.hpp>
 
 #include <mutex>
 #include <set>
+#include <unordered_map>
 
 namespace la
 {
@@ -35,12 +38,32 @@ namespace avdecc
 {
 namespace controller
 {
-/** Proxy class to route all controller::Interface calls between the virtual and the real controller::Interface depending on the virtual entity state */
+/** Proxy class to route all controller::Interface calls between the virtual and the real controller::Interface depending on the virtual entity state.
+ *  In dual-interface (redundancy) mode, this proxy also routes between two real interfaces (Primary and Secondary) based on per-entity reachability.
+ */
 class ControllerVirtualProxy : public entity::controller::Interface
 {
 public:
-	/** Constructor */
+	/** Per-entity reachability state across the (optional) two real interfaces. */
+	struct InterfaceReachability
+	{
+		bool onPrimary{ false }; /**< True if the entity is currently reachable on the Primary interface. */
+		bool onSecondary{ false }; /**< True if the entity is currently reachable on the Secondary interface. */
+	};
+
+	/** State of the unsolicited notification registration for a single (entity, PI) pair. */
+	enum class UnsolState : std::uint8_t
+	{
+		NotRegistered, /**< No registration is currently in flight nor completed. */
+		Pending, /**< A REGISTER_UNSOLICITED_NOTIFICATION command has been sent and is awaiting its response. */
+		Registered, /**< The talker has confirmed the unsolicited subscription on this PI. */
+	};
+
+	/** Constructor (single-interface mode). */
 	ControllerVirtualProxy(protocol::ProtocolInterface const* const protocolInterface, entity::controller::Interface const* const realInterface, entity::controller::Interface const* const virtualInterface) noexcept;
+
+	/** Constructor (dual-interface mode for redundancy). The secondaryRealInterface may be nullptr to fall back to single-interface mode. */
+	ControllerVirtualProxy(protocol::ProtocolInterface const* const protocolInterface, entity::controller::Interface const* const primaryRealInterface, entity::controller::Interface const* const secondaryRealInterface, entity::controller::Interface const* const virtualInterface) noexcept;
 
 	/** Destructor */
 	virtual ~ControllerVirtualProxy() noexcept;
@@ -50,6 +73,63 @@ public:
 
 	/** Clears the specified UniqueIdentifier as a virtual entity */
 	void clearVirtualEntity(UniqueIdentifier const& virtualEntity) noexcept;
+
+	/** Marks the specified entity as reachable (or not) on the given interface. Called by ControllerImpl from ADP callbacks.
+	 * @details In dual-PI mode, also resets the per-PI unsolicited-notification state to NotRegistered when transitioning to unreachable, so the registration is re-issued the next time the PI comes back.
+	 * @return True if this call caused a `false→true` transition on the given interface (the caller may use this to lazily re-register unsolicited notifications on the PI that just came back online).
+	 */
+	bool setEntityReachable(UniqueIdentifier const& entityID, InterfaceType const interfaceType, bool const reachable) noexcept;
+
+	/** Marks all entities as unreachable on the specified interface (called when a transport error is reported on that interface). Returns true if the other interface is still up, false if both PIs are now down (or single-PI mode). */
+	bool markInterfaceDown(InterfaceType const interfaceType) noexcept;
+
+	/** Returns the current reachability for the specified entity (both PIs false if entity is unknown). */
+	InterfaceReachability getEntityReachability(UniqueIdentifier const& entityID) const noexcept;
+
+	/** Records the set of AvbInterfaceIndex values last observed via the specified PI's ADP for the given entity. */
+	void setEntityInterfaceIndices(UniqueIdentifier const& entityID, InterfaceType const interfaceType, std::set<entity::model::AvbInterfaceIndex> indices) noexcept;
+
+	/** Returns the set of AvbInterfaceIndex values last observed via the specified PI's ADP for the given entity. */
+	std::set<entity::model::AvbInterfaceIndex> getEntityInterfaceIndices(UniqueIdentifier const& entityID, InterfaceType const interfaceType) const noexcept;
+
+	/** Returns true if the controller is operating in dual-interface mode. */
+	bool isDualInterface() const noexcept;
+
+	/** Returns the secondary real interface (or nullptr if single-interface mode). */
+	entity::controller::Interface const* getSecondaryRealInterface() const noexcept;
+
+	/** Returns the "other" real interface (the one that was not chosen), or nullptr in single-interface mode. */
+	entity::controller::Interface const* otherRealInterface(entity::controller::Interface const* const chosenInterface) const noexcept;
+
+	/** Returns the "other" real interface only if the target entity is currently reachable on it (i.e. it makes sense to retry there).
+	 * Returns nullptr in single-interface mode or when the other PI does not have reachability for @a entityID. This is used by the retry layer
+	 * to avoid converting a legitimate failure on one PI (e.g. TimedOut, BadArguments) into a misleading UnknownEntity reported by the other PI.
+	 */
+	entity::controller::Interface const* otherReachableInterface(UniqueIdentifier const& entityID, entity::controller::Interface const* const chosenInterface) const noexcept;
+
+	/** Atomically transitions the unsol state for (@a entityID, @a interfaceType) from NotRegistered to Pending and returns true if the caller "owns" the transition (i.e. should send the register command now). Returns false otherwise (already Pending or Registered, or in single-PI mode and @a interfaceType is Secondary). */
+	bool tryClaimUnsolPending(UniqueIdentifier const& entityID, InterfaceType const interfaceType) noexcept;
+
+	/** Sets the unsol state for the (@a entityID, @a interfaceType) pair. Typically called from the per-PI register result handler. */
+	void setUnsolState(UniqueIdentifier const& entityID, InterfaceType const interfaceType, UnsolState const state) noexcept;
+
+	/** Returns the current unsol state for the (@a entityID, @a interfaceType) pair. */
+	UnsolState getUnsolState(UniqueIdentifier const& entityID, InterfaceType const interfaceType) const noexcept;
+
+	/** Sends a REGISTER_UNSOLICITED_NOTIFICATION command directly on the specified real PI, bypassing the proxy's pickRealInterface and the dual-PI retry layer.
+	 * @details This is used to register the talker's unsolicited subscription on each reachable PI independently, so that loss of one PI does not silently drop unsolicited notifications.
+	 * @note In single-PI mode, the command is always sent on the primary interface regardless of @a interfaceType.
+	 */
+	void registerUnsolicitedNotificationsOnInterface(UniqueIdentifier const targetEntityID, InterfaceType const interfaceType, RegisterUnsolicitedNotificationsHandler const& handler) const noexcept;
+
+	/** Returns true if the AEM command status indicates the command should be retried on the fallback interface in dual-interface mode. */
+	static bool shouldRetry(entity::ControllerEntity::AemCommandStatus const status) noexcept;
+	/** Returns true if the AA command status indicates the command should be retried on the fallback interface in dual-interface mode. */
+	static bool shouldRetry(entity::ControllerEntity::AaCommandStatus const status) noexcept;
+	/** Returns true if the MVU command status indicates the command should be retried on the fallback interface in dual-interface mode. */
+	static bool shouldRetry(entity::ControllerEntity::MvuCommandStatus const status) noexcept;
+	/** Returns true if the ACMP control status indicates the command should be retried on the fallback interface in dual-interface mode. */
+	static bool shouldRetry(entity::ControllerEntity::ControlStatus const status) noexcept;
 
 	// entity::controller::Interface overrides
 	virtual void acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, AcquireEntityHandler const& handler) const noexcept override;
@@ -194,13 +274,55 @@ private:
 	/** Returns true if the specified UniqueIdentifier is a virtual entity */
 	bool isVirtualEntity(UniqueIdentifier const& virtualEntity) const noexcept;
 
+	/** Picks the most appropriate real interface for the specified entity based on current reachability. Falls back to primary if no reachability data is known. */
+	entity::controller::Interface const* pickRealInterface(UniqueIdentifier const& targetEntityID) const noexcept;
+
+	/** Routes an AEM/AA/MVU command through the dual-interface retry layer.
+	 * @details Selects the appropriate real interface via pickRealInterface, wraps the handler with retry logic, and invokes the member function pointed to by @a Method.
+	 * @tparam Method Pointer-to-member-function on entity::controller::Interface (the command to invoke).
+	 * @tparam HandlerT Deduced type of the completion handler.
+	 * @tparam Args Deduced types of the command arguments (excluding targetEntityID and handler).
+	 * @param[in] targetEntityID Entity to target (used both as routing key and first method argument).
+	 * @param[in] handler User-provided completion handler.
+	 * @param[in] args Remaining arguments forwarded to the member function (between targetEntityID and handler).
+	 */
+	template<auto Method, typename HandlerT, typename... Args>
+	void routeAemCommand(UniqueIdentifier const targetEntityID, HandlerT const& handler, Args const&... args) const noexcept;
+
+	/** Routes an ACMP command through the dual-interface retry layer.
+	 * @details Same as routeAemCommand but for ACMP commands where the routing key differs from the method arguments.
+	 * @tparam Method Pointer-to-member-function on entity::controller::Interface (the ACMP command to invoke).
+	 * @tparam HandlerT Deduced type of the completion handler.
+	 * @tparam Args Deduced types of the command arguments (excluding handler).
+	 * @param[in] routingKey EntityID used to pick the real interface via pickRealInterface.
+	 * @param[in] handler User-provided completion handler.
+	 * @param[in] args Arguments forwarded to the member function (before handler).
+	 */
+	template<auto Method, typename HandlerT, typename... Args>
+	void routeAcmpCommand(UniqueIdentifier const routingKey, HandlerT const& handler, Args const&... args) const noexcept;
+
 	// Private members
 	mutable std::mutex _lock{};
 	std::set<UniqueIdentifier> _virtualEntities{};
 	protocol::ProtocolInterface const* _protocolInterface{ nullptr };
-	entity::controller::Interface const* _realInterface{ nullptr };
+	entity::controller::Interface const* _realInterface{ nullptr }; /**< Primary real interface. */
+	entity::controller::Interface const* _secondaryRealInterface{ nullptr }; /**< Secondary real interface, or nullptr in single-interface mode. */
 	entity::controller::Interface const* _virtualInterface{ nullptr };
 	std::string _executorName{};
+
+	/** Per-(entity, PI) state combining reachability and unsol registration. */
+	struct EntityState
+	{
+		bool onPrimary{ false };
+		bool onSecondary{ false };
+		UnsolState unsolPrimary{ UnsolState::NotRegistered };
+		UnsolState unsolSecondary{ UnsolState::NotRegistered };
+		std::set<entity::model::AvbInterfaceIndex> interfacesFromPrimary{}; /**< Interface indices last observed via Primary PI's ADP. */
+		std::set<entity::model::AvbInterfaceIndex> interfacesFromSecondary{}; /**< Interface indices last observed via Secondary PI's ADP. */
+	};
+	std::unordered_map<UniqueIdentifier, EntityState, UniqueIdentifier::hash> _reachability{};
+	bool _primaryInterfaceUp{ true }; /**< Per-PI transport-up flag for the primary interface (dual-interface mode only). */
+	bool _secondaryInterfaceUp{ true }; /**< Per-PI transport-up flag for the secondary interface (dual-interface mode only). */
 };
 
 } // namespace controller
