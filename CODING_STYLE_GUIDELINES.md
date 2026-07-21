@@ -1,5 +1,5 @@
 # Coding style and guidelines
-##### Revision 4
+##### Revision 5
 This file describes the coding style and guidelines used by this repository, which must be followed for any new code.
 
 ## Coding style and guidelines
@@ -51,8 +51,11 @@ struct Foo
 - [Always use _auto_ for variables declaration](https://youtu.be/xnqTKD8uD64?t=1808) as it's impossible to have an uninitialized variable (possible since c++17 thanks to [[dcl.init] update in P0135R1: Guaranteed copy elision](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0135r1.html))
 - Always put _const_ to the right of the type (for consistency and prevent ambiguity when used with auto and pointers)
 - Add _virtual_ and _override_ keywords when _overriding_ a _virtual method_ for clarity and consistency
-- Always declare function parameters as const (so they cannot be changed inside the function), except for obvious reasons (references, movable objects and pointers that are mutable)
+- Always declare function/method parameters as const (so they cannot be changed inside the function), except for obvious reasons (references, movable objects and pointers that are mutable), both in **definition and declaration**
+- Always declare function/method as noexcept if they do not throw exceptions (some STL exceptions that should not really occur should not be considered as throwing exceptions, such as std::bad_alloc)
+- Always declare observer methods as noexcept, their invocation should always be encapsulated in a try-catch block, so they should never throw exceptions
 - Always declare variables as const if they never change
+- Declare functions/methods as const when they do not modify the state of the object (except for observer notification methods). If you need to take a lock inside a const method, declare the lock as mutable
 
 ### Header inclusion order
 - Current library public headers (using "")
@@ -83,6 +86,11 @@ Example:
 - Always handle all cases in a _switch-case statement_ (make use of the _default keyword_ if required)
 - Always scope statement blocs with curling braces when it's optional (_if_, _else_, ...)
 - Never capture all variables by reference or by value in a lambda expression, always specify each captured variable explicitly (to avoid dangling references and for clarity)
+- (Almost) never use _using namespace_ directive
+- Avoid forward declarations in header files as much as possible, prefer including the required header file instead, to avoid unnecessary coupling and to improve readability
+- Always use _#pragma once_ in header files to prevent multiple inclusions
+- Always use _nullptr_ instead of _NULL_ or _0_ for pointer initialization and comparison
+- Comments should be written in English, and should not be limited to 80 characters per line (IDE can be configured to wrap comments as desired). However, to avoid very long lines, line breaks should be used after a sentence if going beyond 80 characters.
 
 ## clang-format
 Use the provided [clang-format file](.clang-format) to correctly format the code.
