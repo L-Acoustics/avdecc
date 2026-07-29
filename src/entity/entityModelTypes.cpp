@@ -363,13 +363,14 @@ std::string LA_AVDECC_CALL_CONVENTION ptpPortTypeToString(PtpPortType const ptpP
 
 std::string LA_AVDECC_CALL_CONVENTION controlTypeToString(ControlType const& controlType) noexcept
 {
-	auto const vendorID = controlType.getVendorID();
+	// A ControlType is an EUI-64 built from an OUI-24 (IEEE1722.1-2021 Clause 7.3.5)
+	auto const vendorID = controlType.getVendorID<OuiType::Oui24>();
 	if (vendorID == StandardControlTypeVendorID)
 	{
 		return standardControlTypeToString(static_cast<StandardControlType>(controlType.getValue()));
 	}
 
-	return "VENDOR: " + utils::toHexString<std::uint32_t, 6>(vendorID, true, true) + " VALUE: " + utils::toHexString<std::uint64_t, 10>(controlType.getVendorValue(), true, true);
+	return "VENDOR: " + utils::toHexString<std::uint32_t, 6>(vendorID, true, true) + " VALUE: " + utils::toHexString<std::uint64_t, 10>(controlType.getVendorValue<OuiType::Oui24>(), true, true);
 }
 
 std::string LA_AVDECC_CALL_CONVENTION standardControlTypeToString(StandardControlType const controlType) noexcept

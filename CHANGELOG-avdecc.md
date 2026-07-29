@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - New ProtocolInterface based on Network.framework (NWEthernetChannel) for macOS 10.15 and later
+- Support for all IEEE OUI range for `UniqueIdentifier::getVendorID()`
 
 ### Fixed 
 - Better debugger support for MacOs and Linux builds

@@ -35,6 +35,14 @@ namespace la
 {
 namespace avdecc
 {
+/** Type of OUI (Organizationally Unique Identifier), the value being the number of bits of the prefix assigned by the IEEE. */
+enum class OuiType : std::uint8_t
+{
+	Oui24 = 24, /**< MA-L (MAC Address Block Large) assignment. */
+	Oui28 = 28, /**< MA-M (MAC Address Block Medium) assignment. */
+	Oui36 = 36, /**< MA-S (MAC Address Block Small) or IAB (Individual Address Block) assignment. */
+};
+
 class UniqueIdentifier final
 {
 public:
@@ -64,32 +72,32 @@ public:
 		return _eui;
 	}
 
-	/** Returns the VendorID as a OUI-24 (by default) or OUI-64 if using std::uint64_t type. It's the caller's responsibility to know if it needs to get the OUI-24 or OUI-36. */
-	template<typename Type = std::uint32_t>
-	constexpr std::enable_if_t<std::is_same_v<Type, std::uint32_t> | std::is_same_v<Type, std::uint64_t>, Type> getVendorID() const noexcept
+	/**
+	* @brief Returns the VendorID, ie. the leading bits of the underlying value that the IEEE assigned to an organization.
+	* @details The OuiType tells how many leading bits to extract, which the caller is responsible for knowing (an OUI-24 assignment and an OUI-28 assignment cannot be told apart from the underlying value alone).
+	* @return The VendorID, right aligned, as a std::uint32_t if it fits in 32 bits (OUI-24 and OUI-28), as a std::uint64_t otherwise.
+	*/
+	template<OuiType Type>
+	constexpr auto getVendorID() const noexcept
 	{
-		if constexpr (std::is_same_v<Type, std::uint32_t>)
-		{
-			return static_cast<Type>((_eui >> 40) & 0x0000000000FFFFFF);
-		}
-		else if constexpr (std::is_same_v<Type, std::uint64_t>)
-		{
-			return static_cast<Type>((_eui >> 28) & 0x0000000FFFFFFFFF);
-		}
+		constexpr auto VendorIDBits = static_cast<std::uint8_t>(Type);
+		static_assert(VendorIDBits > 0u && VendorIDBits < EuiBits, "Invalid OuiType");
+
+		return static_cast<std::conditional_t<(VendorIDBits <= 32u), std::uint32_t, value_type>>(_eui >> (EuiBits - VendorIDBits));
 	}
 
-	/** Returns the Value for the Vendor. Value being the remaining part after the OUI-24 (by default) or OUI-64 if using std::uint64_t type. It's the caller's responsibility to know if it needs to get the value after OUI-24 or OUI-36. */
-	template<typename Type = std::uint64_t>
-	constexpr std::enable_if_t<std::is_same_v<Type, std::uint64_t> | std::is_same_v<Type, std::uint32_t>, Type> getVendorValue() const noexcept
+	/**
+	* @brief Returns the Value for the Vendor, ie. the trailing bits of the underlying value that the assignee is free to allocate.
+	* @details The OuiType tells how many leading bits the VendorID occupies, which the caller is responsible for knowing (see getVendorID()).
+	* @return The Value for the Vendor, right aligned, as a std::uint32_t if it fits in 32 bits (OUI-36), as a std::uint64_t otherwise.
+	*/
+	template<OuiType Type>
+	constexpr auto getVendorValue() const noexcept
 	{
-		if constexpr (std::is_same_v<Type, std::uint64_t>)
-		{
-			return static_cast<Type>(_eui) & 0x000000FFFFFFFFFF;
-		}
-		else if constexpr (std::is_same_v<Type, std::uint32_t>)
-		{
-			return static_cast<Type>(_eui) & 0x0FFFFFFF;
-		}
+		constexpr auto VendorValueBits = static_cast<std::uint8_t>(EuiBits - static_cast<std::uint8_t>(Type));
+		static_assert(VendorValueBits > 0u && VendorValueBits < EuiBits, "Invalid OuiType");
+
+		return static_cast<std::conditional_t<(VendorValueBits <= 32u), std::uint32_t, value_type>>(_eui & ((value_type{ 1u } << VendorValueBits) - 1u));
 	}
 
 	/** Returns true if the UniqueIdentifier is Group (aka Multicast/Broadcast). Returns false if the UniqueIdentifier is Individual (aka Unicast), or invalid. */
@@ -168,6 +176,7 @@ public:
 	UniqueIdentifier& operator=(UniqueIdentifier&&) = default;
 
 private:
+	static constexpr std::uint8_t EuiBits = sizeof(value_type) * 8u;
 	static constexpr value_type NullIdentifierValue = 0x0000000000000000;
 	static constexpr value_type UninitializedIdentifierValue = 0xFFFFFFFFFFFFFFFF;
 	value_type _eui{ UninitializedIdentifierValue };

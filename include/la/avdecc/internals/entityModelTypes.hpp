@@ -381,7 +381,7 @@ constexpr bool operator==(PtpPortType const lhs, std::underlying_type_t<PtpPortT
 
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION ptpPortTypeToString(PtpPortType const ptpPortType) noexcept;
 
-/** Control Type - IEEE1722.1-2013 Clause 7.3.4 */
+/** Control Type - IEEE1722.1-2021 Clause 7.3.5 */
 using ControlType = UniqueIdentifier;
 constexpr std::uint32_t StandardControlTypeVendorID = 0x90e0f0;
 
