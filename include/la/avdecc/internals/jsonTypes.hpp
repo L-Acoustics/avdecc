@@ -595,6 +595,14 @@ NLOHMANN_JSON_SERIALIZE_ENUM(EntityCapability, {
 																								 { EntityCapability::AemInterfaceIndexValid, "AEM_INTERFACE_INDEX_VALID" },
 																								 { EntityCapability::GeneralControllerIgnore, "GENERAL_CONTROLLER_IGNORE" },
 																								 { EntityCapability::EntityNotReady, "ENTITY_NOT_READY" },
+																								 { EntityCapability::AcmpAcquireWithAem, "ACMP_ACQUIRE_WITH_AEM" },
+																								 { EntityCapability::AcmpAuthenticateWithAem, "ACMP_AUTHENTICATE_WITH_AEM" },
+																								 { EntityCapability::SupportsUdpv4Atdecc, "SUPPORTS_UDPV4_ATDECC" },
+																								 { EntityCapability::SupportsUdpv4Streaming, "SUPPORTS_UDPV4_STREAMING" },
+																								 { EntityCapability::SupportsUdpv6Atdecc, "SUPPORTS_UDPV6_ATDECC" },
+																								 { EntityCapability::SupportsUdpv6Streaming, "SUPPORTS_UDPV6_STREAMING" },
+																								 { EntityCapability::MultiplePtpInstances, "MULTIPLE_PTP_INSTANCES" },
+																								 { EntityCapability::AemConfigurationIndexValid, "AEM_CONFIGURATION_INDEX_VALID" },
 																							 });
 
 /* TalkerCapability conversion */

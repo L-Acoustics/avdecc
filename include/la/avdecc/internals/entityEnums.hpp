@@ -80,7 +80,15 @@ enum class LA_AVDECC_API EntityCapability : std::uint32_t
 	AemInterfaceIndexValid = 1u << 15, /**< The interface_index field contains a valid index of an AEM AVB_INTERFACE descriptor for interface in the current Configuration which is transmitting the ADPDU. This flag shall only be set if the AEM_SUPPORTED flag is set. */
 	GeneralControllerIgnore = 1u << 16, /**< General purpose AVDECC Controllers ignore the presence of this AVDECC Entity when this flag is set. */
 	EntityNotReady = 1u << 17, /**< The AVDECC Entity is not ready to be enumerated or connected by an AVDECC Controller. */
-	/* Bits 0 to 13 reserved for future use */
+	AcmpAcquireWithAem = 1u << 18, /**< ACMP respects any acquisition made with the ACQUIRE_ENTITY AEM Command. */
+	AcmpAuthenticateWithAem = 1u << 19, /**< ACMP requires that the ATDECC Controller authenticate using the AEM AUTHENTICATE command. */
+	SupportsUdpv4Atdecc = 1u << 20, /**< The Entity supports ATDECC via AVTP over UDP using IPv4. */
+	SupportsUdpv4Streaming = 1u << 21, /**< The Entity supports streaming via AVTP over UDP using IPv4. */
+	SupportsUdpv6Atdecc = 1u << 22, /**< The Entity supports ATDECC via AVTP over UDP using IPv6. */
+	SupportsUdpv6Streaming = 1u << 23, /**< The Entity supports streaming via AVTP over UDP using IPv6. */
+	MultiplePtpInstances = 1u << 24, /**< The Entity has multiple PTP Instances using an interface. */
+	AemConfigurationIndexValid = 1u << 25 /**< The current_configuration_index field contains a valid index of an AEM CONFIGURATION descriptor for the current Configuration. This flag shall only be set if the AEM_SUPPORTED flag is set. */
+	/* Bits 0 to 5 reserved for future use */
 };
 using EntityCapabilities = utils::EnumBitfield<EntityCapability>;
 
