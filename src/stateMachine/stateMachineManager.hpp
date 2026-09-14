@@ -34,6 +34,7 @@
 #include <chrono>
 #include <unordered_map>
 #include <mutex>
+#include <condition_variable>
 #include <thread>
 #include <cstdint>
 
@@ -68,6 +69,8 @@ public:
 	void processAdpdu(Adpdu const& adpdu) noexcept;
 	void processAecpdu(Aecpdu const& aecpdu) noexcept;
 	void processAcmpdu(Acmpdu const& acmpdu) noexcept;
+	/** Has the state machines thread check no later than 'time', waking it if it waits for longer */
+	void scheduleStateMachinesCheck(std::chrono::time_point<std::chrono::steady_clock> const time) noexcept;
 
 	/** BasicLockable concept 'lock' method for the whole StateMachine */
 	void lock() noexcept;
@@ -124,6 +127,8 @@ private:
 	std::uint32_t _lockedCount{ 0u }; // DEBUG status for BasicLockable concept
 	std::thread::id _lockingThreadID{}; // DEBUG status for BasicLockable concept
 	bool _shouldTerminate{ false };
+	std::condition_variable_any _stateMachinesCondition{}; /** Wakes the state machines thread, to terminate or to check sooner */
+	std::chrono::time_point<std::chrono::steady_clock> _nextStateMachinesCheck{}; /** When the state machines thread next checks, while it waits */
 	ProtocolInterface const* const _protocolInterface{ nullptr };
 	std::thread _stateMachineThread{}; // Can safely be declared here, will be joined during destruction
 	LocalEntities _localEntities{}; /** Local entities declared by the running program */
