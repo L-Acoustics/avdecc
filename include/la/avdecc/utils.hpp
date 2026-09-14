@@ -76,6 +76,7 @@ enum class ThreadPriority
 	TimeCritical = 10,
 };
 
+/** Sets the name of the calling thread. Returns false if the name could not be set, for example because it is longer than the platform allows (15 characters on Linux), so the caller can try a shorter one. */
 LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string const& name);
 LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION setCurrentThreadPriority(ThreadPriority const prio);
 LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION enableAssert() noexcept;

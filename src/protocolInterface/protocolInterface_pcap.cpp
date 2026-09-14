@@ -124,7 +124,11 @@ public:
 		_captureThread = std::thread(
 			[this]
 			{
-				utils::setCurrentThreadName("avdecc::PCapInterface::Capture");
+				if (!utils::setCurrentThreadName("avdecc::PCapInterface::Capture"))
+				{
+					// Too long for some platforms (Linux allows 15 characters)
+					utils::setCurrentThreadName("avdecc:pcap");
+				}
 				auto* const pcap = _pcap.get();
 
 #ifdef __linux__

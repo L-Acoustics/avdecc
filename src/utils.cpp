@@ -155,16 +155,14 @@ bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string const& name)
 	return true;
 
 #elif defined(__APPLE__)
-	pthread_setname_np(name.c_str());
-	return true;
+	return pthread_setname_np(name.c_str()) == 0;
 
 #elif defined(__unix__) && !defined(__CYGWIN__)
 #	if (__GLIBC__ * 1000 + __GLIBC_MINOR__) >= 2012
-	pthread_setname_np(pthread_self(), name.c_str());
-	return true;
+	// Fails with ERANGE for a name longer than 15 characters, leaving the thread with the name it inherited from its creator
+	return pthread_setname_np(pthread_self(), name.c_str()) == 0;
 #	else // !GLIBC >= 2012
-	prctl(PR_SET_NAME, name.c_str(), 0, 0, 0);
-	return true;
+	return prctl(PR_SET_NAME, name.c_str(), 0, 0, 0) == 0;
 #	endif
 
 #else
