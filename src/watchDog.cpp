@@ -58,7 +58,11 @@ public:
 		_watchThread = std::thread(
 			[this]
 			{
-				utils::setCurrentThreadName("avdecc::watchDog");
+				if (!utils::setCurrentThreadName("avdecc::watchDog"))
+				{
+					// Too long for some platforms (Linux allows 15 characters)
+					utils::setCurrentThreadName("avdecc:watchDog");
+				}
 				while (!_shouldTerminate)
 				{
 					// Check all watch

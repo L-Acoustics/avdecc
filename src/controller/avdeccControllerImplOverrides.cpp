@@ -215,7 +215,11 @@ void ControllerImpl::createStateMachinesThread() noexcept
 	_stateMachinesThread = std::thread(
 		[this]
 		{
-			utils::setCurrentThreadName("avdecc::controller::StateMachines");
+			if (!utils::setCurrentThreadName("avdecc::controller::StateMachines"))
+			{
+				// Too long for some platforms (Linux allows 15 characters)
+				utils::setCurrentThreadName("avdecc:ctrlSM");
+			}
 			auto entityIdentificationsStopped = std::unordered_set<UniqueIdentifier, UniqueIdentifier::hash>{};
 			decltype(_controllerIdentifications) controllerIdentificationsStopped{};
 			decltype(_delayedQueries) queriesToSend{};
