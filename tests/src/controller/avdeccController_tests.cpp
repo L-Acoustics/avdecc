@@ -1780,6 +1780,7 @@ inline bool waitFor(std::function<bool()> const& predicate, std::chrono::millise
  * Instantiate it twice with the same EntityID (once per bus) to emulate a redundant entity.
  * Behavior:
  *  - Replies to ADP EntityDiscover (global or targeted) with an ADP EntityAvailable.
+ *  - Increments available_index on every ADP EntityAvailable it sends, like a compliant entity: a controller receiving two ADPs with the same available_index considers the entity as restarted (simulated offline/online), which would disrupt the scenario under test.
  *  - ACKs MVU GetMilanInfo with a Milan v1 MilanInfo (so the controller arms its unsolicited loss-detection).
  *  - ACKs AEM REGISTER_UNSOLICITED_NOTIFICATION (counted, can be silenced through setAckRegisterCommands) and DEREGISTER_UNSOLICITED_NOTIFICATION (counted, always ACKed).
  *  - Replies NotImplemented (echoing the command payload) to every other AEM command, so the enumeration fails fast on the static model without retries (irrelevant to these tests).
@@ -1858,6 +1859,8 @@ public:
 private:
 	void sendAdp(la::avdecc::protocol::AdpMessageType const messageType) noexcept
 	{
+		// available_index must strictly increase between two EntityAvailable messages (an equal or lower value is interpreted by the controller as an entity restart)
+		auto const availableIndex = (messageType == la::avdecc::protocol::AdpMessageType::EntityAvailable) ? ++_availableIndex : _availableIndex.load();
 		auto adpdu = la::avdecc::protocol::Adpdu{};
 		adpdu.setSrcAddress(_pi->getMacAddress());
 		adpdu.setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
@@ -1871,7 +1874,7 @@ private:
 		adpdu.setListenerStreamSinks(0);
 		adpdu.setListenerCapabilities({});
 		adpdu.setControllerCapabilities({});
-		adpdu.setAvailableIndex(1);
+		adpdu.setAvailableIndex(availableIndex);
 		adpdu.setGptpGrandmasterID({});
 		adpdu.setGptpDomainNumber(0);
 		adpdu.setIdentifyControlIndex(0);
@@ -1999,6 +2002,7 @@ private:
 	std::atomic_bool _ackRegisterCommands{ true };
 	std::atomic<std::uint32_t> _registerCount{ 0u };
 	std::atomic<std::uint32_t> _deregisterCount{ 0u };
+	std::atomic<std::uint32_t> _availableIndex{ 0u };
 	DECLARE_AVDECC_OBSERVER_GUARD(UnsolTestEntity);
 };
 
