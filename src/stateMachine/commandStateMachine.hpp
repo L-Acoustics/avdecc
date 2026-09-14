@@ -30,6 +30,7 @@
 
 #include <chrono>
 #include <unordered_map>
+#include <list>
 
 namespace la
 {
@@ -64,6 +65,7 @@ public:
 
 	void registerLocalEntity(entity::LocalEntity& entity) noexcept;
 	void unregisterLocalEntity(entity::LocalEntity& entity) noexcept;
+	/** Discards every inflight and queued AECP command targeting the specified remote entity (which is no longer known on this interface), completing each of them with ProtocolInterface::Error::UnknownRemoteEntity so their result handlers are always invoked. */
 	void discardAECPCommandsTowardsEntity(la::avdecc::UniqueIdentifier const& entityID) noexcept;
 	void checkInflightCommandsTimeoutExpiracy() noexcept;
 	void handleAecpResponse(Aecpdu const& aecpdu) noexcept;

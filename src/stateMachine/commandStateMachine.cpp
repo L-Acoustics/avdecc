@@ -128,9 +128,25 @@ void CommandStateMachine::discardAECPCommandsTowardsEntity(la::avdecc::UniqueIde
 	{
 		auto& localEntityInfo = localEntityInfoKV.second;
 
-		// Discard inflight and queued AECP commands
-		localEntityInfo.inflightAecpCommands.erase(entityID);
-		localEntityInfo.aecpCommandsQueue.erase(entityID);
+		// Detach the inflight and queued AECP commands from the state machine first, so a result handler that sends a new command to the same entity cannot alter the lists being iterated
+		auto discardedCommands = std::list<AecpCommandInfo>{};
+		if (auto const inflightIt = localEntityInfo.inflightAecpCommands.find(entityID); inflightIt != localEntityInfo.inflightAecpCommands.end())
+		{
+			discardedCommands.splice(discardedCommands.end(), inflightIt->second.inflightCommands);
+			localEntityInfo.inflightAecpCommands.erase(inflightIt);
+		}
+		if (auto const queuedIt = localEntityInfo.aecpCommandsQueue.find(entityID); queuedIt != localEntityInfo.aecpCommandsQueue.end())
+		{
+			discardedCommands.splice(discardedCommands.end(), queuedIt->second.queuedCommands);
+			localEntityInfo.aecpCommandsQueue.erase(queuedIt);
+		}
+
+		// Complete every discarded command with an error: the remote entity is no longer known on this interface, so no response will ever come back (silently dropping the commands would leave their callers waiting forever).
+		// In dual-interface mode, this is what allows the controller to re-issue the command on the other interface (if the entity is still reachable there) instead of stalling an in-progress enumeration.
+		for (auto const& command : discardedCommands)
+		{
+			utils::invokeProtectedHandler(command.resultHandler, nullptr, ProtocolInterface::Error::UnknownRemoteEntity);
+		}
 	}
 }
 

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Better debugger support for MacOs and Linux builds
 - [Crash in MacOSNative ProtocolInterface when an entity goes offline while an AECP command is inflight (semaphore disposed while in use)](https://github.com/L-Acoustics/avdecc/issues/177)
 - MacOSNative ProtocolInterface not invoking the result handler when the macOS framework refuses to send an AECP or ACMP command
+- AECP commands inflight (or queued) towards a remote entity going offline were silently discarded without invoking their result handler: they now complete with `UnknownEntity` (this also allows the dual-interface controller to re-issue the command on the other interface instead of stalling the enumeration)
 
 ## [4.3.1] - 2025-12-19
 ### Added
