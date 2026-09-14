@@ -117,7 +117,11 @@ public:
 		_captureThread = std::thread(
 			[this]
 			{
-				utils::setCurrentThreadName("avdecc::SerialInterface::Capture");
+				if (!utils::setCurrentThreadName("avdecc::SerialInterface::Capture"))
+				{
+					// Too long for some platforms (Linux allows 15 characters)
+					utils::setCurrentThreadName("avdecc:serial");
+				}
 				serialReceiveLoop();
 				if (!_shouldTerminate)
 				{

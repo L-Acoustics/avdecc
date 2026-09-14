@@ -103,7 +103,11 @@ public:
 		_captureThread = std::thread(
 			[this]
 			{
-				utils::setCurrentThreadName("avdecc::LocalInterface::Capture");
+				if (!utils::setCurrentThreadName("avdecc::LocalInterface::Capture"))
+				{
+					// Too long for some platforms (Linux allows 15 characters)
+					utils::setCurrentThreadName("avdecc:local");
+				}
 				socketReceiveLoop();
 				if (!_shouldTerminate)
 				{
