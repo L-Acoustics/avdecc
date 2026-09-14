@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Better debugger support for MacOs and Linux builds
 - [Crash in MacOSNative ProtocolInterface when an entity goes offline while an AECP command is inflight (semaphore disposed while in use)](https://github.com/L-Acoustics/avdecc/issues/177)
 - MacOSNative ProtocolInterface not invoking the result handler when the macOS framework refuses to send an AECP or ACMP command
+- WatchDog waking every 10 msec and looking for a debugger for every watch (reading /proc/self/status on Linux), even when nothing would act on a missed watch
 
 ## [4.3.1] - 2025-12-19
 ### Added
