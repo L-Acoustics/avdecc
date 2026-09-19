@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for all IEEE OUI range for `UniqueIdentifier::getVendorID()`
 - Missing EntityCapability flags
 
+### Changed
+- State machines thread waits until commands next need checking, instead of waking every 5 msec, and checks advertising, discovery and remote entity timeouts at least every 250 msec
+
 ### Fixed 
 - Better debugger support for MacOs and Linux builds
 - [Crash in MacOSNative ProtocolInterface when an entity goes offline while an AECP command is inflight (semaphore disposed while in use)](https://github.com/L-Acoustics/avdecc/issues/177)

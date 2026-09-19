@@ -28,6 +28,7 @@
 
 #include "protocolInterfaceDelegate.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <unordered_map>
 #include <list>
@@ -68,6 +69,8 @@ public:
 	/** Discards every inflight and queued AECP command targeting the specified remote entity (which is no longer known on this interface), completing each of them with ProtocolInterface::Error::UnknownRemoteEntity so their result handlers are always invoked. */
 	void discardAECPCommandsTowardsEntity(la::avdecc::UniqueIdentifier const& entityID) noexcept;
 	void checkInflightCommandsTimeoutExpiracy() noexcept;
+	/** When checkInflightCommandsTimeoutExpiracy next has something to do: an inflight command timing out, a queued command that may be sent, or an error to report */
+	std::chrono::time_point<std::chrono::steady_clock> getNextCheckTime() noexcept;
 	void handleAecpResponse(Aecpdu const& aecpdu) noexcept;
 	void handleAcmpResponse(Acmpdu const& acmpdu) noexcept;
 	ProtocolInterface::Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, ProtocolInterface::AecpCommandResultHandler const& onResult) noexcept;
@@ -180,12 +183,14 @@ private:
 		{
 			// Schedule the result handler to be called with the returned error from the delegate
 			info.scheduledAecpErrors.push_back(std::make_pair(error, command.resultHandler));
+			scheduleCheck(std::chrono::steady_clock::now());
 			return it;
 		}
 		else
 		{
 			// Move the command to inflight queue
 			resetAecpCommandTimeoutValue(command);
+			scheduleCheck(command.timeoutTime);
 			return inflight.inflightCommands.insert(it, std::move(command));
 		}
 	}
@@ -195,8 +200,8 @@ private:
 		// Get current time
 		auto const now = std::chrono::steady_clock::now();
 
-		// Check if we don't have too many inflight commands or sending too fast for this destination macAddress
-		if (inflight.inflightCommands.size() >= getMaxInflightAecpMessages(entityID) || !hasExpired(now, inflight.lastSendTime, getAecpSendInterval(entityID)))
+		// Check if we don't have too many inflight commands for this destination (a response or a timeout frees one)
+		if (inflight.inflightCommands.size() >= getMaxInflightAecpMessages(entityID))
 		{
 			return it;
 		}
@@ -205,6 +210,13 @@ private:
 		auto& queue = info.aecpCommandsQueue[entityID].queuedCommands;
 		if (queue.empty())
 		{
+			return it;
+		}
+
+		// Check if we are sending too fast for this destination, in which case the state machines send it once we may
+		if (!hasExpired(now, inflight.lastSendTime, getAecpSendInterval(entityID)))
+		{
+			scheduleCheck(inflight.lastSendTime + getAecpSendInterval(entityID));
 			return it;
 		}
 
@@ -233,12 +245,14 @@ private:
 		{
 			// Schedule the result handler to be called with the returned error from the delegate
 			info.scheduledAcmpErrors.push_back(std::make_pair(error, command.resultHandler));
+			scheduleCheck(std::chrono::steady_clock::now());
 			return it;
 		}
 		else
 		{
 			// Move the command to inflight queue
 			resetAcmpCommandTimeoutValue(command);
+			scheduleCheck(command.timeoutTime);
 			return inflight.inflightCommands.insert(it, std::move(command));
 		}
 	}
@@ -248,8 +262,8 @@ private:
 		// Get current time
 		auto const now = std::chrono::steady_clock::now();
 
-		// Check if we don't have too many inflight commands or sending too fast for this destination macAddress
-		if (inflight.inflightCommands.size() >= getMaxInflightAcmpMessages(targetMacAddress) || !hasExpired(now, inflight.lastSendTime, getAcmpSendInterval(targetMacAddress)))
+		// Check if we don't have too many inflight commands for this destination (a response or a timeout frees one)
+		if (inflight.inflightCommands.size() >= getMaxInflightAcmpMessages(targetMacAddress))
 		{
 			return it;
 		}
@@ -258,6 +272,13 @@ private:
 		auto& queue = info.acmpCommandsQueue[targetMacAddress].queuedCommands;
 		if (queue.empty())
 		{
+			return it;
+		}
+
+		// Check if we are sending too fast for this destination, in which case the state machines send it once we may
+		if (!hasExpired(now, inflight.lastSendTime, getAcmpSendInterval(targetMacAddress)))
+		{
+			scheduleCheck(inflight.lastSendTime + getAcmpSendInterval(targetMacAddress));
 			return it;
 		}
 
@@ -274,6 +295,24 @@ private:
 		return checkQueue(protocolInterface, info, macAddress, inflight, retIt);
 	}
 
+	template<typename InflightInfo, typename CommandsQueue, typename Target>
+	std::chrono::time_point<std::chrono::steady_clock> getNextCheckTimeFor(InflightInfo const& inflight, CommandsQueue const& queues, Target const& target, size_t const maxInflightCommands, std::chrono::milliseconds const sendInterval) const noexcept
+	{
+		auto nextCheckTime = std::chrono::time_point<std::chrono::steady_clock>::max();
+		for (auto const& command : inflight.inflightCommands)
+		{
+			nextCheckTime = std::min(nextCheckTime, command.timeoutTime);
+		}
+
+		// A queued command waits for a free slot, which a response or a timeout brings, or for the send interval to elapse
+		if (auto const queueIt = queues.find(target); queueIt != queues.end() && !queueIt->second.queuedCommands.empty() && inflight.inflightCommands.size() < maxInflightCommands)
+		{
+			nextCheckTime = std::min(nextCheckTime, inflight.lastSendTime + sendInterval);
+		}
+
+		return nextCheckTime;
+	}
+
 	bool isAemUnsolicitedResponse(Aecpdu const& aecpdu) const noexcept;
 	bool shouldRearmTimer(Aecpdu const& aecpdu) const noexcept;
 	bool isVuUnsolicitedResponse(Aecpdu const& aecpdu) const noexcept;
@@ -285,6 +324,7 @@ private:
 	std::chrono::milliseconds getAecpSendInterval(UniqueIdentifier const& entityID) const noexcept;
 	size_t getMaxInflightAcmpMessages(networkInterface::MacAddress const& macAddress) const noexcept;
 	std::chrono::milliseconds getAcmpSendInterval(networkInterface::MacAddress const& macAddress) const noexcept;
+	void scheduleCheck(std::chrono::time_point<std::chrono::steady_clock> const time) noexcept;
 
 	// Private members
 	Manager* _manager{ nullptr };

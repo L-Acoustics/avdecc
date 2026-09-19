@@ -28,6 +28,8 @@
 #include "stateMachineManager.hpp"
 #include "logHelper.hpp"
 
+#include <algorithm>
+
 // Only enable instrumentation in static library and in debug (for unit testing mainly)
 #if defined(DEBUG) && defined(la_avdecc_static_STATICS)
 #	define SEND_INSTRUMENTATION_NOTIFICATION(eventName) la::avdecc::InstrumentationNotifier::getInstance().triggerEvent(eventName)
@@ -231,6 +233,10 @@ void Manager::startStateMachines() noexcept
 				auto& watchDog = *watchDogSharedPointer;
 				watchDog.registerWatch("avdecc::StateMachine", std::chrono::milliseconds{ 1000u }, true);
 
+				// Commands need checking when they time out and when a queued one may be sent, which the command state machine
+				// tells us, but check at least this often: soon enough for advertising, discovery and remote entity timeouts, and for the watchdog
+				constexpr auto MaximumCheckInterval = std::chrono::milliseconds{ 250u };
+
 				while (!_shouldTerminate)
 				{
 					// Check for local entities announcement
@@ -248,8 +254,15 @@ void Manager::startStateMachines() noexcept
 					// Try to detect deadlocks
 					watchDog.alive("avdecc::StateMachine", true);
 
-					// Wait a little bit so we don't burn the CPU
-					std::this_thread::sleep_for(std::chrono::milliseconds(5));
+					// Wait until commands next need checking, sooner if one needs it (see scheduleStateMachinesCheck), or MaximumCheckInterval
+					auto lock = std::unique_lock{ *this };
+					auto const nextCheck = std::min(_commandStateMachine.getNextCheckTime(), std::chrono::steady_clock::now() + MaximumCheckInterval);
+					_nextStateMachinesCheck = nextCheck;
+					_stateMachinesCondition.wait_until(lock, nextCheck,
+						[this, nextCheck]
+						{
+							return _shouldTerminate || _nextStateMachinesCheck < nextCheck;
+						});
 				}
 				watchDog.unregisterWatch("avdecc::StateMachine", true);
 			});
@@ -262,7 +275,11 @@ void Manager::stopStateMachines() noexcept
 	if (_stateMachineThread.joinable())
 	{
 		// Notify the thread we are shutting down
-		_shouldTerminate = true;
+		{
+			auto const lg = std::scoped_lock{ *this };
+			_shouldTerminate = true;
+		}
+		_stateMachinesCondition.notify_all();
 
 		// Wait for the thread to complete its pending tasks
 		_stateMachineThread.join();
@@ -414,6 +431,18 @@ void Manager::processAcmpdu(Acmpdu const& acmpdu) noexcept
 	{
 		// Notify the delegate
 		utils::invokeProtectedMethod(&ProtocolInterfaceDelegate::onAcmpCommand, _protocolInterfaceDelegate, acmpdu);
+	}
+}
+
+void Manager::scheduleStateMachinesCheck(std::chrono::time_point<std::chrono::steady_clock> const time) noexcept
+{
+	auto const lg = std::scoped_lock{ *this };
+
+	// Only wake the thread if it waits for later: while it checks, it works out when to check next afterwards
+	if (time < _nextStateMachinesCheck)
+	{
+		_nextStateMachinesCheck = time;
+		_stateMachinesCondition.notify_all();
 	}
 }
 
