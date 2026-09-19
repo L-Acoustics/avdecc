@@ -39,6 +39,29 @@ namespace entity
 {
 namespace controller
 {
+/**
+* @brief RAII scope setting the DispatchContext of the calling thread for the duration of a dispatch.
+* @details The previous context is restored when the scope ends, so a dispatch nested in another one (eg. a command failing synchronously from a delegate notification) does not lose the outer context.
+*/
+class DispatchContextScope final
+{
+public:
+	DispatchContextScope(DispatchContext::Kind const kind, Interface const* const controllerInterface) noexcept;
+	~DispatchContextScope() noexcept;
+
+	/** Gets the DispatchContext of the calling thread. */
+	static DispatchContext const& current() noexcept;
+
+	// Deleted compiler auto-generated methods
+	DispatchContextScope(DispatchContextScope const&) = delete;
+	DispatchContextScope(DispatchContextScope&&) = delete;
+	DispatchContextScope& operator=(DispatchContextScope const&) = delete;
+	DispatchContextScope& operator=(DispatchContextScope&&) = delete;
+
+private:
+	DispatchContext _previous{};
+};
+
 class CapabilityDelegate final : public entity::CapabilityDelegate
 {
 public:

@@ -121,6 +121,30 @@ LA_AVDECC_CONTROLLER_API CompileOptions LA_AVDECC_CONTROLLER_CALL_CONVENTION get
 LA_AVDECC_CONTROLLER_API std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CALL_CONVENTION getCompileOptionsInfo() noexcept;
 
 /* ************************************************************************** */
+/* NotificationOrigin                                                         */
+/* ************************************************************************** */
+/**
+* @brief Where the change being notified to a Controller::Observer came from.
+* @details The Observer methods notifying a change of a ControlledEntity (dynamic model, counters, state, ...) are invoked while the controller processes the message that carried the change.
+*          This tells which kind of message it was, and on which interface it was received, so an application can tell an unsolicited notification from the response to a command of its own (an enumeration, a refresh or a set command), and in dual-interface mode which interface the entity spoke on.
+*          Retrieved with Controller::getCurrentNotificationOrigin() from inside an Observer method, on the thread invoking it.
+*/
+struct NotificationOrigin
+{
+	/** Kind of message that carried the change. */
+	enum class Source : std::uint8_t
+	{
+		Unknown = 0, /**< Not notified from a received message (eg. a virtual entity being modified, or a change the controller computed itself) */
+		Unsolicited = 1, /**< An unsolicited notification sent by the entity */
+		CommandResponse = 2, /**< The response to a command sent by this controller (enumeration, refresh or a command of the application) */
+		Sniffed = 3, /**< A response to the command of another controller, observed on the network (ACMP) */
+	};
+
+	Source source{ Source::Unknown };
+	std::optional<InterfaceType> interfaceType{ std::nullopt }; /**< Interface the message was received on (std::nullopt when unknown) */
+};
+
+/* ************************************************************************** */
 /* Controller                                                                 */
 /* ************************************************************************** */
 /**
@@ -600,6 +624,13 @@ public:
 	* @return The controller EntityID for the requested interface, or an invalid #UniqueIdentifier if not applicable.
 	*/
 	virtual UniqueIdentifier getControllerEID(InterfaceType const interfaceType = InterfaceType::Primary) const noexcept = 0;
+
+	/**
+	* @brief Gets the origin of the change currently being notified to the Observer, on the calling thread.
+	* @details See #NotificationOrigin. Meant to be called from an Observer method, on the thread invoking it (the Observer methods are invoked synchronously while the received message is processed).
+	* @return The origin of the notification, of source Unknown when not called from the processing of a received message.
+	*/
+	virtual NotificationOrigin getCurrentNotificationOrigin() const noexcept = 0;
 
 	/* Controller configuration methods */
 	/** Enables entity advertising with available duration included between 2-62 seconds on the specified interfaceIndex if set, otherwise on all interfaces. Might throw an Exception. */

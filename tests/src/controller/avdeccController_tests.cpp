@@ -2040,7 +2040,159 @@ private:
 	std::vector<Event> _events{};
 	DECLARE_AVDECC_OBSERVER_GUARD(UnsolRegistrationObserver);
 };
+
+/** Records the NotificationOrigin seen from inside the observer methods, next to the interface the event itself reports. */
+class NotificationOriginObserver final : public la::avdecc::controller::Controller::DefaultedObserver
+{
+public:
+	struct Event
+	{
+		std::string method{};
+		la::avdecc::controller::InterfaceType eventInterfaceType{ la::avdecc::controller::InterfaceType::Primary };
+		la::avdecc::controller::NotificationOrigin origin{};
+	};
+
+	std::vector<Event> getEvents(std::string const& method) const noexcept
+	{
+		auto const lg = std::lock_guard{ _lock };
+		auto events = std::vector<Event>{};
+		for (auto const& event : _events)
+		{
+			if (event.method == method)
+			{
+				events.push_back(event);
+			}
+		}
+		return events;
+	}
+
+	void clearEvents() noexcept
+	{
+		auto const lg = std::lock_guard{ _lock };
+		_events.clear();
+	}
+
+private:
+	void record(std::string method, la::avdecc::controller::InterfaceType const eventInterfaceType, la::avdecc::controller::NotificationOrigin const& origin) noexcept
+	{
+		auto const lg = std::lock_guard{ _lock };
+		_events.push_back(Event{ std::move(method), eventInterfaceType, origin });
+	}
+
+	virtual void onUnsolicitedRegistrationChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const /*entity*/, bool const isSubscribed, bool const /*triggeredByEntity*/, la::avdecc::controller::InterfaceType const interfaceType) noexcept override
+	{
+		if (isSubscribed)
+		{
+			record("onUnsolicitedRegistrationChanged", interfaceType, controller->getCurrentNotificationOrigin());
+		}
+	}
+	virtual void onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const interfaceType) noexcept override
+	{
+		record("onAemAecpUnsolicitedCounterChanged", interfaceType, controller->getCurrentNotificationOrigin());
+	}
+
+	mutable std::mutex _lock{};
+	std::vector<Event> _events{};
+	DECLARE_AVDECC_OBSERVER_GUARD(NotificationOriginObserver);
+};
 } // namespace
+
+/*
+ * Controller::getCurrentNotificationOrigin() tells, from inside an observer method, whether the change comes from an
+ * unsolicited notification or from the response to a command of the controller, and on which interface the message
+ * was received: the registration responses are command responses on the interface that registered, the unsolicited
+ * notifications are reported with the interface they arrived on, and outside of a dispatch the origin is unknown.
+ */
+TEST(Controller, NotificationOriginTellsTheMessageAndTheInterface)
+{
+	static auto constexpr PrimaryBusName = "NotifOrigin_Primary";
+	static auto constexpr SecondaryBusName = "NotifOrigin_Secondary";
+	constexpr auto EntityID = la::avdecc::UniqueIdentifier{ 0x00CAFEBABE0000A6 };
+	using Source = la::avdecc::controller::NotificationOrigin::Source;
+
+	auto const executors = registerDualPiExecutors("NotifOrigin_Ex");
+
+	auto interfaceConfigurations = std::vector<la::avdecc::controller::Controller::InterfaceConfiguration>{};
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, PrimaryBusName, std::optional<std::string>{ executors.primaryExecutorName } });
+	interfaceConfigurations.push_back(la::avdecc::controller::Controller::InterfaceConfiguration{ la::avdecc::protocol::ProtocolInterface::Type::Virtual, SecondaryBusName, std::optional<std::string>{ executors.secondaryExecutorName } });
+	auto controller = la::avdecc::controller::Controller::create(interfaceConfigurations, 0x0011, la::avdecc::UniqueIdentifier{}, "en", nullptr, nullptr);
+
+	// Outside of the processing of a received message, nothing is known
+	{
+		auto const origin = controller->getCurrentNotificationOrigin();
+		EXPECT_EQ(Source::Unknown, origin.source);
+		EXPECT_FALSE(origin.interfaceType.has_value());
+	}
+
+	auto originObs = NotificationOriginObserver{};
+	controller->registerObserver(&originObs);
+
+	auto primaryEntity = UnsolTestEntity{ PrimaryBusName, { { 0xA6, 0x06, 0x05, 0x04, 0x03, 0x02 } }, executors.primaryExecutorName, EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 0u } };
+	auto secondaryEntity = UnsolTestEntity{ SecondaryBusName, { { 0xA7, 0x06, 0x05, 0x04, 0x03, 0x02 } }, executors.secondaryExecutorName, EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 1u } };
+
+	primaryEntity.sendAdpAvailable();
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	secondaryEntity.sendAdpAvailable();
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			return primaryEntity.getRegisterCount() >= 1u && secondaryEntity.getRegisterCount() >= 1u;
+		},
+		std::chrono::seconds(5)))
+		<< "Initial per-PI unsolicited registrations not seen";
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			auto const entity = controller->getControlledEntityGuard(EntityID);
+			return !!entity && entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Primary) && entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Secondary);
+		},
+		std::chrono::seconds(5)))
+		<< "Entity not subscribed on both interfaces";
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+	// The subscription events come from the responses to the REGISTER_UNSOLICITED_NOTIFICATION commands, each received on the interface it was sent on (the registration on the first interface is part of the enumeration, before the entity is advertised, so only the lazy registration on the other interface is notified)
+	{
+		auto const events = originObs.getEvents("onUnsolicitedRegistrationChanged");
+		ASSERT_FALSE(events.empty()) << "Expected a subscribed event for the lazy registration";
+		for (auto const& event : events)
+		{
+			EXPECT_EQ(Source::CommandResponse, event.origin.source);
+			ASSERT_TRUE(event.origin.interfaceType.has_value());
+			EXPECT_EQ(event.eventInterfaceType, *event.origin.interfaceType);
+		}
+	}
+	originObs.clearEvents();
+
+	// The unsolicited notifications are reported with the interface they arrived on
+	primaryEntity.sendUnsolNotification(0u);
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	secondaryEntity.sendUnsolNotification(0u);
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			return originObs.getEvents("onAemAecpUnsolicitedCounterChanged").size() >= 2u;
+		},
+		std::chrono::seconds(3)))
+		<< "Unsolicited notifications not counted";
+	{
+		auto const events = originObs.getEvents("onAemAecpUnsolicitedCounterChanged");
+		ASSERT_EQ(2u, events.size());
+		EXPECT_EQ(la::avdecc::controller::InterfaceType::Primary, events[0].eventInterfaceType);
+		EXPECT_EQ(la::avdecc::controller::InterfaceType::Secondary, events[1].eventInterfaceType);
+		for (auto const& event : events)
+		{
+			EXPECT_EQ(Source::Unsolicited, event.origin.source);
+			ASSERT_TRUE(event.origin.interfaceType.has_value());
+			EXPECT_EQ(event.eventInterfaceType, *event.origin.interfaceType);
+		}
+	}
+
+	// Back on the test thread, nothing is being dispatched
+	{
+		auto const origin = controller->getCurrentNotificationOrigin();
+		EXPECT_EQ(Source::Unknown, origin.source);
+	}
+}
 
 /*
  * Dual-PI redundancy: unsolicited-notification loss detected on ONE PI while the other PI still holds a valid

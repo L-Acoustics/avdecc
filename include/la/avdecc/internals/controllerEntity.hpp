@@ -41,6 +41,7 @@
 #include <memory>
 #include <functional>
 #include <chrono>
+#include <cstdint>
 
 namespace la
 {
@@ -740,6 +741,25 @@ public:
 	DefaultedDelegate& operator=(DefaultedDelegate const&) = default;
 	DefaultedDelegate& operator=(DefaultedDelegate&&) = default;
 };
+
+/**
+* @brief Context of the received message a controller entity is dispatching on the calling thread.
+* @details Set for the duration of a dispatch, that is while a Delegate notification, a command result handler or its error callback is being invoked for a received message, so the invoked code can tell where the information came from. Retrieved with ControllerEntity::getCurrentDispatchContext().
+*/
+struct DispatchContext
+{
+	/** What kind of message is being dispatched. */
+	enum class Kind : std::uint8_t
+	{
+		None = 0, /**< No received message is being dispatched (eg. a command that failed before being sent, or code not running from a dispatch) */
+		UnsolicitedNotification = 1, /**< An AEM or MVU unsolicited notification sent by the entity */
+		CommandResponse = 2, /**< The response to a command sent by this controller entity, or the failure of that command reported by the protocol interface (timeout, ...) */
+		SniffedResponse = 3, /**< An ACMP response to the command of another controller, observed on the network */
+	};
+
+	Kind kind{ Kind::None };
+	Interface const* controllerInterface{ nullptr }; /**< The controller entity that received the message (nullptr when kind is None) */
+};
 } // namespace controller
 
 class ControllerEntity : public LocalEntity, public controller::Interface
@@ -783,6 +803,13 @@ public:
 
 	/* Other methods */
 	virtual void setControllerDelegate(controller::Delegate* const delegate) noexcept = 0;
+
+	/**
+	* @brief Gets the context of the received message being dispatched on the calling thread.
+	* @details See controller::DispatchContext. Meant to be called from a controller::Delegate notification or a command result handler, on the thread that invoked it.
+	* @return The context of the message being dispatched, of kind None outside of a dispatch.
+	*/
+	static LA_AVDECC_API controller::DispatchContext LA_AVDECC_CALL_CONVENTION getCurrentDispatchContext() noexcept;
 
 	// Deleted compiler auto-generated methods
 	ControllerEntity(ControllerEntity&&) = delete;

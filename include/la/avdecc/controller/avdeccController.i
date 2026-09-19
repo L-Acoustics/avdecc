@@ -402,6 +402,7 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::Controller::QueryCommandError, "uint")
 %unique_ptr(la::avdecc::controller::Controller) // Define unique_ptr for Controller
 %rename("lockController") la::avdecc::controller::Controller::lock; // Rename method
 %rename("unlockController") la::avdecc::controller::Controller::unlock; // Rename method
+%ignore la::avdecc::controller::Controller::getCurrentNotificationOrigin; // Ignore, NotificationOrigin is not bound yet
 %std_tuple(Tuple_SerializationError_String, la::avdecc::jsonSerializer::SerializationError, std::string);
 %std_tuple(Tuple_DeserializationError_String, la::avdecc::jsonSerializer::DeserializationError, std::string);
 //%std_tuple(Tuple_DeserializationError_String_VectorSharedControlledEntity, la::avdecc::jsonSerializer::DeserializationError, std::string, std::vector<la::avdecc::controller::SharedControlledEntity>); // Temp ignore

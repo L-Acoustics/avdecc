@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
+- `Controller::getCurrentNotificationOrigin()` and `NotificationOrigin`: from inside an `Observer` method, tells whether the change comes from an unsolicited notification, from the response to a command of the controller (enumeration, refresh or a command of the application) or from a sniffed ACMP response, and on which interface (`InterfaceType`) the message was received
 - Redundancy (dual physical interface) controller support
   - New `Controller::create(std::vector<InterfaceConfiguration> const&, ...)` factory overload accepting a Primary and a Secondary physical-interface configuration
   - New `InterfaceType` enum (`Primary`, `Secondary`) and `Controller::InterfaceConfiguration` struct

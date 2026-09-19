@@ -510,6 +510,39 @@ void ControllerImpl::destroy() noexcept
 	delete this;
 }
 
+NotificationOrigin ControllerImpl::getCurrentNotificationOrigin() const noexcept
+{
+	// The entity layer tells which message is being dispatched on this thread and by which ControllerEntity; the ControllerEntity identifies the interface (one per interface in dual-interface mode)
+	auto const context = entity::ControllerEntity::getCurrentDispatchContext();
+	auto origin = NotificationOrigin{};
+	switch (context.kind)
+	{
+		case entity::controller::DispatchContext::Kind::UnsolicitedNotification:
+			origin.source = NotificationOrigin::Source::Unsolicited;
+			break;
+		case entity::controller::DispatchContext::Kind::CommandResponse:
+			origin.source = NotificationOrigin::Source::CommandResponse;
+			break;
+		case entity::controller::DispatchContext::Kind::SniffedResponse:
+			origin.source = NotificationOrigin::Source::Sniffed;
+			break;
+		default:
+			return origin;
+	}
+	if (context.controllerInterface != nullptr)
+	{
+		if (context.controllerInterface == _controller)
+		{
+			origin.interfaceType = InterfaceType::Primary;
+		}
+		else if (context.controllerInterface == _secondaryController)
+		{
+			origin.interfaceType = InterfaceType::Secondary;
+		}
+	}
+	return origin;
+}
+
 UniqueIdentifier ControllerImpl::getControllerEID(InterfaceType const interfaceType) const noexcept
 {
 	switch (interfaceType)

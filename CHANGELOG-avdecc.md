@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - New ProtocolInterface based on Network.framework (NWEthernetChannel) for macOS 10.15 and later
 - Support for all IEEE OUI range for `UniqueIdentifier::getVendorID()`
 - Missing EntityCapability flags
+- `ControllerEntity::getCurrentDispatchContext()` and `entity::controller::DispatchContext`: from inside a `controller::Delegate` notification or a command result handler, tells whether the message being dispatched is an unsolicited notification, the response to a command of the entity (or its failure) or a sniffed ACMP response, and which ControllerEntity received it
 
 ### Fixed 
 - Better debugger support for MacOs and Linux builds

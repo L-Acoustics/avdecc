@@ -851,6 +851,11 @@ ControllerEntity* LA_AVDECC_CALL_CONVENTION ControllerEntity::createRawControlle
 	return new LocalEntityGuard<ControllerEntityImpl>(protocolInterface, commonInformation, interfacesInformation, entityModelTree, delegate);
 }
 
+controller::DispatchContext LA_AVDECC_CALL_CONVENTION ControllerEntity::getCurrentDispatchContext() noexcept
+{
+	return controller::DispatchContextScope::current();
+}
+
 /** Constructor */
 ControllerEntity::ControllerEntity(CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation)
 	: LocalEntity(commonInformation, interfacesInformation)

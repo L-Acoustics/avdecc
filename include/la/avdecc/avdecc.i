@@ -488,6 +488,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Interface)
 %ignore la::avdecc::entity::ControllerEntity::create; // Prevent direct creation of a ControllerEntity for now at it won't be usable because of double inheritance (controller::Interface methods not available)
 %ignore la::avdecc::entity::ControllerEntity::ControllerEntity(ControllerEntity&&); // Ignore move constructor
 %ignore la::avdecc::entity::ControllerEntity::operator=; // Ignore assignment operator
+%ignore la::avdecc::entity::ControllerEntity::getCurrentDispatchContext; // Ignore, DispatchContext is not bound yet
 
 // Include c++ declaration file
 %include "la/avdecc/internals/controllerEntity.hpp"

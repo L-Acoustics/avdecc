@@ -89,6 +89,7 @@ private:
 	virtual void destroy() noexcept override;
 
 	virtual UniqueIdentifier getControllerEID(InterfaceType const interfaceType = InterfaceType::Primary) const noexcept override;
+	virtual NotificationOrigin getCurrentNotificationOrigin() const noexcept override;
 
 	/* Controller configuration */
 	virtual void enableEntityAdvertising(std::uint32_t const availableDuration, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) override;
