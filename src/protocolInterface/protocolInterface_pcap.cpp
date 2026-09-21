@@ -128,8 +128,11 @@ public:
 				auto* const pcap = _pcap.get();
 
 #ifdef __linux__
-				// Empty signal handler for when shutdown() wakes up this thread during termination
-				std::signal(SIGTERM, [](int){});
+				// Empty signal handler for when shutdown() wakes up this thread during termination.
+				// Use SIGUSR2 rather than SIGTERM: std::signal is process-wide, so installing a
+				// no-op SIGTERM handler would silently swallow the daemon's own SIGTERM and prevent
+				// graceful shutdown via systemd / kill -TERM.
+				std::signal(SIGUSR2, [](int){});
 #endif // __linux__
 
 				_pcapLibrary.loop(pcap, -1, &ProtocolInterfacePcapImpl::pcapLoopHandler, reinterpret_cast<u_char*>(this));
@@ -186,7 +189,7 @@ private:
 			}
 #ifdef __linux__
 			// On linux when using 3PCAP we also have to wake up the thread using a signal (see pcap_breakloop manpage, "multi-threaded application" section)
-			pthread_kill(_captureThread.native_handle(), SIGTERM);
+			pthread_kill(_captureThread.native_handle(), SIGUSR2);
 #endif // __linux__
 			_captureThread.join();
 		}
