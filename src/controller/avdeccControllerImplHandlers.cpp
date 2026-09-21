@@ -3395,6 +3395,10 @@ void ControllerImpl::onGetStreamInputInfoExResult(entity::controller::Interface 
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::GetStreamInputInfoEx);
 					return;
 				}
+				
+				// InputStreamInfoEx failed - query InputStreamState
+				queryInformation(controlledEntity.get(), configurationIndex,
+								 ControlledEntityImpl::DynamicInfoType::InputStreamState, streamIndex);
 			}
 
 			// Got all expected dynamic information
