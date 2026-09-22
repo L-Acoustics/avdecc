@@ -66,8 +66,18 @@ static model::StreamIdentification const s_emptyStreamIdentification{}; // Empty
 /** DispatchContext of each thread (the dispatches happen on the thread of the protocol interface that received the message). */
 static thread_local DispatchContext s_dispatchContext{};
 
-DispatchContextScope::DispatchContextScope(DispatchContext::Kind const kind, Interface const* const controllerInterface) noexcept
-	: _previous{ std::exchange(s_dispatchContext, DispatchContext{ kind, controllerInterface }) }
+DispatchContextScope::DispatchContextScope(DispatchContext::Kind const kind, Interface const* const controllerInterface, protocol::Aecpdu const* const aecpdu) noexcept
+	: DispatchContextScope{ DispatchContext{ kind, controllerInterface, aecpdu != nullptr ? std::optional<std::uint16_t>{ aecpdu->getSequenceID() } : std::nullopt } }
+{
+}
+
+DispatchContextScope::DispatchContextScope(DispatchContext::Kind const kind, Interface const* const controllerInterface, protocol::Acmpdu const* const acmpdu) noexcept
+	: DispatchContextScope{ DispatchContext{ kind, controllerInterface, acmpdu != nullptr ? std::optional<std::uint16_t>{ acmpdu->getSequenceID() } : std::nullopt } }
+{
+}
+
+DispatchContextScope::DispatchContextScope(DispatchContext&& context) noexcept
+	: _previous{ std::exchange(s_dispatchContext, std::move(context)) }
 {
 }
 
@@ -2422,7 +2432,7 @@ void CapabilityDelegate::onAecpAemUnsolicitedResponse(protocol::ProtocolInterfac
 		auto const& aem = static_cast<protocol::AemAecpdu const&>(aecpdu);
 		if (AVDECC_ASSERT_WITH_RET(aem.getUnsolicited(), "Should only be triggered for unsollicited notifications"))
 		{
-			auto const dispatchScope = DispatchContextScope{ DispatchContext::Kind::UnsolicitedNotification, &_controllerInterface };
+			auto const dispatchScope = DispatchContextScope{ DispatchContext::Kind::UnsolicitedNotification, &_controllerInterface, &aecpdu };
 			// Process AEM message without any error or answer callbacks, it's not an expected response
 			processAemAecpResponse(aem.getCommandType(), &aecpdu, nullptr, {});
 			// Statistics
@@ -2453,7 +2463,7 @@ void CapabilityDelegate::onAecpVuUnsolicitedResponse(protocol::ProtocolInterface
 			auto const& mvu = static_cast<protocol::MvuAecpdu const&>(aecpdu);
 			if (AVDECC_ASSERT_WITH_RET(mvu.getUnsolicited(), "Should only be triggered for unsollicited notifications"))
 			{
-				auto const dispatchScope = DispatchContextScope{ DispatchContext::Kind::UnsolicitedNotification, &_controllerInterface };
+				auto const dispatchScope = DispatchContextScope{ DispatchContext::Kind::UnsolicitedNotification, &_controllerInterface, &aecpdu };
 				// Process MVU message without any error or answer callbacks, it's not an expected response
 				processMvuAecpResponse(mvu.getCommandType(), &aecpdu, nullptr, {});
 				// Statistics
@@ -2479,7 +2489,7 @@ void CapabilityDelegate::onAcmpResponse(protocol::ProtocolInterface* const /*pi*
 	// Only process sniffed responses (ie. Talker response to Listener, or Listener response to another Controller)
 	if (_controllerID != acmpdu.getControllerEntityID() || !expectedControllerResponseType)
 	{
-		auto const dispatchScope = DispatchContextScope{ DispatchContext::Kind::SniffedResponse, &_controllerInterface };
+		auto const dispatchScope = DispatchContextScope{ DispatchContext::Kind::SniffedResponse, &_controllerInterface, &acmpdu };
 		processAcmpResponse(&acmpdu, LocalEntityImpl<>::OnACMPErrorCallback(), LocalEntityImpl<>::AnswerCallback(), true);
 	}
 }
@@ -2557,7 +2567,7 @@ void CapabilityDelegate::sendAemAecpCommand(UniqueIdentifier const targetEntityI
 	LocalEntityImpl<>::sendAemAecpCommand(_protocolInterface, _controllerID, targetEntityID, targetMacAddress, commandType, payload, payloadLength,
 		[this, commandType, onErrorCallback, answerCallback](protocol::Aecpdu const* const response, LocalEntity::AemCommandStatus const status)
 		{
-			auto const dispatchScope = DispatchContextScope{ DispatchContext::Kind::CommandResponse, &_controllerInterface };
+			auto const dispatchScope = DispatchContextScope{ DispatchContext::Kind::CommandResponse, &_controllerInterface, response };
 			if (!!status)
 			{
 				processAemAecpResponse(commandType, response, onErrorCallback, answerCallback); // We sent an AEM command, we know it's an AEM response (so directly call processAemAecpResponse)
@@ -2598,7 +2608,7 @@ void CapabilityDelegate::sendAaAecpCommand(UniqueIdentifier const targetEntityID
 	LocalEntityImpl<>::sendAaAecpCommand(_protocolInterface, _controllerID, targetEntityID, targetMacAddress, tlvs,
 		[this, onErrorCallback, answerCallback](protocol::Aecpdu const* const response, LocalEntity::AaCommandStatus const status)
 		{
-			auto const dispatchScope = DispatchContextScope{ DispatchContext::Kind::CommandResponse, &_controllerInterface };
+			auto const dispatchScope = DispatchContextScope{ DispatchContext::Kind::CommandResponse, &_controllerInterface, response };
 			if (!!status)
 			{
 				processAaAecpResponse(response, onErrorCallback, answerCallback); // We sent an Address Access command, we know it's an Address Access response (so directly call processAaAecpResponse)
@@ -2639,7 +2649,7 @@ void CapabilityDelegate::sendMvuAecpCommand(UniqueIdentifier const targetEntityI
 	LocalEntityImpl<>::sendMvuAecpCommand(_protocolInterface, _controllerID, targetEntityID, targetMacAddress, commandType, payload, payloadLength,
 		[this, commandType, onErrorCallback, answerCallback](protocol::Aecpdu const* const response, LocalEntity::MvuCommandStatus const status)
 		{
-			auto const dispatchScope = DispatchContextScope{ DispatchContext::Kind::CommandResponse, &_controllerInterface };
+			auto const dispatchScope = DispatchContextScope{ DispatchContext::Kind::CommandResponse, &_controllerInterface, response };
 			if (!!status)
 			{
 				processMvuAecpResponse(commandType, response, onErrorCallback, answerCallback); // We sent an MVU command, we know it's an MVU response (so directly call processMvuAecpResponse)
@@ -2656,7 +2666,7 @@ void CapabilityDelegate::sendAcmpCommand(protocol::AcmpMessageType const message
 	LocalEntityImpl<>::sendAcmpCommand(_protocolInterface, messageType, _controllerID, talkerEntityID, talkerStreamIndex, listenerEntityID, listenerStreamIndex, connectionIndex,
 		[this, onErrorCallback, answerCallback](protocol::Acmpdu const* const response, LocalEntity::ControlStatus const status)
 		{
-			auto const dispatchScope = DispatchContextScope{ DispatchContext::Kind::CommandResponse, &_controllerInterface };
+			auto const dispatchScope = DispatchContextScope{ DispatchContext::Kind::CommandResponse, &_controllerInterface, response };
 			if (!!status)
 			{
 				processAcmpResponse(response, onErrorCallback, answerCallback, false);

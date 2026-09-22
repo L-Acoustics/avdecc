@@ -1207,7 +1207,8 @@ void ControllerImpl::onAecpResponseTime(entity::controller::Interface const* con
 	}
 }
 
-void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID, InterfaceType const interfaceType, std::function<std::uint64_t(ControlledEntityImpl&, InterfaceType)> const& incrementUnsolicitedCounter, std::function<std::uint64_t(ControlledEntityImpl&, InterfaceType)> const& incrementUnsolicitedLossCounter, std::function<bool(ControlledEntityImpl&, la::avdecc::protocol::AecpSequenceID)> const& hasLostUnsolicitedNotification, void (Controller::Observer::*notifyUnsolicitedCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t, InterfaceType), void (Controller::Observer::*notifyUnsolicitedLossCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t, InterfaceType)) noexcept
+void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID, InterfaceType const interfaceType, std::function<std::uint64_t(ControlledEntityImpl&, InterfaceType)> const& incrementUnsolicitedCounter, std::function<std::uint64_t(ControlledEntityImpl&, InterfaceType)> const& incrementUnsolicitedLossCounter, std::function<std::optional<la::avdecc::protocol::AecpSequenceID>(ControlledEntityImpl&, la::avdecc::protocol::AecpSequenceID)> const& detectUnsolicitedNotificationLoss, void (Controller::Observer::*notifyUnsolicitedCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t, InterfaceType),
+	void (Controller::Observer::*notifyUnsolicitedLossCounterChanged)(Controller const*, ControlledEntity const*, std::uint64_t, la::avdecc::protocol::AecpSequenceID, la::avdecc::protocol::AecpSequenceID, InterfaceType)) noexcept
 {
 	// Action to be performed once the ControlledEntity guard is released: sending AECP commands while holding the guard could cross-PI deadlock (see onEntityUpdate), so we only decide here and act after the guard scope.
 	enum class PostAction
@@ -1233,9 +1234,11 @@ void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entit
 		AVDECC_ASSERT(isAnyControllerEntitySelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 		// Check for loss of unsolicited notification
-		if (hasLostUnsolicitedNotification(entity, sequenceID))
+		if (auto const expectedSequenceID = detectUnsolicitedNotificationLoss(entity, sequenceID); expectedSequenceID.has_value())
 		{
-			LOG_CONTROLLER_WARN(entityID, "Unsolicited notification lost detected on {} interface", (interfaceType == InterfaceType::Primary) ? "Primary" : "Secondary");
+			// The lost notifications are the ones from the expected sequenceID up to the received one (excluded), the sequence space wrapping at 16 bits
+			auto const lostCount = static_cast<protocol::AecpSequenceID>(sequenceID - *expectedSequenceID);
+			LOG_CONTROLLER_WARN(entityID, "Unsolicited notification lost detected on {} interface: expected sequenceID {} but received {} ({} notification(s) lost, sequenceIDs {} to {})", (interfaceType == InterfaceType::Primary) ? "Primary" : "Secondary", *expectedSequenceID, sequenceID, lostCount, *expectedSequenceID, static_cast<protocol::AecpSequenceID>(sequenceID - 1u));
 
 			// Update statistics
 			auto const value = incrementUnsolicitedLossCounter(entity, interfaceType);
@@ -1243,7 +1246,7 @@ void ControllerImpl::handleAecpUnsolicitedReceived(UniqueIdentifier const& entit
 			// Entity was advertised to the user, notify observers
 			if (entity.wasAdvertised())
 			{
-				notifyObserversMethod<Controller::Observer>(notifyUnsolicitedLossCounterChanged, this, static_cast<ControlledEntity const*>(&entity), value, interfaceType);
+				notifyObserversMethod<Controller::Observer>(notifyUnsolicitedLossCounterChanged, this, static_cast<ControlledEntity const*>(&entity), value, *expectedSequenceID, sequenceID, interfaceType);
 			}
 
 			// In dual-PI mode, as long as the other PI kept a valid subscription, the entity sent every model update to both subscribers and the model is still in sync: we only need to
@@ -1305,9 +1308,9 @@ void ControllerImpl::onAemAecpUnsolicitedReceived(entity::controller::Interface 
 	// Identify the PI on which the unsolicited notification was received: in dual-PI mode, each PI corresponds to a distinct ControllerEntityID (i.e. a separate subscriber on the entity side) and therefore maintains its own AEM sequence-number space.
 	auto const sourceInterfaceType = (controller == _secondaryController) ? InterfaceType::Secondary : InterfaceType::Primary;
 	handleAecpUnsolicitedReceived(entityID, sequenceID, sourceInterfaceType, &ControlledEntityImpl::incrementAemAecpUnsolicitedCounter, &ControlledEntityImpl::incrementAemAecpUnsolicitedLossCounter,
-		[sourceInterfaceType](ControlledEntityImpl& entity, la::avdecc::protocol::AecpSequenceID const seq) -> bool
+		[sourceInterfaceType](ControlledEntityImpl& entity, la::avdecc::protocol::AecpSequenceID const seq)
 		{
-			return entity.hasLostAemUnsolicitedNotification(seq, sourceInterfaceType);
+			return entity.detectAemUnsolicitedNotificationLoss(seq, sourceInterfaceType);
 		},
 		&Controller::Observer::onAemAecpUnsolicitedCounterChanged, &Controller::Observer::onAemAecpUnsolicitedLossCounterChanged);
 }
@@ -1317,9 +1320,9 @@ void ControllerImpl::onMvuAecpUnsolicitedReceived(entity::controller::Interface 
 	// Same dual-PI per-subscriber rationale as for AEM unsols above.
 	auto const sourceInterfaceType = (controller == _secondaryController) ? InterfaceType::Secondary : InterfaceType::Primary;
 	handleAecpUnsolicitedReceived(entityID, sequenceID, sourceInterfaceType, &ControlledEntityImpl::incrementMvuAecpUnsolicitedCounter, &ControlledEntityImpl::incrementMvuAecpUnsolicitedLossCounter,
-		[sourceInterfaceType](ControlledEntityImpl& entity, la::avdecc::protocol::AecpSequenceID const seq) -> bool
+		[sourceInterfaceType](ControlledEntityImpl& entity, la::avdecc::protocol::AecpSequenceID const seq)
 		{
-			return entity.hasLostMvuUnsolicitedNotification(seq, sourceInterfaceType);
+			return entity.detectMvuUnsolicitedNotificationLoss(seq, sourceInterfaceType);
 		},
 		&Controller::Observer::onMvuAecpUnsolicitedCounterChanged, &Controller::Observer::onMvuAecpUnsolicitedLossCounterChanged);
 }

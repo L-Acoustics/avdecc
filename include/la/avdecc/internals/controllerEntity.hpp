@@ -42,6 +42,7 @@
 #include <functional>
 #include <chrono>
 #include <cstdint>
+#include <optional>
 
 namespace la
 {
@@ -745,6 +746,7 @@ public:
 /**
 * @brief Context of the received message a controller entity is dispatching on the calling thread.
 * @details Set for the duration of a dispatch, that is while a Delegate notification, a command result handler or its error callback is being invoked for a received message, so the invoked code can tell where the information came from. Retrieved with ControllerEntity::getCurrentDispatchContext().
+*          The sequence_id of the message is always known when a message was actually received, whatever the ProtocolInterface (it is a field of the AECP and ACMP PDUs), and is only missing when a command failed without a response (timeout, transport error, ...).
 */
 struct DispatchContext
 {
@@ -759,6 +761,7 @@ struct DispatchContext
 
 	Kind kind{ Kind::None };
 	Interface const* controllerInterface{ nullptr }; /**< The controller entity that received the message (nullptr when kind is None) */
+	std::optional<std::uint16_t> sequenceID{ std::nullopt }; /**< The sequence_id of the message being dispatched (AECP or ACMP, depending on the message), std::nullopt when no message was received (kind None, or a command that failed without a response) */
 };
 } // namespace controller
 

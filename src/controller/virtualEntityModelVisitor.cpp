@@ -260,7 +260,7 @@ void VirtualEntityModelVisitor::validate() noexcept
 
 		// Check StreamNodeDynamicModel.streamFormat for the active configuration
 		{
-			auto const validateFormat = [](la::avdecc::entity::model::StreamFormats const& supportedFormats, la::avdecc::entity::model::StreamFormat const& streamFormat) -> bool
+			auto const validateFormat = [](la::avdecc::entity::model::StreamFormats const& supportedFormats, la::avdecc::entity::model::StreamFormat const& streamFormat)
 			{
 				// Check streamFormat is set to one of the supported stream formats
 				// We need to properly handle formats with the up-to-bit set:

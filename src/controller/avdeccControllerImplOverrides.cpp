@@ -529,6 +529,7 @@ NotificationOrigin ControllerImpl::getCurrentNotificationOrigin() const noexcept
 		default:
 			return origin;
 	}
+	origin.sequenceID = context.sequenceID;
 	if (context.controllerInterface != nullptr)
 	{
 		if (context.controllerInterface == _controller)

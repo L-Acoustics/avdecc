@@ -42,11 +42,15 @@ namespace controller
 /**
 * @brief RAII scope setting the DispatchContext of the calling thread for the duration of a dispatch.
 * @details The previous context is restored when the scope ends, so a dispatch nested in another one (eg. a command failing synchronously from a delegate notification) does not lose the outer context.
+*          The sequence_id of the context is read from the dispatched PDU, so every dispatch site builds the context the same way: a nullptr PDU (command that failed without a response) leaves it unset.
 */
 class DispatchContextScope final
 {
 public:
-	DispatchContextScope(DispatchContext::Kind const kind, Interface const* const controllerInterface) noexcept;
+	/** Scope for the dispatch of an AECP message (unsolicited notification, command response, or nullptr for a command that failed without a response). */
+	DispatchContextScope(DispatchContext::Kind const kind, Interface const* const controllerInterface, protocol::Aecpdu const* const aecpdu) noexcept;
+	/** Scope for the dispatch of an ACMP message (command response, sniffed response, or nullptr for a command that failed without a response). */
+	DispatchContextScope(DispatchContext::Kind const kind, Interface const* const controllerInterface, protocol::Acmpdu const* const acmpdu) noexcept;
 	~DispatchContextScope() noexcept;
 
 	/** Gets the DispatchContext of the calling thread. */
@@ -59,6 +63,8 @@ public:
 	DispatchContextScope& operator=(DispatchContextScope&&) = delete;
 
 private:
+	DispatchContextScope(DispatchContext&& context) noexcept;
+
 	DispatchContext _previous{};
 };
 

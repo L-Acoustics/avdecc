@@ -128,6 +128,7 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::model::MediaClockChainNode::Status, "b
 %optional(la::avdecc::entity::model::MilanInfo)
 %optional(la::avdecc::entity::model::MilanDynamicState)
 %optional(la::avdecc::controller::model::ChannelConnectionIdentification)
+%optional_enum_uint32(la::avdecc::controller::InterfaceType) // Used by NotificationOrigin::interfaceType
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -393,6 +394,10 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::Controller::QueryCommandError, "uint")
 %nspace la::avdecc::controller::CompileOptionInfo;
 %rename("%s") la::avdecc::controller::CompileOptionInfo; // Unignore class
 
+%nspace la::avdecc::controller::NotificationOrigin;
+%rename("%s") la::avdecc::controller::NotificationOrigin; // Unignore struct (returned by Controller::getCurrentNotificationOrigin)
+DEFINE_ENUM_CLASS(la::avdecc::controller::NotificationOrigin::Source, "byte")
+
 %nspace la::avdecc::controller::Controller::InterfaceConfiguration;
 %rename("%s") la::avdecc::controller::Controller::InterfaceConfiguration; // Unignore inner struct used by the dual-interface (cable redundancy) create overload
 
@@ -402,7 +407,6 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::Controller::QueryCommandError, "uint")
 %unique_ptr(la::avdecc::controller::Controller) // Define unique_ptr for Controller
 %rename("lockController") la::avdecc::controller::Controller::lock; // Rename method
 %rename("unlockController") la::avdecc::controller::Controller::unlock; // Rename method
-%ignore la::avdecc::controller::Controller::getCurrentNotificationOrigin; // Ignore, NotificationOrigin is not bound yet
 %std_tuple(Tuple_SerializationError_String, la::avdecc::jsonSerializer::SerializationError, std::string);
 %std_tuple(Tuple_DeserializationError_String, la::avdecc::jsonSerializer::DeserializationError, std::string);
 //%std_tuple(Tuple_DeserializationError_String_VectorSharedControlledEntity, la::avdecc::jsonSerializer::DeserializationError, std::string, std::vector<la::avdecc::controller::SharedControlledEntity>); // Temp ignore

@@ -1536,34 +1536,34 @@ TEST(ControlledEntity, PerInterfaceUnsolicitedSequenceTracking)
 	entity.setSubscribedToUnsolicitedNotifications(true);
 
 	// 1) Independence between Primary and Secondary sequence spaces: each PI starts uninitialized; the first message on each PI must be accepted as the baseline (no loss).
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 0u }, PrimaryIdx));
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 1u }, PrimaryIdx));
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 2u }, PrimaryIdx));
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 0u }, PrimaryIdx).has_value());
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 1u }, PrimaryIdx).has_value());
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 2u }, PrimaryIdx).has_value());
 	// Secondary still uninitialized: a fresh seqID=0 must NOT be misinterpreted as a loss just because Primary advanced.
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 0u }, SecondaryIdx));
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 1u }, SecondaryIdx));
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 0u }, SecondaryIdx).has_value());
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 1u }, SecondaryIdx).has_value());
 
 	// 2) A real gap on Primary is detected (expected 3, got 10) and Primary's slot resyncs to next-expected=11.
-	EXPECT_TRUE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 10u }, PrimaryIdx));
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 11u }, PrimaryIdx));
+	EXPECT_EQ(std::optional<la::avdecc::protocol::AecpSequenceID>{ 3u }, entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 10u }, PrimaryIdx)); // Expected 3, the lost ones are 3 to 9
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 11u }, PrimaryIdx).has_value());
 	// Secondary's slot must NOT have been disturbed by the Primary gap.
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 2u }, SecondaryIdx));
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 2u }, SecondaryIdx).has_value());
 
 	// 3) Simulate a Primary PI flap followed by a successful re-registration: the entity restarts its per-subscriber numbering at 0.
 	// Without the reset, expected[Primary]=12 vs received=0 would be reported as a loss → spurious unregister.
 	entity.resetExpectedUnsolicitedSequenceID(PrimaryIdx);
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 0u }, PrimaryIdx));
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 1u }, PrimaryIdx));
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 0u }, PrimaryIdx).has_value());
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 1u }, PrimaryIdx).has_value());
 
 	// 4) Reset on Primary must NOT touch Secondary's slot: a fresh gap on Secondary is still detected.
-	EXPECT_TRUE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 100u }, SecondaryIdx));
+	EXPECT_TRUE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 100u }, SecondaryIdx).has_value());
 
 	// 5) Same checks for the MVU sequence space (independent from AEM).
-	EXPECT_FALSE(entity.hasLostMvuUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 0u }, PrimaryIdx));
-	EXPECT_FALSE(entity.hasLostMvuUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 0u }, SecondaryIdx));
-	EXPECT_TRUE(entity.hasLostMvuUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 50u }, PrimaryIdx));
+	EXPECT_FALSE(entity.detectMvuUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 0u }, PrimaryIdx).has_value());
+	EXPECT_FALSE(entity.detectMvuUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 0u }, SecondaryIdx).has_value());
+	EXPECT_TRUE(entity.detectMvuUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 50u }, PrimaryIdx).has_value());
 	entity.resetExpectedUnsolicitedSequenceID(PrimaryIdx);
-	EXPECT_FALSE(entity.hasLostMvuUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 0u }, PrimaryIdx));
+	EXPECT_FALSE(entity.detectMvuUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 0u }, PrimaryIdx).has_value());
 }
 
 /*
@@ -1603,9 +1603,9 @@ TEST(ControlledEntity, PerInterfaceSubscriptionStateIsIndependent)
 	EXPECT_TRUE(entity.isSubscribedToUnsolicitedNotifications());
 
 	// Advance each PI's AEM sequence space independently.
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 10u }, PrimaryIdx)); // baseline (no prior expected) → no loss, next expected = 11
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 11u }, PrimaryIdx));
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 50u }, SecondaryIdx)); // baseline → next expected = 51
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 10u }, PrimaryIdx).has_value()); // baseline (no prior expected) → no loss, next expected = 11
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 11u }, PrimaryIdx).has_value());
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 50u }, SecondaryIdx).has_value()); // baseline → next expected = 51
 
 	// Simulate an entity-initiated DEREGISTER targeted at Primary only (e.g. transient Primary cable loss).
 	entity.setSubscribedToUnsolicitedNotifications(false, PrimaryIdx);
@@ -1614,17 +1614,17 @@ TEST(ControlledEntity, PerInterfaceSubscriptionStateIsIndependent)
 	EXPECT_TRUE(entity.isSubscribedToUnsolicitedNotifications());
 
 	// Secondary's expected sequence ID must NOT have been touched: a continuing seqID=51 is accepted (no loss), and a real gap (seqID=99) is still detected.
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 51u }, SecondaryIdx));
-	EXPECT_TRUE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 99u }, SecondaryIdx));
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 51u }, SecondaryIdx).has_value());
+	EXPECT_TRUE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 99u }, SecondaryIdx).has_value());
 
 	// Primary is now unsubscribed: any incoming unsol on Primary must NOT be flagged as loss (subscriber gone) and must NOT update the slot.
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 200u }, PrimaryIdx));
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 201u }, PrimaryIdx));
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 200u }, PrimaryIdx).has_value());
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 201u }, PrimaryIdx).has_value());
 
 	// Re-subscribing Primary: its slot was reset on the previous unsubscribe, so seqID=0 is accepted as baseline.
 	entity.setSubscribedToUnsolicitedNotifications(true, PrimaryIdx);
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 0u }, PrimaryIdx));
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 1u }, PrimaryIdx));
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 0u }, PrimaryIdx).has_value());
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 1u }, PrimaryIdx).has_value());
 
 	// Unsubscribing the last remaining PI flips the global aggregate to false.
 	entity.setSubscribedToUnsolicitedNotifications(false, PrimaryIdx);
@@ -1635,8 +1635,8 @@ TEST(ControlledEntity, PerInterfaceSubscriptionStateIsIndependent)
 	// Legacy global setter must still work and apply to every PI at once.
 	entity.setSubscribedToUnsolicitedNotifications(true);
 	EXPECT_TRUE(entity.isSubscribedToUnsolicitedNotifications());
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 5u }, PrimaryIdx));
-	EXPECT_FALSE(entity.hasLostAemUnsolicitedNotification(la::avdecc::protocol::AecpSequenceID{ 5u }, SecondaryIdx));
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 5u }, PrimaryIdx).has_value());
+	EXPECT_FALSE(entity.detectAemUnsolicitedNotificationLoss(la::avdecc::protocol::AecpSequenceID{ 5u }, SecondaryIdx).has_value());
 	entity.setSubscribedToUnsolicitedNotifications(false);
 	EXPECT_FALSE(entity.isSubscribedToUnsolicitedNotifications());
 
@@ -2050,6 +2050,7 @@ public:
 		std::string method{};
 		la::avdecc::controller::InterfaceType eventInterfaceType{ la::avdecc::controller::InterfaceType::Primary };
 		la::avdecc::controller::NotificationOrigin origin{};
+		std::optional<std::pair<la::avdecc::protocol::AecpSequenceID, la::avdecc::protocol::AecpSequenceID>> lossSequenceIDs{ std::nullopt }; /**< Expected and received sequenceIDs reported by a loss event */
 	};
 
 	std::vector<Event> getEvents(std::string const& method) const noexcept
@@ -2073,10 +2074,10 @@ public:
 	}
 
 private:
-	void record(std::string method, la::avdecc::controller::InterfaceType const eventInterfaceType, la::avdecc::controller::NotificationOrigin const& origin) noexcept
+	void record(std::string method, la::avdecc::controller::InterfaceType const eventInterfaceType, la::avdecc::controller::NotificationOrigin const& origin, std::optional<std::pair<la::avdecc::protocol::AecpSequenceID, la::avdecc::protocol::AecpSequenceID>> const& lossSequenceIDs = std::nullopt) noexcept
 	{
 		auto const lg = std::lock_guard{ _lock };
-		_events.push_back(Event{ std::move(method), eventInterfaceType, origin });
+		_events.push_back(Event{ std::move(method), eventInterfaceType, origin, lossSequenceIDs });
 	}
 
 	virtual void onUnsolicitedRegistrationChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const /*entity*/, bool const isSubscribed, bool const /*triggeredByEntity*/, la::avdecc::controller::InterfaceType const interfaceType) noexcept override
@@ -2090,6 +2091,10 @@ private:
 	{
 		record("onAemAecpUnsolicitedCounterChanged", interfaceType, controller->getCurrentNotificationOrigin());
 	}
+	virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::protocol::AecpSequenceID const expectedSequenceID, la::avdecc::protocol::AecpSequenceID const receivedSequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept override
+	{
+		record("onAemAecpUnsolicitedLossCounterChanged", interfaceType, controller->getCurrentNotificationOrigin(), std::make_pair(expectedSequenceID, receivedSequenceID));
+	}
 
 	mutable std::mutex _lock{};
 	std::vector<Event> _events{};
@@ -2099,9 +2104,11 @@ private:
 
 /*
  * Controller::getCurrentNotificationOrigin() tells, from inside an observer method, whether the change comes from an
- * unsolicited notification or from the response to a command of the controller, and on which interface the message
- * was received: the registration responses are command responses on the interface that registered, the unsolicited
- * notifications are reported with the interface they arrived on, and outside of a dispatch the origin is unknown.
+ * unsolicited notification or from the response to a command of the controller, on which interface the message
+ * was received and with which sequenceID: the registration responses are command responses on the interface that
+ * registered, the unsolicited notifications are reported with the interface they arrived on and the sequenceID the
+ * entity put in the message (also from the loss counter observer, so an application can log which notification
+ * revealed the loss), and outside of a dispatch the origin is unknown and the sequenceID unset.
  */
 TEST(Controller, NotificationOriginTellsTheMessageAndTheInterface)
 {
@@ -2122,6 +2129,7 @@ TEST(Controller, NotificationOriginTellsTheMessageAndTheInterface)
 		auto const origin = controller->getCurrentNotificationOrigin();
 		EXPECT_EQ(Source::Unknown, origin.source);
 		EXPECT_FALSE(origin.interfaceType.has_value());
+		EXPECT_FALSE(origin.sequenceID.has_value());
 	}
 
 	auto originObs = NotificationOriginObserver{};
@@ -2159,14 +2167,16 @@ TEST(Controller, NotificationOriginTellsTheMessageAndTheInterface)
 			EXPECT_EQ(Source::CommandResponse, event.origin.source);
 			ASSERT_TRUE(event.origin.interfaceType.has_value());
 			EXPECT_EQ(event.eventInterfaceType, *event.origin.interfaceType);
+			// A response was received, so its sequenceID is known (whatever its value, the protocol interface assigned it to the command)
+			EXPECT_TRUE(event.origin.sequenceID.has_value());
 		}
 	}
 	originObs.clearEvents();
 
-	// The unsolicited notifications are reported with the interface they arrived on
-	primaryEntity.sendUnsolNotification(0u);
+	// The unsolicited notifications are reported with the interface they arrived on, and the sequenceID the entity put in the message
+	primaryEntity.sendUnsolNotification(7u);
 	std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	secondaryEntity.sendUnsolNotification(0u);
+	secondaryEntity.sendUnsolNotification(42u);
 	ASSERT_TRUE(waitFor(
 		[&]
 		{
@@ -2185,12 +2195,39 @@ TEST(Controller, NotificationOriginTellsTheMessageAndTheInterface)
 			ASSERT_TRUE(event.origin.interfaceType.has_value());
 			EXPECT_EQ(event.eventInterfaceType, *event.origin.interfaceType);
 		}
+		EXPECT_EQ(std::optional<std::uint16_t>{ 7u }, events[0].origin.sequenceID);
+		EXPECT_EQ(std::optional<std::uint16_t>{ 42u }, events[1].origin.sequenceID);
+		// No loss so far (first notification on each interface establishes the baseline)
+		EXPECT_TRUE(originObs.getEvents("onAemAecpUnsolicitedLossCounterChanged").empty());
+	}
+	originObs.clearEvents();
+
+	// A gap in the sequence on the Primary interface is a loss: the loss counter observer is invoked from the dispatch of the notification that revealed it (carrying its sequenceID), and reports the expected and received sequenceIDs
+	primaryEntity.sendUnsolNotification(10u);
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			return !originObs.getEvents("onAemAecpUnsolicitedLossCounterChanged").empty();
+		},
+		std::chrono::seconds(3)))
+		<< "Unsolicited notification loss not detected";
+	{
+		auto const events = originObs.getEvents("onAemAecpUnsolicitedLossCounterChanged");
+		ASSERT_EQ(1u, events.size());
+		EXPECT_EQ(la::avdecc::controller::InterfaceType::Primary, events[0].eventInterfaceType);
+		EXPECT_EQ(Source::Unsolicited, events[0].origin.source);
+		EXPECT_EQ(std::optional<la::avdecc::controller::InterfaceType>{ la::avdecc::controller::InterfaceType::Primary }, events[0].origin.interfaceType);
+		EXPECT_EQ(std::optional<std::uint16_t>{ 10u }, events[0].origin.sequenceID);
+		ASSERT_TRUE(events[0].lossSequenceIDs.has_value());
+		EXPECT_EQ(la::avdecc::protocol::AecpSequenceID{ 8u }, events[0].lossSequenceIDs->first); // 7 was received, 8 was expected
+		EXPECT_EQ(la::avdecc::protocol::AecpSequenceID{ 10u }, events[0].lossSequenceIDs->second);
 	}
 
 	// Back on the test thread, nothing is being dispatched
 	{
 		auto const origin = controller->getCurrentNotificationOrigin();
 		EXPECT_EQ(Source::Unknown, origin.source);
+		EXPECT_FALSE(origin.sequenceID.has_value());
 	}
 }
 

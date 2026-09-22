@@ -126,7 +126,7 @@ LA_AVDECC_CONTROLLER_API std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CAL
 /**
 * @brief Where the change being notified to a Controller::Observer came from.
 * @details The Observer methods notifying a change of a ControlledEntity (dynamic model, counters, state, ...) are invoked while the controller processes the message that carried the change.
-*          This tells which kind of message it was, and on which interface it was received, so an application can tell an unsolicited notification from the response to a command of its own (an enumeration, a refresh or a set command), and in dual-interface mode which interface the entity spoke on.
+*          This tells which kind of message it was, on which interface it was received and its sequence_id, so an application can tell an unsolicited notification from the response to a command of its own (an enumeration, a refresh or a set command), in dual-interface mode which interface the entity spoke on, and correlate the change with a network capture.
 *          Retrieved with Controller::getCurrentNotificationOrigin() from inside an Observer method, on the thread invoking it.
 */
 struct NotificationOrigin
@@ -142,6 +142,7 @@ struct NotificationOrigin
 
 	Source source{ Source::Unknown };
 	std::optional<InterfaceType> interfaceType{ std::nullopt }; /**< Interface the message was received on (std::nullopt when unknown) */
+	std::optional<std::uint16_t> sequenceID{ std::nullopt }; /**< sequence_id of the message that carried the change (AECP or ACMP, depending on the Source), std::nullopt when no message was received (source Unknown, or the failure of a command that got no response) */
 };
 
 /* ************************************************************************** */
@@ -371,12 +372,12 @@ public:
 		virtual void onAecpResponseAverageTimeChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::chrono::milliseconds const& value, la::avdecc::controller::InterfaceType const interfaceType) noexcept = 0;
 		/** When the count of AEM-AECP unsolicited notifications changed */
 		virtual void onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept = 0;
-		/** When the count of lost AEM-AECP unsolicited notifications changed */
-		virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept = 0;
+		/** When the count of lost AEM-AECP unsolicited notifications changed. The lost notifications are the ones from expectedSequenceID up to receivedSequenceID (excluded), the sequence space wrapping at 16 bits. */
+		virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::protocol::AecpSequenceID const expectedSequenceID, la::avdecc::protocol::AecpSequenceID const receivedSequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept = 0;
 		/** When the count of MVU-AECP unsolicited notifications changed */
 		virtual void onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept = 0;
-		/** When the count of lost MVU-AECP unsolicited notifications changed */
-		virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept = 0;
+		/** When the count of lost MVU-AECP unsolicited notifications changed. The lost notifications are the ones from expectedSequenceID up to receivedSequenceID (excluded), the sequence space wrapping at 16 bits. */
+		virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::protocol::AecpSequenceID const expectedSequenceID, la::avdecc::protocol::AecpSequenceID const receivedSequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept = 0;
 
 		// Diagnostics
 		virtual void onDiagnosticsChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::ControlledEntity::Diagnostics const& diags) noexcept = 0;
@@ -473,11 +474,11 @@ public:
 		/** When the count of AEM-AECP unsolicited notifications changed */
 		virtual void onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override {}
 		/** When the count of lost AEM-AECP unsolicited notifications changed */
-		virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override {}
+		virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::protocol::AecpSequenceID const /*expectedSequenceID*/, la::avdecc::protocol::AecpSequenceID const /*receivedSequenceID*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override {}
 		/** When the count of MVU-AECP unsolicited notifications changed */
 		virtual void onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override {}
 		/** When the count of lost MVU-AECP unsolicited notifications changed */
-		virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override {}
+		virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::protocol::AecpSequenceID const /*expectedSequenceID*/, la::avdecc::protocol::AecpSequenceID const /*receivedSequenceID*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override {}
 
 		// Diagnostics
 		virtual void onDiagnosticsChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::ControlledEntity::Diagnostics const& /*diags*/) noexcept override {}

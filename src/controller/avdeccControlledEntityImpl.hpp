@@ -495,8 +495,15 @@ public:
 	bool isRedundantSecondaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	bool isRedundantSecondaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	Diagnostics& getDiagnostics() noexcept;
-	bool hasLostAemUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept; /**< @a interfaceType selects which PI's sequence space to check. */
-	bool hasLostMvuUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept; /**< @a interfaceType selects which PI's sequence space to check. */
+	/**
+	 * @brief Checks the sequenceID of a received AEM unsolicited notification against the expected one, and records the next expected one.
+	 * @param[in] sequenceID The sequenceID of the received unsolicited notification.
+	 * @param[in] interfaceType Selects which PI's sequence space to check.
+	 * @return The sequenceID that was expected when a loss is detected (the lost notifications are the ones from that sequenceID up to the received one, excluded), std::nullopt when no loss is detected.
+	 */
+	std::optional<protocol::AecpSequenceID> detectAemUnsolicitedNotificationLoss(protocol::AecpSequenceID const sequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	/** Same as detectAemUnsolicitedNotificationLoss, for the MVU unsolicited notifications (which use their own sequence space). */
+	std::optional<protocol::AecpSequenceID> detectMvuUnsolicitedNotificationLoss(protocol::AecpSequenceID const sequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept;
 	/**
 	 * @brief Clears the per-PI expected AEM/MVU unsolicited sequenceID slots so the next unsolicited message received on that PI is accepted as the new baseline (no loss reported).
 	 * @details Must be called whenever the entity-side subscriber state for that PI may have been re-initialized, typically right after a successful (re-)registration on that PI. Failing to do so causes false-positive loss detection (and a spurious unregister) when the entity restarts its per-controller-EID sequence numbering at 0 on a fresh subscription.
@@ -533,7 +540,7 @@ private:
 	void fixStreamPortInputMappings(std::map<entity::model::StreamPortIndex, model::StreamPortInputNode>& streamPorts) noexcept;
 	void fixStreamPortMappings(model::ConfigurationNode& configNode) noexcept;
 	void setDefaultPresentationTimes(model::ConfigurationNode& configNode) noexcept;
-	bool hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept;
+	std::optional<protocol::AecpSequenceID> detectUnsolicitedNotificationLoss(protocol::AecpSequenceID const sequenceID, std::optional<protocol::AecpSequenceID>& expectedSequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	void buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY

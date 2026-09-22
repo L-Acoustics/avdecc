@@ -6,7 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
-- `Controller::getCurrentNotificationOrigin()` and `NotificationOrigin`: from inside an `Observer` method, tells whether the change comes from an unsolicited notification, from the response to a command of the controller (enumeration, refresh or a command of the application) or from a sniffed ACMP response, and on which interface (`InterfaceType`) the message was received
+- `Controller::getCurrentNotificationOrigin()` and `NotificationOrigin`: from inside an `Observer` method, tells whether the change comes from an unsolicited notification, from the response to a command of the controller (enumeration, refresh or a command of the application) or from a sniffed ACMP response, on which interface (`InterfaceType`) the message was received and its `sequenceID` (whatever the ProtocolInterface, unset only when a command failed without a response)
+- The unsolicited notification loss warning log now tells the expected and received sequenceIDs, and the range of lost sequenceIDs
+- C# bindings: `NotificationOrigin` and `Controller.getCurrentNotificationOrigin()` are bound
 - Redundancy (dual physical interface) controller support
   - New `Controller::create(std::vector<InterfaceConfiguration> const&, ...)` factory overload accepting a Primary and a Secondary physical-interface configuration
   - New `InterfaceType` enum (`Primary`, `Secondary`) and `Controller::InterfaceConfiguration` struct
@@ -22,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - `Controller::Observer::onTransportError` gained an `InterfaceType` parameter and is fired once per failing interface
   - `Controller::Observer::onUnsolicitedRegistrationChanged` gained an `InterfaceType` parameter and is fired for each interface whose subscription state changes
   - Statistics are maintained per interface (counters and AECP response-time average): the 8 Statistics events (`onAecpRetryCounterChanged`, `onAecpTimeoutCounterChanged`, `onAecpUnexpectedResponseCounterChanged`, `onAecpResponseAverageTimeChanged`, `onAemAecpUnsolicitedCounterChanged`, `onAemAecpUnsolicitedLossCounterChanged`, `onMvuAecpUnsolicitedCounterChanged`, `onMvuAecpUnsolicitedLossCounterChanged`) gained a trailing `InterfaceType` parameter and carry that interface's counter value, and the matching `ControlledEntity` getters gained an `InterfaceType` parameter (defaulted to `Primary`)
+  - `Controller::Observer::onAemAecpUnsolicitedLossCounterChanged` and `onMvuAecpUnsolicitedLossCounterChanged` also gained the `expectedSequenceID` and `receivedSequenceID` parameters (before `InterfaceType`), telling which unsolicited notifications were lost (from `expectedSequenceID` up to `receivedSequenceID`, excluded)
   - Entity dump (JSON) `statistics` object nests the counters in one object per interface (`primary` / `secondary`), entity dump version bumped to 3; files using the previous flat format are still loadable (counters applying to the Primary interface)
 
 ### Fixed

@@ -289,10 +289,10 @@ class DiscoveryApp
 				var entityID = entity.getEntity().getEntityID().getValue().ToString("X");
 				Console.WriteLine($"Aem Aecp Unsolicited Counter for {entityID}: {value}");
 			}
-			public override void onAemAecpUnsolicitedLossCounterChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ulong value, la.avdecc.controller.InterfaceType interfaceType)
+			public override void onAemAecpUnsolicitedLossCounterChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ulong value, ushort expectedSequenceID, ushort receivedSequenceID, la.avdecc.controller.InterfaceType interfaceType)
 			{
 				var entityID = entity.getEntity().getEntityID().getValue().ToString("X");
-				Console.WriteLine($"Aem Aecp Unsolicited Loss Counter for {entityID}: {value}");
+				Console.WriteLine($"Aem Aecp Unsolicited Loss Counter for {entityID}: {value} (expected sequenceID {expectedSequenceID} but received {receivedSequenceID})");
 			}
 			public override void onMaxTransitTimeChanged(la.avdecc.controller.Controller controller, la.avdecc.controller.ControlledEntity entity, ushort streamIndex, std.chrono.nanoseconds maxTransitTime)
 			{

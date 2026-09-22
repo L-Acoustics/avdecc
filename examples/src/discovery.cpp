@@ -218,9 +218,9 @@ private:
 	virtual void onAecpUnexpectedResponseCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
 	virtual void onAecpResponseAverageTimeChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::chrono::milliseconds const& value, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
 	virtual void onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
-	virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
+	virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::protocol::AecpSequenceID const /*expectedSequenceID*/, la::avdecc::protocol::AecpSequenceID const /*receivedSequenceID*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
 	virtual void onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
-	virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
+	virtual void onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/, la::avdecc::protocol::AecpSequenceID const /*expectedSequenceID*/, la::avdecc::protocol::AecpSequenceID const /*receivedSequenceID*/, la::avdecc::controller::InterfaceType const /*interfaceType*/) noexcept override;
 	virtual void onMaxTransitTimeChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime) noexcept override;
 	virtual void onStreamOutputCountersChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamOutputCounters const& counters) noexcept override;
 
@@ -422,10 +422,10 @@ void Discovery::onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Contr
 	outputText("Aem Aecp Unsolicited Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + " (on " + ((interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary") + " interface)\n");
 }
 
-void Discovery::onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
+void Discovery::onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::protocol::AecpSequenceID const expectedSequenceID, la::avdecc::protocol::AecpSequenceID const receivedSequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	outputText("Aem Aecp Unsolicited Loss Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + " (on " + ((interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary") + " interface)\n");
+	outputText("Aem Aecp Unsolicited Loss Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + " (on " + ((interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary") + " interface, expected sequenceID " + std::to_string(expectedSequenceID) + " but received " + std::to_string(receivedSequenceID) + ")\n");
 }
 
 void Discovery::onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
@@ -434,10 +434,10 @@ void Discovery::onMvuAecpUnsolicitedCounterChanged(la::avdecc::controller::Contr
 	outputText("Mvu Aecp Unsolicited Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + " (on " + ((interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary") + " interface)\n");
 }
 
-void Discovery::onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::controller::InterfaceType const interfaceType) noexcept
+void Discovery::onMvuAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value, la::avdecc::protocol::AecpSequenceID const expectedSequenceID, la::avdecc::protocol::AecpSequenceID const receivedSequenceID, la::avdecc::controller::InterfaceType const interfaceType) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	outputText("Mvu Aecp Unsolicited Loss Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + " (on " + ((interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary") + " interface)\n");
+	outputText("Mvu Aecp Unsolicited Loss Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + " (on " + ((interfaceType == la::avdecc::controller::InterfaceType::Primary) ? "Primary" : "Secondary") + " interface, expected sequenceID " + std::to_string(expectedSequenceID) + " but received " + std::to_string(receivedSequenceID) + ")\n");
 }
 
 void Discovery::onMaxTransitTimeChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime) noexcept
