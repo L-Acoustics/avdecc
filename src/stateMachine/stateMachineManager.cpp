@@ -225,7 +225,11 @@ void Manager::startStateMachines() noexcept
 		_stateMachineThread = std::thread(
 			[this]
 			{
-				utils::setCurrentThreadName("avdecc::StateMachine");
+				if (!utils::setCurrentThreadName("avdecc::StateMachine"))
+				{
+					// Too long for some platforms (Linux allows 15 characters)
+					utils::setCurrentThreadName("avdecc:SM");
+				}
 
 				auto watchDogSharedPointer = watchDog::WatchDog::getInstance();
 				auto& watchDog = *watchDogSharedPointer;

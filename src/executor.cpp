@@ -113,7 +113,13 @@ public:
 				// Set the name of the thread, if specified
 				if (name.has_value())
 				{
-					utils::setCurrentThreadName("Executor: " + *name);
+					if (!utils::setCurrentThreadName("Executor: " + *name))
+					{
+						// Too long for some platforms (Linux allows 15 characters): keep the last part of the executor name, which tells executors apart
+						auto const separator = name->rfind("::");
+						auto const shortName = separator == std::string::npos ? *name : name->substr(separator + 2);
+						utils::setCurrentThreadName("Exec:" + shortName.substr(0, 10));
+					}
 				}
 				// Set the priority of the thread
 				utils::setCurrentThreadPriority(prio);

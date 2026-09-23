@@ -130,7 +130,11 @@ public:
 			intfc->dispatchThread = std::thread(
 				[networkInterfaceID, intfc = intfc.get()]()
 				{
-					utils::setCurrentThreadName("avdecc::VirtualInterface." + networkInterfaceID + "::Capture");
+					if (!utils::setCurrentThreadName("avdecc::VirtualInterface." + networkInterfaceID + "::Capture"))
+					{
+						// Too long for some platforms (Linux allows 15 characters)
+						utils::setCurrentThreadName("avdecc:virtual");
+					}
 					while (!intfc->shouldTerminate)
 					{
 						MessagesList messagesToSend{};
