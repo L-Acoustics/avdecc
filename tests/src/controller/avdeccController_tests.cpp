@@ -2135,41 +2135,53 @@ TEST(Controller, NotificationOriginTellsTheMessageAndTheInterface)
 	auto originObs = NotificationOriginObserver{};
 	controller->registerObserver(&originObs);
 
+	// Bring the primary interface up alone and wait until the entity is advertised. The enumeration's REGISTER_UNSOLICITED_NOTIFICATION
+	// completes before advertisement, and updateUnsolicitedNotificationsSubscription only notifies observers once the entity was advertised,
+	// so that first registration must not produce an event. The secondary entity must not exist yet: it answers ADP EntityDiscover, and the
+	// controller's initial DISCOVER is still queued on the virtual bus when the test entities are constructed. On a fast runner both entities
+	// answer it and the lazy registration completes during enumeration, before advertisement, so the subscribed event is never emitted.
 	auto primaryEntity = UnsolTestEntity{ PrimaryBusName, { { 0xA6, 0x06, 0x05, 0x04, 0x03, 0x02 } }, executors.primaryExecutorName, EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 0u } };
-	auto secondaryEntity = UnsolTestEntity{ SecondaryBusName, { { 0xA7, 0x06, 0x05, 0x04, 0x03, 0x02 } }, executors.secondaryExecutorName, EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 1u } };
-
 	primaryEntity.sendAdpAvailable();
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	secondaryEntity.sendAdpAvailable();
-	ASSERT_TRUE(waitFor(
-		[&]
-		{
-			return primaryEntity.getRegisterCount() >= 1u && secondaryEntity.getRegisterCount() >= 1u;
-		},
-		std::chrono::seconds(5)))
-		<< "Initial per-PI unsolicited registrations not seen";
 	ASSERT_TRUE(waitFor(
 		[&]
 		{
 			auto const entity = controller->getControlledEntityGuard(EntityID);
-			return !!entity && entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Primary) && entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Secondary);
+			return !!entity && entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Primary) && !entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Secondary);
 		},
 		std::chrono::seconds(5)))
-		<< "Entity not subscribed on both interfaces";
-	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+		<< "Entity not advertised or not subscribed on the primary interface only";
+	ASSERT_GE(primaryEntity.getRegisterCount(), 1u);
+	originObs.clearEvents();
 
-	// The subscription events come from the responses to the REGISTER_UNSOLICITED_NOTIFICATION commands, each received on the interface it was sent on (the registration on the first interface is part of the enumeration, before the entity is advertised, so only the lazy registration on the other interface is notified)
+	// The secondary interface comes online after advertisement, so its lazy registration is the one observers are notified about
+	auto secondaryEntity = UnsolTestEntity{ SecondaryBusName, { { 0xA7, 0x06, 0x05, 0x04, 0x03, 0x02 } }, executors.secondaryExecutorName, EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 1u } };
+	secondaryEntity.sendAdpAvailable();
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			return !originObs.getEvents("onUnsolicitedRegistrationChanged").empty();
+		},
+		std::chrono::seconds(5)))
+		<< "Expected a subscribed event for the lazy registration";
+	ASSERT_TRUE(waitFor(
+		[&]
+		{
+			auto const entity = controller->getControlledEntityGuard(EntityID);
+			return !!entity && entity->isSubscribedToUnsolicitedNotifications(la::avdecc::controller::InterfaceType::Secondary) && secondaryEntity.getRegisterCount() >= 1u;
+		},
+		std::chrono::seconds(5)))
+		<< "Entity not subscribed on the secondary interface";
+
+	// The subscription event comes from the response to the REGISTER_UNSOLICITED_NOTIFICATION command, received on the interface it was sent on
 	{
 		auto const events = originObs.getEvents("onUnsolicitedRegistrationChanged");
-		ASSERT_FALSE(events.empty()) << "Expected a subscribed event for the lazy registration";
-		for (auto const& event : events)
-		{
-			EXPECT_EQ(Source::CommandResponse, event.origin.source);
-			ASSERT_TRUE(event.origin.interfaceType.has_value());
-			EXPECT_EQ(event.eventInterfaceType, *event.origin.interfaceType);
-			// A response was received, so its sequenceID is known (whatever its value, the protocol interface assigned it to the command)
-			EXPECT_TRUE(event.origin.sequenceID.has_value());
-		}
+		ASSERT_EQ(1u, events.size()) << "Expected a single subscribed event for the lazy registration on the secondary interface";
+		EXPECT_EQ(la::avdecc::controller::InterfaceType::Secondary, events[0].eventInterfaceType);
+		EXPECT_EQ(Source::CommandResponse, events[0].origin.source);
+		ASSERT_TRUE(events[0].origin.interfaceType.has_value());
+		EXPECT_EQ(events[0].eventInterfaceType, *events[0].origin.interfaceType);
+		// A response was received, so its sequenceID is known (whatever its value, the protocol interface assigned it to the command)
+		EXPECT_TRUE(events[0].origin.sequenceID.has_value());
 	}
 	originObs.clearEvents();
 
