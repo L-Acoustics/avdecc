@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `ControllerEntity::getCurrentDispatchContext()` and `entity::controller::DispatchContext`: from inside a `controller::Delegate` notification or a command result handler, tells whether the message being dispatched is an unsolicited notification, the response to a command of the entity (or its failure) or a sniffed ACMP response, which ControllerEntity received it and the `sequenceID` of the message (unset only when a command failed without a response)
 - C# bindings: `entity::controller::DispatchContext` and `ControllerEntity.getCurrentDispatchContext()` are bound
 
+### Changed
+- State machines thread waits until commands next need checking, instead of waking every 5 msec, and checks advertising, discovery and remote entity timeouts at least every 250 msec
+
 ### Fixed 
 - Better debugger support for MacOs and Linux builds
 - [Crash in MacOSNative ProtocolInterface when an entity goes offline while an AECP command is inflight (semaphore disposed while in use)](https://github.com/L-Acoustics/avdecc/issues/177)

@@ -281,6 +281,40 @@ void CommandStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 	}
 }
 
+std::chrono::time_point<std::chrono::steady_clock> CommandStateMachine::getNextCheckTime() noexcept
+{
+	// Lock
+	auto const lg = std::scoped_lock{ *_manager };
+
+	auto nextCheckTime = std::chrono::time_point<std::chrono::steady_clock>::max();
+
+	for (auto const& [entityID, localEntityInfo] : _commandEntities)
+	{
+		// Errors to report
+		if (!localEntityInfo.scheduledAecpErrors.empty() || !localEntityInfo.scheduledAcmpErrors.empty())
+		{
+			return std::chrono::steady_clock::now();
+		}
+
+		for (auto const& [targetEntityID, inflight] : localEntityInfo.inflightAecpCommands)
+		{
+			nextCheckTime = std::min(nextCheckTime, getNextCheckTimeFor(inflight, localEntityInfo.aecpCommandsQueue, targetEntityID, getMaxInflightAecpMessages(targetEntityID), getAecpSendInterval(targetEntityID)));
+		}
+
+		for (auto const& [targetMacAddress, inflight] : localEntityInfo.inflightAcmpCommands)
+		{
+			nextCheckTime = std::min(nextCheckTime, getNextCheckTimeFor(inflight, localEntityInfo.acmpCommandsQueue, targetMacAddress, getMaxInflightAcmpMessages(targetMacAddress), getAcmpSendInterval(targetMacAddress)));
+		}
+	}
+
+	return nextCheckTime;
+}
+
+void CommandStateMachine::scheduleCheck(std::chrono::time_point<std::chrono::steady_clock> const time) noexcept
+{
+	_manager->scheduleStateMachinesCheck(time);
+}
+
 void CommandStateMachine::handleAecpResponse(Aecpdu const& aecpdu) noexcept
 {
 	// Lock
