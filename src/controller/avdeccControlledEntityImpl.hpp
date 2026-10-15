@@ -231,6 +231,7 @@ public:
 	virtual bool hasAnyConfiguration() const noexcept override;
 	virtual entity::model::ConfigurationIndex getCurrentConfigurationIndex() const override;
 	virtual model::ChannelConnections const& getChannelConnections() const override;
+	virtual entity::model::EntityTree const& getEntityModelTree() const noexcept override;
 
 	// Const Node getters
 	virtual model::EntityNode const& getEntityNode() const override;
@@ -510,7 +511,6 @@ public:
 	 * @param[in] interfaceType The targeted PI.
 	 */
 	void resetExpectedUnsolicitedSequenceID(la::avdecc::controller::InterfaceType const interfaceType) noexcept;
-	entity::model::EntityTree const& getEntityModelTree() const noexcept;
 	void buildEntityModelGraph(entity::model::EntityTree const& entityTree) noexcept;
 
 	// Static methods
