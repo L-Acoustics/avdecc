@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - MacOSNative ProtocolInterface not invoking the result handler when the macOS framework refuses to send an AECP or ACMP command
 - AECP commands inflight (or queued) towards a remote entity going offline were silently discarded without invoking their result handler: they now complete with `UnknownEntity` (this also allows the dual-interface controller to re-issue the command on the other interface instead of stalling the enumeration)
 - Thread names not being set on Linux, where names longer than 15 characters are rejected (`utils::setCurrentThreadName` now returns whether the name was set, and the library falls back to shorter names)
+- Local domain socket ProtocolInterface not binding its socket, so the entity had no address to reply to on Linux (the socket is now autobound in the abstract namespace on Linux, and bound to a unique path in the temporary directory on other platforms)
+- Local domain socket ProtocolInterface not reconnecting to the entity socket after the entity was restarted
+- Local domain socket ProtocolInterface ignoring receive errors (busy-looping instead of reporting a transport error), testing the requested poll events instead of the returned ones, and processing truncated datagrams
+- Local domain socket ProtocolInterface giving received ACMP messages the local address as destination, so no ACMP response matched its in-flight command
+- Data race on the termination flag of the local domain socket ProtocolInterface
 
 ## [4.3.1] - 2025-12-19
 ### Added
