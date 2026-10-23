@@ -605,6 +605,12 @@ private:
 				etherLayer2.setEtherType(AvtpEtherType);
 				etherLayer2.setSrcAddress(Peer_Mac_Address);
 				etherLayer2.setDestAddress(Local_Mac_Address);
+				// ACMP goes to the ACMP multicast on a network: the command state machine
+				// matches a response to its in-flight command by that destination.
+				if (avtpdu_size > 0 && avtpdu[0] == 0xFC)
+				{
+					etherLayer2.setDestAddress(la::avdecc::protocol::Acmpdu::Multicast_Mac_Address);
+				}
 
 				// Try to detect possible deadlock
 				{

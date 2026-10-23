@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - pcap handle leaked when the pcap ProtocolInterface fails to be created (capture filter error, or Win10Pcap detected)
 - Compilation error on windows arm64 (unknown host endianness)
 - [Local domain socket ProtocolInterface never receiving any reply from the entity (unbound socket), not reconnecting after the entity was restarted, and busy-looping on receive errors instead of reporting a transport error](https://github.com/L-Acoustics/avdecc/pull/206) (thanks to Luke Howard)
+- [ACMP commands always timing out with the local domain socket ProtocolInterface](https://github.com/L-Acoustics/avdecc/pull/206) (thanks to Luke Howard)
 
 ## [4.3.1] - 2025-12-19
 ### Added
