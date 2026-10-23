@@ -44,8 +44,12 @@
 #include <functional>
 #include <memory>
 #include <chrono>
+#include <atomic>
 #include <cstdlib>
+#include <cstring>
+#include <cerrno>
 #include <ctime>
+#include <random>
 
 #include <unistd.h>
 #include <poll.h>
@@ -74,28 +78,34 @@ public:
 	ProtocolInterfaceLocalImpl(std::string const& networkInterfaceName, std::string const& executorName)
 		: ProtocolInterfaceLocal(networkInterfaceName, Local_Mac_Address, executorName)
 	{
-		// open socket
-		sockaddr_un sun{};
+		// Build peer address
+		_peerAddress.sun_family = AF_LOCAL;
+		if (networkInterfaceName.size() >= sizeof(_peerAddress.sun_path))
+		{
+			throw Exception(Error::InvalidParameters, "Local domain socket path too long");
+		}
+		strncpy(_peerAddress.sun_path, networkInterfaceName.c_str(), sizeof(_peerAddress.sun_path) - 1);
+#if defined(__APPLE__)
+		_peerAddress.sun_len = SUN_LEN(&_peerAddress);
+#endif
 
+		// open socket
 		_fd = socket(AF_LOCAL, SOCK_DGRAM, 0);
 		if (_fd < 0)
 		{
 			throw Exception(Error::TransportError, "Failed to create local domain socket");
 		}
 
-		sun.sun_family = AF_LOCAL;
-		if (networkInterfaceName.size() >= sizeof(sun.sun_path))
+		// Bind the socket so that the peer gets a source address it can reply to (an unbound datagram socket sends anonymously)
+		if (!bindSocket())
 		{
-			throw Exception(Error::InvalidParameters, "Local domain socket path too long");
+			closeSocket();
+			throw Exception(Error::TransportError, "Failed to bind local domain socket");
 		}
-		strncpy(sun.sun_path, networkInterfaceName.c_str(), sizeof(sun.sun_path) - 1);
-#if defined(__APPLE__)
-		sun.sun_len = SUN_LEN(&sun);
-#endif
 
-		auto err = connect(_fd, reinterpret_cast<sockaddr*>(&sun), sizeof(sun));
-		if (err < 0)
+		if (!connectSocket())
 		{
+			closeSocket();
 			throw Exception(Error::TransportError, "Failed to connect local domain socket to peer");
 		}
 
@@ -159,10 +169,7 @@ private:
 		la::avdecc::ExecutorManager::getInstance().flush(getExecutorName());
 
 		// Close underlying file descriptor.
-		if (_fd != -1)
-		{
-			close(_fd);
-		}
+		closeSocket();
 	}
 
 	virtual UniqueIdentifier getDynamicEID() const noexcept override
@@ -626,18 +633,50 @@ private:
 			auto const err = poll(&pollfd, 1, SocketReceiveLoopTimeout); // timeout so we can check _shouldTerminate
 			if (err < 0)
 			{
+				if (errno == EINTR)
+				{
+					continue;
+				}
 				break;
 			}
-			else if (err == 0 || pollfd.events != POLLIN)
+			else if (err == 0)
 			{
-				continue; // timed out or no input events
+				continue; // timed out
+			}
+			else if ((pollfd.revents & POLLNVAL) != 0)
+			{
+				break;
+			}
+			else if ((pollfd.revents & (POLLIN | POLLERR)) == 0)
+			{
+				if ((pollfd.revents & POLLHUP) != 0)
+				{
+					break; // Hang up with nothing left to read: polling again would return immediately
+				}
+				continue; // no input events (a pending socket error is retrieved by recvmsg)
 			}
 
 			msg.msg_iov = &iov;
 			msg.msg_iovlen = 1;
 
-			auto const bytesReceived = recvmsg(_fd, &msg, 0);
-			if (bytesReceived > 0)
+			auto const bytesReceived = recvmsg(_fd, &msg, MSG_DONTWAIT);
+			if (bytesReceived < 0)
+			{
+				auto const error = errno;
+				// Transient errors, or the peer went away (the next send will reconnect)
+				if (error == EINTR || error == EAGAIN || error == EWOULDBLOCK || error == ECONNREFUSED || error == ECONNRESET)
+				{
+					continue;
+				}
+				break; // Fatal error
+			}
+			else if ((msg.msg_flags & MSG_TRUNC) != 0)
+			{
+				// Drop truncated datagrams
+				LOG_PROTOCOL_INTERFACE_DEBUG(Peer_Mac_Address, Local_Mac_Address, "Dropping truncated datagram");
+				continue;
+			}
+			else if (bytesReceived > 0)
 			{
 				auto message = la::avdecc::MemoryBuffer{ payloadBuffer, static_cast<std::size_t>(bytesReceived) };
 				processRawPacket(std::move(message));
@@ -653,8 +692,16 @@ private:
 		msg.msg_iov = &iov;
 		msg.msg_iovlen = 1;
 
-		auto const bytesSent = sendmsg(_fd, &msg, 0);
-		if (static_cast<size_t>(bytesSent) != buffer.size())
+		auto bytesSent = sendmsg(_fd, &msg, 0);
+		if (bytesSent < 0 && (errno == ECONNREFUSED || errno == ENOTCONN))
+		{
+			// The peer has been restarted (our connection still refers to its previous socket): reconnect and retry once
+			if (connectSocket())
+			{
+				bytesSent = sendmsg(_fd, &msg, 0);
+			}
+		}
+		if (bytesSent < 0 || static_cast<size_t>(bytesSent) != buffer.size())
 		{
 			return Error::TransportError;
 		}
@@ -662,11 +709,84 @@ private:
 		return Error::NoError;
 	}
 
+	bool bindSocket() noexcept
+	{
+#if defined(__linux__)
+		// Autobind to a unique address in the abstract namespace
+		auto address = sockaddr_un{};
+		address.sun_family = AF_LOCAL;
+		return bind(_fd, reinterpret_cast<sockaddr const*>(&address), sizeof(sa_family_t)) == 0;
+#else
+		// No abstract namespace: bind to a unique path in the temporary directory (removed on shutdown)
+		auto const* tmpDir = std::getenv("TMPDIR");
+		auto randomDevice = std::random_device{};
+		for (auto const* const dir : { tmpDir, "/tmp" })
+		{
+			if (dir == nullptr || *dir == '\0')
+			{
+				continue;
+			}
+			for (auto attempt = 0u; attempt < 8u; ++attempt)
+			{
+				auto path = std::string{ dir };
+				if (path.back() != '/')
+				{
+					path += '/';
+				}
+				path += "la_avdecc." + std::to_string(getpid()) + "." + utils::toHexString(randomDevice()) + ".sock";
+
+				auto address = sockaddr_un{};
+				address.sun_family = AF_LOCAL;
+				if (path.size() >= sizeof(address.sun_path))
+				{
+					break; // Too long for this directory, try the next one
+				}
+				strncpy(address.sun_path, path.c_str(), sizeof(address.sun_path) - 1);
+#	if defined(__APPLE__)
+				address.sun_len = SUN_LEN(&address);
+#	endif
+
+				if (bind(_fd, reinterpret_cast<sockaddr const*>(&address), sizeof(address)) == 0)
+				{
+					_boundPath = std::move(path);
+					return true;
+				}
+				if (errno != EADDRINUSE)
+				{
+					break; // Not usable, try the next directory
+				}
+			}
+		}
+		return false;
+#endif
+	}
+
+	bool connectSocket() const noexcept
+	{
+		return connect(_fd, reinterpret_cast<sockaddr const*>(&_peerAddress), sizeof(_peerAddress)) == 0;
+	}
+
+	void closeSocket() noexcept
+	{
+		if (_fd != -1)
+		{
+			close(_fd);
+			_fd = -1;
+		}
+		if (!_boundPath.empty())
+		{
+			unlink(_boundPath.c_str());
+			_boundPath.clear();
+		}
+	}
+
 	// Private variables
 	watchDog::WatchDog::SharedPointer _watchDogSharedPointer{ watchDog::WatchDog::getInstance() };
 	watchDog::WatchDog& _watchDog{ *_watchDogSharedPointer };
 	int _fd{ -1 };
-	bool _shouldTerminate{ false };
+	sockaddr_un _peerAddress{};
+	std::string _boundPath{};
+	std::atomic<bool> _shouldTerminate{ false };
 	mutable stateMachine::Manager _stateMachineManager{ this, this, this, this, this };
 	std::thread _captureThread{};
 	friend class EthernetPacketDispatcher<ProtocolInterfaceLocalImpl>;
