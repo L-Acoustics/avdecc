@@ -71,6 +71,12 @@
 #	define AVDECC_LITTLE_ENDIAN
 #endif
 
+/* Windows on ARM is always little-endian (MSVC does not define any of the endianness macros above).
+*/
+#if defined(_M_ARM) || defined(_M_ARM64)
+#	define AVDECC_LITTLE_ENDIAN
+#endif
+
 #include <climits>
 #include <cstdint>
 
