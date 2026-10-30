@@ -104,10 +104,12 @@ public:
 			throw Exception(Error::TransportError, error.c_str());
 		}
 
-		// Configure pcap filtering to ignore packets of other protocols
+		// Configure pcap filtering to only receive AVDECC messages, so packets of other protocols and AVTP streams (which share the same EtherType) are dropped by the kernel
+		// The cd bit of the AVTP subtype is ignored, like EthernetPacketDispatcher does
 		struct bpf_program fcode;
 		std::stringstream ss;
-		ss << "ether proto 0x" << std::hex << AvtpEtherType;
+		ss << std::hex << std::showbase << "ether proto " << AvtpEtherType;
+		ss << " and ((ether[14] & 0x7f) == " << static_cast<unsigned int>(AvtpSubType_Adp) << " or (ether[14] & 0x7f) == " << static_cast<unsigned int>(AvtpSubType_Aecp) << " or (ether[14] & 0x7f) == " << static_cast<unsigned int>(AvtpSubType_Acmp) << ")";
 		if (_pcapLibrary.compile(pcap, &fcode, ss.str().c_str(), 1, 0xffffffff) < 0)
 			throw Exception(Error::TransportError, "Failed to compile ether filter");
 		if (_pcapLibrary.setfilter(pcap, &fcode) < 0)

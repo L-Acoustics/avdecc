@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - **API break**: AECP response time (`ProtocolInterface::Observer::onAecpResponseTime`, `entity::controller::Delegate::onAecpResponseTime` and the C bindings `onAecpResponseTime`) is now in microseconds (was milliseconds)
 - JSON deserialization of an unknown enum name now fails (it was silently replaced by a default value)
 - StreamOutputCounters `counter_type` is now serialized as a string in JSON files (files using a number are still loadable)
+- pcap ProtocolInterface only captures AVDECC messages: AVTP streams (which share the same EtherType) are now dropped by the kernel filter, reducing the CPU load on networks carrying streams
 
 ### Fixed 
 - Better debugger support for MacOs and Linux builds
