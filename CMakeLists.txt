@@ -48,6 +48,7 @@ option(ENABLE_CODE_SIGNING "Enable binaries signing." FALSE)
 option(ENABLE_AVDECC_FEATURE_REDUNDANCY "Enable 'Network Redundancy' feature as defined by AVnu Alliance." TRUE)
 option(ENABLE_AVDECC_FEATURE_JSON "Enable read/write files in JSON format." TRUE)
 option(ENABLE_AVDECC_FEATURE_CBR "Enable ChannelBasedRouting monitoring." TRUE)
+option(ENABLE_AVDECC_PCAP_MULTICAST_JOIN "Pcap protocol interface joins the AVDECC multicast groups instead of using promiscuous mode (linux only)." FALSE)
 # Compatibility options
 option(ENABLE_AVDECC_USE_FMTLIB "Use fmtlib" TRUE)
 option(ENABLE_AVDECC_STRICT_2018_REDUNDANCY "Be strict about 'Network Redundancy' feature, using AVnu 2018 specifications." TRUE)
@@ -144,6 +145,11 @@ endif()
 # Cannot build 'local domain socket protocol interface' for Windows target
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND BUILD_AVDECC_INTERFACE_LOCAL)
 	set(BUILD_AVDECC_INTERFACE_LOCAL FALSE)
+endif()
+
+# 'pcap multicast join' is only supported for linux target
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ENABLE_AVDECC_PCAP_MULTICAST_JOIN)
+	set(ENABLE_AVDECC_PCAP_MULTICAST_JOIN FALSE)
 endif()
 
 if(BUILD_AVDECC_INTERFACE_PROXY)

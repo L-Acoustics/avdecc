@@ -23,6 +23,7 @@
 */
 
 #include "la/avdecc/internals/serialization.hpp"
+#include "la/avdecc/internals/protocolAdpdu.hpp"
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/watchDog.hpp"
@@ -53,6 +54,13 @@
 #	include <cstdio>
 #	include <string_view>
 #endif // __linux__
+#ifdef ENABLE_AVDECC_PCAP_MULTICAST_JOIN
+#	include <cerrno>
+#	include <cstring>
+#	include <sys/socket.h>
+#	include <net/if.h>
+#	include <linux/if_packet.h>
+#endif // ENABLE_AVDECC_PCAP_MULTICAST_JOIN
 
 namespace la
 {
@@ -118,6 +126,11 @@ public:
 					_pcapLibrary.close(pcap);
 				}
 			} };
+
+#ifdef ENABLE_AVDECC_PCAP_MULTICAST_JOIN
+		// Capture was opened without promiscuous mode, join the AVDECC multicast groups
+		joinMulticastGroups(networkInterfaceID);
+#endif // ENABLE_AVDECC_PCAP_MULTICAST_JOIN
 
 		// Start the capture thread
 		_captureThread = std::thread(
@@ -627,14 +640,18 @@ private:
 	/* ************************************************************ */
 	/**
 	* @brief Opens a pcap capture on the specified device, in immediate mode.
-	* @details Immediate mode delivers each frame as soon as it is captured. Without it, frames are held in the kernel until its buffer is full enough or the read timeout expires (which Windows rounds up to its 15.6 msec timer tick), delaying every received message.
+	* @details Immediate mode delivers each frame as soon as it is captured. Without it, frames are held in the kernel until its buffer is full enough or the read timeout expires (which Windows rounds up to its 15.6 msec timer tick), delaying every received message. Promiscuous mode is not enabled when ENABLE_AVDECC_PCAP_MULTICAST_JOIN is defined (see joinMulticastGroups).
 	* @param[in] deviceName The pcap name of the device to open.
 	* @return The pcap handle (nullptr on failure) and the error message (on failure).
 	*/
 	std::pair<pcap_t*, std::string> openPcap(std::string const& deviceName) const noexcept
 	{
 		static constexpr int PCAP_BufferSize = 65536;
+#ifdef ENABLE_AVDECC_PCAP_MULTICAST_JOIN
+		static constexpr int PCAP_PromiscMode = 0;
+#else // !ENABLE_AVDECC_PCAP_MULTICAST_JOIN
 		static constexpr int PCAP_PromiscMode = 1;
+#endif // ENABLE_AVDECC_PCAP_MULTICAST_JOIN
 		static constexpr int PCAP_TimeoutMsec = 5;
 
 		auto errbuf = std::array<char, PCAP_ERRBUF_SIZE>{};
@@ -667,6 +684,44 @@ private:
 
 		return { pcap, {} };
 	}
+
+#ifdef ENABLE_AVDECC_PCAP_MULTICAST_JOIN
+	/**
+	* @brief Joins the AVDECC multicast groups on the capture socket, so promiscuous mode is not required.
+	* @details ADP and ACMP share the same multicast address, and AECP messages are sent to the unicast address of the interface. Falls back to promiscuous mode if a group cannot be joined.
+	* @param[in] interfaceName The name of the capture interface.
+	*/
+	void joinMulticastGroups(std::string const& interfaceName) const
+	{
+		auto const ifIndex = static_cast<int>(::if_nametoindex(interfaceName.c_str()));
+		auto const addMembership = [this, ifIndex](unsigned short const type, networkInterface::MacAddress const* const macAddress)
+		{
+			auto mreq = packet_mreq{};
+			mreq.mr_ifindex = ifIndex;
+			mreq.mr_type = type;
+			if (macAddress != nullptr)
+			{
+				mreq.mr_alen = static_cast<unsigned short>(macAddress->size());
+				std::memcpy(mreq.mr_address, macAddress->data(), macAddress->size());
+			}
+			return ::setsockopt(_fd, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) == 0;
+		};
+
+		if (addMembership(PACKET_MR_MULTICAST, &Adpdu::Multicast_Mac_Address) && addMembership(PACKET_MR_MULTICAST, &AemAecpdu::Identify_Mac_Address))
+		{
+			return;
+		}
+		auto const joinError = errno;
+		LOG_GENERIC_WARN("Failed to join the AVDECC multicast groups on " + interfaceName + " (" + std::strerror(joinError) + "), falling back to promiscuous mode");
+
+		// Enable promiscuous mode on the already opened socket (same as what libpcap does)
+		if (!addMembership(PACKET_MR_PROMISC, nullptr))
+		{
+			auto const promiscError = errno;
+			throw Exception(Error::TransportError, "Failed to enable promiscuous mode on " + interfaceName + " (" + std::strerror(promiscError) + ")");
+		}
+	}
+#endif // ENABLE_AVDECC_PCAP_MULTICAST_JOIN
 
 	void processRawPacket(la::avdecc::MemoryBuffer&& packet) const noexcept
 	{

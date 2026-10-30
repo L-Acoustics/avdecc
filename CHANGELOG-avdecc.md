@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Missing EntityCapability flags
 - `ControllerEntity::getCurrentDispatchContext()` and `entity::controller::DispatchContext`: from inside a `controller::Delegate` notification or a command result handler, tells whether the message being dispatched is an unsolicited notification, the response to a command of the entity (or its failure) or a sniffed ACMP response, which ControllerEntity received it and the `sequenceID` of the message (unset only when a command failed without a response)
 - C# bindings: `entity::controller::DispatchContext` and `ControllerEntity.getCurrentDispatchContext()` are bound
+- [Optional multicast join instead of promiscuous mode for the pcap ProtocolInterface on linux (`ENABLE_AVDECC_PCAP_MULTICAST_JOIN` CMake option)](https://github.com/L-Acoustics/avdecc/pull/202) (thanks to Luke Howard)
 
 ### Changed
 - **API break**: AECP response time (`ProtocolInterface::Observer::onAecpResponseTime`, `entity::controller::Delegate::onAecpResponseTime` and the C bindings `onAecpResponseTime`) is now in microseconds (was milliseconds)

@@ -119,6 +119,7 @@ C language bindings over la_avdecc library.
   * Run *make* to compile everything (or compile using your toolchain)
 - pcap library:
   * The pcap protocol interface requires libpcap 1.10 or later (it is reported as not supported with an older version)
+  * To reduce the CPU load (on embedded platforms for example), you can pass the CMake parameter `-DENABLE_AVDECC_PCAP_MULTICAST_JOIN=TRUE` so the pcap protocol interface joins the AVDECC multicast groups instead of using promiscuous mode
   * If you need to override the pcap library name or path used for dynamic linking in the pcap protocol interface (default is 'libpcap.so'), you can pass the CMake parameter `-DOVERRIDE_PCAP_LIB_PATH="<your_pcap_library>"` when generating the build system (e.g. `-DOVERRIDE_PCAP_LIB_PATH="libpcap_custom.so"`)
 
 ## Cross-compilation using Docker
