@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - JSON serialization of an AvdeccFixedString that is not a valid UTF-8 string (eg. an entity name sent by an entity), preventing the dump from being saved as text: it is now serialized as an array of bytes
 - JSON schemas not usable by validators (invalid meta-schema URI, invalid references), AEM schema not matching the dumped entity model (missing descriptors, wrong types and required fields, unknown values)
 - [pcap ProtocolInterface overriding the SIGTERM handler of the whole process on linux](https://github.com/L-Acoustics/avdecc/pull/197) (thanks to Luke Howard): the capture thread no longer relies on a signal to be woken up, libpcap 1.10 or later is now required on linux
+- pcap handle leaked when the pcap ProtocolInterface fails to be created (capture filter error, or Win10Pcap detected)
 
 ## [4.3.1] - 2025-12-19
 ### Added

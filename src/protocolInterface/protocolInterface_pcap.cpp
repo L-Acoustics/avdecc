@@ -98,11 +98,22 @@ public:
 			// Let's assume it's Win10pcap
 			if (pcap != nullptr)
 			{
+				_pcapLibrary.close(pcap);
 				throw Exception(Error::TransportError, "Win10Pcap is not supported. Please uninstall it and either use WinPcap or nPcap which are both compatible.");
 			}
 #endif // _WIN32
 			throw Exception(Error::TransportError, error.c_str());
 		}
+
+		// Store our pcap handle in a unique_ptr so the PCap library will be cleaned upon destruction of 'this', or if an exception is thrown during the rest of the construction
+		// _pcapLibrary (accessed through the capture of 'this') will still be valid during destruction since it was declared before _pcap (thus destroyed after it)
+		_pcap = { pcap, [this](pcap_t* pcap)
+			{
+				if (pcap != nullptr)
+				{
+					_pcapLibrary.close(pcap);
+				}
+			} };
 
 		// Configure pcap filtering to only receive AVDECC messages, so packets of other protocols and AVTP streams (which share the same EtherType) are dropped by the kernel
 		// The cd bit of the AVTP subtype is ignored, like EthernetPacketDispatcher does
@@ -112,22 +123,13 @@ public:
 		ss << " and ((ether[14] & 0x7f) == " << static_cast<unsigned int>(AvtpSubType_Adp) << " or (ether[14] & 0x7f) == " << static_cast<unsigned int>(AvtpSubType_Aecp) << " or (ether[14] & 0x7f) == " << static_cast<unsigned int>(AvtpSubType_Acmp) << ")";
 		if (_pcapLibrary.compile(pcap, &fcode, ss.str().c_str(), 1, 0xffffffff) < 0)
 			throw Exception(Error::TransportError, "Failed to compile ether filter");
-		if (_pcapLibrary.setfilter(pcap, &fcode) < 0)
-			throw Exception(Error::TransportError, "Failed to set ether filter");
+		auto const setFilterResult = _pcapLibrary.setfilter(pcap, &fcode);
 		_pcapLibrary.freecode(&fcode);
+		if (setFilterResult < 0)
+			throw Exception(Error::TransportError, "Failed to set ether filter");
 
 		// Get socket descriptor
 		_fd = _pcapLibrary.fileno(pcap);
-
-		// Store our pcap handle in a unique_ptr so the PCap library will be cleaned upon destruction of 'this'
-		// _pcapLibrary (accessed through the capture of 'this') will still be valid during destruction since it was declared before _pcap (thus destroyed after it)
-		_pcap = { pcap, [this](pcap_t* pcap)
-			{
-				if (pcap != nullptr)
-				{
-					_pcapLibrary.close(pcap);
-				}
-			} };
 
 #ifdef ENABLE_AVDECC_PCAP_MULTICAST_JOIN
 		// Capture was opened without promiscuous mode, join the AVDECC multicast groups
