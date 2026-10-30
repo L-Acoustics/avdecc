@@ -73,9 +73,9 @@ add_custom_command(
 	VERBATIM
 )
 
-# Set specific compile flag for aemPayloads_tests.cpp
+# Test files can exceed the number of sections allowed by the default object file format (depending on the target architecture), use /bigobj for all of them
 if(MSVC)
-	set_source_files_properties(aemPayloads_tests.cpp PROPERTIES COMPILE_FLAGS /bigobj)
+	target_compile_options(Tests PRIVATE /bigobj)
 endif()
 
 # Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
