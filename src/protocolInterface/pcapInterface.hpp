@@ -40,6 +40,7 @@ public:
 	~PcapInterface();
 
 	bool is_available() const;
+	const char* lib_version() const;
 	pcap_t* create(const char*, char*) const;
 	int set_snaplen(pcap_t*, int) const;
 	int set_promisc(pcap_t*, int) const;

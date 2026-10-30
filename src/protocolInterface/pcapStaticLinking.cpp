@@ -37,6 +37,11 @@ bool PcapInterface::is_available() const
 	return true;
 }
 
+const char* PcapInterface::lib_version() const
+{
+	return pcap_lib_version();
+}
+
 pcap_t* PcapInterface::create(const char* source, char* errbuf) const
 {
 	return pcap_create(source, errbuf);

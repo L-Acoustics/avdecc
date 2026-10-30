@@ -136,6 +136,7 @@ namespace avdecc
 {
 namespace protocol
 {
+using lib_version_t = const char* (*)();
 using create_t = pcap_t* (*)(const char*, char*);
 using set_snaplen_t = int (*)(pcap_t*, int);
 using set_promisc_t = int (*)(pcap_t*, int);
@@ -160,6 +161,7 @@ using sendpacket_t = int (*)(pcap_t*, const u_char*, int);
 struct PcapInterface::pImpl
 {
 	DL_HANDLE libraryHandle{ nullptr };
+	lib_version_t lib_version_ptr{ nullptr };
 	create_t create_ptr{ nullptr };
 	set_snaplen_t set_snaplen_ptr{ nullptr };
 	set_promisc_t set_promisc_ptr{ nullptr };
@@ -189,10 +191,11 @@ PcapInterface::PcapInterface()
 	if (auto const handle = DL_OPEN(PCAP_LIBRARY))
 	{
 		std::string version{};
-		using lib_version_t = const char* (*)();
 		if (auto const lib_version_ptr = reinterpret_cast<lib_version_t>(DL_SYM(handle, "pcap_lib_version")))
 		{
 			version = lib_version_ptr();
+
+			_pImpl->lib_version_ptr = lib_version_ptr;
 
 			_pImpl->create_ptr = reinterpret_cast<create_t>(DL_SYM(handle, "pcap_create"));
 			_pImpl->set_snaplen_ptr = reinterpret_cast<set_snaplen_t>(DL_SYM(handle, "pcap_set_snaplen"));
@@ -253,6 +256,12 @@ bool PcapInterface::is_available() const
 {
 	assert(_pImpl != nullptr);
 	return (_pImpl->libraryHandle != nullptr);
+}
+
+const char* PcapInterface::lib_version() const
+{
+	assert((_pImpl != nullptr) && (_pImpl->libraryHandle != nullptr) && (_pImpl->lib_version_ptr != nullptr));
+	return _pImpl->lib_version_ptr();
 }
 
 pcap_t* PcapInterface::create(const char* source, char* errbuf) const

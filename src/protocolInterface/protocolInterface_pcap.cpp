@@ -50,7 +50,8 @@
 #include <tuple>
 #include <utility>
 #ifdef __linux__
-#	include <csignal>
+#	include <cstdio>
+#	include <string_view>
 #endif // __linux__
 
 namespace la
@@ -129,11 +130,6 @@ public:
 				}
 				auto* const pcap = _pcap.get();
 
-#ifdef __linux__
-				// Empty signal handler for when shutdown() wakes up this thread during termination
-				std::signal(SIGTERM, [](int){});
-#endif // __linux__
-
 				_pcapLibrary.loop(pcap, -1, &ProtocolInterfacePcapImpl::pcapLoopHandler, reinterpret_cast<u_char*>(this));
 
 				// Notify observers if we exited the loop because of an error
@@ -183,13 +179,9 @@ private:
 		{
 			if (auto pcap = _pcap.get(); AVDECC_ASSERT_WITH_RET(pcap, "pcap should not be null if the thread exists"))
 			{
-				// Ask pcap_loop to terminate
+				// Ask pcap_loop to terminate (also wakes up the capture thread on linux, since libpcap 1.10)
 				_pcapLibrary.breakloop(pcap);
 			}
-#ifdef __linux__
-			// On linux when using 3PCAP we also have to wake up the thread using a signal (see pcap_breakloop manpage, "multi-threaded application" section)
-			pthread_kill(_captureThread.native_handle(), SIGTERM);
-#endif // __linux__
 			_captureThread.join();
 		}
 
@@ -765,13 +757,44 @@ ProtocolInterfacePcap::ProtocolInterfacePcap(std::string const& networkInterface
 {
 }
 
+#ifdef __linux__
+/** Returns false if the specified pcap_lib_version() string is a libpcap older than 1.10 (pcap_breakloop() does not wake up a thread blocked in pcap_loop() before that version) */
+static bool isPcapLibVersionSupported(std::string const& version) noexcept
+{
+	static constexpr auto VersionPrefix = std::string_view{ "libpcap version " };
+	auto const pos = version.find(VersionPrefix);
+	auto major = 0;
+	auto minor = 0;
+	// Unknown format, assume it's a recent version (all versions prior to 1.10 use the expected format)
+	if (pos == std::string::npos || std::sscanf(version.c_str() + pos + VersionPrefix.size(), "%d.%d", &major, &minor) != 2)
+	{
+		return true;
+	}
+	return major > 1 || (major == 1 && minor >= 10);
+}
+#endif // __linux__
+
 bool ProtocolInterfacePcap::isSupported() noexcept
 {
 	try
 	{
 		PcapInterface pcapLibrary{};
 
-		return pcapLibrary.is_available();
+		if (!pcapLibrary.is_available())
+		{
+			return false;
+		}
+
+#ifdef __linux__
+		// libpcap 1.10 is required on linux so pcap_breakloop() wakes up the capture thread during shutdown
+		if (auto const version = std::string{ pcapLibrary.lib_version() }; !isPcapLibVersionSupported(version))
+		{
+			LOG_GENERIC_ERROR("libpcap 1.10 or later is required (found " + version + ")");
+			return false;
+		}
+#endif // __linux__
+
+		return true;
 	}
 	catch (...)
 	{
