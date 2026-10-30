@@ -117,6 +117,9 @@ public:
 
 		// Configure pcap filtering to only receive AVDECC messages, so packets of other protocols and AVTP streams (which share the same EtherType) are dropped by the kernel
 		// The cd bit of the AVTP subtype is ignored, like EthernetPacketDispatcher does
+		// VLAN tagged frames are not supported (their EtherType at offset 12 is 0x8100), unless received through a VLAN interface (eg. eth0.10) as the OS then removes the tag
+		// Supporting them requires a branch using the 'vlan' keyword in this filter, and processRawPacket reading the EtherType at offset 16 and the AVTPDU at offset 18 (instead of 12 and 14) when the buffer contains a tag
+		// The tag must be detected from the buffer itself: on linux with VLAN offload, the kernel filter sees the frame without its tag while libpcap puts it back in the captured buffer
 		struct bpf_program fcode;
 		std::stringstream ss;
 		ss << std::hex << std::showbase << "ether proto " << AvtpEtherType;
@@ -739,7 +742,7 @@ private:
 
 				// Don't ignore self mac, another entity might be on the computer
 
-				// Check ether type (shouldn't be needed, pcap filter is active)
+				// Check ether type (still needed with the pcap filter, VLAN tagged frames can reach this point on linux, see the capture filter in the constructor)
 				std::uint16_t etherType = AVDECC_UNPACK_TYPE(*((std::uint16_t*)(msg.data() + 12)), std::uint16_t);
 				if (etherType != AvtpEtherType)
 				{
