@@ -735,6 +735,12 @@ private:
 		la::avdecc::ExecutorManager::getInstance().pushJob(getExecutorName(),
 			[this, msg = std::move(packet)]()
 			{
+				// Not enough data for an EtherLayer2 header followed by an Avtpdu control header, don't read EtherType and SubType out of bounds
+				if (msg.size() < (EtherLayer2::HeaderLength + AvtpduControl::HeaderLength))
+				{
+					return;
+				}
+
 				// Packet received, process it
 				auto des = DeserializationBuffer(msg);
 				EtherLayer2 etherLayer2;
