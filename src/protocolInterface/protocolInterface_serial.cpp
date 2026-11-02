@@ -686,6 +686,8 @@ private:
 					case SerialState::Synchronizing:
 						if (readBuffer[i] == cobs::DelimiterByte)
 						{
+							// Start of a new frame (the previous one may have ended in the same read, its bytes must not be kept)
+							cobsBytesRead = 0;
 							state = SerialState::Reading;
 						}
 						break;
