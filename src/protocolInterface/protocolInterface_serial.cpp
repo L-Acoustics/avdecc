@@ -97,8 +97,8 @@ public:
 			throw Exception(Error::InvalidParameters, "Expected serial port device name format path[@speed]");
 		}
 
-		// Get file descriptor
-		_fd = ::open(deviceNameParameters[0].c_str(), O_RDWR);
+		// Get file descriptor (the serial port must not become the controlling terminal of a process that has none, eg. a daemon, it would be sent SIGHUP when the device is disconnected)
+		_fd = ::open(deviceNameParameters[0].c_str(), O_RDWR | O_NOCTTY);
 		if (_fd < 0)
 		{
 			throw Exception(Error::TransportError, "Failed to open serial port");
