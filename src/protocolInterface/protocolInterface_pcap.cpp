@@ -45,6 +45,7 @@
 #include <functional>
 #include <memory>
 #include <chrono>
+#include <atomic>
 #include <cstdlib>
 #include <ctime>
 #include <cstdint>
@@ -813,7 +814,7 @@ private:
 	PcapInterface _pcapLibrary;
 	std::unique_ptr<pcap_t, std::function<void(pcap_t*)>> _pcap{ nullptr, nullptr };
 	int _fd{ -1 };
-	bool _shouldTerminate{ false };
+	std::atomic<bool> _shouldTerminate{ false };
 	mutable stateMachine::Manager _stateMachineManager{ this, this, this, this, this };
 	std::thread _captureThread{};
 	friend class EthernetPacketDispatcher<ProtocolInterfacePcapImpl>;
