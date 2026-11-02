@@ -40,6 +40,7 @@
 #include <sstream>
 #include <array>
 #include <thread>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <functional>
@@ -759,6 +760,9 @@ private:
 		struct pollfd pollfd;
 		pollfd.fd = _fd;
 
+		// Messages can be sent from several threads, write them one at a time (the remaining bytes of a partial write must not be interleaved with another message)
+		auto const lg = std::lock_guard{ _sendLock };
+
 		while (cobsBytesRemaining > 0)
 		{
 			pollfd.events = POLLOUT;
@@ -872,6 +876,7 @@ private:
 	watchDog::WatchDog::SharedPointer _watchDogSharedPointer{ watchDog::WatchDog::getInstance() };
 	watchDog::WatchDog& _watchDog{ *_watchDogSharedPointer };
 	int _fd{ -1 };
+	mutable std::mutex _sendLock{};
 	std::atomic<bool> _shouldTerminate{ false };
 	mutable stateMachine::Manager _stateMachineManager{ this, this, this, this, this };
 	std::thread _captureThread{};

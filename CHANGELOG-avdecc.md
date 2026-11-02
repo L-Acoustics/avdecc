@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Possible data race when a ProtocolInterface is destroyed while a message is being sent or received
 - Serial ProtocolInterface losing a message received in the same read as the previous one (and processing the previous one twice)
 - Serial ProtocolInterface looping instead of reporting an error (serial device disconnected, interrupted by a signal)
+- Serial ProtocolInterface data race when sending messages from several threads
 
 ## [4.3.1] - 2025-12-19
 ### Added
