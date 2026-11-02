@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Serial ProtocolInterface looping instead of reporting an error (serial device disconnected, interrupted by a signal)
 - Serial ProtocolInterface setting the serial port as the controlling terminal (could be SIGHUP when the device is disconnected)
 - Serial ProtocolInterface data race when sending messages from several threads
+- Serial ProtocolInterface not setting VMIN and VTIME of the serial port (the end of a message could be delayed until the next one, depending on the values left by a previous user of the serial port)
+- Serial ProtocolInterface altering the binary data with the default settings of a serial port on linux (input and output processing not disabled: CR/NL translations, XON/XOFF flow control)
 
 ## [4.3.1] - 2025-12-19
 ### Added

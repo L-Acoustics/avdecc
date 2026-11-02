@@ -857,8 +857,15 @@ private:
 		tty.c_cflag &= ~(PARENB | CSTOPB | CSIZE);
 		// set 8 data bits, local mode, receiver enabled
 		tty.c_cflag |= (CS8 | CLOCAL | CREAD);
-		// disable canonical mode and signals
-		tty.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+		// disable input processing, the data is binary (no break and parity handling, no CR/NL translation, no XON/XOFF flow control, no 8th bit stripping)
+		tty.c_iflag &= ~(BRKINT | PARMRK | INPCK | ISTRIP | INLCR | IGNCR | ICRNL | IXON | IXOFF | IXANY);
+		// disable output processing, the data is binary (no NL to CR-NL translation)
+		tty.c_oflag &= ~OPOST;
+		// disable canonical mode, echo, signals and extended input processing
+		tty.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHONL | ISIG | IEXTEN);
+		// read() returns (and poll() reports the port readable) as soon as one byte is available, whatever the values left by a previous user of the serial port
+		tty.c_cc[VMIN] = 1;
+		tty.c_cc[VTIME] = 0;
 
 #ifdef __linux__
 		if (ioctl(_fd, TCSETS2, &tty) < 0)
