@@ -739,6 +739,13 @@ private:
 
 	Error sendPacket(SerializationBuffer const& buffer) const noexcept
 	{
+		// The COBS encoding buffer is sized for the maximum AVTPDU length, a bigger message (only possible with big AECP payloads or a VendorUnique message) would overflow it
+		if (buffer.size() > AvtpMaxPayloadLength)
+		{
+			LOG_PROTOCOL_INTERFACE_WARN(Local_Mac_Address, Peer_Mac_Address, "Message too big to be sent ({} bytes, maximum is {})", buffer.size(), AvtpMaxPayloadLength);
+			return Error::MessageNotSupported;
+		}
+
 		std::uint8_t cobsEncodedBuffer[AvtpMaxCobsEncodedPayloadLength] = { cobs::DelimiterByte };
 		auto cobsBytesEncoded = 1 + cobs::encode(buffer.data(), buffer.size(), &cobsEncodedBuffer[1]);
 		cobsEncodedBuffer[cobsBytesEncoded++] = cobs::DelimiterByte;

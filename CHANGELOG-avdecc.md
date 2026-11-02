@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [Local domain socket ProtocolInterface never receiving any reply from the entity (unbound socket), not reconnecting after the entity was restarted, and busy-looping on receive errors instead of reporting a transport error](https://github.com/L-Acoustics/avdecc/pull/206) (thanks to Luke Howard)
 - [ACMP commands always timing out with the local domain socket ProtocolInterface](https://github.com/L-Acoustics/avdecc/pull/206) (thanks to Luke Howard)
 - Out of bounds read when receiving (or injecting) a message too small to be an AVDECC message (possible with the local domain socket and serial ProtocolInterfaces, which have no minimum frame size)
+- Serial ProtocolInterface BOF when sending a message bigger than the maximum AVTPDU length (big AECP payloads or VendorUnique)
 - Possible data race when a ProtocolInterface is destroyed while a message is being sent or received
 - Serial ProtocolInterface losing a message received in the same read as the previous one (and processing the previous one twice)
 - Serial ProtocolInterface looping instead of reporting an error (serial device disconnected, interrupted by a signal)
