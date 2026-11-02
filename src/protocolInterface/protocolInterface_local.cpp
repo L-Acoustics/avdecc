@@ -698,9 +698,10 @@ private:
 		msg.msg_iovlen = 1;
 
 		auto bytesSent = sendmsg(_fd, &msg, 0);
-		if (bytesSent < 0 && (errno == ECONNREFUSED || errno == ENOTCONN))
+		// The peer has been restarted: linux reports ECONNREFUSED (our connection still refers to its previous socket) then ENOTCONN, macOS disconnects our socket when the peer closes and reports ECONNRESET (unless already retrieved by recvmsg) then EDESTADDRREQ
+		if (bytesSent < 0 && (errno == ECONNREFUSED || errno == ENOTCONN || errno == ECONNRESET || errno == EDESTADDRREQ))
 		{
-			// The peer has been restarted (our connection still refers to its previous socket): reconnect and retry once
+			// Reconnect and retry once
 			if (connectSocket())
 			{
 				bytesSent = sendmsg(_fd, &msg, 0);
