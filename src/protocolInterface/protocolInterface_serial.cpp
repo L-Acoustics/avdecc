@@ -656,21 +656,33 @@ private:
 			auto const err = poll(&pollfd, 1, SerialReceiveLoopTimeout); // timeout so we can check _shouldTerminate
 			if (err < 0)
 			{
+				if (errno == EINTR)
+				{
+					continue;
+				}
 				break;
 			}
-			else if (err == 0 || pollfd.events != POLLIN)
+			else if (err == 0)
 			{
-				continue; // timed out or no input events
+				continue; // timed out
+			}
+			else if ((pollfd.revents & POLLNVAL) != 0)
+			{
+				break;
+			}
+			else if ((pollfd.revents & (POLLIN | POLLERR)) == 0)
+			{
+				break; // Hang up with nothing left to read (device disconnected): polling again would return immediately
 			}
 
 			auto const bytesRead = read(_fd, readBuffer, sizeof(readBuffer));
-			if (bytesRead == 0 || (bytesRead < 0 && errno == EAGAIN))
+			if (bytesRead < 0 && (errno == EINTR || errno == EAGAIN))
 			{
 				continue;
 			}
-			else if (bytesRead < 0)
+			else if (bytesRead <= 0)
 			{
-				break;
+				break; // Read error, or end of file (the serial port has been hung up, device disconnected): reading again would return immediately
 			}
 
 			for (auto i = 0; i < bytesRead; i++)
@@ -743,18 +755,22 @@ private:
 			auto const err = poll(&pollfd, 1, -1);
 			if (err < 0)
 			{
+				if (errno == EINTR)
+				{
+					continue;
+				}
 				return Error::TransportError;
 			}
 
-			if (pollfd.revents != POLLOUT)
+			if ((pollfd.revents & POLLOUT) == 0)
 			{
-				continue;
+				return Error::TransportError; // Not writable but woken up: error or hang up (device disconnected), or invalid file descriptor, polling again would return immediately
 			}
 
 			auto bytesWritten = write(_fd, &cobsEncodedBuffer[cobsBytesEncoded - cobsBytesRemaining], cobsBytesRemaining);
 			if (bytesWritten < 0)
 			{
-				if (errno == EAGAIN)
+				if (errno == EINTR || errno == EAGAIN)
 				{
 					continue;
 				}
