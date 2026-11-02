@@ -40,6 +40,7 @@
 #include <sstream>
 #include <array>
 #include <thread>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <functional>
@@ -96,8 +97,8 @@ public:
 			throw Exception(Error::InvalidParameters, "Expected serial port device name format path[@speed]");
 		}
 
-		// Get file descriptor
-		_fd = ::open(deviceNameParameters[0].c_str(), O_RDWR);
+		// Get file descriptor (the serial port must not become the controlling terminal of a process that has none, eg. a daemon, it would be sent SIGHUP when the device is disconnected)
+		_fd = ::open(deviceNameParameters[0].c_str(), O_RDWR | O_NOCTTY);
 		if (_fd < 0)
 		{
 			throw Exception(Error::TransportError, "Failed to open serial port");
@@ -613,6 +614,11 @@ private:
 				etherLayer2.setEtherType(AvtpEtherType);
 				etherLayer2.setSrcAddress(Peer_Mac_Address);
 				etherLayer2.setDestAddress(Local_Mac_Address);
+				// ACMP messages are sent to the ACMP multicast address on a network, and the command state machine matches a response to its inflight command using that destination
+				if (avtpdu_size > 0 && (avtpdu[0] & 0x7f) == AvtpSubType_Acmp)
+				{
+					etherLayer2.setDestAddress(Acmpdu::Multicast_Mac_Address);
+				}
 
 				// Try to detect possible deadlock
 				{
@@ -656,21 +662,33 @@ private:
 			auto const err = poll(&pollfd, 1, SerialReceiveLoopTimeout); // timeout so we can check _shouldTerminate
 			if (err < 0)
 			{
+				if (errno == EINTR)
+				{
+					continue;
+				}
 				break;
 			}
-			else if (err == 0 || pollfd.events != POLLIN)
+			else if (err == 0)
 			{
-				continue; // timed out or no input events
+				continue; // timed out
+			}
+			else if ((pollfd.revents & POLLNVAL) != 0)
+			{
+				break;
+			}
+			else if ((pollfd.revents & (POLLIN | POLLERR)) == 0)
+			{
+				break; // Hang up with nothing left to read (device disconnected): polling again would return immediately
 			}
 
 			auto const bytesRead = read(_fd, readBuffer, sizeof(readBuffer));
-			if (bytesRead == 0 || (bytesRead < 0 && errno == EAGAIN))
+			if (bytesRead < 0 && (errno == EINTR || errno == EAGAIN))
 			{
 				continue;
 			}
-			else if (bytesRead < 0)
+			else if (bytesRead <= 0)
 			{
-				break;
+				break; // Read error, or end of file (the serial port has been hung up, device disconnected): reading again would return immediately
 			}
 
 			for (auto i = 0; i < bytesRead; i++)
@@ -686,6 +704,8 @@ private:
 					case SerialState::Synchronizing:
 						if (readBuffer[i] == cobs::DelimiterByte)
 						{
+							// Start of a new frame (the previous one may have ended in the same read, its bytes must not be kept)
+							cobsBytesRead = 0;
 							state = SerialState::Reading;
 						}
 						break;
@@ -725,6 +745,13 @@ private:
 
 	Error sendPacket(SerializationBuffer const& buffer) const noexcept
 	{
+		// The COBS encoding buffer is sized for the maximum AVTPDU length, a bigger message (only possible with big AECP payloads or a VendorUnique message) would overflow it
+		if (buffer.size() > AvtpMaxPayloadLength)
+		{
+			LOG_PROTOCOL_INTERFACE_WARN(Local_Mac_Address, Peer_Mac_Address, "Message too big to be sent ({} bytes, maximum is {})", buffer.size(), AvtpMaxPayloadLength);
+			return Error::MessageNotSupported;
+		}
+
 		std::uint8_t cobsEncodedBuffer[AvtpMaxCobsEncodedPayloadLength] = { cobs::DelimiterByte };
 		auto cobsBytesEncoded = 1 + cobs::encode(buffer.data(), buffer.size(), &cobsEncodedBuffer[1]);
 		cobsEncodedBuffer[cobsBytesEncoded++] = cobs::DelimiterByte;
@@ -732,6 +759,9 @@ private:
 
 		struct pollfd pollfd;
 		pollfd.fd = _fd;
+
+		// Messages can be sent from several threads, write them one at a time (the remaining bytes of a partial write must not be interleaved with another message)
+		auto const lg = std::lock_guard{ _sendLock };
 
 		while (cobsBytesRemaining > 0)
 		{
@@ -741,18 +771,22 @@ private:
 			auto const err = poll(&pollfd, 1, -1);
 			if (err < 0)
 			{
+				if (errno == EINTR)
+				{
+					continue;
+				}
 				return Error::TransportError;
 			}
 
-			if (pollfd.revents != POLLOUT)
+			if ((pollfd.revents & POLLOUT) == 0)
 			{
-				continue;
+				return Error::TransportError; // Not writable but woken up: error or hang up (device disconnected), or invalid file descriptor, polling again would return immediately
 			}
 
 			auto bytesWritten = write(_fd, &cobsEncodedBuffer[cobsBytesEncoded - cobsBytesRemaining], cobsBytesRemaining);
 			if (bytesWritten < 0)
 			{
-				if (errno == EAGAIN)
+				if (errno == EINTR || errno == EAGAIN)
 				{
 					continue;
 				}
@@ -823,8 +857,15 @@ private:
 		tty.c_cflag &= ~(PARENB | CSTOPB | CSIZE);
 		// set 8 data bits, local mode, receiver enabled
 		tty.c_cflag |= (CS8 | CLOCAL | CREAD);
-		// disable canonical mode and signals
-		tty.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+		// disable input processing, the data is binary (no break and parity handling, no CR/NL translation, no XON/XOFF flow control, no 8th bit stripping)
+		tty.c_iflag &= ~(BRKINT | PARMRK | INPCK | ISTRIP | INLCR | IGNCR | ICRNL | IXON | IXOFF | IXANY);
+		// disable output processing, the data is binary (no NL to CR-NL translation)
+		tty.c_oflag &= ~OPOST;
+		// disable canonical mode, echo, signals and extended input processing
+		tty.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHONL | ISIG | IEXTEN);
+		// read() returns (and poll() reports the port readable) as soon as one byte is available, whatever the values left by a previous user of the serial port
+		tty.c_cc[VMIN] = 1;
+		tty.c_cc[VTIME] = 0;
 
 #ifdef __linux__
 		if (ioctl(_fd, TCSETS2, &tty) < 0)
@@ -842,6 +883,7 @@ private:
 	watchDog::WatchDog::SharedPointer _watchDogSharedPointer{ watchDog::WatchDog::getInstance() };
 	watchDog::WatchDog& _watchDog{ *_watchDogSharedPointer };
 	int _fd{ -1 };
+	mutable std::mutex _sendLock{};
 	std::atomic<bool> _shouldTerminate{ false };
 	mutable stateMachine::Manager _stateMachineManager{ this, this, this, this, this };
 	std::thread _captureThread{};

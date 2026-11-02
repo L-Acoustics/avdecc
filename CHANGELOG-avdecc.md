@@ -37,8 +37,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Compilation error on windows arm64 (unknown host endianness)
 - [Local domain socket ProtocolInterface never receiving any reply from the entity (unbound socket), not reconnecting after the entity was restarted, and busy-looping on receive errors instead of reporting a transport error](https://github.com/L-Acoustics/avdecc/pull/206) (thanks to Luke Howard)
 - [ACMP commands always timing out with the local domain socket ProtocolInterface](https://github.com/L-Acoustics/avdecc/pull/206) (thanks to Luke Howard)
+- ACMP commands always timing out with the serial ProtocolInterface
 - Out of bounds read when receiving (or injecting) a message too small to be an AVDECC message (possible with the local domain socket and serial ProtocolInterfaces, which have no minimum frame size)
+- Serial ProtocolInterface BOF when sending a message bigger than the maximum AVTPDU length (big AECP payloads or VendorUnique)
 - Possible data race when a ProtocolInterface is destroyed while a message is being sent or received
+- Serial ProtocolInterface losing a message received in the same read as the previous one (and processing the previous one twice)
+- Serial ProtocolInterface looping instead of reporting an error (serial device disconnected, interrupted by a signal)
+- Serial ProtocolInterface setting the serial port as the controlling terminal (could be SIGHUP when the device is disconnected)
+- Serial ProtocolInterface data race when sending messages from several threads
+- Serial ProtocolInterface not setting VMIN and VTIME of the serial port (the end of a message could be delayed until the next one, depending on the values left by a previous user of the serial port)
+- Serial ProtocolInterface altering the binary data with the default settings of a serial port on linux (input and output processing not disabled: CR/NL translations, XON/XOFF flow control)
 
 ## [4.3.1] - 2025-12-19
 ### Added
