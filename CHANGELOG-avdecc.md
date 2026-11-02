@@ -35,6 +35,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [pcap ProtocolInterface overriding the SIGTERM handler of the whole process on linux](https://github.com/L-Acoustics/avdecc/pull/197) (thanks to Luke Howard): the capture thread no longer relies on a signal to be woken up, libpcap 1.10 or later is now required on linux
 - pcap handle leaked when the pcap ProtocolInterface fails to be created (capture filter error, or Win10Pcap detected)
 - Compilation error on windows arm64 (unknown host endianness)
+- [Local domain socket ProtocolInterface never receiving any reply from the entity (unbound socket), not reconnecting after the entity was restarted, and busy-looping on receive errors instead of reporting a transport error](https://github.com/L-Acoustics/avdecc/pull/206) (thanks to Luke Howard)
+- [ACMP commands always timing out with the local domain socket ProtocolInterface](https://github.com/L-Acoustics/avdecc/pull/206) (thanks to Luke Howard)
+- Out of bounds read when receiving (or injecting) a message too small to be an AVDECC message (possible with the local domain socket and serial ProtocolInterfaces, which have no minimum frame size)
+- Possible data race when a ProtocolInterface is destroyed while a message is being sent or received
 
 ## [4.3.1] - 2025-12-19
 ### Added

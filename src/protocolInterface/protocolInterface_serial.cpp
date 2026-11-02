@@ -45,6 +45,7 @@
 #include <functional>
 #include <memory>
 #include <chrono>
+#include <atomic>
 #include <cstdlib>
 #include <ctime>
 
@@ -841,7 +842,7 @@ private:
 	watchDog::WatchDog::SharedPointer _watchDogSharedPointer{ watchDog::WatchDog::getInstance() };
 	watchDog::WatchDog& _watchDog{ *_watchDogSharedPointer };
 	int _fd{ -1 };
-	bool _shouldTerminate{ false };
+	std::atomic<bool> _shouldTerminate{ false };
 	mutable stateMachine::Manager _stateMachineManager{ this, this, this, this, this };
 	std::thread _captureThread{};
 	friend class EthernetPacketDispatcher<ProtocolInterfaceSerialImpl>;

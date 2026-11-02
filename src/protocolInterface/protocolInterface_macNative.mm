@@ -40,6 +40,7 @@
 #include <sstream>
 #include <thread>
 #include <chrono>
+#include <atomic>
 #include <list>
 #include <unordered_map>
 #include <unordered_set>
@@ -796,7 +797,7 @@ private:
 #pragma mark Private variables
 	BridgeInterface* _bridge{ nullptr };
 	mutable stateMachine::Manager _stateMachineManager{ this, this, nullptr, nullptr, nullptr }; // stateMachineManager only required to create the discovery thread (which will callback 'this')
-	bool _shouldTerminate{ false };
+	std::atomic<bool> _shouldTerminate{ false };
 	std::thread _stateMachineThread{}; // Can safely be declared here, will be joined during destruction
 	CommandEntities _commandEntities{};
 };

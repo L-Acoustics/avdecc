@@ -45,6 +45,7 @@
 #include <functional>
 #include <memory>
 #include <chrono>
+#include <atomic>
 #include <cstdlib>
 #include <ctime>
 #include <cstdint>
@@ -735,6 +736,12 @@ private:
 		la::avdecc::ExecutorManager::getInstance().pushJob(getExecutorName(),
 			[this, msg = std::move(packet)]()
 			{
+				// Not enough data for an EtherLayer2 header followed by an Avtpdu control header, don't read EtherType and SubType out of bounds
+				if (msg.size() < (EtherLayer2::HeaderLength + AvtpduControl::HeaderLength))
+				{
+					return;
+				}
+
 				// Packet received, process it
 				auto des = DeserializationBuffer(msg);
 				EtherLayer2 etherLayer2;
@@ -807,7 +814,7 @@ private:
 	PcapInterface _pcapLibrary;
 	std::unique_ptr<pcap_t, std::function<void(pcap_t*)>> _pcap{ nullptr, nullptr };
 	int _fd{ -1 };
-	bool _shouldTerminate{ false };
+	std::atomic<bool> _shouldTerminate{ false };
 	mutable stateMachine::Manager _stateMachineManager{ this, this, this, this, this };
 	std::thread _captureThread{};
 	friend class EthernetPacketDispatcher<ProtocolInterfacePcapImpl>;

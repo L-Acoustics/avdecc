@@ -55,6 +55,13 @@ public:
 
 	void dispatchAvdeccMessage(std::uint8_t const* const pkt_data, size_t const pkt_len, EtherLayer2 const& etherLayer2) const noexcept
 	{
+		// Not enough data for an Avtpdu control header (transports without a minimum frame size, or injected packets), don't read SubType and ControlData out of bounds
+		if (pkt_data == nullptr || pkt_len < AvtpduControl::HeaderLength)
+		{
+			LOG_PROTOCOL_INTERFACE_DEBUG(etherLayer2.getSrcAddress(), etherLayer2.getDestAddress(), "Packet dropped: too small to be an AVDECC message ({} bytes)", pkt_len);
+			return;
+		}
+
 		try
 		{
 			// Read Avtpdu SubType and ControlData (which is remapped to MessageType for all 1722.1 messages)
