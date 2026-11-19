@@ -606,6 +606,57 @@ TEST_F(Controller_F, VirtualEntityLoadTalkerFailedLegacyName)
 	EXPECT_TRUE(streamDynamicInfo._streamInfoFlags.test(la::avdecc::entity::StreamInfoFlag::SrpRegistrationFailed));
 }
 
+TEST(Controller, StreamInputInfoMsrpFailureClearedWithFailureFlags)
+{
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+	auto& controllerImpl = static_cast<la::avdecc::controller::ControllerImpl&>(*controller);
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/ChannelConnection/Entity_0x01.json", la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics });
+	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error) << message;
+
+	auto entity = controllerImpl.getControlledEntityImplGuard(la::avdecc::UniqueIdentifier{ 0x0000000000000001 }, true, false);
+	ASSERT_TRUE(!!entity);
+
+	// Processes a STREAM_INFO of the first Stream Input carrying the given flags (the failure fields always filled, as an entity not zeroing them would), and returns the resulting dynamic info
+	auto const updateStreamInfo = [&controllerImpl, &entity](la::avdecc::entity::StreamInfoFlags const flags)
+	{
+		auto const streamIndex = la::avdecc::entity::model::StreamIndex{ 0u };
+		auto info = la::avdecc::entity::model::StreamInfo{};
+		info.streamInfoFlags = flags;
+		info.msrpAccumulatedLatency = 500000u;
+		info.msrpFailureCode = la::avdecc::entity::model::MsrpFailureCode::InsufficientBandwidth;
+		info.msrpFailureBridgeID = 0x8000001B92077C00;
+
+		// Lock the controller entity, as when processing a received message (required by updateStreamInputInfo assertion)
+		controllerImpl._controller->lock();
+		controllerImpl.updateStreamInputInfo(*entity, streamIndex, info, false, false, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+		controllerImpl._controller->unlock();
+
+		return *entity->getStreamInputNode(entity->getCurrentConfigurationIndex(), streamIndex).dynamicModel.streamDynamicInfo;
+	};
+
+	// The Listener registers a Talker Failed attribute: the failure fields are valid
+	{
+		auto const info = updateStreamInfo(la::avdecc::entity::StreamInfoFlags{ la::avdecc::entity::StreamInfoFlag::Connected, la::avdecc::entity::StreamInfoFlag::SrpRegistrationFailed, la::avdecc::entity::StreamInfoFlag::MsrpFailureValid, la::avdecc::entity::StreamInfoFlag::MsrpAccLatValid });
+		EXPECT_TRUE(info.hasSrpRegistrationFailed);
+		EXPECT_EQ(la::avdecc::entity::model::MsrpFailureCode::InsufficientBandwidth, info.msrpFailureCode);
+		EXPECT_EQ(la::avdecc::entity::model::BridgeIdentifier{ 0x8000001B92077C00 }, info.msrpFailureBridgeID);
+	}
+
+	// The Listener now registers a Talker Advertise attribute: the failure fields must not be kept from the previous update, they describe a failure that no longer exists
+	{
+		auto const info = updateStreamInfo(la::avdecc::entity::StreamInfoFlags{ la::avdecc::entity::StreamInfoFlag::Connected, la::avdecc::entity::StreamInfoFlag::MsrpAccLatValid });
+		EXPECT_FALSE(info.hasSrpRegistrationFailed);
+		EXPECT_FALSE(info.msrpFailureCode.has_value());
+		EXPECT_FALSE(info.msrpFailureBridgeID.has_value());
+	}
+
+	// The other fields still keep their previous value when not valid in an update
+	{
+		auto const info = updateStreamInfo(la::avdecc::entity::StreamInfoFlags{ la::avdecc::entity::StreamInfoFlag::Connected });
+		EXPECT_EQ(std::optional<std::uint32_t>{ 500000u }, info.msrpAccumulatedLatency);
+	}
+}
+
 TEST_F(Controller_F, VirtualEntityLoadUTF8)
 {
 	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };

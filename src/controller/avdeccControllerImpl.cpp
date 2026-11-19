@@ -608,10 +608,16 @@ static void updateStreamDynamicInfoData(entity::model::StreamNodeDynamicModel* c
 	{
 		dynamicInfo.streamDestMac = info.streamDestMac;
 	}
+	// Unlike the other fields, the MSRP failure fields must not keep a previous value: they only describe the SRP failure currently registered (Milan 1.3 Table 5.8 requires them to be set to 0 otherwise), so they follow the SrpRegistrationFailed flag which is always replaced
 	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpFailureValid))
 	{
 		dynamicInfo.msrpFailureCode = info.msrpFailureCode;
 		dynamicInfo.msrpFailureBridgeID = info.msrpFailureBridgeID;
+	}
+	else
+	{
+		dynamicInfo.msrpFailureCode = std::nullopt;
+		dynamicInfo.msrpFailureBridgeID = std::nullopt;
 	}
 	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamVlanIDValid))
 	{

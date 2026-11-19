@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `Controller::Observer::onAecpResponseAverageTimeChanged` never notified
 - Crash when saving an entity dump (text format) containing a string that is not a valid UTF-8 string, an error is now returned (and the file is not altered)
 - [Input streams connection state not retrieved during the enumeration of a Milan 1.3+ entity when GET_STREAM_INPUT_INFO_EX fails (now falling back to GET_RX_STATE)](https://github.com/L-Acoustics/avdecc/pull/199)
+- `StreamDynamicInfo::msrpFailureCode` and `msrpFailureBridgeID` kept from a previous STREAM_INFO once `MSRP_FAILURE_VALID` is no longer set, reporting a failure that no longer exists (they are now cleared, like `hasSrpRegistrationFailed`)
 
 ## [4.3.1] - 2025-12-19
 ### Fixed
